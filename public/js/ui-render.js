@@ -111,19 +111,21 @@ function refreshCombatSidebar() {
 }
 
 function refreshSystemUI() {
-    try {
-        const townVaultView = document.getElementById("town-vault-view");
-        const combatScreen = document.getElementById("combat-screen");
-        const vaultScreen = document.getElementById("vault-screen");
-        const wallet = document.getElementById("wallet-display");
-        const townScreen = document.getElementById("town-screen");
-        const merchantScreen = document.getElementById("merchant-screen");
-        const adventuresScreen = document.getElementById("adventures-screen");
-        
-        // === NEW: Tell the engine about the Upgrades Screen ===
-        const upgradesScreen = document.getElementById("upgrades-screen");
+try {
+    const topNavBar = document.getElementById("top-nav-bar");
+    const townVaultView = document.getElementById("town-vault-view");
+    const combatScreen = document.getElementById("combat-screen");
+    const vaultScreen = document.getElementById("vault-screen");
+    const wallet = document.getElementById("wallet-display");
 
-        if (!townVaultView || !combatScreen || !vaultScreen || !wallet || !townScreen || !merchantScreen) return;
+    // Tab Panels
+    const knightScreen = document.getElementById("knight-screen");
+    const townScreen = document.getElementById("town-screen");
+    const merchantScreen = document.getElementById("merchant-screen");
+    const adventuresScreen = document.getElementById("adventures-screen");
+    const upgradesScreen = document.getElementById("upgrades-screen");
+
+    if (!townVaultView || !combatScreen || !vaultScreen || !wallet || !townScreen || !merchantScreen) return;
 
 // === CLEANED UP WALLET - ECONOMY ONLY ===
         let animG = (uiMemory.gold !== -1 && player.gold > uiMemory.gold) ? 'resource-pop' : '';
@@ -146,8 +148,11 @@ function refreshSystemUI() {
             if (combatPhase === 'MOVE' || combatPhase === 'ACTION') combatPhase = 'PHASE_1';
         }
 
-        if (gameState === 'COMBAT') {
-            townVaultView.style.display = "none"; vaultScreen.style.display = "none"; combatScreen.style.display = "block";
+if (gameState === 'COMBAT') {
+    topNavBar.style.display = "none"; // Hide Nav Bar in battle
+    townVaultView.style.display = "none"; 
+    vaultScreen.style.display = "none"; 
+    combatScreen.style.display = "block";
             
             let dynamicBg = "none";
             if (activeCombatZone === 'WILDERNESS') dynamicBg = "url('assets/images/wilds-bg.png')";
@@ -306,24 +311,63 @@ function refreshSystemUI() {
                 }
             }
         }
-else if (gameState === 'VAULT') {
-            townVaultView.style.display = "none"; combatScreen.style.display = "none"; vaultScreen.style.display = "block";
-            const vaultWallet = document.getElementById("vault-wallet-display");
-			if (vaultWallet) {
-                vaultWallet.innerHTML = `💰 <b>Gold:</b> ${player.gold}g | 🌲 <b>Timber:</b> ${player.wood} | 🐟 <b>Fish:</b> ${player.fish} | 🌿 <b>Hops:</b> ${player.hops}`;
-            }
-
-            document.getElementById("vault-screen-count").innerText = player.stash.length;
-            document.getElementById("vault-screen-max").innerText = player.vaultSlots;
-            document.getElementById("vault-inv-count").innerText = player.inventory.length;
+		
+else { 
+            // --- CONSOLIDATED TABBED VIEWS ---
+            // We are out of combat, show the Nav Bar and the Main Container
+            topNavBar.style.display = "flex";
+            townVaultView.style.display = "flex"; 
+            combatScreen.style.display = "none";
             
-            let vaultUpGold = player.vaultSlots * 5; let vaultUpWood = player.vaultSlots * 2;
-            document.getElementById("upgrade-vault-btn").innerText = `Expand Vault Slots (+5 Slots) (Costs ${vaultUpGold}g, ${vaultUpWood}W)`;
-            document.getElementById("upgrade-vault-btn").disabled = (player.gold < vaultUpGold || player.wood < vaultUpWood);
+            // Hide ALL tabs first to ensure a clean slate
+            if (knightScreen) knightScreen.style.display = "none";
+            townScreen.style.display = "none";
+            merchantScreen.style.display = "none";
+            if (adventuresScreen) adventuresScreen.style.display = "none";
+            vaultScreen.style.display = "none";
+            if (upgradesScreen) upgradesScreen.style.display = "none";
 
-            renderVaultStorageList();
-            renderBackpackList(document.getElementById("vault-inventory-list"), true);
-        }
+            // Update Active Nav Button Styling (Remove active class from all)
+            document.querySelectorAll('.nav-bar button').forEach(btn => btn.classList.remove('active-tab'));
+
+            // Show the specific tab requested and highlight its nav button
+            if (gameState === 'KNIGHT') {
+                if (knightScreen) knightScreen.style.display = "block";
+                document.getElementById('nav-knight').classList.add('active-tab');
+            } else if (gameState === 'TOWN') {
+                townScreen.style.display = "block";
+                document.getElementById('nav-town').classList.add('active-tab');
+            } else if (gameState === 'MERCHANT') {
+                merchantScreen.style.display = "flex";
+                document.getElementById('nav-tavern').classList.add('active-tab');
+            } else if (gameState === 'ADVENTURES') {
+                if (adventuresScreen) adventuresScreen.style.display = "flex";
+                document.getElementById('nav-adventures').classList.add('active-tab');
+            } else if (gameState === 'VAULT') {
+                vaultScreen.style.display = "block";
+                document.getElementById('nav-vault').classList.add('active-tab');
+                
+                // Keep the Vault Wallet Sync active specifically for the Vault tab
+                const vaultWallet = document.getElementById("vault-wallet-display");
+                if (vaultWallet) {
+                    vaultWallet.innerHTML = `💰 <b>Gold:</b> ${player.gold}g | 🌲 <b>Timber:</b> ${player.wood} | 🐟 <b>Fish:</b> ${player.fish} | 🌿 <b>Hops:</b> ${player.hops}`;
+                }
+
+                document.getElementById("vault-screen-count").innerText = player.stash.length;
+                document.getElementById("vault-screen-max").innerText = player.vaultSlots;
+                document.getElementById("vault-inv-count").innerText = player.inventory.length;
+                
+                let vaultUpGold = player.vaultSlots * 5; let vaultUpWood = player.vaultSlots * 2;
+                document.getElementById("upgrade-vault-btn").innerText = `Expand Vault Slots (+5 Slots) (Costs ${vaultUpGold}g, ${vaultUpWood}W)`;
+                document.getElementById("upgrade-vault-btn").disabled = (player.gold < vaultUpGold || player.wood < vaultUpWood);
+
+                renderVaultStorageList();
+                renderBackpackList(document.getElementById("vault-inventory-list"), true);
+            } else if (gameState === 'UPGRADES') {
+                if (upgradesScreen) upgradesScreen.style.display = "flex";
+                // Upgrades technically belongs to the Town ecosystem, so we highlight Town
+                document.getElementById('nav-town').classList.add('active-tab');
+            }
 else { 
 
 // --- NEW: DYNAMIC KNIGHT HEADER & STATS ---

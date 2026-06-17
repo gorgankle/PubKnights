@@ -185,10 +185,21 @@
                 </div>
             </div>
         </div>
+<!-- === GLOBAL WALLET (Always Visible) === -->
+        <div id="wallet-display" style="width: 100%; box-sizing: border-box;">Synchronizing UI elements...</div>
+
+        <!-- === TOP NAVIGATION TABS === -->
+        <div id="top-nav-bar" class="nav-bar" style="display: none;">
+            <button id="nav-knight" onclick="setGameState('KNIGHT')">🛡️ Knight</button>
+            <button id="nav-town" onclick="setGameState('TOWN')">🏕️ Town</button>
+            <button id="nav-tavern" onclick="setGameState('MERCHANT')">🍻 Tavern</button>
+            <button id="nav-adventures" onclick="setGameState('ADVENTURES')">⚔️ Adventures</button>
+            <button id="nav-vault" onclick="setGameState('VAULT')">🏦 Vault</button>
+        </div>
 
         <div id="town-vault-view" class="columns-container">
             
-<div class="column-left">
+<div id="knight-screen" class="panel column-left" style="display: none; width: 100%; max-width: 100%;">
                 <div id="profile-management-panel" class="panel" style="margin-bottom: 0;">
                     
 <div id="level-up-panel" style="margin-bottom: 0;">
@@ -282,11 +293,9 @@
                 </div>
             </div>
 
-<div class="column-right">
-                <!-- WALLET MOVED HERE SO IT STAYS VISIBLE IN ALL TABS -->
-                <div id="wallet-display">Synchronizing UI elements...</div>
 
-                <div id="town-screen" class="panel" style="margin-bottom: 0; min-height: 486px; display: flex; flex-direction: column; gap: 10px;">
+
+<div id="town-screen" class="panel" style="display: none; margin-bottom: 0; min-height: 486px; flex-direction: column; gap: 10px;">
 
 					<div class="dashboard-panel">
                         <h3>🎒 Personal Idle Actions (Town Only)</h3>
@@ -426,7 +435,7 @@
                     </div>
                 </div>
 
-            </div>
+            
 			
 
             
