@@ -751,18 +751,44 @@ let isCrit = variedDmg >= Math.floor(baseDmg * 1.06);
                 socket.emit('townReceipt', { success: true, action: 'upgradeCart', updatedPlayer: p, message: `📦 Cart upgraded to Level ${p.supplyCart.level}!` });
             } else socket.emit('townReceipt', { success: false, message: "❌ Insufficient funds for Cart upgrade." });
         }
-        // 17. BLACK MARKET (SERVER-SIDE LOOT ROLL)
+// 17. BLACK MARKET (SERVER-SIDE LOOT ROLL)
         else if (data.action === 'blackMarket') {
             if (p.hops >= 50) {
                 p.maxInventorySlots = p.maxInventorySlots || 5;
                 if (p.inventory.length < p.maxInventorySlots) {
+                    
+                    // Fetch your balanced black market table configuration
+                    let table = LootTables["black_market"];
+                    if (!table) return socket.emit('townReceipt', { success: false, message: "❌ Loot table missing configuration data." });
+
                     p.hops -= 50;
-                    // Server securely picks a random Rare/Epic/Unique item
-                    let items = Object.values(ItemDatabase).filter(i => i.slot !== 'consumable' && (i.rarity === 'Rare' || i.rarity === 'Epic' || i.rarity === 'Unique'));
-                    let randomItem = items[Math.floor(Math.random() * items.length)] || ItemDatabase["rusty_mace"];
+
+                    // Execute weighted random matrix extraction calculations
+                    let totalWeight = table.pools.reduce((sum, entry) => sum + entry.weight, 0);
+                    let roll = Math.random() * totalWeight;
+                    let chosenItemId = null;
+
+                    for (let entry of table.pools) {
+                        if (roll < entry.weight) {
+                            chosenItemId = entry.itemId;
+                            break;
+                        }
+                        roll -= entry.weight;
+                    }
+
+                    // Fallback to standard baseline mace if template extraction parameters decay
+                    let droppedItemTemplate = ItemDatabase[chosenItemId] || ItemDatabase["rusty_mace"];
+                    
+                    // Deep clone the master asset dictionary entry to prevent pointer mutation leaks
+                    let randomItem = JSON.parse(JSON.stringify(droppedItemTemplate));
                     
                     p.inventory.push(randomItem);
-                    socket.emit('townReceipt', { success: true, action: 'blackMarket', updatedPlayer: p, message: `🪙 Black Market Trader gave you: ${randomItem.name} [${randomItem.rarity}]` });
+                    socket.emit('townReceipt', { 
+                        success: true, 
+                        action: 'blackMarket', 
+                        updatedPlayer: p, 
+                        message: `🪙 Black Market Trader gave you: ${randomItem.name} [${randomItem.rarity}]` 
+                    });
                 } else socket.emit('townReceipt', { success: false, message: "🎒 Backpack is full." });
             } else socket.emit('townReceipt', { success: false, message: "❌ Trader demands 50 Hops." });
         }
