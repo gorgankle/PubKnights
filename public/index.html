@@ -157,13 +157,9 @@
 
 
         <div id="vault-screen" class="panel" style="display: none; width: 1035px; margin: 0 auto;">
-            <div class="dashboard-panel" style="background: #1a1512; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; margin-bottom: 15px; border: 1px solid #4a3b2c;">
-                <div>
-                    <span style="color: #ffcc66; font-weight: bold; font-size:15px; display:block; margin-bottom:2px;">🏦 Grand Town Vault</span>
-                    <span id="vault-wallet-display" style="font-size: 11px; color: #bbaaa0; font-family: monospace;"></span>
-                </div>
-                <button onclick="setGameState('TOWN')" style="background: #27ae60; margin:0; padding:6px 14px;">↩ Return to Town</button>
-            </div>
+<div class="dashboard-panel" style="background: #1a1512; padding: 10px 14px; margin-bottom: 15px; border: 1px solid #4a3b2c; text-align: center;">
+    <span style="color: #ffcc66; font-weight: bold; font-size:15px; display:block;">🏦 Grand Town Vault</span>
+</div>
             
             <div style="display: flex; gap: 15px; align-items: flex-start;">
                 <div style="width: 440px; flex-shrink: 0;">
@@ -287,9 +283,6 @@
                         <div id="inventory-list" style="background: #1a1512; padding: 6px; border-radius: 4px; border: 1px solid #4a3b2c;"></div>
                     </div>
 
-                    <div class="dashboard-panel" style="margin-bottom: 0; text-align: center; background: #231912; border: 1px dashed #d35400;">
-                        <button onclick="setGameState('VAULT')" style="background: #d35400; font-size: 11px; width: 100%; margin:0;">🏦 Open Town Vault Storage (<span id="town-vault-indicator">0</span>/<span id="town-vault-max-indicator">10</span>)</button>
-                    </div>
                 </div>
             </div>
 
@@ -332,19 +325,9 @@
                         </div>
                     </div>
                     
-					<div class="dashboard-panel" style="margin-bottom: 0; text-align: center; background: #231912; border: 1px dashed #27ae60;">
-                        <button onclick="setGameState('MERCHANT')" style="background: #27ae60; font-size: 13px; width: 100%; margin:0; padding: 10px;" onmouseenter="showSystemTooltip('tavern_enter', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🍻 Enter the Tavern (Shops & Crafting)</button>
-                    </div>
-
-                    <!-- === NEW: UPGRADES NAVIGATION BUTTON === -->
-                    <div class="dashboard-panel" style="margin-bottom: 0; text-align: center; background: #231912; border: 1px dashed #f1c40f;">
-                        <button onclick="setGameState('UPGRADES')" style="background: #f1c40f; color: #000; font-size: 13px; width: 100%; margin:0; padding: 10px;" onmouseenter="showSystemTooltip('tavern_upgrades', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">👑 View Tavern Upgrades</button>
-                    </div>
-                    <!-- ======================================= -->
-
-                    <div class="dashboard-panel" style="margin-bottom: 0; text-align: center; background: #231912; border: 1px dashed #c0392b;">
-                        <button onclick="setGameState('ADVENTURES')" style="background: #c0392b; font-size: 13px; width: 100%; margin:0; padding: 10px;" onmouseenter="showSystemTooltip('adventures_enter', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">⚔️ View Combat Adventures</button>
-                    </div>
+<div class="dashboard-panel" style="margin-bottom: 0; text-align: center; background: #231912; border: 1px dashed #f1c40f;">
+    <button onclick="setGameState('UPGRADES')" style="background: #f1c40f; color: #000; font-size: 13px; width: 100%; margin:0; padding: 10px;" onmouseenter="showSystemTooltip('tavern_upgrades', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">👑 View Town Upgrades</button>
+</div>
 			
 					
                 </div>

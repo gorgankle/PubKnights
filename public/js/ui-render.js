@@ -304,12 +304,16 @@ function refreshSystemUI() {
                 }
             }
         }
-        else { 
+else { 
             // --- CONSOLIDATED TABBED VIEWS ---
+            // We are out of combat, show the Nav Bar
             if (topNavBar) topNavBar.style.display = "flex";
-            townVaultView.style.display = "flex"; 
             combatScreen.style.display = "none";
-            
+
+            // Only show the column container if we are NOT in the Vault
+            if (townVaultView) townVaultView.style.display = (gameState === 'VAULT') ? "none" : "flex"; 
+
+            // Hide ALL tabs first to ensure a clean slate
             if (knightScreen) knightScreen.style.display = "none";
             townScreen.style.display = "none";
             merchantScreen.style.display = "none";
@@ -331,19 +335,14 @@ function refreshSystemUI() {
             } else if (gameState === 'ADVENTURES') {
                 if (adventuresScreen) adventuresScreen.style.display = "flex";
                 document.getElementById('nav-adventures').classList.add('active-tab');
-            } else if (gameState === 'VAULT') {
+} else if (gameState === 'VAULT') {
                 vaultScreen.style.display = "block";
                 document.getElementById('nav-vault').classList.add('active-tab');
-                
-                const vaultWallet = document.getElementById("vault-wallet-display");
-                if (vaultWallet) {
-                    vaultWallet.innerHTML = `💰 <b>Gold:</b> ${player.gold}g | 🌲 <b>Timber:</b> ${player.wood} | 🐟 <b>Fish:</b> ${player.fish} | 🌿 <b>Hops:</b> ${player.hops}`;
-                }
 
                 document.getElementById("vault-screen-count").innerText = player.stash.length;
                 document.getElementById("vault-screen-max").innerText = player.vaultSlots;
                 document.getElementById("vault-inv-count").innerText = player.inventory.length;
-                
+
                 let vaultUpGold = player.vaultSlots * 5; let vaultUpWood = player.vaultSlots * 2;
                 document.getElementById("upgrade-vault-btn").innerText = `Expand Vault Slots (+5 Slots) (Costs ${vaultUpGold}g, ${vaultUpWood}W)`;
                 document.getElementById("upgrade-vault-btn").disabled = (player.gold < vaultUpGold || player.wood < vaultUpWood);
@@ -400,10 +399,7 @@ function refreshSystemUI() {
                 }
             });
 
-            let tvInd = document.getElementById("town-vault-indicator");
-            if(tvInd) tvInd.innerText = player.stash.length;
-            let tvMax = document.getElementById("town-vault-max-indicator");
-            if(tvMax) tvMax.innerText = player.vaultSlots;
+
 
             const gateBtn = document.getElementById("gate-btn");
             if (gateBtn) {
