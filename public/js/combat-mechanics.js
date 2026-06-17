@@ -277,7 +277,7 @@ function finishLooting() {
 
     pendingLoot = []; 
     document.getElementById("loot-screen").style.display = "none";
-    transitionToTown(); 
+    // NOTE: We deleted transitionToTown() from here!
 }
 
 // === NEW: TRUE PATHFINDING MOVEMENT VALIDATOR (OPTIMIZED CACHE) ===

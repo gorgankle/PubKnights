@@ -324,7 +324,9 @@ socket.on('combatRewardsReceipt', (receipt) => {
             if (typeof playRetroSound === 'function') playRetroSound('heavyAttack'); 
             logMessage(`🎉 LEVEL UP! The Guild has verified you are now Level ${player.level}.`);
         }
-        refreshSystemUI();
+        
+        // === NEW: Safely transition to town now that the server gave us our new map levels! ===
+        transitionToTown(); 
     }
 });
 
