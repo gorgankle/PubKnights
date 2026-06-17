@@ -7,6 +7,7 @@ const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
 // === SERVER-AUTHORITATIVE SYNC ===
+
 socket.on('serverTick', (serverData) => {
     // Failsafe: Ignore background ticks if the player hasn't logged in yet
     if (document.getElementById('main-game-container').style.display !== 'flex') return;
@@ -27,6 +28,7 @@ socket.on('serverTick', (serverData) => {
     if (typeof runAutoClaimCheck === 'function') runAutoClaimCheck();
 
     refreshSystemUI();
+    updateTownUI(serverData);   // <--- USE serverData HERE
 });
 
 socket.on('combatResult', (result) => {

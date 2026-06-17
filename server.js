@@ -970,11 +970,16 @@ setInterval(() => {
             }
         }
 
-        // 3. Send the calculated truth back to the browser!
-        io.to(socketId).emit('serverTick', {
-            hp: p.hp, wood: p.wood, fish: p.fish, hops: p.hops,
-            supplyCart: p.supplyCart, happyHourTicks: p.happyHourTicks
-        });
+// Inside server.js
+io.to(socketId).emit('serverTick', {
+    hp: p.hp, 
+    wood: p.wood, 
+    fish: p.fish, 
+    hops: p.hops,
+    supplyCart: p.supplyCart, 
+    happyHourTicks: p.happyHourTicks,
+    upgrades: p.upgrades // <--- ADD THIS LINE
+});
     }
 }, 3000);
 

@@ -902,3 +902,20 @@ window.cyclePetAppearance = function(part) {
     if (typeof renderMainScreenSprites === 'function') renderMainScreenSprites();
     if (typeof playRetroSound === 'function') playRetroSound('menu');
 };
+
+// Inside ui-render.js
+function updateTownUI(data) {
+    if (data.upgrades) {
+        // Calculate the exact math the server is using
+        const currentCartLevel = data.upgrades.cartLevel || 0;
+        const nextCartCost = 50 * Math.pow(2, currentCartLevel);
+        
+        // Target the button and rewrite its text
+        const cartBtn = document.getElementById('btn-upgrade-cart'); 
+        if (cartBtn) {
+            cartBtn.innerText = `Upgrade Cart (${nextCartCost} Wood)`;
+        }
+
+        // Note: You can expand this section later for the Gilded Tavern auto-claim UI!
+    }
+}
