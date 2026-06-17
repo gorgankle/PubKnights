@@ -76,10 +76,15 @@ function executeCombatAction(actionType) {
             if (typeof triggerPlayerAttackAnimation === 'function') triggerPlayerAttackAnimation();
         }
 
-        // Beam the action to the Node server!
+// Beam the action to the Node server!
         socket.emit('combatAction', { 
             actionType: actionType, 
-            targetEnemy: selectedEnemy ? { resilience: selectedEnemy.resilience } : null 
+            targetEnemy: selectedEnemy ? { 
+                resilience: selectedEnemy.resilience,
+                x: selectedEnemy.x,   // <--- ADD THIS
+                y: selectedEnemy.y,   // <--- ADD THIS
+                id: selectedEnemy.id  // <--- ADD THIS (Good for failsafes)
+            } : null 
         });
         
         // Halt the browser! Do NOT call advancePhase() here.
