@@ -303,27 +303,37 @@
                         </div>
                     </div>
 
-                    <div class="dashboard-panel" style="margin-bottom: 0;">
-                        <h3>🧺 Town Production & Gatherers</h3>
-                        <div style="font-size: 11px; margin-bottom: 6px; background: #1a1512; padding: 6px; border-radius: 4px; border: 1px solid #4a3b2c;">
-                            <strong>Supply Cart Capacity:</strong> [<span id="cart-total">0</span>/<span id="cart-max">100</span>] <span id="happy-hour-timer" style="color: #ff9f43; font-weight: bold; display: none;">🔥 HAPPY HOUR BOOSTING ACTIVE!</span><br>
-                            <span style="color: #bbaaa0; font-size: 10px;">🌲 Timber: <span id="cart-wood">0</span> | 🐟 Fish: <span id="cart-fish">0</span> | 🌿 Hops: <span id="cart-hops">0</span></span>
-							<button id="claim-cart-btn" onclick="claimSupplyCart()" style="width: 100%; margin-top: 5px; background: #27ae60; padding: 4px 0;" onmouseenter="showSystemTooltip('claim_cart', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🧺 Claim Supplies</button>
-							<button id="upgrade-cart-btn" onclick="upgradeCartCapacity()" style="width: 100%; margin-top: 4px; padding: 4px 0;" onmouseenter="showSystemTooltip('cart_up', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">📦 Upgrade Cart Capacity</button>
-							<button id="happy-hour-btn" onclick="hostHappyHour()" style="width: 100%; margin-top: 4px; padding: 4px 0;" onmouseenter="showSystemTooltip('happy_hour', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🎉 Launch Happy Hour (40H, 100g)</button>
+<div class="dashboard-panel" style="margin-bottom: 0;">
+                        <h3>🧺 Town Production</h3>
+                        
+                        <!-- Condensed Cart Status -->
+                        <div style="font-size: 11px; margin-bottom: 6px; background: #1a1512; padding: 6px; border-radius: 4px; border: 1px solid #4a3b2c; text-align: center;">
+                            <div style="margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+                                <strong>Cart: [<span id="cart-total">0</span>/<span id="cart-max">100</span>]</strong>
+                                <span style="color: #bbaaa0; font-size: 10px;">🌲 <span id="cart-wood">0</span> | 🐟 <span id="cart-fish">0</span> | 🌿 <span id="cart-hops">0</span></span>
+                            </div>
+                            <button id="claim-cart-btn" onclick="claimSupplyCart()" style="width: 100%; background: #27ae60; padding: 6px 0; margin-bottom: 4px; font-size: 12px;" onmouseenter="showSystemTooltip('claim_cart', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🧺 Claim Supplies</button>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+                                <button id="upgrade-cart-btn" onclick="upgradeCartCapacity()" style="padding: 4px 0; font-size: 10px; margin: 0;" onmouseenter="showSystemTooltip('cart_up', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">📦 Expand Cart</button>
+                                <button id="happy-hour-btn" onclick="hostHappyHour()" style="padding: 4px 0; font-size: 10px; margin: 0;" onmouseenter="showSystemTooltip('happy_hour', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🎉 Happy Hour</button>
+                            </div>
+                            <div id="happy-hour-timer" style="color: #ff9f43; font-weight: bold; display: none; margin-top: 6px; font-size: 10px;">🔥 HAPPY HOUR BOOSTING ACTIVE!</div>
                         </div>
-                        <div style="display: flex; gap: 4px; flex-direction: column; font-size: 11px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; background: #221a14; padding: 4px; border-radius: 3px; border: 1px solid #3a2f26;">
-                                <span>Woodcutters: <strong id="worker-wood-count" style="color: #ffcc66;">0</strong></span>
-                                <button id="hire-wood-btn" onclick="hireWorker('woodcutter')" style="padding: 2px 6px; font-size: 10px; margin: 0;">Hire (75g)</button>
+
+                        <!-- Condensed Worker Hiring Grid -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; font-size: 10px; text-align: center;">
+                            <div style="background: #221a14; padding: 4px; border-radius: 3px; border: 1px solid #3a2f26;">
+                                <div style="margin-bottom: 4px; color: #bbaaa0;">🪓 Wood: <strong id="worker-wood-count" style="color: #ffcc66;">0</strong></div>
+                                <button id="hire-wood-btn" onclick="hireWorker('woodcutter')" style="width: 100%; padding: 4px 0; font-size: 9px; margin: 0;">Hire (75g)</button>
                             </div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; background: #221a14; padding: 4px; border-radius: 3px; border: 1px solid #3a2f26;">
-                                <span>Fishermen: <strong id="worker-fish-count" style="color: #ffcc66;">0</strong></span>
-                                <button id="hire-fish-btn" onclick="hireWorker('fisherman')" style="padding: 2px 6px; font-size: 10px; margin: 0;">Hire (75g)</button>
+                            <div style="background: #221a14; padding: 4px; border-radius: 3px; border: 1px solid #3a2f26;">
+                                <div style="margin-bottom: 4px; color: #bbaaa0;">🎣 Fish: <strong id="worker-fish-count" style="color: #ffcc66;">0</strong></div>
+                                <button id="hire-fish-btn" onclick="hireWorker('fisherman')" style="width: 100%; padding: 4px 0; font-size: 9px; margin: 0;">Hire (75g)</button>
                             </div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; background: #221a14; padding: 4px; border-radius: 3px; border: 1px solid #3a2f26;">
-                                <span>Hops Farmers: <strong id="worker-hop-count" style="color: #ffcc66;">0</strong></span>
-                                <button id="hire-hop-btn" onclick="hireWorker('farmer')" style="padding: 2px 6px; font-size: 10px; margin: 0;">Hire (75g)</button>
+                            <div style="background: #221a14; padding: 4px; border-radius: 3px; border: 1px solid #3a2f26;">
+                                <div style="margin-bottom: 4px; color: #bbaaa0;">🌾 Hops: <strong id="worker-hop-count" style="color: #ffcc66;">0</strong></div>
+                                <button id="hire-hop-btn" onclick="hireWorker('farmer')" style="width: 100%; padding: 4px 0; font-size: 9px; margin: 0;">Hire (75g)</button>
                             </div>
                         </div>
                     </div>
