@@ -94,8 +94,22 @@
 
         <button onclick="finalizeCharacter()" style="background: #27ae60; padding: 12px; font-size: 14px; width: 100%; margin-top: 10px; border: 2px solid #2ecc71;">Begin Adventure</button>
     </div>
+	
 
 <div id="main-game-container" class="game-wrapper" style="display: none;">
+
+<!-- === GLOBAL WALLET (Always Visible) === -->
+        <div id="wallet-display" style="width: 100%; box-sizing: border-box;">Synchronizing UI elements...</div>
+
+        <!-- === TOP NAVIGATION TABS === -->
+        <div id="top-nav-bar" class="nav-bar" style="display: none;">
+            <button id="nav-knight" onclick="setGameState('KNIGHT')">🛡️ Knight</button>
+            <button id="nav-town" onclick="setGameState('TOWN')">🏕️ Town</button>
+            <button id="nav-tavern" onclick="setGameState('MERCHANT')">🍻 Tavern</button>
+            <button id="nav-adventures" onclick="setGameState('ADVENTURES')">⚔️ Adventures</button>
+            <button id="nav-vault" onclick="setGameState('VAULT')">🏦 Vault</button>
+        </div>
+
         
         <div id="combat-screen" class="panel" style="display: none; width: 1035px; margin: 0 auto;">
             <div style="display: flex; gap: 15px; align-items: flex-start;">
@@ -180,17 +194,6 @@
                     </div>
                 </div>
             </div>
-        </div>
-<!-- === GLOBAL WALLET (Always Visible) === -->
-        <div id="wallet-display" style="width: 100%; box-sizing: border-box;">Synchronizing UI elements...</div>
-
-        <!-- === TOP NAVIGATION TABS === -->
-        <div id="top-nav-bar" class="nav-bar" style="display: none;">
-            <button id="nav-knight" onclick="setGameState('KNIGHT')">🛡️ Knight</button>
-            <button id="nav-town" onclick="setGameState('TOWN')">🏕️ Town</button>
-            <button id="nav-tavern" onclick="setGameState('MERCHANT')">🍻 Tavern</button>
-            <button id="nav-adventures" onclick="setGameState('ADVENTURES')">⚔️ Adventures</button>
-            <button id="nav-vault" onclick="setGameState('VAULT')">🏦 Vault</button>
         </div>
 
         <div id="town-vault-view" class="columns-container">
