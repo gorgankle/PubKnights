@@ -442,13 +442,28 @@ combat.turn = 'ENEMY';
                 let maxDmg = Math.ceil(baseDmg * 1.10);
                 let variedDmg = Math.floor(Math.random() * (maxDmg - minDmg + 1)) + minDmg;
                 
-                let isCrit = variedDmg >= Math.floor(baseDmg * 1.06);
-let finalDmg = data.actionType === 'special' ? Math.floor(variedDmg * (p.equipment.weapon?.rarity === "Gorilla" ? 4.0 : 1.5)) : variedDmg;
+let isCrit = variedDmg >= Math.floor(baseDmg * 1.06);
+                let finalDmg = data.actionType === 'special' ? Math.floor(variedDmg * (p.equipment.weapon?.rarity === "Gorilla" ? 4.0 : 1.5)) : variedDmg;
+
+                // === NEW: DEDUCT HP ON THE SERVER ===
+                let combat = activeCombats[socket.id];
+                if (combat && data.targetEnemy) {
+                    // Find the exact enemy in the server's memory using the coordinates
+                    let serverEnemy = combat.enemies.find(e => e.x === data.targetEnemy.x && e.y === data.targetEnemy.y && e.alive);
+                    
+                    if (serverEnemy) {
+                        serverEnemy.hp -= finalDmg;
+                        if (serverEnemy.hp <= 0) {
+                            serverEnemy.hp = 0;
+                            serverEnemy.alive = false; // The AI loop will now ignore them!
+                        }
+                    }
+                }
 
                 socket.emit('combatResult', { type: 'hit', actionType: data.actionType, damage: finalDmg, isCrit: isCrit, newStamina: p.stamina });
             }
         }
-    }); // <--- THIS BRACKET WAS MISSING! It safely closes the combatAction block.
+    });
 
     // --- SERVER-AUTHORITATIVE BOMB ENGINE ---
     socket.on('bombAction', (data) => {
@@ -461,8 +476,25 @@ let finalDmg = data.actionType === 'special' ? Math.floor(variedDmg * (p.equipme
         // Validate that the item exists and is actually a bomb
         if (!bomb || bomb.type !== 'bomb') return;
 
-        // Securely remove the bomb from the Server's master inventory
+// Securely remove the bomb from the Server's master inventory
         p.inventory.splice(invIndex, 1);
+
+        // === NEW: DEDUCT AOE BOMB DAMAGE ON THE SERVER ===
+        let combat = activeCombats[socket.id];
+        if (combat) {
+            combat.enemies.forEach(e => {
+                if (!e.alive) return;
+                // Calculate distance from explosion epicenter (data.tx, data.ty)
+                let dist = getGridDistance(data.tx, data.ty, e.x, e.y, e.size || 1);
+                if (dist <= bomb.aoe) {
+                    e.hp -= bomb.damage;
+                    if (e.hp <= 0) {
+                        e.hp = 0;
+                        e.alive = false;
+                    }
+                }
+            });
+        }
 
         // Beam the verified bomb stats back to the browser to trigger the explosion!
         socket.emit('bombResult', {
