@@ -104,7 +104,16 @@ function getPlayerDeflectChance() {
 function getPlayerMoveRange() { return getPlayerSwiftness(); }
 function getPlayerTotalAttack() { return getPlayerTotalPower(); }
 
+// === ECONOMY MATH HELPERS (MUST MATCH SERVER.JS) ===
+function getCartUpgradeCost() {
+    let level = player.supplyCart ? (player.supplyCart.level || 1) : 1;
+    return { gold: level * 150, wood: level * 75 };
+}
 
+function getBackpackUpgradeCost() {
+    let upg = player.backpackUpgrades || 0;
+    return { gold: 100 + (upg * 50), wood: 50 + (upg * 25) };
+}
 
 function saveGame(manualNotify = false) {
     // Failsafe: Don't try to save if they aren't fully logged in yet
