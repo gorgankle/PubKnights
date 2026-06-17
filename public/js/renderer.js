@@ -488,10 +488,13 @@ if (isValidPlayerMovePath(tx, ty)) {
                     logMessage(`❌ Legs are too heavy. Not enough stamina (${moveStaminaCost} required).`); playRetroSound('error');
                     pendingMove = null; return;
                 }
-                player.stamina -= moveStaminaCost; player.x = tx; player.y = ty; pendingMove = null;
+				player.stamina -= moveStaminaCost; player.x = tx; player.y = ty; pendingMove = null;
                 logMessage(`🏃 Strided to [${tx}, ${ty}] (Cost: ${moveStaminaCost} Stamina).`); 
                 
                 if (typeof playRetroSound === 'function') playRetroSound('step');
+                
+                // === NEW: INSTANT SERVER SYNC ===
+                socket.emit('combatMove', { tx: tx, ty: ty });
                 
                 if (typeof advancePhase === 'function') advancePhase(); 
             } else {

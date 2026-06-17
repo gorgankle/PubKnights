@@ -428,7 +428,28 @@ p.hp -= variedDmg;
     });
 	
 	
-	
+
+
+// --- SERVER-AUTHORITATIVE MOVEMENT SYNC ---
+    socket.on('combatMove', (data) => {
+        let p = activePlayers[socket.id];
+        let combat = activeCombats[socket.id];
+        if (!p || !combat) return;
+
+        // Securely calculate the stamina cost of the stride
+        let dist = getGridDistance(combat.player.x, combat.player.y, data.tx, data.ty, 1);
+        let swiftness = p.swiftness || 3;
+        if (p.activeBuffs && p.activeBuffs.includes('LAGER')) swiftness += 2;
+        
+        let moveStaminaCost = Math.floor((dist / swiftness) * 10);
+
+        // Deduct it securely so the server stays perfectly in sync with the browser
+        if (p.stamina >= moveStaminaCost) {
+            p.stamina -= moveStaminaCost;
+            combat.player.x = data.tx;
+            combat.player.y = data.ty;
+        }
+    });
 
     // --- SERVER-AUTHORITATIVE COMBAT ENGINE ---
     socket.on('combatAction', (data) => {

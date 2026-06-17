@@ -54,7 +54,7 @@ function executeCombatAction(actionType) {
     // --- SERVER-AUTHORITATIVE ACTIONS (Pass, Slash, Special) ---
     if (actionType === 'end' || actionType === 'slash' || actionType === 'special') {
         
-        // Client-side visual/range checks before bothering the server
+// Client-side visual/range checks before bothering the server
         if (actionType === 'slash' || actionType === 'special') {
             if (combatPhase !== 'PHASE_2') {
                 logMessage("❌ Tactical Error: Attacks can only be performed in Phase 2."); 
@@ -62,6 +62,14 @@ function executeCombatAction(actionType) {
                 return;
             }
             if (!selectedEnemy || !selectedEnemy.alive) return;
+            
+            // === NEW: STRICT STAMINA CHECK ===
+            let staminaCost = actionType === 'special' ? 15 : 5;
+            if (player.stamina < staminaCost) {
+                logMessage(`❌ Legs are too heavy. Not enough stamina (${staminaCost} required).`);
+                if (typeof playRetroSound === 'function') playRetroSound('error');
+                return;
+            }
             
             let range = (player.equipment.weapon && player.equipment.weapon.attackRange) || 1;
             let dist = getGridDistance(player.x, player.y, selectedEnemy.x, selectedEnemy.y, selectedEnemy.size || 1);
