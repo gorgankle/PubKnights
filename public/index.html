@@ -308,9 +308,9 @@
                         <div style="font-size: 11px; margin-bottom: 6px; background: #1a1512; padding: 6px; border-radius: 4px; border: 1px solid #4a3b2c;">
                             <strong>Supply Cart Capacity:</strong> [<span id="cart-total">0</span>/<span id="cart-max">100</span>] <span id="happy-hour-timer" style="color: #ff9f43; font-weight: bold; display: none;">🔥 HAPPY HOUR BOOSTING ACTIVE!</span><br>
                             <span style="color: #bbaaa0; font-size: 10px;">🌲 Timber: <span id="cart-wood">0</span> | 🐟 Fish: <span id="cart-fish">0</span> | 🌿 Hops: <span id="cart-hops">0</span></span>
-                            <button id="claim-cart-btn" onclick="claimSupplyCart()" style="width: 100%; margin-top: 5px; background: #27ae60; padding: 4px 0;" onmouseenter="showSystemTooltip('claim_cart', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🧺 Claim Supplies</button>
-                            <button id="upgrade-cart-btn" onclick="upgradeCartCapacity()" style="width: 100%; margin-top: 4px; background: #d35400; padding: 4px 0;" onmouseenter="showSystemTooltip('cart_up', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">📦 Upgrade Cart Capacity</button>
-                            <button id="happy-hour-btn" onclick="hostHappyHour()" style="width: 100%; margin-top: 4px; background:#b33939; border-color:#ff3333; padding: 4px 0;" onmouseenter="showSystemTooltip('happy_hour', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🎉 Launch Happy Hour (40H, 100g)</button>
+							<button id="claim-cart-btn" onclick="claimSupplyCart()" style="width: 100%; margin-top: 5px; background: #27ae60; padding: 4px 0;" onmouseenter="showSystemTooltip('claim_cart', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🧺 Claim Supplies</button>
+							<button id="upgrade-cart-btn" onclick="upgradeCartCapacity()" style="width: 100%; margin-top: 4px; padding: 4px 0;" onmouseenter="showSystemTooltip('cart_up', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">📦 Upgrade Cart Capacity</button>
+							<button id="happy-hour-btn" onclick="hostHappyHour()" style="width: 100%; margin-top: 4px; padding: 4px 0;" onmouseenter="showSystemTooltip('happy_hour', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🎉 Launch Happy Hour (40H, 100g)</button>
                         </div>
                         <div style="display: flex; gap: 4px; flex-direction: column; font-size: 11px;">
                             <div style="display: flex; justify-content: space-between; align-items: center; background: #221a14; padding: 4px; border-radius: 3px; border: 1px solid #3a2f26;">
@@ -348,7 +348,7 @@
                             <button onclick="changeZoneLevel('WILDERNESS', -1)" style="padding: 4px 8px; margin: 0; background: #4a3b2c;">◀</button>
                             <button id="gate-btn" onclick="transitionToCombat('WILDERNESS')" style="flex-grow: 1; margin: 0;">Deploy to Wilds (Lvl 1)</button>
                             <button onclick="changeZoneLevel('WILDERNESS', 1)" style="padding: 4px 8px; margin: 0; background: #4a3b2c;">▶</button>
-                            <button id="bait-btn" onclick="baitWildernessMap()" style="background: #d35400; font-size: 10px; border-color: #ff9f43; margin: 0;" onmouseenter="showSystemTooltip('bait_wilds', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🎣 Bait</button>
+                            <button id="bait-btn" onclick="baitWildernessMap()" style="font-size: 10px; margin: 0;" onmouseenter="showSystemTooltip('bait_wilds', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🎣 Bait</button>
                         </div>
                         <div id="bait-status-banner" style="font-size: 9px; text-align: center; color: #bbaaa0; margin-bottom: 6px; font-weight: bold; border: 1px solid #443a32; padding: 2px; background: #1a1512; border-radius: 3px;">
                             TRACKING SIGNAL: NORMAL
@@ -357,7 +357,7 @@
                             <button onclick="changeZoneLevel('CELLARS', -1)" style="padding: 4px 8px; margin: 0; background: #4a3b2c;">◀</button>
                             <button id="cellar-gate-btn" onclick="transitionToCombat('CELLARS')" style="flex-grow: 1; margin: 0;">🔒 Forbidden Cellars</button>
                             <button onclick="changeZoneLevel('CELLARS', 1)" style="padding: 4px 8px; margin: 0; background: #4a3b2c;">▶</button>
-                            <button id="chum-btn" onclick="chumForbiddenCellars()" style="background: #16a085; border-color: #1abc9c; font-size: 10px; width: 80px; margin: 0;" onmouseenter="showSystemTooltip('chum_cellars', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🛢️ Chum</button>
+                            <button id="chum-btn" onclick="chumForbiddenCellars()" style="font-size: 10px; width: 80px; margin: 0;" onmouseenter="showSystemTooltip('chum_cellars', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🛢️ Chum</button>
                         </div>
                         <button id="gorilla-btn" onclick="transitionToCombat('GORILLA_ARENA')" style="background: #c0392b; border-color: #ff3333; width: 98%; margin-top: 4px;">🦍 EVENT: Gorilla Pit</button>
 						<!-- === NEW: PROCEDURAL ABYSS DEPLOYMENT === -->
@@ -399,23 +399,23 @@
                         <button onclick="setGameState('TOWN')" style="background: #c0392b; margin:0; padding:6px 14px;">↩ Return to Town</button>
                     </div>
                     
-					<div class="dashboard-panel">
+						<div class="dashboard-panel">
                         <h3>🛍️ Provisioner Counter</h3>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 4px;">
                             <button id="craft-bomb-1-btn" onclick="craftKegBomb(1)" onmouseenter="showSystemTooltip('bomb_small', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Small Keg Bomb (10W, 100H)</button>
-                            <button id="craft-bomb-2-btn" onclick="craftKegBomb(2)" style="background:#b33939; border-color:#ff3333;" onmouseenter="showSystemTooltip('bomb_heavy', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Heavy Keg Bomb (25W, 250H)</button>
-                            <button id="market-trader-btn" onclick="tradeHopsForGear()" style="background:#2c3e50; border-color:#34495e;" onmouseenter="showSystemTooltip('black_market', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🪙 Black Market (50 Hops)</button>
-                            <button id="wholesale-btn" onclick="exportFishWholesale()" style="background: #27ae60; border-color: #2ecc71; grid-column: span 2; width: 99%;" onmouseenter="showSystemTooltip('fish_wholesale', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🐟 Wholesale Export Market Dump (Sell 100 Fish ➔ 150g)</button>
-							<button id="btn-sell-fish-bulk" onclick="sellFishBulk()" style="display: none; background: #2980b9; border-color: #1c5980; width: 100%; margin-top: 5px; font-size: 11px;">🚢 Bulk Export Fish (-1000 🐟 / +1500g)</button>
+                            <button id="craft-bomb-2-btn" onclick="craftKegBomb(2)" onmouseenter="showSystemTooltip('bomb_heavy', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Heavy Keg Bomb (25W, 250H)</button>
+                            <button id="market-trader-btn" onclick="tradeHopsForGear()" onmouseenter="showSystemTooltip('black_market', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🪙 Black Market (50 Hops)</button>
+                            <button id="wholesale-btn" onclick="exportFishWholesale()" style="grid-column: span 2; width: 99%;" onmouseenter="showSystemTooltip('fish_wholesale', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🐟 Wholesale Export (Sell 100 Fish ➔ 150g)</button>
+							<button id="btn-sell-fish-bulk" onclick="sellFishBulk()" style="display: none; width: 100%; margin-top: 5px; font-size: 11px;">🚢 Bulk Export Fish (-1000 🐟 / +1500g)</button>
                         </div>
                     </div>
                     
                     <div class="dashboard-panel">
                         <h3>🍺 Brewmaster</h3>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 4px;">
-                            <button id="brewmaster-btn" onclick="hireBrewmasterServices()" style="background: #6c5ce7; border-color: #a29bfe;" onmouseenter="showSystemTooltip('craft_stout', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🍺 Craft Stout (1H+10g)</button>
-                            <button id="ipa-btn" onclick="craftSpecialtyBrew('IPA')" style="background:#4a3b2c;" onmouseenter="showSystemTooltip('ipa', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🍺 IPA (1H, 5W)</button>
-                            <button id="lager-btn" onclick="craftSpecialtyBrew('LAGER')" style="background:#4a3b2c;" onmouseenter="showSystemTooltip('lager', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🍺 Lager (2H, 5F)</button>
+                            <button id="brewmaster-btn" onclick="hireBrewmasterServices()" onmouseenter="showSystemTooltip('craft_stout', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🍺 Craft Stout (1H+10g)</button>
+                            <button id="ipa-btn" onclick="craftSpecialtyBrew('IPA')" onmouseenter="showSystemTooltip('ipa', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🍺 IPA (1H, 5W)</button>
+                            <button id="lager-btn" onclick="craftSpecialtyBrew('LAGER')" onmouseenter="showSystemTooltip('lager', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🍺 Lager (2H, 5F)</button>
                             <button id="reserve-btn" onclick="craftReserveBrew()" style="background: #8e44ad; border-color: #9b59b6; grid-column: span 2;" onmouseenter="showSystemTooltip('reserve', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🍷 Grandmaster Reserve (200H, 50g)</button>
                         </div>
                     </div>
