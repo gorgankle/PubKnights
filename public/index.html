@@ -336,10 +336,7 @@
                     <div class="dashboard-panel" style="margin-bottom: 0; text-align: center; background: #231912; border: 1px dashed #c0392b;">
                         <button onclick="setGameState('ADVENTURES')" style="background: #c0392b; font-size: 13px; width: 100%; margin:0; padding: 10px;" onmouseenter="showSystemTooltip('adventures_enter', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">⚔️ View Combat Adventures</button>
                     </div>
-					<!-- === NEW: LEADERBOARD BUTTON === -->
-                    <div class="dashboard-panel" style="margin-bottom: 0; text-align: center; background: #231912; border: 1px dashed #3498db;">
-                        <button onclick="openLeaderboard()" style="background: #3498db; color: #fff; font-size: 13px; width: 100%; margin:0; padding: 10px;" onmouseenter="showSystemTooltip('leaderboard', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🏆 Global Leaderboard</button>
-                    </div>
+			
 					
                 </div>
 
@@ -428,22 +425,7 @@
                         </div>
                     </div>
                 </div>
-<!-- === NEW: LEADERBOARD SCREEN === -->
-                <div id="leaderboard-screen" class="panel" style="display: none; margin-bottom: 0; min-height: 486px; flex-direction: column; gap: 10px;">
-                    <div class="dashboard-panel" style="background: #1a1512; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; margin-bottom: 5px; border: 1px solid #4a3b2c;">
-                        <span style="color: #3498db; font-weight: bold; font-size:15px;">🏆 Hall of Legends</span>
-                        <button onclick="setGameState('TOWN')" style="background: #c0392b; margin:0; padding:6px 14px;">↩ Return to Town</button>
-                    </div>
-                    <div class="dashboard-panel" style="flex-grow: 1;">
-                        <div style="display:flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #634e3d; padding-bottom: 8px; margin-bottom: 10px;">
-                            <h3 style="margin: 0;">Top Guildmasters</h3>
-                            <button onclick="fetchAndDisplayLeaderboard()" style="background: #27ae60; padding: 4px 10px; font-size: 11px; margin: 0;">🔄 Refresh</button>
-                        </div>
-                        <div id="leaderboard-list" style="display: flex; flex-direction: column; gap: 6px;">
-                            <!-- Firebase JS injects scores here -->
-                        </div>
-                    </div>
-                </div>
+
             </div>
 			
 
@@ -466,11 +448,6 @@
     <div id="game-tooltip"></div>
 
     <script src="js/audio.js"></script>
-	
-	<!-- === NEW: FIREBASE CLOUD SDK === -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
-    <script src="js/firebase-db.js"></script>
 	
 
     <!-- Data-Driven Loot & Economy Layer -->

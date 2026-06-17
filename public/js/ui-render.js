@@ -358,9 +358,6 @@ else {
 			// === NEW: Toggle the Upgrades screen on when the button is clicked ===
             if (upgradesScreen) upgradesScreen.style.display = (gameState === 'UPGRADES') ? "flex" : "none";
 			
-			// === NEW: Toggle the Leaderboard screen on when the button is clicked ===
-            const leaderboardScreen = document.getElementById("leaderboard-screen");
-            if (leaderboardScreen) leaderboardScreen.style.display = (gameState === 'LEADERBOARD') ? "flex" : "none";
 
             const slots = ['helmet', 'armor', 'weapon', 'gloves', 'boots'];
             slots.forEach(slotKey => {
