@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    
+	<!-- NEW: Mobile Viewport Scaling -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pub Knights - Beta v0.9(Modular Refactor)</title>
+    <link rel="stylesheet" href="style.css?v=2">
+	
+	<!-- === NEW: MOBILE DRAG & DROP POLYFILL === -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/default.css">
+    
+	<script src="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/index.min.js"></script>
+    
+	<script>
+        window.addEventListener('DOMContentLoaded', function() {
+            // Initialize the translator to require a 300ms long-press to pick up an item
+            MobileDragDrop.polyfill({ holdToDrag: 300 });
+            
+            // Prevent the phone from scrolling the page while an item is actively being dragged
+            window.addEventListener('touchmove', function() {}, {passive: false});
+        });
+    </script>
+	
+</head>
+<body>
+
+<h1>🍻 Pub Knights: Beta v0.9 🍻</h1>
+
+<!-- === UNIVERSAL AUDIO CONTROLS (COLLAPSIBLE) === -->
+<div id="audio-widget" style="position: absolute; top: 15px; right: 15px; z-index: 10000; display: flex; flex-direction: column; align-items: flex-end;">
+    <button onclick="toggleAudioPanel()" style="background: rgba(43, 33, 24, 0.95); border: 2px solid #634e3d; border-radius: 5px; font-size: 14px; padding: 6px 10px; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.6); margin-bottom: 5px;">🎵 Music</button>
+    
+    <div id="audio-controls" class="audio-panel" style="display: none;">
+        <div class="audio-row" style="border-bottom: 1px dashed #634e3d; padding-bottom: 8px; margin-bottom: 6px;">
+            <span id="current-track-name" style="color: #2ecc71; font-size: 10px;">🎵 Trk 1: Tavern Loop</span>
+            <button onclick="cycleMusicTrack()" style="margin: 0; padding: 2px 6px; font-size: 9px; background: #2980b9;">⏭️ Next</button>
+        </div>
+        <div class="audio-row">
+            <label>🎵 Music:</label>
+            <input type="range" id="music-vol" min="0" max="1" step="0.1" value="1.0" oninput="updateMusicVolume(this.value)">
+        </div>
+        <div class="audio-row">
+            <label>🔊 SFX:</label>
+            <input type="range" id="sfx-vol" min="0" max="1" step="0.1" value="1.0" oninput="updateSfxVolume(this.value)">
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleAudioPanel() {
+        const panel = document.getElementById("audio-controls");
+        panel.style.display = panel.style.display === "none" ? "flex" : "none";
+    }
+</script>
+<!-- ===================================== -->
+
+<div id="login-screen" class="panel">
+    <h2 style="color: #ffcc66; font-size: 16px; margin-bottom: 5px;">Welcome to The Tavern</h2>
+    <p style="font-size: 11px; color: #bbaaa0; margin-bottom: 20px;">Identify yourself to enter.</p>
+    
+<div class="dashboard-panel" style="display: flex; flex-direction: column; gap: 12px; align-items: center;">
+    <!-- NEW: Username and Password Fields -->
+    <input type="text" id="char-name-input" placeholder="Knight Name" style="background:#1a1512; color:#fff; border:1px solid #634e3d; padding:8px; font-family:monospace; width:80%; text-align:center; font-size: 14px;">
+    <input type="password" id="char-pass-input" placeholder="Password" style="background:#1a1512; color:#fff; border:1px solid #634e3d; padding:8px; font-family:monospace; width:80%; text-align:center; font-size: 14px;">
+    
+    <div style="display: flex; gap: 8px; justify-content: center; width: 100%;">
+        <button onclick="attemptLogin()" style="flex: 1; padding: 10px; font-size: 13px;">Login (Load)</button>
+        <button onclick="startNewGame()" style="flex: 1; padding: 10px; background: #c0392b; font-size: 13px;">Register New</button>
+    </div>
+</div>
+</div>
+
+<!-- NEW: Dedicated Character Creation Screen -->
+    <div id="char-creation-screen" class="panel" style="display: none; text-align: center; max-width: 480px; margin: 15vh auto 0 auto; padding: 25px; box-shadow: 0 15px 35px rgba(0,0,0,0.8);">
+        <h2 style="color: #ffcc66; font-size: 20px; margin-bottom: 5px;">Forge Your Knight</h2>
+        <p style="font-size: 11px; color: #bbaaa0; margin-bottom: 20px;">Customize your appearance before donning your gear.</p>
+        
+        <div id="character-creation-preview" style="display: flex; flex-direction: column; align-items: center; margin-bottom: 15px;">
+            <canvas id="menuCharacterCanvas" width="96" height="96" style="background: #1a1512; border: 2px solid #634e3d; border-radius: 4px; box-shadow: 0 0 15px rgba(0,0,0,0.8);"></canvas>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 20px; width: 100%;">
+                <button onclick="cycleAppearance('gender')" style="font-size: 11px; padding: 6px;">Gender</button>
+                <button onclick="cycleAppearance('skin')" style="font-size: 11px; padding: 6px;">Skin Tone</button>
+                <button onclick="cycleAppearance('hair')" style="font-size: 11px; padding: 6px;">Hair Style</button>
+                <button onclick="cycleAppearance('hairColor')" style="font-size: 11px; padding: 6px;">Hair Color</button>
+                <button onclick="cycleAppearance('eyes')" style="font-size: 11px; padding: 6px;">Eye Color</button>
+                <button onclick="cycleAppearance('shirtColor')" style="font-size: 11px; padding: 6px;">Shirt Color</button>
+                <button onclick="cycleAppearance('pantsColor')" style="font-size: 11px; padding: 6px;">Pants Color</button>
+                <button onclick="cycleAppearance('bootsColor')" style="font-size: 11px; padding: 6px;">Boots Color</button>
+            </div>
+        </div>
+
+        <button onclick="finalizeCharacter()" style="background: #27ae60; padding: 12px; font-size: 14px; width: 100%; margin-top: 10px; border: 2px solid #2ecc71;">Begin Adventure</button>
+    </div>
+
+<div id="main-game-container" class="game-wrapper" style="display: none;">
+        
+        <div id="combat-screen" class="panel" style="display: none; width: 1035px; margin: 0 auto;">
+            <div style="display: flex; gap: 15px; align-items: flex-start;">
+                <div style="width: 480px; flex-shrink: 0;">
+                    <canvas id="gameCanvas" width="480" height="480"></canvas>
+				<div id="action-interface">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                            <span id="target-ui-header" style="font-size: 11px; font-weight: bold; color:#ffcc66;">INITIALIZING MATRIX</span>
+                        </div>
+						<div style="display:grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+                            <button id="slash-btn" onclick="executeCombatAction('slash')" onmouseenter="showSystemTooltip('combat_slash', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Standard Attack</button>
+                            <button id="heavy-btn" onclick="executeCombatAction('special')" onmouseenter="showSpecialSkillTooltip(event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Weapon Skill</button>
+                            <button id="combat-brew-btn" onclick="executeCombatAction('brew')" onmouseenter="showSystemTooltip('combat_brew', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Chug Brew</button>
+                            <button id="end-btn" onclick="executeCombatAction('end')" onmouseenter="showSystemTooltip('combat_pass', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Pass Turn</button>
+                        </div>
+                        
+                        <!-- NEW: Combat Backpack -->
+                        <div style="margin-top: 8px; border-top: 1px dashed #4a3b2c; padding-top: 8px;">
+                            <h4 style="margin: 0 0 4px 0; font-size: 11px; color: #ffcc66;">🎒 Combat Backpack (Consumables)</h4>
+                            <div id="combat-inventory-list" style="display: flex; gap: 4px; flex-wrap: wrap;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="combat-status-sidebar" style="flex-grow: 1; background: #221a14; padding: 12px; border-radius: 4px; border: 1px solid #634e3d; min-height: 546px; box-sizing: border-box; text-align: left;">
+                </div>
+            </div>
+        </div>
+
+<!-- === NEW: POST-COMBAT LOOT SCREEN === -->
+<div id="loot-screen" class="panel" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 600px; text-align: center; z-index: 9999; box-shadow: 0 0 0 9999px rgba(0,0,0,0.75);">
+            <h2 style="color: #ffcc66; font-size: 18px; margin-bottom: 5px;">🏆 Victory! Spoils of War</h2>
+            
+            <div style="display: flex; gap: 10px; margin-bottom: 15px; justify-content: space-between;">
+                <div style="flex: 1; background: #1a1512; border: 1px dashed #f1c40f; padding: 10px; border-radius: 4px;">
+                    <div style="font-size: 11px; color: #bbaaa0; margin-bottom: 4px; text-transform: uppercase;">Gold Recovered</div>
+                    <div id="loot-gold-reward" style="color: #f1c40f; font-size: 16px; font-weight: bold; text-shadow: 0 2px 2px #000;">+0g</div>
+                </div>
+                <div style="flex: 1; background: #1a1512; border: 1px dashed #2ecc71; padding: 10px; border-radius: 4px;">
+                    <div style="font-size: 11px; color: #bbaaa0; margin-bottom: 4px; text-transform: uppercase;">Combat Experience</div>
+                    <div id="loot-xp-reward" style="color: #2ecc71; font-size: 16px; font-weight: bold; text-shadow: 0 2px 2px #000;">+0 XP</div>
+                </div>
+            </div>
+
+            <div style="background: #110d0a; padding: 10px; border-radius: 4px; border: 1px solid #4a3b2c; margin-bottom: 15px;">
+                <div id="loot-xp-text" style="font-size: 11px; color: #ffcc66; font-weight: bold; margin-bottom: 5px; text-align: left;">Lvl 1: 0/100</div>
+                <div style="width: 100%; background: #000; height: 16px; border-radius: 4px; border: 1px solid #55443a; overflow: hidden; position: relative;">
+                    <div id="loot-xp-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #27ae60, #2ecc71); transition: width 0.1s linear;"></div>
+                </div>
+            </div>
+
+            <p style="font-size: 11px; color: #bbaaa0; margin-bottom: 15px;">Claim your items or sell them immediately to the merchant guild.</p>
+            
+            <div id="loot-container" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; text-align: left; background: #1a1512; padding: 10px; border-radius: 4px; border: 1px solid #4a3b2c; min-height: 100px; max-height: 220px; overflow-y: auto;">
+                </div>
+            
+            <button onclick="finishLooting()" style="background: #2980b9; padding: 10px 20px; font-size: 14px; width: 100%; border: 2px solid #3498db;">Return to Tavern</button>
+        </div>
+
+
+        <div id="vault-screen" class="panel" style="display: none; width: 1035px; margin: 0 auto;">
+            <div class="dashboard-panel" style="background: #1a1512; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; margin-bottom: 15px; border: 1px solid #4a3b2c;">
+                <div>
+                    <span style="color: #ffcc66; font-weight: bold; font-size:15px; display:block; margin-bottom:2px;">🏦 Grand Town Vault</span>
+                    <span id="vault-wallet-display" style="font-size: 11px; color: #bbaaa0; font-family: monospace;"></span>
+                </div>
+                <button onclick="setGameState('TOWN')" style="background: #27ae60; margin:0; padding:6px 14px;">↩ Return to Town</button>
+            </div>
+            
+            <div style="display: flex; gap: 15px; align-items: flex-start;">
+                <div style="width: 440px; flex-shrink: 0;">
+                    <div class="dashboard-panel">
+                        <h3>⚒️ Expand Vault Infrastructure</h3>
+                        <button id="upgrade-vault-btn" onclick="upgradeVaultCapacity()" style="width: 100%; background: #e67e22;" onmouseenter="showSystemTooltip('vault_up', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Expand Vault Slots (+5 Slots)</button>
+                    </div>
+                    <div class="dashboard-panel" style="margin-bottom: 0;">
+                        <h3>🎒 Quick Backpack View (<span id="vault-inv-count">0</span>/5 Slots)</h3>
+                        <div id="vault-inventory-list" style="background: #1a1512; padding: 6px; border-radius: 4px; border: 1px solid #4a3b2c;"></div>
+                    </div>
+                </div>
+                
+                <div style="flex-grow: 1;">
+                    <div class="dashboard-panel" style="margin-bottom: 0; min-height: 254px;">
+                        <h3>🔒 Vault Core Allocation (<span id="vault-screen-count">0</span> / <span id="vault-screen-max">10</span> Capacity)</h3>
+                        <div id="vault-screen-list" class="scroll-panel" style="max-height: 350px; height: 206px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="town-vault-view" class="columns-container">
+            
+<div class="column-left">
+                <div id="profile-management-panel" class="panel" style="margin-bottom: 0;">
+                    
+<div id="level-up-panel" style="margin-bottom: 0;">
+                        </div>
+						
+<!-- === NEW: KNIGHT AND PET DASHBOARD PANEL === -->
+<div class="dashboard-panel" style="display: flex; gap: 10px; background: #1a1512; justify-content: center; padding: 10px; border: 1px dashed #4a3b2c;">
+    
+    <!-- LEFT SIDE: KNIGHT -->
+    <div style="text-align: center; width: 50%; display: flex; flex-direction: column; align-items: center;">
+        <h4 id="knight-header-name" style="margin: 0 0 5px 0; font-size: 11px; color: #ffcc66; border-bottom: 1px solid #3a2f26; padding-bottom: 4px; text-transform: uppercase; width: 100%; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">Your Knight</h4>
+        <canvas id="main-player-canvas" width="96" height="96" style="background: #221a14; border: 1px solid #4a3b2c; border-radius: 4px; image-rendering: pixelated; width: 120px; height: 120px;"></canvas>
+        
+        <!-- NEW: WARDROBE TOGGLE -->
+        <button id="knight-wardrobe-btn" onclick="toggleWardrobe()" style="width: 90%; background: #2c3e50; border-color: #34495e; margin-top: 5px; font-size: 10px; padding: 4px;">🪞 Wardrobe</button>
+        
+        <!-- NEW: WARDROBE MENU -->
+        <div id="knight-wardrobe-ui" style="display: none; width: 100%; margin-top: 5px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin-bottom: 4px;">
+                <button onclick="cycleTownAppearance('gender')" style="font-size: 9px; padding: 2px; margin: 0;">Gender</button>
+                <button onclick="cycleTownAppearance('skin')" style="font-size: 9px; padding: 2px; margin: 0;">Skin</button>
+                <button onclick="cycleTownAppearance('hair')" style="font-size: 9px; padding: 2px; margin: 0;">Hair</button>
+                <button onclick="cycleTownAppearance('hairColor')" style="font-size: 9px; padding: 2px; margin: 0;">Color</button>
+                <button onclick="cycleTownAppearance('shirtColor')" style="font-size: 9px; padding: 2px; margin: 0;">Shirt</button>
+                <button onclick="cycleTownAppearance('pantsColor')" style="font-size: 9px; padding: 2px; margin: 0;">Pants</button>
+            </div>
+            <button onclick="toggleWardrobe()" style="background: #e67e22; border-color: #d35400; font-size: 10px; padding: 4px; width: 100%; margin: 0;">Close Wardrobe</button>
+        </div>
+
+        <div id="knight-town-stats" style="margin-top: 8px; font-size: 10px; text-align: left; background: #110d0a; padding: 6px; border-radius: 4px; border: 1px solid #3a2f26; width: 90%;">
+            <!-- JS will inject stats here -->
+        </div>
+    </div>
+
+    <!-- RIGHT SIDE: PET -->
+    <div style="text-align: center; width: 50%; display: flex; flex-direction: column; align-items: center;">
+        <h4 id="pet-header-name" style="margin: 0 0 5px 0; font-size: 11px; color: #bbaaa0; border-bottom: 1px solid #3a2f26; padding-bottom: 4px; text-transform: uppercase; width: 100%;">Companion</h4>
+        
+        <button id="open-adoption-btn" onclick="openAdoptionMenu()" style="width: 90%; background: #27ae60; border-color: #2ecc71; margin-top: 15px; font-size: 11px; padding: 8px;">🐕 Adopt a Pet</button>
+		
+
+        
+        <!-- NEW: EDIT PET BUTTON -->
+        <button id="edit-pet-btn" onclick="editPetMenu()" style="display: none; width: 90%; background: #2c3e50; border-color: #34495e; margin-top: 5px; font-size: 10px; padding: 4px;">✏️ Edit Pet</button>
+	
+        <canvas id="main-pet-canvas" width="96" height="96" style="display: none; background: #221a14; border: 1px solid #4a3b2c; border-radius: 4px; image-rendering: pixelated; width: 120px; height: 120px; margin-top: 5px;"></canvas>
+		<!-- NEW: TRAIN PET BUTTON -->
+        <button id="train-pet-btn" onclick="trainPet()" style="display: none; width: 90%; background: #8e44ad; border-color: #9b59b6; margin-top: 5px; font-size: 10px; padding: 4px;" onmouseenter="showSystemTooltip('pet_train', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🦴 Feed Kibble</button>
+        
+        <div id="pet-adoption-ui" style="display: none; width: 100%; margin-top: 5px;">
+            <input type="text" id="pet-name-input" value="Name your pet" maxlength="10" style="background:#110d0a; color:#f1c40f; border:1px solid #4a3b2c; padding:4px; font-family:monospace; width:90%; text-align:center; font-size: 10px; margin-bottom: 4px; border-radius: 3px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin-bottom: 4px;">
+                <button onclick="cyclePetAppearance('type')" style="font-size: 9px; padding: 2px; margin: 0;">Type</button>
+                <button onclick="cyclePetAppearance('furColor')" style="font-size: 9px; padding: 2px; margin: 0;">Fur</button>
+                <button onclick="cyclePetAppearance('collarColor')" style="font-size: 9px; padding: 2px; margin: 0; grid-column: span 2;">Collar</button>
+            </div>
+            <button id="confirm-pet-btn" onclick="adoptPet()" style="background: #27ae60; border-color: #2ecc71; font-size: 10px; padding: 4px; width: 100%; margin: 0;">Adopt (10g)</button>
+        </div>
+    </div>
+</div>
+
+                    <div class="dashboard-panel">
+                        <h3>🛡️ Equipped War Loadout</h3>
+						<div class="equipment-matrix" style="grid-template-columns: repeat(5, 1fr);">
+                            <div class="equip-slot" id="slot-helmet" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">
+                                <div class="slot-title">🪖 Helmet</div>
+                            </div>
+                            <div class="equip-slot" id="slot-armor" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">
+                                <div class="slot-title">🛡️ Armor</div>
+                            </div>
+                            <div class="equip-slot" id="slot-weapon" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">
+                                <div class="slot-title">⚔️ Weapon</div>
+                            </div>
+                            <div class="equip-slot" id="slot-gloves" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">
+                                <div class="slot-title">🧤 Gloves</div>
+                            </div>
+                            <div class="equip-slot" id="slot-boots" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">
+                                <div class="slot-title">👟 Boots</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-panel" id="main-backpack-panel">
+                        <h3>🎒 Knight's Backpack (<span id="inv-count">0</span>/5 Slots)</h3>
+                        <div id="inventory-list" style="background: #1a1512; padding: 6px; border-radius: 4px; border: 1px solid #4a3b2c;"></div>
+                    </div>
+
+                    <div class="dashboard-panel" style="margin-bottom: 0; text-align: center; background: #231912; border: 1px dashed #d35400;">
+                        <button onclick="setGameState('VAULT')" style="background: #d35400; font-size: 11px; width: 100%; margin:0;">🏦 Open Town Vault Storage (<span id="town-vault-indicator">0</span>/<span id="town-vault-max-indicator">10</span>)</button>
+                    </div>
+                </div>
+            </div>
+
+<div class="column-right">
+                <!-- WALLET MOVED HERE SO IT STAYS VISIBLE IN ALL TABS -->
+                <div id="wallet-display">Synchronizing UI elements...</div>
+
+                <div id="town-screen" class="panel" style="margin-bottom: 0; min-height: 486px; display: flex; flex-direction: column; gap: 10px;">
+
+					<div class="dashboard-panel">
+                        <h3>🎒 Personal Idle Actions (Town Only)</h3>
+                        <div style="margin-bottom: 4px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                            <button id="job-tavern-btn" class="active-job" onclick="setIdleJob('TAVERN')" onmouseenter="showSystemTooltip('idle_rest', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Rest Bar (+5 HP)</button>
+                            <button id="job-forest-btn" onclick="setIdleJob('FOREST')" onmouseenter="showSystemTooltip('idle_wood', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Gather Wood</button>
+                            <button id="job-lake-btn" onclick="setIdleJob('LAKE')" onmouseenter="showSystemTooltip('idle_fish', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Catch Fish</button>
+                            <button id="job-hops-btn" onclick="setIdleJob('HOPS')" onmouseenter="showSystemTooltip('idle_hops', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Harvest Hops</button>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-panel" style="margin-bottom: 0;">
+                        <h3>🧺 Town Production & Gatherers</h3>
+                        <div style="font-size: 11px; margin-bottom: 6px; background: #1a1512; padding: 6px; border-radius: 4px; border: 1px solid #4a3b2c;">
+                            <strong>Supply Cart Capacity:</strong> [<span id="cart-total">0</span>/<span id="cart-max">100</span>] <span id="happy-hour-timer" style="color: #ff9f43; font-weight: bold; display: none;">🔥 HAPPY HOUR BOOSTING ACTIVE!</span><br>
+                            <span style="color: #bbaaa0; font-size: 10px;">🌲 Timber: <span id="cart-wood">0</span> | 🐟 Fish: <span id="cart-fish">0</span> | 🌿 Hops: <span id="cart-hops">0</span></span>
+                            <button id="claim-cart-btn" onclick="claimSupplyCart()" style="width: 100%; margin-top: 5px; background: #27ae60; padding: 4px 0;" onmouseenter="showSystemTooltip('claim_cart', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🧺 Claim Supplies</button>
+                            <button id="upgrade-cart-btn" onclick="upgradeCartCapacity()" style="width: 100%; margin-top: 4px; background: #d35400; padding: 4px 0;" onmouseenter="showSystemTooltip('cart_up', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">📦 Upgrade Cart Capacity</button>
+                            <button id="happy-hour-btn" onclick="hostHappyHour()" style="width: 100%; margin-top: 4px; background:#b33939; border-color:#ff3333; padding: 4px 0;" onmouseenter="showSystemTooltip('happy_hour', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🎉 Launch Happy Hour (40H, 100g)</button>
+                        </div>
+                        <div style="display: flex; gap: 4px; flex-direction: column; font-size: 11px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; background: #221a14; padding: 4px; border-radius: 3px; border: 1px solid #3a2f26;">
+                                <span>Woodcutters: <strong id="worker-wood-count" style="color: #ffcc66;">0</strong></span>
+                                <button id="hire-wood-btn" onclick="hireWorker('woodcutter')" style="padding: 2px 6px; font-size: 10px; margin: 0;">Hire (75g)</button>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; background: #221a14; padding: 4px; border-radius: 3px; border: 1px solid #3a2f26;">
+                                <span>Fishermen: <strong id="worker-fish-count" style="color: #ffcc66;">0</strong></span>
+                                <button id="hire-fish-btn" onclick="hireWorker('fisherman')" style="padding: 2px 6px; font-size: 10px; margin: 0;">Hire (75g)</button>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; background: #221a14; padding: 4px; border-radius: 3px; border: 1px solid #3a2f26;">
+                                <span>Hops Farmers: <strong id="worker-hop-count" style="color: #ffcc66;">0</strong></span>
+                                <button id="hire-hop-btn" onclick="hireWorker('farmer')" style="padding: 2px 6px; font-size: 10px; margin: 0;">Hire (75g)</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+					<div class="dashboard-panel" style="margin-bottom: 0; text-align: center; background: #231912; border: 1px dashed #27ae60;">
+                        <button onclick="setGameState('MERCHANT')" style="background: #27ae60; font-size: 13px; width: 100%; margin:0; padding: 10px;" onmouseenter="showSystemTooltip('tavern_enter', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🍻 Enter the Tavern (Shops & Crafting)</button>
+                    </div>
+
+                    <!-- === NEW: UPGRADES NAVIGATION BUTTON === -->
+                    <div class="dashboard-panel" style="margin-bottom: 0; text-align: center; background: #231912; border: 1px dashed #f1c40f;">
+                        <button onclick="setGameState('UPGRADES')" style="background: #f1c40f; color: #000; font-size: 13px; width: 100%; margin:0; padding: 10px;" onmouseenter="showSystemTooltip('tavern_upgrades', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">👑 View Tavern Upgrades</button>
+                    </div>
+                    <!-- ======================================= -->
+
+                    <div class="dashboard-panel" style="margin-bottom: 0; text-align: center; background: #231912; border: 1px dashed #c0392b;">
+                        <button onclick="setGameState('ADVENTURES')" style="background: #c0392b; font-size: 13px; width: 100%; margin:0; padding: 10px;" onmouseenter="showSystemTooltip('adventures_enter', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">⚔️ View Combat Adventures</button>
+                    </div>
+					<!-- === NEW: LEADERBOARD BUTTON === -->
+                    <div class="dashboard-panel" style="margin-bottom: 0; text-align: center; background: #231912; border: 1px dashed #3498db;">
+                        <button onclick="openLeaderboard()" style="background: #3498db; color: #fff; font-size: 13px; width: 100%; margin:0; padding: 10px;" onmouseenter="showSystemTooltip('leaderboard', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🏆 Global Leaderboard</button>
+                    </div>
+					
+                </div>
+
+                <!-- === NEW: DEDICATED ADVENTURES SCREEN === -->
+                <div id="adventures-screen" class="panel" style="display: none; margin-bottom: 0; min-height: 486px; flex-direction: column; gap: 10px;">
+                    <div class="dashboard-panel" style="background: #1a1512; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; margin-bottom: 5px; border: 1px solid #4a3b2c;">
+                        <span style="color: #ffcc66; font-weight: bold; font-size:15px;">⚔️ Adventure Board</span>
+                        <button onclick="setGameState('TOWN')" style="background: #c0392b; margin:0; padding:6px 14px;">↩ Return to Town</button>
+                    </div>
+
+                    <div class="dashboard-panel">
+                        <h3>⚔️ Combat Adventures</h3>
+                        <div style="margin-bottom: 6px; display: flex; gap: 4px; align-items: center;">
+                            <button onclick="changeZoneLevel('WILDERNESS', -1)" style="padding: 4px 8px; margin: 0; background: #4a3b2c;">◀</button>
+                            <button id="gate-btn" onclick="transitionToCombat('WILDERNESS')" style="flex-grow: 1; margin: 0;">Deploy to Wilds (Lvl 1)</button>
+                            <button onclick="changeZoneLevel('WILDERNESS', 1)" style="padding: 4px 8px; margin: 0; background: #4a3b2c;">▶</button>
+                            <button id="bait-btn" onclick="baitWildernessMap()" style="background: #d35400; font-size: 10px; border-color: #ff9f43; margin: 0;" onmouseenter="showSystemTooltip('bait_wilds', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🎣 Bait</button>
+                        </div>
+                        <div id="bait-status-banner" style="font-size: 9px; text-align: center; color: #bbaaa0; margin-bottom: 6px; font-weight: bold; border: 1px solid #443a32; padding: 2px; background: #1a1512; border-radius: 3px;">
+                            TRACKING SIGNAL: NORMAL
+                        </div>
+                        <div style="display: flex; gap: 4px; width: 98%; align-items: center;">
+                            <button onclick="changeZoneLevel('CELLARS', -1)" style="padding: 4px 8px; margin: 0; background: #4a3b2c;">◀</button>
+                            <button id="cellar-gate-btn" onclick="transitionToCombat('CELLARS')" style="flex-grow: 1; margin: 0;">🔒 Forbidden Cellars</button>
+                            <button onclick="changeZoneLevel('CELLARS', 1)" style="padding: 4px 8px; margin: 0; background: #4a3b2c;">▶</button>
+                            <button id="chum-btn" onclick="chumForbiddenCellars()" style="background: #16a085; border-color: #1abc9c; font-size: 10px; width: 80px; margin: 0;" onmouseenter="showSystemTooltip('chum_cellars', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🛢️ Chum</button>
+                        </div>
+                        <button id="gorilla-btn" onclick="transitionToCombat('GORILLA_ARENA')" style="background: #c0392b; border-color: #ff3333; width: 98%; margin-top: 4px;">🦍 EVENT: Gorilla Pit</button>
+						<!-- === NEW: PROCEDURAL ABYSS DEPLOYMENT === -->
+<button id="abyss-btn" onclick="transitionToCombat('ABYSS')" style="background: #190a2e; border-color: #5b2c6f; color: #d7bde2; width: 98%; margin-top: 8px; border-style: dashed;">🌌 Descend into the Procedural Abyss (Depth <span id="abyss-depth-indicator">1</span>)</button>
+                    </div>
+                </div>
+<!-- === NEW: DEDICATED UPGRADES SCREEN === -->
+                <div id="upgrades-screen" class="panel" style="display: none; margin-bottom: 0; min-height: 486px; flex-direction: column; gap: 10px;">
+                    <div class="dashboard-panel" style="background: #1a1512; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; margin-bottom: 5px; border: 1px solid #4a3b2c;">
+                        <span style="color: #f1c40f; font-weight: bold; font-size:15px;">👑 Tavern Upgrades</span>
+                        <button onclick="setGameState('TOWN')" style="background: #c0392b; margin:0; padding:6px 14px;">↩ Return to Town</button>
+                    </div>
+                    
+<div class="dashboard-panel" style="border: 2px solid #f1c40f; background: #221a14;">
+                        <h3 style="color: #f1c40f; margin-bottom: 6px;">👑 Epic Tavern Prestige & Upgrades</h3>
+                        <div style="display: flex; flex-direction: column; gap: 6px;">
+                            <button id="gilded-tavern-btn" onclick="purchaseGildedTavern()" style="background: #7f8c8d; border-color: #f1c40f; padding: 10px; font-size: 12px; color: #fff;" onmouseenter="showSystemTooltip('gilded_tavern', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">✨ Gilded Tavern Metamorphosis (100,000g)<br><span style="font-size: 10px; color: #bbaaa0;">Transforms the tavern aesthetic and permanently automates supply cart claiming!</span></button>
+                            
+                            <div id="auto-claim-toggle-container" style="display: none; align-items: center; gap: 8px; background: #110d0a; padding: 6px; border-radius: 4px; border: 1px dashed #f1c40f;">
+                                <input type="checkbox" id="auto-claim-checkbox" onchange="toggleAutoClaim(this.checked)">
+                                <label for="auto-claim-checkbox" style="font-size: 11px; color: #f1c40f; font-weight: bold; cursor: pointer;">Enable Auto-Claim Supplies</label>
+                            </div>
+
+                            <!-- NEW TRADE ROUTES BUTTON -->
+                            <button id="btn-upgrade-trade" onclick="buyTradeRoutes()" style="background: #8e44ad; border-color: #732d91; padding: 10px; font-size: 12px; color: #fff;">🗺️ Expand Trade Routes (25,000g)<br><span style="font-size: 10px; color: #d1d8e0;">Unlocks bulk fish exports at the docks.</span></button>
+
+                            <!-- NEW 1 MILLION GOLD MONUMENT BUTTON -->
+                            <button id="btn-upgrade-monument" onclick="purchaseMonument()" style="background: #e67e22; border-color: #d35400; padding: 10px; font-size: 12px; color: #fff;">🗽 Erect the Golden Monument (1,000,000g)<br><span style="font-size: 10px; color: #f4ebd9;">The ultimate flex. Permanently doubles all Combat Gold and XP drops!</span></button>
+                        </div>
+                    </div>
+                    </div>
+					
+					<!-- ========================================== -->
+
+                <!-- === NEW: DEDICATED MERCHANT SCREEN === -->
+                <div id="merchant-screen" class="panel" style="display: none; margin-bottom: 0; min-height: 486px; flex-direction: column; gap: 10px;">
+                    <div class="dashboard-panel" style="background: #1a1512; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; margin-bottom: 5px; border: 1px solid #4a3b2c;">
+                        <span style="color: #ffcc66; font-weight: bold; font-size:15px;">🍻 The Tavern</span>
+                        <button onclick="setGameState('TOWN')" style="background: #c0392b; margin:0; padding:6px 14px;">↩ Return to Town</button>
+                    </div>
+                    
+					<div class="dashboard-panel">
+                        <h3>🛍️ Provisioner Counter</h3>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 4px;">
+                            <button id="craft-bomb-1-btn" onclick="craftKegBomb(1)" onmouseenter="showSystemTooltip('bomb_small', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Small Keg Bomb (10W, 100H)</button>
+                            <button id="craft-bomb-2-btn" onclick="craftKegBomb(2)" style="background:#b33939; border-color:#ff3333;" onmouseenter="showSystemTooltip('bomb_heavy', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Heavy Keg Bomb (25W, 250H)</button>
+                            <button id="market-trader-btn" onclick="tradeHopsForGear()" style="background:#2c3e50; border-color:#34495e;" onmouseenter="showSystemTooltip('black_market', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🪙 Black Market (50 Hops)</button>
+                            <button id="wholesale-btn" onclick="exportFishWholesale()" style="background: #27ae60; border-color: #2ecc71; grid-column: span 2; width: 99%;" onmouseenter="showSystemTooltip('fish_wholesale', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🐟 Wholesale Export Market Dump (Sell 100 Fish ➔ 150g)</button>
+							<button id="btn-sell-fish-bulk" onclick="sellFishBulk()" style="display: none; background: #2980b9; border-color: #1c5980; width: 100%; margin-top: 5px; font-size: 11px;">🚢 Bulk Export Fish (-1000 🐟 / +1500g)</button>
+                        </div>
+                    </div>
+                    
+                    <div class="dashboard-panel">
+                        <h3>🍺 Brewmaster</h3>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 4px;">
+                            <button id="brewmaster-btn" onclick="hireBrewmasterServices()" style="background: #6c5ce7; border-color: #a29bfe;" onmouseenter="showSystemTooltip('craft_stout', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🍺 Craft Stout (1H+10g)</button>
+                            <button id="ipa-btn" onclick="craftSpecialtyBrew('IPA')" style="background:#4a3b2c;" onmouseenter="showSystemTooltip('ipa', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🍺 IPA (1H, 5W)</button>
+                            <button id="lager-btn" onclick="craftSpecialtyBrew('LAGER')" style="background:#4a3b2c;" onmouseenter="showSystemTooltip('lager', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🍺 Lager (2H, 5F)</button>
+                            <button id="reserve-btn" onclick="craftReserveBrew()" style="background: #8e44ad; border-color: #9b59b6; grid-column: span 2;" onmouseenter="showSystemTooltip('reserve', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🍷 Grandmaster Reserve (200H, 50g)</button>
+                        </div>
+                    </div>
+                </div>
+<!-- === NEW: LEADERBOARD SCREEN === -->
+                <div id="leaderboard-screen" class="panel" style="display: none; margin-bottom: 0; min-height: 486px; flex-direction: column; gap: 10px;">
+                    <div class="dashboard-panel" style="background: #1a1512; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; margin-bottom: 5px; border: 1px solid #4a3b2c;">
+                        <span style="color: #3498db; font-weight: bold; font-size:15px;">🏆 Hall of Legends</span>
+                        <button onclick="setGameState('TOWN')" style="background: #c0392b; margin:0; padding:6px 14px;">↩ Return to Town</button>
+                    </div>
+                    <div class="dashboard-panel" style="flex-grow: 1;">
+                        <div style="display:flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #634e3d; padding-bottom: 8px; margin-bottom: 10px;">
+                            <h3 style="margin: 0;">Top Guildmasters</h3>
+                            <button onclick="fetchAndDisplayLeaderboard()" style="background: #27ae60; padding: 4px 10px; font-size: 11px; margin: 0;">🔄 Refresh</button>
+                        </div>
+                        <div id="leaderboard-list" style="display: flex; flex-direction: column; gap: 6px;">
+                            <!-- Firebase JS injects scores here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+			
+
+            
+        </div>
+
+        <!-- === NEW: TUTORIAL OVERLAY === -->
+        <div id="tutorial-overlay" class="panel" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 450px; text-align: center; z-index: 10000; box-shadow: 0 0 0 9999px rgba(0,0,0,0.85); border: 2px solid #2ecc71;">
+            <h2 id="tutorial-title" style="color: #2ecc71; font-size: 18px; margin-bottom: 10px; text-transform: uppercase;">Tutorial Module</h2>
+            <div id="tutorial-text" style="font-size: 13px; color: #f4ebd9; margin-bottom: 20px; line-height: 1.5; background: #1a1512; padding: 15px; border-radius: 4px; border: 1px dashed #4a3b2c; text-align: left;">
+                <!-- Text Injected by JS -->
+            </div>
+            <button id="tutorial-next-btn" onclick="advanceTutorial()" style="background: #27ae60; padding: 10px 20px; font-size: 14px; width: 100%; border: 2px solid #3498db;">Next ➔</button>
+        </div>
+
+        <div id="log">--- Tavern Records ---<br>Engine v0.8.13 modular running... All synchronization pipelines functional.</div>
+
+    </div>
+
+    <div id="game-tooltip"></div>
+
+    <script src="js/audio.js"></script>
+	
+	<!-- === NEW: FIREBASE CLOUD SDK === -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-db.js"></script>
+	
+
+    <!-- Data-Driven Loot & Economy Layer -->
+    <script src="js/items.js"></script>
+	<script src="js/npc-database.js"></script>
+    <script src="js/lootTables.js"></script>
+    <script src="js/lootManager.js"></script>
+
+<!-- Core State & Player Data -->
+    <script src="js/player.js"></script>
+    <script src="js/character-creator.js"></script> <!-- ESTABLISHES ARRAYS -->
+	<script src="js/item-assets.js"></script>       <!-- NEW: EQUIPMENT ARRAYS -->
+	<script src="js/pet-assets.js"></script>
+    <script src="js/npc-assets.js"></script>      <!-- MODIFIES ARRAYS WITH NPC DATA -->
+	<script src="js/map-assets.js"></script>
+	<script src="js/icon-assets.js"></script>
+	<script src="/socket.io/socket.io.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/inventory.js"></script>
+
+<!-- UI, Tooltips & Graphics Output -->
+    <script src="js/ui-tooltips.js"></script>
+    <script src="js/ui-render.js?v=2"></script>
+    <script src="js/renderer.js"></script>       <!-- RENDERS DATA -->
+
+<!-- Game Systems & Logic -->
+    <script src="js/login.js"></script>
+    <script src="js/combat-maps.js"></script>
+    <script src="js/npcs.js"></script>
+    <script src="js/combat-mechanics.js?v=2"></script>
+    <script src="js/town-actions.js"></script>
+
+
+</body>
+</html>

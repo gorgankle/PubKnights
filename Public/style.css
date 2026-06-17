@@ -1,0 +1,291 @@
+body { background-color: #2c2520; color: #f4ebd9; font-family: 'Courier New', monospace; margin: 10px; }
+h1 { text-align: center; color: #ffcc66; margin: 5px 0 15px 0; font-size: 24px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+
+/* --- DYNAMIC SCREEN BACKGROUNDS --- */
+
+/* 1. The Town Environment (Full Screen) */
+#town-vault-view::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    /* === UPDATED: JS-Driven CSS Variable === */
+    background-image: var(--active-town-bg, url('assets/images/main-bg.png')); 
+    background-size: cover;
+    background-position: center bottom;
+    image-rendering: pixelated;
+    z-index: -1;
+}
+
+/* 2. The Combat Arena (Full Screen) */
+#combat-screen::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    /* === NEW: JS-Driven CSS Variable for Dynamic Backgrounds === */
+    background-image: var(--active-combat-bg, none);
+    background-size: cover;
+    background-position: center center;
+    image-rendering: pixelated;
+    z-index: -1;
+}
+
+/* 3. The Town Vault (Full Screen) */
+#vault-screen::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-image: url('assets/images/vault-bg.png');
+    background-size: cover;
+    background-position: center center;
+    image-rendering: pixelated;
+    z-index: -1;
+}
+
+/* 4. The Character Creation Screen (Full Screen) */
+#char-creation-screen::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-image: url('assets/images/training-grounds-bg.png'); 
+    background-size: cover;
+    background-position: center center;
+    image-rendering: pixelated;
+    z-index: -1;
+}
+
+/* --- LOGIN SCREEN BACKGROUND CONFIGURATION --- */
+#login-screen {
+    /* 1. Points to your asset folder structure */
+    background-image: url('assets/images/tavern-bg.png');
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-size: cover;
+
+    /* 2. Keeps your gorgeous pixel art crisp and sharp instead of blurry */
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+
+    /* 3. Overrides the 450px width constraint so the image fills the viewport */
+    width: 100vw !important;
+    height: 100vh !important;
+    position: fixed;
+    top: 0;
+    left: 0;
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+
+    /* 4. Flexbox centers your form layout perfectly over the center space of the image */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+/* Restores the panel layout appearance for the central box inside the fullscreen background */
+#login-screen .dashboard-panel {
+    background: #3e3126; 
+    border: 2px solid #634e3d; 
+    border-radius: 5px; 
+    padding: 20px;
+    width: 400px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
+}
+/* --------------------------------------------- */
+
+/* Layout Grid Configuration */
+.game-wrapper { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px; }
+.columns-container { display: flex; gap: 15px; justify-content: center; }
+
+/* Two-Column Core Layout Layouts */
+.column-left { width: 100%; max-width: 520px; flex-shrink: 0; box-sizing: border-box; }
+.column-right { width: 100%; max-width: 500px; flex-shrink: 0; box-sizing: border-box; }
+
+.panel { 
+    background: rgba(62, 49, 38, 0.90); 
+    /* backdrop-filter has been removed! */
+    border: 2px solid #634e3d; 
+    border-radius: 5px; 
+    padding: 12px; 
+    margin-bottom: 12px; 
+    box-sizing: border-box; 
+}
+.dashboard-panel { margin-bottom: 10px; padding: 8px; background: #2b2118; border-radius: 4px; text-align: left; }
+#wallet-display { background: #1a1512; padding: 8px; margin-bottom: 8px; border-radius: 4px; border: 1px dashed #ffcc66; font-size: 12px; line-height: 1.5; }
+
+h3 { margin-top: 0; color: #ffcc66; font-size: 13px; border-bottom: 1px solid #634e3d; padding-bottom: 4px; margin-bottom: 6px; text-transform: uppercase; }
+
+.equipment-matrix { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; background: #261d16; padding: 6px; border-radius: 4px; border: 1px solid #4a3b2c; }
+.equip-slot { background: #130e0a; border: 1px dashed #634e3d; border-radius: 3px; padding: 4px; font-size: 10px; text-align: center; cursor: help; min-height: 42px; display: flex; flex-direction: column; justify-content: center; }
+.equip-slot:hover { border-color: #ffcc66; background: #1c1510; }
+.slot-title { font-weight: bold; color: #bbaaa0; font-size: 9px; text-transform: uppercase; margin-bottom: 2px; }
+
+canvas { border: 4px solid #8b5a2b; background-color: #1a1512; cursor: pointer; display: block; margin: 0 auto; }
+#action-interface { margin-top: 8px; background: #221a14; padding: 8px; border-radius: 4px; text-align: left; }
+
+button { background: #8b5a2b; color: white; border: 1px solid #ffcc66; padding: 6px 10px; margin: 2px; font-family: monospace; font-weight: bold; cursor: pointer; border-radius: 3px; font-size: 11px; }
+button:disabled { background: #443a32 !important; color: #776c62 !important; border-color: #55493f !important; cursor: not-allowed !important; opacity: 0.6; }
+button:hover:not(:disabled) { background: #a06d3b; }
+.active-job { background: #27ae60; border-color: #2ecc71; }
+
+/* Tavern Log Structural Bounds */
+#log { width: 100%; height: 140px; background: #110d0a; padding: 10px; overflow-y: scroll; text-align: left; font-size: 11px; color: #ffcc66; border: 2px solid #634e3d; border-radius: 4px; line-height: 1.4; box-sizing: border-box; }
+.scroll-panel { overflow-y: auto; background: #15110e; padding: 6px; border-radius: 4px; border: 1px solid #5c4433; box-sizing: border-box; }
+
+.Common { color: #ffffff; }
+.Rare { color: #3498db; font-weight: bold; }
+.Epic { color: #9b59b6; font-weight: bold; }
+.Unique { color: #f1c40f; font-weight: bold; text-shadow: 0 0 1px #000; }
+.GorillaTier { color: #ff3333; font-weight: bold; text-shadow: 0 0 2px #ffcc66; }
+
+#game-tooltip {
+    display: none;
+    position: absolute;
+    background: #15110e;
+    color: #f4ebd9;
+    border: 2px solid #ffcc66;
+    padding: 8px;
+    font-size: 11px;
+    z-index: 9999;
+    width: 250px;
+    text-align: left;
+    pointer-events: none;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.8);
+    line-height: 1.4;
+}
+.meta-value { color: #2ecc71; font-weight: bold; font-size: 10px; margin-top: 4px; border-top: 1px dashed #444; padding-top: 2px; }
+
+/* --- AUDIO CONTROLS PANEL --- */
+.audio-panel {
+    background: rgba(43, 33, 24, 0.95);
+    border: 2px solid #634e3d;
+    border-radius: 5px;
+    padding: 10px 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.6);
+    width: max-content;
+}
+
+.audio-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    color: #ffcc66;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.audio-row input[type=range] {
+    width: 80px;
+    cursor: pointer;
+    accent-color: #d35400; /* Makes the slider bar orange! */
+}
+
+.draggable-item-row {
+    -webkit-touch-callout: none; /* Disables the iOS popup menu */
+    -webkit-user-select: none;   /* Disables text highlighting */
+    user-select: none;
+}
+
+.draggable-item-row:hover {
+    background: #291f16 !important;
+    border-color: #ffcc66 !important;
+}
+
+/* === NEW: SUPPLY CART PULSE === */
+@keyframes pulseGold {
+    0% { background-color: #f1c40f; box-shadow: 0 0 5px #f1c40f; border-color: #f39c12; }
+    50% { background-color: #d35400; box-shadow: 0 0 15px #f1c40f; border-color: #ffcc66; }
+    100% { background-color: #f1c40f; box-shadow: 0 0 5px #f1c40f; border-color: #f39c12; }
+}
+.pulse-gold-btn {
+    animation: pulseGold 1.5s infinite;
+    color: #fff !important;
+    font-weight: bold;
+}
+
+/* === NEW: SP PULSE AND RESOURCE POP ANIMATIONS === */
+
+@keyframes pulseSP {
+    0% { box-shadow: 0 0 5px #d35400; border-color: #d35400; }
+    50% { box-shadow: 0 0 15px #f1c40f; border-color: #ffcc66; }
+    100% { box-shadow: 0 0 5px #d35400; border-color: #d35400; }
+}
+
+.pulse-sp-active {
+    animation: pulseSP 1.5s infinite;
+}
+
+@keyframes resourcePop {
+    0% { transform: scale(1); color: #fff; text-shadow: 0 0 0 transparent; }
+    50% { transform: scale(1.4); color: #2ecc71; text-shadow: 0 0 8px #2ecc71; }
+    100% { transform: scale(1); color: inherit; text-shadow: 0 0 0 transparent; }
+}
+
+.resource-pop {
+    display: inline-block; /* Required for transform scale to work on spans */
+    animation: resourcePop 0.4s ease-out;
+}
+
+/* === NEW: MOBILE RESPONSIVENESS (PHASE 1) === */
+@media (max-width: 1080px) {
+    /* Stack the main town columns vertically */
+    .columns-container {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    /* Allow the columns to expand slightly to fill the mobile screen */
+    .column-left, .column-right {
+        max-width: 100%;
+    }
+    
+    /* Force full width on screens to override hardcoded inline styles */
+    #combat-screen, #vault-screen {
+        width: 100% !important;
+        padding: 10px;
+        box-sizing: border-box;
+    }
+    
+    /* Stack the Combat and Vault sub-panels */
+    #combat-screen > div, #vault-screen > div:nth-child(2) {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    /* Keep canvases and sidebars from overflowing */
+    #combat-screen > div > div:first-child, #vault-screen > div:nth-child(2) > div:first-child {
+        width: 100% !important;
+        max-width: 480px;
+    }
+    
+    /* Make the canvas shrink to fit its container while maintaining aspect ratio */
+    #gameCanvas {
+        width: 100% !important;
+        height: auto !important; 
+    }
+    
+    /* Resize popups and login screens for smaller devices */
+    #login-screen .dashboard-panel, #char-creation-screen, #loot-screen {
+        width: 95% !important;
+        max-width: 450px !important;
+    }
+}
