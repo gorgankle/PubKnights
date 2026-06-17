@@ -11,12 +11,10 @@ function showSystemTooltip(type, event) {
 	else if (type === 'monument') {
         html = `<h3>🗽 The Golden Monument</h3>Erect a breathtaking statue in the center of town declaring yourself the ultimate Guildmaster.<br><br>🏆 <b>Reward:</b> Permanently DOUBLES all XP and Gold yields from combat!<br>💰 Cost: 1,000,000 Gold`;
     }
-    else if (type === 'pet_train') {
-        let pLvl = player.pet ? (player.pet.level || 1) : 1;
-        let costH = pLvl * 250; let costF = pLvl * 50; let costG = pLvl * 500;
-        html = `<h3>🦴 Hop-Infused Kibble</h3>Formulate a nutrient-dense superfood for your companion.<br>📈 <b>Reward:</b> +1% cumulative chance per level to dig up exclusive Pet-Only Loot after every combat victory!<br>💰 Cost: ${costH} Hops, ${costF} Fish, ${costG}g`;
+else if (type === 'pet_train') {
+        let cost = getPetTrainingCost();
+        html = `<h3>🦴 Hop-Infused Kibble</h3>Formulate a nutrient-dense superfood for your companion.<br>📈 <b>Reward:</b> +1% cumulative chance per level to dig up exclusive Pet-Only Loot after every combat victory!<br>💰 Cost: ${cost.hops} Hops, ${cost.fish} Fish, ${cost.gold}g`;
     }
-	
     else if (type === 'adventures_enter') {
         html = `<h3>⚔️ Adventure Board</h3>Check the latest local bounties, adjust map difficulty levels, and deploy your Knight into combat zones.`;
     }

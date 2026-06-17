@@ -343,9 +343,12 @@ else {
                 document.getElementById("vault-screen-max").innerText = player.vaultSlots;
                 document.getElementById("vault-inv-count").innerText = player.inventory.length;
 
-                let vaultUpGold = player.vaultSlots * 5; let vaultUpWood = player.vaultSlots * 2;
-                document.getElementById("upgrade-vault-btn").innerText = `Expand Vault Slots (+5 Slots) (Costs ${vaultUpGold}g, ${vaultUpWood}W)`;
-                document.getElementById("upgrade-vault-btn").disabled = (player.gold < vaultUpGold || player.wood < vaultUpWood);
+				let vaultCost = getVaultUpgradeCost();
+                let vaultBtn = document.getElementById("upgrade-vault-btn");
+                if (vaultBtn) {
+                    vaultBtn.innerText = `Expand Vault Slots (+5 Slots) (Costs ${vaultCost.gold}g, ${vaultCost.wood}W)`;
+                    vaultBtn.disabled = (player.gold < vaultCost.gold || player.wood < vaultCost.wood);
+                }
 
                 renderVaultStorageList();
                 renderBackpackList(document.getElementById("vault-inventory-list"), true);
