@@ -497,7 +497,7 @@ let isCrit = variedDmg >= Math.floor(baseDmg * 1.06);
         }
 
         // Beam the verified bomb stats back to the browser to trigger the explosion!
-        socket.emit('bombResult', {
+        socket.emit('bombResult',
             bombId: bomb.id,
             bombName: bomb.name,
             damage: bomb.damage,
