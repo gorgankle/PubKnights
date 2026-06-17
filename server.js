@@ -59,6 +59,12 @@ const playerSchema = new mongoose.Schema({
 
 const Player = mongoose.model('Player', playerSchema);
 
+// Serve the index.html file from the root directory
+app.get('/', (req, res) => {
+    res.sendFile(__dirname + '/index.html');
+});
+
+
 // === SOCKET.IO COMMUNICATION HUB ===
 io.on('connection', (socket) => {
     console.log(`⚔️  A Knight has connected: ${socket.id}`);
