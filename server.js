@@ -631,9 +631,9 @@ let isCrit = variedDmg >= Math.floor(baseDmg * 1.06);
             let level = p.pet.level || 1;
             let upg = level - 1;
             
-            let costG = Math.floor(500 * Math.pow(1.6, upg));
-            let costH = Math.floor(250 * Math.pow(1.6, upg));
-            let costF = Math.floor(50 * Math.pow(1.6, upg));
+            let costG = Math.floor(500 * Math.pow(1.2, upg));
+            let costH = Math.floor(250 * Math.pow(1.2, upg));
+            let costF = Math.floor(50 * Math.pow(1.2, upg));
 
             if (p.hops >= costH && p.fish >= costF && p.gold >= costG) {
                 p.hops -= costH; p.fish -= costF; p.gold -= costG; p.pet.level = level + 1;
@@ -692,8 +692,8 @@ let isCrit = variedDmg >= Math.floor(baseDmg * 1.06);
         else if (data.action === 'upgradeVault') {
             let currentSlots = p.vaultSlots || 10;
             let upg = Math.floor((currentSlots - 10) / 5);
-            let goldCost = Math.floor(100 * Math.pow(2.0, upg)); 
-            let woodCost = Math.floor(50 * Math.pow(2.0, upg));
+            let goldCost = Math.floor(100 * Math.pow(1.2, upg)); 
+            let woodCost = Math.floor(50 * Math.pow(1.2, upg));
 
             if (p.gold >= goldCost && p.wood >= woodCost) {
                 p.gold -= goldCost; p.wood -= woodCost; p.vaultSlots += 5;
@@ -790,8 +790,8 @@ let isCrit = variedDmg >= Math.floor(baseDmg * 1.06);
 // 16. UPGRADES (BACKPACK & CART)
         else if (data.action === 'upgradeBackpack') {
             let upg = p.backpackUpgrades || 0;
-            let gCost = Math.floor(250 * Math.pow(1.8, upg)); 
-            let wCost = Math.floor(100 * Math.pow(1.8, upg));
+            let gCost = Math.floor(250 * Math.pow(1.2, upg)); 
+            let wCost = Math.floor(100 * Math.pow(1.2, upg));
             
             if (p.gold >= gCost && p.wood >= wCost) {
                 p.gold -= gCost; p.wood -= wCost;
@@ -802,8 +802,8 @@ let isCrit = variedDmg >= Math.floor(baseDmg * 1.06);
         else if (data.action === 'upgradeCart') {
             let level = p.supplyCart.level || 1;
             let upg = level - 1;
-            let gCost = Math.floor(200 * Math.pow(2.0, upg)); 
-            let wCost = Math.floor(100 * Math.pow(2.0, upg));
+            let gCost = Math.floor(200 * Math.pow(1.2, upg)); 
+            let wCost = Math.floor(100 * Math.pow(1.2, upg));
             
             if (p.gold >= gCost && p.wood >= wCost) {
                 p.gold -= gCost; p.wood -= wCost;

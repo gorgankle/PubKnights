@@ -108,40 +108,40 @@ function getPlayerTotalAttack() { return getPlayerTotalPower(); }
 function getCartUpgradeCost() {
     let level = player.supplyCart ? (player.supplyCart.level || 1) : 1;
     let upg = level - 1;
-    // Base cost: 200g/100w. Doubles (2.0x) every level.
+    // Base cost: 200g/100w. Scales moderately by 1.2x.
     return { 
-        gold: Math.floor(200 * Math.pow(2.0, upg)), 
-        wood: Math.floor(100 * Math.pow(2.0, upg)) 
+        gold: Math.floor(200 * Math.pow(1.2, upg)), 
+        wood: Math.floor(100 * Math.pow(1.2, upg)) 
     };
 }
 
 function getBackpackUpgradeCost() {
     let upg = player.backpackUpgrades || 0;
-    // Base cost: 250g/100w. Increases by 1.8x every single slot. Very steep!
+    // Base cost: 250g/100w. Scales moderately by 1.2x.
     return { 
-        gold: Math.floor(250 * Math.pow(1.8, upg)), 
-        wood: Math.floor(100 * Math.pow(1.8, upg)) 
+        gold: Math.floor(250 * Math.pow(1.2, upg)), 
+        wood: Math.floor(100 * Math.pow(1.2, upg)) 
     };
 }
 
 function getVaultUpgradeCost() {
     let currentSlots = player.vaultSlots || 10;
     let upg = Math.floor((currentSlots - 10) / 5);
-    // Base cost: 100g/50w. Doubles (2.0x) every 5 slots.
+    // Base cost: 100g/50w. Scales moderately by 1.2x.
     return {
-        gold: Math.floor(100 * Math.pow(2.0, upg)),
-        wood: Math.floor(50 * Math.pow(2.0, upg))
+        gold: Math.floor(100 * Math.pow(1.2, upg)),
+        wood: Math.floor(50 * Math.pow(1.2, upg))
     };
 }
 
 function getPetTrainingCost() {
     let level = player.pet ? (player.pet.level || 1) : 1;
     let upg = level - 1;
-    // Base: 500g, 250h, 50f. Scales exponentially by 1.6x per level.
+    // Base: 500g, 250h, 50f. Scales moderately by 1.2x per level.
     return {
-        gold: Math.floor(500 * Math.pow(1.6, upg)),
-        hops: Math.floor(250 * Math.pow(1.6, upg)),
-        fish: Math.floor(50 * Math.pow(1.6, upg))
+        gold: Math.floor(500 * Math.pow(1.2, upg)),
+        hops: Math.floor(250 * Math.pow(1.2, upg)),
+        fish: Math.floor(50 * Math.pow(1.2, upg))
     };
 }
 
