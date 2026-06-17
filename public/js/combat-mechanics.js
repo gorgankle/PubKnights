@@ -170,17 +170,17 @@ function animateCombatRewards() {
     if (goldDisplay) goldDisplay.innerText = `+${targetGold}g`;
     if (xpDisplay) xpDisplay.innerText = `+${targetXp} XP`;
 
-    if (!xpBar || !xpText) return;
+if (!xpBar || !xpText) return;
 
-    // Grab current actual state before it processes in town
-    let currentXp = player.xp;
-    let currentLevel = player.level;
-    let xpToNext = player.xpToNext;
+        // === NEW: SAFE INITIALIZATION FOR THE UI ANIMATOR ===
+        let currentXp = player.xp || 0;
+        let currentLevel = player.level || 1;
+        let xpToNext = player.xpToNext || 100;
 
-    xpText.innerText = `Lvl ${currentLevel}: ${Math.floor(currentXp)}/${xpToNext}`;
-    xpBar.style.width = `${(currentXp / xpToNext) * 100}%`;
+        xpText.innerText = `Lvl ${currentLevel}: ${Math.floor(currentXp)}/${xpToNext}`;
+        xpBar.style.width = `${(currentXp / xpToNext) * 100}%`;
 
-    if (targetXp > 0) {
+        if (targetXp > 0) {
         let ticks = 45; // Smooth 45-frame animation
         let xpPerTick = targetXp / ticks;
         let tickCount = 0;

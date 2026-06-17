@@ -962,19 +962,25 @@ let isCrit = variedDmg >= Math.floor(baseDmg * 1.06);
         if (goldReward > 0) p.pendingGold = (p.pendingGold || 0) + goldReward;
     });
 
-    // 3. Payout the Escrow!
+// 3. Payout the Escrow!
     socket.on('claimCombatRewards', () => {
         let p = activePlayers[socket.id];
         if (!p) return;
+
+        // === NEW: SAFE INITIALIZATION ===
+        // This prevents "NaN" corruption and auto-heals broken save files!
+        p.gold = p.gold || 0;
+        p.xp = p.xp || 0;
+        p.level = p.level || 1;
+        p.xpToNext = p.xpToNext || 100;
 
         if (p.pendingGold > 0) { p.gold += p.pendingGold; }
         if (p.pendingXp > 0) {
             p.xp += p.pendingXp;
             
-            p.xpToNext = p.xpToNext || 100;
             while (p.xp >= p.xpToNext) {
                 p.xp -= p.xpToNext;
-                p.level = (p.level || 1) + 1;
+                p.level += 1;
                 p.skillPoints = (p.skillPoints || 0) + 3;
                 
                 // Server securely calculates the next level threshold
