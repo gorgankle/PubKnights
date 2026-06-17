@@ -91,14 +91,35 @@ io.on('connection', (socket) => {
         }
     });
     
-    // --- SAVE GAME STATE ---
+// --- SAVE GAME STATE ---
     socket.on('saveGame', async (data) => {
         try {
-            activePlayers[socket.id] = data.saveData; 
+            let p = activePlayers[socket.id];
+            
+            // === NEW: SECURE STATE MERGE ===
+            // Prevent the browser from accidentally downgrading server-side progression!
+            if (p) {
+                activePlayers[socket.id] = {
+                    ...data.saveData, // Accept the client's inventory, gold, and stats
+                    
+                    // Fiercely protect Map Unlocks (Never let them roll backward)
+                    wildernessLevel: Math.max(p.wildernessLevel || 1, data.saveData.wildernessLevel || 1),
+                    cellarLevel: Math.max(p.cellarLevel || 1, data.saveData.cellarLevel || 1),
+                    abyssDepth: Math.max(p.abyssDepth || 1, data.saveData.abyssDepth || 1),
+                    cellarsUnlocked: p.cellarsUnlocked || data.saveData.cellarsUnlocked,
+                    abyssUnlocked: p.abyssUnlocked || data.saveData.abyssUnlocked,
+                    
+                    // Fiercely protect the XP/Gold Escrow
+                    pendingXp: p.pendingXp !== undefined ? p.pendingXp : data.saveData.pendingXp,
+                    pendingGold: p.pendingGold !== undefined ? p.pendingGold : data.saveData.pendingGold
+                };
+            } else {
+                activePlayers[socket.id] = data.saveData; 
+            }
             
             await Player.findOneAndUpdate(
                 { username: data.username },
-                { saveData: data.saveData }
+                { saveData: activePlayers[socket.id] }
             );
             console.log(`💾 Save file synced for Knight: ${data.username}`);
         } catch (err) {
