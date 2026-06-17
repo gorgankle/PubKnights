@@ -19,8 +19,11 @@ function getWeaponSpecialDesc(item) {
 }
 
 function transitionToTown() { 
-    gameState = 'TOWN'; selectedEnemy = null; player.mapBaited = false; player.activeCombatBuff = null; 
-    player.activeBuffs = []; 
+    gameState = 'KNIGHT'; 
+    player.idleJob = 'TAVERN'; // Auto-heal after returning from combat
+    selectedEnemy = null; 
+    player.mapBaited = false; 
+    player.activeCombatBuff = null;
     pendingMove = null; player.cellarsChummed = false;
     
     // === SYNC UI TO MAX UNLOCKED LEVEL ===

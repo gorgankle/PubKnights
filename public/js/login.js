@@ -8,6 +8,10 @@ function enterGameUI() {
     document.getElementById('char-creation-screen').style.display = 'none';
     document.getElementById('main-game-container').style.display = 'flex';
     
+    // Force the default UI tab and ensure the player starts healing immediately
+    gameState = 'KNIGHT';
+    player.idleJob = 'TAVERN';
+    
     // Kick off the initial UI render now that the engine is active
     refreshSystemUI();
 }

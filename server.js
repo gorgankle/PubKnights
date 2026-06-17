@@ -147,7 +147,7 @@ io.on('connection', (socket) => {
         if (!p) return;
 
         // Force player out of gathering jobs while fighting
-        p.idleJob = 'TAVERN';
+		p.idleJob = 'NONE';
         p.pendingXp = 0;
 
         let zone = data.zoneChoice;

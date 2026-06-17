@@ -336,7 +336,7 @@ socket.on('combatDeployed', (serverCombatState) => {
     hideTooltip();
     
     // Sync browser state to the Server's command
-    player.idleJob = 'TAVERN'; 
+    player.idleJob = 'NONE';
     gameState = 'COMBAT'; 
     currentTurn = serverCombatState.turn; 
     combatPhase = serverCombatState.phase;
@@ -453,8 +453,8 @@ socket.on('enemyTurnReceipt', (receipt) => {
 // Global Game States
 let currentGridSize = 8; 
 let currentTileSize = 60; 
-let gameState = 'TOWN'; 
-let currentTurn = 'PLAYER'; 
+let gameState = 'KNIGHT'; 
+let currentTurn = 'PLAYER';
 let combatPhase = 'MOVE'; 
 let activeCombatZone = 'WILDERNESS'; 
 
