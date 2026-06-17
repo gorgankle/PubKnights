@@ -633,13 +633,15 @@ let isCrit = variedDmg >= Math.floor(baseDmg * 1.06);
                 socket.emit('townReceipt', { success: true, action: 'hireWorker', updatedPlayer: p, message: `👷 Hired a new ${data.type}!` });
             } else socket.emit('townReceipt', { success: false, message: "❌ Insufficient gold reserves to recruit workers." });
         }
-        // 7. CLAIM SUPPLY CART
+		// 7. CLAIM SUPPLY CART
         else if (data.action === 'claimCart') {
             let w = p.supplyCart.wood || 0; let f = p.supplyCart.fish || 0; let h = p.supplyCart.hops || 0;
             if (w === 0 && f === 0 && h === 0) return socket.emit('townReceipt', { success: false, message: "❌ Supply cart is empty." });
             p.wood += w; p.fish += f; p.hops += h;
             p.supplyCart.wood = 0; p.supplyCart.fish = 0; p.supplyCart.hops = 0;
-            socket.emit('townReceipt', { success: true, action: 'claimCart', updatedPlayer: p, message: `🧺 Claimed Production Supplies: +${w} Timber, +${f} Fish, +${h} Hops!` });
+            
+            // Beam the 'isAuto' flag right back to the client!
+            socket.emit('townReceipt', { success: true, action: 'claimCart', isAuto: data.isAuto, updatedPlayer: p, message: `🧺 Claimed Production Supplies: +${w} Timber, +${f} Fish, +${h} Hops!` });
         }
         // 8. HOST HAPPY HOUR
         else if (data.action === 'happyHour') {

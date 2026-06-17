@@ -68,13 +68,14 @@ function changeZoneLevel(zone, dir) {
     refreshSystemUI();
 }
 
-function claimSupplyCart() {
-    socket.emit('townAction', { action: 'claimCart' });
+function claimSupplyCart(isAuto = false) {
+    socket.emit('townAction', { action: 'claimCart', isAuto: isAuto });
 }
 
 // === NEW: GRANDMASTER RESERVE CRAFTING ===
 function craftReserveBrew() { socket.emit('townAction', { action: 'craftBrew', brewType: 'RESERVE' }); }
 
+// === GILDED TAVERN AUTOMATION ===
 // Function 1: Purchasing the Gilded Tavern
 function purchaseGildedTavern() {
     socket.emit('townAction', { action: 'purchaseGildedTavern' });
@@ -100,7 +101,7 @@ function runAutoClaimCheck() {
         // If the cart is full (or within 5 items of hitting the max capacity), claim it!
         if (totalCart >= (player.supplyCart.max - 5)) {
             if (typeof claimSupplyCart === 'function') {
-                claimSupplyCart();
+                claimSupplyCart(true); // <--- We pass TRUE here so the server knows it was automatic
             }
         }
     }

@@ -234,18 +234,15 @@
     </div>
 
     <!-- RIGHT SIDE: PET -->
-    <div style="text-align: center; width: 50%; display: flex; flex-direction: column; align-items: center;">
+<div style="text-align: center; width: 50%; display: flex; flex-direction: column; align-items: center;">
         <h4 id="pet-header-name" style="margin: 0 0 5px 0; font-size: 11px; color: #bbaaa0; border-bottom: 1px solid #3a2f26; padding-bottom: 4px; text-transform: uppercase; width: 100%;">Companion</h4>
         
         <button id="open-adoption-btn" onclick="openAdoptionMenu()" style="width: 90%; background: #27ae60; border-color: #2ecc71; margin-top: 15px; font-size: 11px; padding: 8px;">🐕 Adopt a Pet</button>
-		
-
         
-        <!-- NEW: EDIT PET BUTTON -->
-        <button id="edit-pet-btn" onclick="editPetMenu()" style="display: none; width: 90%; background: #2c3e50; border-color: #34495e; margin-top: 5px; font-size: 10px; padding: 4px;">✏️ Edit Pet</button>
-	
         <canvas id="main-pet-canvas" width="96" height="96" style="display: none; background: #221a14; border: 1px solid #4a3b2c; border-radius: 4px; image-rendering: pixelated; width: 120px; height: 120px; margin-top: 5px;"></canvas>
-		<!-- NEW: TRAIN PET BUTTON -->
+
+        <button id="edit-pet-btn" onclick="editPetMenu()" style="display: none; width: 90%; background: #2c3e50; border-color: #34495e; margin-top: 5px; font-size: 10px; padding: 4px;">✏️ Edit Pet</button>
+        
         <button id="train-pet-btn" onclick="trainPet()" style="display: none; width: 90%; background: #8e44ad; border-color: #9b59b6; margin-top: 5px; font-size: 10px; padding: 4px;" onmouseenter="showSystemTooltip('pet_train', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🦴 Feed Kibble</button>
         
         <div id="pet-adoption-ui" style="display: none; width: 100%; margin-top: 5px;">

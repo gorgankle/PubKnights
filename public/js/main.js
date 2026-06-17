@@ -252,8 +252,9 @@ socket.on('townReceipt', (receipt) => {
         if (typeof playRetroSound === 'function') playRetroSound('victory');
     } else if (receipt.action === 'trainPet' || receipt.action === 'resetStats' || receipt.action === 'allocateStat') {
         if (typeof playRetroSound === 'function') playRetroSound('statUp');
-    } else if (receipt.action === 'claimCart') {
-        if (typeof playRetroSound === 'function') playRetroSound('claim');
+	} else if (receipt.action === 'claimCart') {
+        // Only play the sound if the player manually clicked the button
+        if (!receipt.isAuto && typeof playRetroSound === 'function') playRetroSound('claim');
     } else if (receipt.action === 'baitWilds' || receipt.action === 'chumCellars') {
         if (typeof playRetroSound === 'function') playRetroSound('splat');
     } else if (receipt.action === 'drinkBrew') {
