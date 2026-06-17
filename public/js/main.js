@@ -370,12 +370,8 @@ socket.on('combatDeployed', (serverCombatState) => {
 
 // === SERVER-AUTHORITATIVE AI CATCHER (THE MOVIE PLAYER) ===
 socket.on('enemyTurnReceipt', (receipt) => {
-    // 1. Instantly accept the Server's verified truth for math
+    // 1. Accept only the player's math instantly (so death checks work)
     if (receipt.updatedPlayer) Object.assign(player, receipt.updatedPlayer);
-    if (receipt.updatedCombatState) {
-        enemies = receipt.updatedCombatState.enemies;
-        mapObstacles = receipt.updatedCombatState.obstacles;
-    }
 
     let events = receipt.events || [];
     let delay = 0; // The playback timer!
@@ -384,7 +380,6 @@ socket.on('enemyTurnReceipt', (receipt) => {
     events.forEach(ev => {
         setTimeout(() => {
             if (ev.type === 'move') {
-                // === UID FIX 1: Movement Animation ===
                 let e = ev.uid ? enemies.find(en => en.uid === ev.uid) : enemies.find(en => en.name === ev.name);
                 if (e) { e.x = ev.finalX; e.y = ev.finalY; }
             } 
@@ -398,8 +393,6 @@ socket.on('enemyTurnReceipt', (receipt) => {
                 if (typeof playRetroSound === 'function') playRetroSound('deflect');
             }
             else if (ev.type === 'hit') {
-                
-                // The sound effects and hit markers safely live inside this callback!
                 let executeHit = () => {
                     if (ev.isCrit) {
                         logMessage(`💥 CRITICAL STRIKE! ${ev.enemyName} hits you for ${ev.damage} DMG!${ev.isPoacher ? " (Deflected)" : ""}`);
@@ -413,13 +406,11 @@ socket.on('enemyTurnReceipt', (receipt) => {
                 };
 
                 if (ev.isPoacher && typeof spawnProjectile === 'function') {
-                    // Projectiles wait to fire executeHit() until the arrow reaches the player
                     spawnProjectile(ev.ex, ev.ey, player.x, player.y, 'icon_arrow', 20, executeHit, true);
                 } else {
-                    // === UID FIX 2: Melee Lunge Animations ===
                     let visualEnemy = ev.uid ? enemies.find(en => en.uid === ev.uid) : enemies.find(en => en.name === ev.enemyName);
                     if (visualEnemy && typeof triggerEnemyAttackAnimation === 'function') triggerEnemyAttackAnimation(visualEnemy);
-                    executeHit(); // Triggers the sounds instantly
+                    executeHit(); 
                 }
             }
             else if (ev.type === 'steal') {
@@ -433,7 +424,7 @@ socket.on('enemyTurnReceipt', (receipt) => {
             refreshSystemUI();
         }, delay);
 
-        // Stagger the playback based on what the action is!
+        // Stagger the playback
         if (ev.type === 'move') delay += 100;
         else if (ev.type === 'hit' || ev.type === 'deflect') delay += 350;
         else delay += 50;
@@ -441,6 +432,13 @@ socket.on('enemyTurnReceipt', (receipt) => {
 
     // 3. Finally, hand control back to the player!
     setTimeout(() => {
+        // === MOVED: DELAYED STATE SYNC ===
+        // We only overwrite the grid with the server's truth AFTER the movie finishes playing!
+        if (receipt.updatedCombatState) {
+            enemies = receipt.updatedCombatState.enemies;
+            mapObstacles = receipt.updatedCombatState.obstacles;
+        }
+
         if (player.hp > 0) {
             reachableTiles = null;
             currentTurn = 'PLAYER'; 
