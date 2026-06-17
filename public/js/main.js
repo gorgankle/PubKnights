@@ -384,7 +384,8 @@ socket.on('enemyTurnReceipt', (receipt) => {
     events.forEach(ev => {
         setTimeout(() => {
             if (ev.type === 'move') {
-                let e = enemies.find(en => en.name === ev.name);
+                // === UID FIX 1: Movement Animation ===
+                let e = ev.uid ? enemies.find(en => en.uid === ev.uid) : enemies.find(en => en.name === ev.name);
                 if (e) { e.x = ev.finalX; e.y = ev.finalY; }
             } 
             else if (ev.type === 'crush') {
@@ -397,6 +398,8 @@ socket.on('enemyTurnReceipt', (receipt) => {
                 if (typeof playRetroSound === 'function') playRetroSound('deflect');
             }
             else if (ev.type === 'hit') {
+                
+                // The sound effects and hit markers safely live inside this callback!
                 let executeHit = () => {
                     if (ev.isCrit) {
                         logMessage(`💥 CRITICAL STRIKE! ${ev.enemyName} hits you for ${ev.damage} DMG!${ev.isPoacher ? " (Deflected)" : ""}`);
@@ -410,11 +413,13 @@ socket.on('enemyTurnReceipt', (receipt) => {
                 };
 
                 if (ev.isPoacher && typeof spawnProjectile === 'function') {
+                    // Projectiles wait to fire executeHit() until the arrow reaches the player
                     spawnProjectile(ev.ex, ev.ey, player.x, player.y, 'icon_arrow', 20, executeHit, true);
                 } else {
-                    let visualEnemy = enemies.find(en => en.name === ev.enemyName);
+                    // === UID FIX 2: Melee Lunge Animations ===
+                    let visualEnemy = ev.uid ? enemies.find(en => en.uid === ev.uid) : enemies.find(en => en.name === ev.enemyName);
                     if (visualEnemy && typeof triggerEnemyAttackAnimation === 'function') triggerEnemyAttackAnimation(visualEnemy);
-                    executeHit();
+                    executeHit(); // Triggers the sounds instantly
                 }
             }
             else if (ev.type === 'steal') {

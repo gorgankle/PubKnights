@@ -261,8 +261,11 @@ io.on('connection', (socket) => {
                 if (!blocked) combatState.obstacles.push({ x: ox, y: oy, icon: obsIcon, spriteId: obsSprite });
             }
         }
+		
+// Save session to server memory & beam it to the browser
+        // === NEW: UNIQUE INSTANCE TRACKING ===
+        combatState.enemies.forEach((e, idx) => { e.uid = `mob_${idx}`; });
 
-        // Save session to server memory & beam it to the browser
         activeCombats[socket.id] = combatState;
         socket.emit('combatDeployed', combatState);
     });	
@@ -372,8 +375,8 @@ combat.turn = 'ENEMY';
 
                     let nextStep = getEnemyPathStep(e);
                     if (nextStep) {
-                        e.x = nextStep.x; e.y = nextStep.y;
-                        turnEvents.push({ type: 'move', enemyId: e.id, name: e.name, finalX: e.x, finalY: e.y });
+e.x = nextStep.x; e.y = nextStep.y;
+        turnEvents.push({ type: 'move', uid: e.uid, enemyId: e.id, name: e.name, finalX: e.x, finalY: e.y });
                         
                         if (eSize > 1) { // Juggernaut Boss crushing logic
                             let oLen = combat.obstacles.length;
@@ -403,8 +406,8 @@ combat.turn = 'ENEMY';
                     let variedDmg = Math.floor(Math.random() * (maxDmg - minDmg + 1)) + minDmg;
                     let isCrit = variedDmg >= Math.floor(e.attack * 1.06);
 
-                    p.hp -= variedDmg;
-                    turnEvents.push({ type: 'hit', enemyName: e.name, damage: variedDmg, isCrit: isCrit, isPoacher: isPoacher, ex: e.x, ey: e.y });
+p.hp -= variedDmg;
+        turnEvents.push({ type: 'hit', uid: e.uid, enemyName: e.name, damage: variedDmg, isCrit: isCrit, isPoacher: isPoacher, ex: e.x, ey: e.y });
 
                     if (e.name.includes("Mimic")) {
                         let bIdx = p.inventory.findIndex(i => i.type === 'brew');
