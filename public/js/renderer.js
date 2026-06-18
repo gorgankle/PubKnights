@@ -76,7 +76,21 @@ function drawGrid() {
     }
     let playerHopY = Math.abs(Math.sin(player.moveAnimTimer)) * 14; 
 
-    // --- DRAW THE CORE TACTICAL GRID ---
+// --- DRAW THE CORE TACTICAL GRID ---
+    
+    // === NEW: REACHABLE TILES CACHE ===
+    // If it's our turn to move, and we haven't cached the map yet, calculate it ONCE.
+    if (currentTurn === 'PLAYER' && (combatPhase === 'PHASE_1' || combatPhase === 'PHASE_3') && reachableTiles === null) {
+        reachableTiles = {};
+        for (let cx = 0; cx < currentGridSize; cx++) {
+            for (let cy = 0; cy < currentGridSize; cy++) {
+                if (isValidPlayerMovePath(cx, cy)) {
+                    reachableTiles[`${cx},${cy}`] = true;
+                }
+            }
+        }
+    }
+
     for (let x = 0; x < currentGridSize; x++) {
         for (let y = 0; y < currentGridSize; y++) {
             
@@ -85,19 +99,20 @@ function drawGrid() {
             else if (activeCombatZone === 'GORILLA_ARENA') groundSprite = 'ground_arena';
 			else if (activeCombatZone === 'ABYSS') groundSprite = 'ground_abyss';
             
-            if (SpriteMatrices[groundSprite]) {
-                drawProceduralSprite(ctx, SpriteMatrices[groundSprite], x * currentTileSize, y * currentTileSize, currentTileSize);
-            }
+            if (SpriteMatrices[groundSprite]) drawProceduralSprite(ctx, SpriteMatrices[groundSprite], x * currentTileSize, y * currentTileSize, currentTileSize);
 
             ctx.strokeStyle = activeCombatZone==='GORILLA_ARENA' ? "#443425" : "#3a2f26";
             ctx.lineWidth = 1; ctx.strokeRect(x * currentTileSize, y * currentTileSize, currentTileSize, currentTileSize);
             
             if (currentTurn === 'PLAYER' && combatPhase !== 'TARGET_BOMB') {
-					if (combatPhase === 'PHASE_1' || combatPhase === 'PHASE_3') {
-                    // === NEW: USE PATHFINDING FOR HIGHLIGHTS ===
-                    if (isValidPlayerMovePath(x, y)) {
-                        ctx.fillStyle = "rgba(52, 152, 219, 0.20)"; ctx.fillRect(x * currentTileSize, y * currentTileSize, currentTileSize, currentTileSize);
+                if (combatPhase === 'PHASE_1' || combatPhase === 'PHASE_3') {
+                    
+                    // === UPDATED: READ FROM THE CACHE INSTEAD OF CALCULATING ===
+                    if (reachableTiles && reachableTiles[`${x},${y}`]) {
+                        ctx.fillStyle = "rgba(52, 152, 219, 0.20)"; 
+                        ctx.fillRect(x * currentTileSize, y * currentTileSize, currentTileSize, currentTileSize);
                     }
+                    
                     if (pendingMove && pendingMove.x === x && pendingMove.y === y) {
                         ctx.fillStyle = "rgba(46, 204, 113, 0.4)";
                         ctx.fillRect(x * currentTileSize, y * currentTileSize, currentTileSize, currentTileSize);
@@ -116,7 +131,7 @@ function drawGrid() {
                         ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
                         ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
                     }
-                } 
+                }
                 else if (combatPhase === 'PHASE_2') {
                     if (Math.max(Math.abs(x - player.x), Math.abs(y - player.y)) <= weaponRange) {
                         if (hasLineOfSight(player.x, player.y, x, y)) ctx.fillStyle = "rgba(241, 196, 15, 0.15)";

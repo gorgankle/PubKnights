@@ -283,46 +283,47 @@ socket.on('endPlayerTurn', (data) => {
 
     let turnEvents = []; 
 
-    // === NEW: BUILD THE O(1) COLLISION MATRIX ===
+// === NEW: BUILD THE O(1) COLLISION MATRIX ===
     let collisionMatrix = Array(combat.gridSize).fill(null).map(() => Array(combat.gridSize).fill(0));
-    
-    // 1 = Hard Wall (Obstacles)
-    combat.obstacles.forEach(o => {
-        if (o.x >= 0 && o.x < combat.gridSize && o.y >= 0 && o.y < combat.gridSize) collisionMatrix[o.x][o.y] = 1;
-    });
-    
-    // 2 = Dynamic Wall (Enemies)
-    combat.enemies.forEach(e => {
-        if (e.alive) {
-            let eSize = e.size || 1;
-            for (let bx = e.x; bx < e.x + eSize; bx++) {
-                for (let by = e.y; by < e.y + eSize; by++) {
-                    if (bx >= 0 && bx < combat.gridSize && by >= 0 && by < combat.gridSize) collisionMatrix[bx][by] = 2;
-                }
+    // ... (Your existing matrix building logic here) ...
+
+    // === NEW: MATRIX-POWERED LINE OF SIGHT ===
+    function hasLineOfSightMatrix(x1, y1, x2, y2) {
+        let dx = Math.abs(x2 - x1); let dy = Math.abs(y2 - y1);
+        let sx = (x1 < x2) ? 1 : -1; let sy = (y1 < y2) ? 1 : -1;
+        let err = dx - dy; let cx = x1; let cy = y1;
+        while (true) {
+            if (cx === x2 && cy === y2) return true;
+            if (cx !== x1 || cy !== y1) {
+                // Instantly check the matrix for a hard wall (1)
+                if (collisionMatrix[cx][cy] === 1) return false; 
             }
+            let e2 = 2 * err;
+            if (e2 > -dy) { err -= dy; cx += sx; }
+            if (e2 < dx) { err += dx; cy += sy; }
         }
-    });
+    }
 
     // Server-Side BFS Pathfinding
     function getEnemyPathStep(e) {
-        let queue = [{x: e.x, y: e.y}];
-        let visited = new Set([`${e.x},${e.y}`]);
-        let parent = {};
-        let eSize = e.size || 1;
-        let dirs = [{x:0, y:-1}, {x:1, y:0}, {x:0, y:1}, {x:-1, y:0}];
-        let targetNode = null; let closestNode = {x: e.x, y: e.y}; let minDist = Infinity;
-
+        // ... (existing queue setup)
+        
         while(queue.length > 0) {
             let curr = queue.shift();
             let dist = getGridDistance(combat.player.x, combat.player.y, curr.x, curr.y, eSize);
             
-            // Note: Line of sight check is still slightly heavy, but necessary for ranged logic
+            // === UPDATED: SKIP UNNECESSARY MATH ===
+            // Don't calculate Line of Sight if the enemy isn't even in attack range yet!
             let hasLos = false;
-            for (let bx = curr.x; bx < curr.x + eSize; bx++) {
-                for (let by = curr.y; by < curr.y + eSize; by++) {
-                    if (hasLineOfSight(bx, by, combat.player.x, combat.player.y, combat.obstacles)) hasLos = true;
+            if (dist <= e.attackRange) {
+                for (let bx = curr.x; bx < curr.x + eSize; bx++) {
+                    for (let by = curr.y; by < curr.y + eSize; by++) {
+                        // Use our new blazing fast matrix LOS checker
+                        if (hasLineOfSightMatrix(bx, by, combat.player.x, combat.player.y)) hasLos = true;
+                    }
                 }
             }
+
             if (dist < minDist) { minDist = dist; closestNode = curr; }
             if (dist <= e.attackRange && hasLos) { targetNode = curr; break; }
 
