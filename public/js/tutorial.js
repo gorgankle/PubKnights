@@ -4,28 +4,28 @@ let currentTutorialStep = 0;
 
 const tutorialSequence = [
     {
-        title: "Welcome to the Pub",
-        text: "Your journey begins here. This is the <b>Knight</b> tab. Here you manage your stats, change your appearance, and manage your equipped gear. The grind starts with a rusty mace, but you'll be rocking Pubserker gear in no time.",
+        title: "🛡️ The Knight",
+        text: "Your journey begins here. Equip gear, monitor your combat stats, and level up.<br><br><i>Goal: Replace that rusty mace with proper Pubserker gear.</i>",
         targetState: "KNIGHT"
     },
     {
-        title: "The Town Economy",
-        text: "This is the <b>Town</b> tab. When you log off, make sure to set an Idle Job here so you gather resources while you sleep. You can also hire workers to automatically fill your Supply Cart with Timber, Fish, and Hops.",
+        title: "🏕️ The Town",
+        text: "The engine of your economy. Set an <b>Idle Job</b> here before logging off to gather resources while you sleep.<br><br><i>Tip: Hire workers later to automate gathering.</i>",
         targetState: "TOWN"
     },
     {
-        title: "The Tavern & Black Market",
-        text: "The <b>Tavern</b> is where you spend those resources. Visit the Brewmaster to ferment combat potions, craft explosive Keg Bombs, or risk your hard-earned hops rolling for rare gear on the Black Market.",
+        title: "🍻 The Tavern",
+        text: "Spend your resources here. The Brewmaster ferments combat potions, and the Provisioner crafts Keg Bombs.<br><br><i>Warning: Black Market gear is powerful, but costs heavy Hops.</i>",
         targetState: "MERCHANT"
     },
     {
-        title: "Risk & Reward",
-        text: "The <b>Adventures</b> tab is where you shed blood. Deploy to the Wilderness or dive into the Cellars. Combat is strictly turn-based. Manage your stamina wisely, watch your tactical positioning, and don't get cornered.",
+        title: "⚔️ Adventures",
+        text: "Deploy to the grid. Combat is strictly turn-based. Manage your stamina wisely, strike hard, and don't get cornered.<br><br><i>Goal: Defeat the Level 20 Wilderness Boss to unlock the Cellars.</i>",
         targetState: "ADVENTURES"
     },
     {
-        title: "Deep Storage",
-        text: "Finally, the <b>Vault</b>. Your backpack can only hold 5 items initially. Stash your valuable crafting materials and backup weapons here to keep them safe. Expanding vault capacity gets exponentially expensive, so hoard your gold!",
+        title: "🏦 The Vault",
+        text: "Your backpack only holds 5 items. Stash excess gear and crafting materials here to keep them safe.<br><br><i>Note: Expanding vault slots gets exponentially expensive.</i>",
         targetState: "VAULT"
     }
 ];
