@@ -3,6 +3,38 @@
 let hoverTile = {x: -1, y: -1};
 let globalAnimClock = 0; // Global engine clock tick count for procedural breathing waves
 
+// === NEW: HARDWARE-ACCELERATED RASTER CACHE ===
+const SpriteRasterCache = {};
+
+function drawOptimizedSprite(ctx, spriteKey, matrix, x, y, size) {
+    if (!matrix) return;
+    
+    // 1. If we haven't baked this sprite yet, bake it now!
+    if (!SpriteRasterCache[spriteKey]) {
+        // Create an invisible canvas in the browser's memory
+        const offscreen = document.createElement('canvas');
+        offscreen.width = size;
+        offscreen.height = size;
+        const offCtx = offscreen.getContext('2d', { alpha: true });
+        
+        // Draw the heavy 576-rectangle math ONCE
+        drawProceduralSprite(offCtx, matrix, 0, 0, size);
+        
+        // Save the finished image to the cache
+        SpriteRasterCache[spriteKey] = offscreen;
+    }
+
+    // 2. GPU-Stamp the baked image to the main canvas instantly
+    ctx.drawImage(SpriteRasterCache[spriteKey], x, y, size, size);
+}
+
+// Optional: A helper to clear the cache if the player changes clothes!
+window.clearSpriteCache = function(spriteKey) {
+    if (spriteKey && SpriteRasterCache[spriteKey]) delete SpriteRasterCache[spriteKey];
+    else if (!spriteKey) for (let key in SpriteRasterCache) delete SpriteRasterCache[key];
+};
+
+
 // === NEW: VISUAL EFFECTS ARRAYS ===
 let activeProjectiles = [];
 let activeExplosions = [];
@@ -99,7 +131,9 @@ function drawGrid() {
             else if (activeCombatZone === 'GORILLA_ARENA') groundSprite = 'ground_arena';
 			else if (activeCombatZone === 'ABYSS') groundSprite = 'ground_abyss';
             
-            if (SpriteMatrices[groundSprite]) drawProceduralSprite(ctx, SpriteMatrices[groundSprite], x * currentTileSize, y * currentTileSize, currentTileSize);
+if (SpriteMatrices[groundSprite]) {
+    drawOptimizedSprite(ctx, groundSprite, SpriteMatrices[groundSprite], x * currentTileSize, y * currentTileSize, currentTileSize);
+}
 
             ctx.strokeStyle = activeCombatZone==='GORILLA_ARENA' ? "#443425" : "#3a2f26";
             ctx.lineWidth = 1; ctx.strokeRect(x * currentTileSize, y * currentTileSize, currentTileSize, currentTileSize);
@@ -143,9 +177,11 @@ function drawGrid() {
         }
     }
     
-    mapObstacles.forEach(o => {
-        if (o.spriteId && SpriteMatrices[o.spriteId]) drawProceduralSprite(ctx, SpriteMatrices[o.spriteId], o.x * currentTileSize, o.y * currentTileSize, currentTileSize);
-        else {
+mapObstacles.forEach(o => {
+        if (o.spriteId && SpriteMatrices[o.spriteId]) {
+            // === GPU RASTER SWAP ===
+            drawOptimizedSprite(ctx, o.spriteId, SpriteMatrices[o.spriteId], o.x * currentTileSize, o.y * currentTileSize, currentTileSize);
+        } else {
             ctx.fillStyle = "#504035"; ctx.fillRect(o.x * currentTileSize + 2, o.y * currentTileSize + 2, currentTileSize - 4, currentTileSize - 4);
             ctx.fillStyle = "#888"; ctx.font = `14px Courier New`; ctx.fillText(o.icon || "🪨", o.x * currentTileSize + (currentTileSize/2) - 7, o.y * currentTileSize + (currentTileSize/2) + 5);
         }
@@ -306,8 +342,9 @@ function drawGrid() {
             let ePivotY = eyPosition + (currentTileSize * sSize);
             ctx.translate(ePivotX, ePivotY); ctx.scale(eScaleX, eScaleY); ctx.translate(-ePivotX, -ePivotY);
 
-            if (SpriteMatrices[e.id]) {
-                drawProceduralSprite(ctx, SpriteMatrices[e.id], exPosition, eyPosition, currentTileSize * sSize);
+if (SpriteMatrices[e.id]) {
+                // === GPU RASTER SWAP ===
+                drawOptimizedSprite(ctx, e.id, SpriteMatrices[e.id], exPosition, eyPosition, currentTileSize * sSize);
             } else {
                 ctx.fillStyle = activeCombatZone === 'GORILLA_ARENA' ? "#5c4033" : "#d35400"; 
                 ctx.fillRect(exPosition + 1, eyPosition + 1, (currentTileSize * sSize) - 2, (currentTileSize * sSize) - 2);
@@ -359,7 +396,10 @@ function drawGrid() {
         
         ctx.translate(-(px + currentTileSize/2), -(py + currentTileSize/2));
         
-        if (SpriteMatrices[p.spriteId]) drawProceduralSprite(ctx, SpriteMatrices[p.spriteId], px, py, currentTileSize);
+if (SpriteMatrices[p.spriteId]) {
+            // === GPU RASTER SWAP ===
+            drawOptimizedSprite(ctx, p.spriteId, SpriteMatrices[p.spriteId], px, py, currentTileSize);
+        }
         ctx.restore();
         
         if (p.frame >= p.maxFrames) {
