@@ -278,13 +278,15 @@ io.on('connection', (socket) => {
         combat.turn = 'ENEMY';
         let turnEvents = []; 
 
-        // === BUILD THE O(1) COLLISION MATRIX ===
+        // === 1. BUILD THE O(1) COLLISION MATRIX ===
         let collisionMatrix = Array(combat.gridSize).fill(null).map(() => Array(combat.gridSize).fill(0));
         
+        // 1 = Hard Wall (Obstacles)
         combat.obstacles.forEach(o => {
             if (o.x >= 0 && o.x < combat.gridSize && o.y >= 0 && o.y < combat.gridSize) collisionMatrix[o.x][o.y] = 1;
         });
         
+        // 2 = Dynamic Wall (Enemies)
         combat.enemies.forEach(e => {
             if (e.alive) {
                 let eSize = e.size || 1;
@@ -296,7 +298,12 @@ io.on('connection', (socket) => {
             }
         });
 
-        // === MATRIX-POWERED LINE OF SIGHT ===
+        // === THE BUG FIX: ADD THE PLAYER TO THE MATRIX ===
+        if (combat.player.x >= 0 && combat.player.x < combat.gridSize && combat.player.y >= 0 && combat.player.y < combat.gridSize) {
+            collisionMatrix[combat.player.x][combat.player.y] = 2; // Treat the player as a solid wall!
+        }
+
+        // === 2. SAFE MATRIX-POWERED LINE OF SIGHT ===
         function hasLineOfSightMatrix(x1, y1, x2, y2) {
             let dx = Math.abs(x2 - x1); let dy = Math.abs(y2 - y1);
             let sx = (x1 < x2) ? 1 : -1; let sy = (y1 < y2) ? 1 : -1;
@@ -304,7 +311,8 @@ io.on('connection', (socket) => {
             while (true) {
                 if (cx === x2 && cy === y2) return true;
                 if (cx !== x1 || cy !== y1) {
-                    if (collisionMatrix[cx][cy] === 1) return false; 
+                    // Safe bounds checking prevents crashes off the edge of the map!
+                    if (collisionMatrix[cx] === undefined || collisionMatrix[cx][cy] === 1) return false; 
                 }
                 let e2 = 2 * err;
                 if (e2 > -dy) { err -= dy; cx += sx; }
@@ -312,7 +320,7 @@ io.on('connection', (socket) => {
             }
         }
 
-        // === RESTORED SERVER-SIDE BFS PATHFINDING ===
+        // === 3. THROTTLED BFS PATHFINDING ===
         function getEnemyPathStep(e) {
             let eSize = e.size || 1;
             let queue = [{x: e.x, y: e.y}];
@@ -323,7 +331,13 @@ io.on('connection', (socket) => {
             let closestNode = {x: e.x, y: e.y}; 
             let minDist = Infinity;
             
-            while(queue.length > 0) {
+            // === THE LAG FIX: THROTTLE THE BRAINS ===
+            // Prevents trapped Gorillas from searching the whole map!
+            let searchCount = 0; 
+            let searchLimit = 30; 
+            
+            while(queue.length > 0 && searchCount < searchLimit) {
+                searchCount++;
                 let curr = queue.shift();
                 let dist = getGridDistance(combat.player.x, combat.player.y, curr.x, curr.y, eSize);
                 
@@ -366,7 +380,9 @@ io.on('connection', (socket) => {
             if (targetNode.x === e.x && targetNode.y === e.y) return null;
 
             let step = targetNode;
-            while (parent[`${step.x},${step.y}`] && (parent[`${step.x},${step.y}`].x !== e.x || parent[`${step.x},${step.y}`].y !== e.y)) { step = parent[`${step.x},${step.y}`]; }
+            while (parent[`${step.x},${step.y}`] && (parent[`${step.x},${step.y}`].x !== e.x || parent[`${step.x},${step.y}`].y !== e.y)) { 
+                step = parent[`${step.x},${step.y}`]; 
+            }
             return step;
         }
 
@@ -377,12 +393,13 @@ io.on('connection', (socket) => {
             
             let eSize = e.size || 1;
             let dist = getGridDistance(combat.player.x, combat.player.y, e.x, e.y, eSize);
-            
-            // Replaced old array lookup with Matrix lookup
             let hasLos = false;
-            for (let bx = e.x; bx < e.x + eSize; bx++) {
-                for (let by = e.y; by < e.y + eSize; by++) {
-                    if (hasLineOfSightMatrix(bx, by, combat.player.x, combat.player.y)) hasLos = true;
+            
+            if (dist <= e.attackRange) {
+                for (let bx = e.x; bx < e.x + eSize; bx++) {
+                    for (let by = e.y; by < e.y + eSize; by++) {
+                        if (hasLineOfSightMatrix(bx, by, combat.player.x, combat.player.y)) hasLos = true;
+                    }
                 }
             }
 
@@ -391,12 +408,13 @@ io.on('connection', (socket) => {
                 let steps = e.moveRange;
                 while (steps > 0) {
                     dist = getGridDistance(combat.player.x, combat.player.y, e.x, e.y, eSize);
-                    
-                    // Replaced old array lookup with Matrix lookup
                     hasLos = false;
-                    for (let bx = e.x; bx < e.x + eSize; bx++) {
-                        for (let by = e.y; by < e.y + eSize; by++) { 
-                            if (hasLineOfSightMatrix(bx, by, combat.player.x, combat.player.y)) hasLos = true; 
+                    
+                    if (dist <= e.attackRange) {
+                        for (let bx = e.x; bx < e.x + eSize; bx++) {
+                            for (let by = e.y; by < e.y + eSize; by++) { 
+                                if (hasLineOfSightMatrix(bx, by, combat.player.x, combat.player.y)) hasLos = true; 
+                            }
                         }
                     }
                     if (dist <= e.attackRange && hasLos) break;
@@ -430,9 +448,11 @@ io.on('connection', (socket) => {
             // Phase 2: Attack Processing
             dist = getGridDistance(combat.player.x, combat.player.y, e.x, e.y, eSize);
             hasLos = false;
-            for (let bx = e.x; bx < e.x + eSize; bx++) {
-                for (let by = e.y; by < e.y + eSize; by++) { 
-                    if (hasLineOfSightMatrix(bx, by, combat.player.x, combat.player.y)) hasLos = true; 
+            if (dist <= e.attackRange) {
+                for (let bx = e.x; bx < e.x + eSize; bx++) {
+                    for (let by = e.y; by < e.y + eSize; by++) { 
+                        if (hasLineOfSightMatrix(bx, by, combat.player.x, combat.player.y)) hasLos = true; 
+                    }
                 }
             }
 
