@@ -375,6 +375,18 @@ socket.on('enemyTurnReceipt', (receipt) => {
     if (receipt.updatedPlayer) Object.assign(player, receipt.updatedPlayer);
 
     let events = receipt.events || [];
+    
+    // === NEW: DYNAMIC FAST-FORWARD MATH ===
+    // If there are hundreds of events (Gorilla Pit), compress the time!
+    let eventCount = events.length;
+    let timeCompression = 1.0; 
+    
+    // If there are more than 15 events, start speeding up the playback
+    if (eventCount > 15) {
+        // Caps the maximum speed at 15% of normal time (roughly 15ms per move)
+        timeCompression = Math.max(0.15, 15 / eventCount); 
+    }
+
     let delay = 0; // The playback timer!
 
     // 2. Play the events sequentially on the screen
@@ -425,15 +437,14 @@ socket.on('enemyTurnReceipt', (receipt) => {
             refreshSystemUI();
         }, delay);
 
-        // Stagger the playback
-        if (ev.type === 'move') delay += 100;
-        else if (ev.type === 'hit' || ev.type === 'deflect') delay += 350;
-        else delay += 50;
+        // === NEW: MULTIPLY THE DELAY BY OUR TIME COMPRESSION ===
+        if (ev.type === 'move') delay += (100 * timeCompression);
+        else if (ev.type === 'hit' || ev.type === 'deflect') delay += (350 * timeCompression);
+        else delay += (50 * timeCompression);
     });
 
     // 3. Finally, hand control back to the player!
     setTimeout(() => {
-        // === MOVED: DELAYED STATE SYNC ===
         // We only overwrite the grid with the server's truth AFTER the movie finishes playing!
         if (receipt.updatedCombatState) {
             enemies = receipt.updatedCombatState.enemies;

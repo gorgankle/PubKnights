@@ -270,83 +270,93 @@ io.on('connection', (socket) => {
         socket.emit('combatDeployed', combatState);
     });	
 	// --- SERVER-AUTHORITATIVE ENEMY AI ---
-    socket.on('endPlayerTurn', (data) => {
-        let p = activePlayers[socket.id];
-        let combat = activeCombats[socket.id];
-        if (!p || !combat) return;
+// --- server.js (Inside endPlayerTurn) ---
 
-combat.turn = 'ENEMY';
-        
-        // --- ANTI-TELEPORT SECURITY ---
-        if (data && data.playerPos) {
-            let reqX = data.playerPos.x;
-            let reqY = data.playerPos.y;
-            
-            // Player can move in Phase 1 AND Phase 3, so multiply their range by 2
-            let maxLegalDistance = (p.swiftness || 3) * 2; 
-            if (p.activeBuffs && p.activeBuffs.includes('LAGER')) maxLegalDistance += 4;
+socket.on('endPlayerTurn', (data) => {
+    let p = activePlayers[socket.id];
+    let combat = activeCombats[socket.id];
+    if (!p || !combat) return;
 
-            let dist = getGridDistance(combat.player.x, combat.player.y, reqX, reqY, 1);
-            
-            if (dist <= maxLegalDistance) {
-                // Move is geometrically legal, accept the coordinates
-                combat.player.x = reqX;
-                combat.player.y = reqY;
-            } else {
-                // Hacker detected! Force them back to the server's legal coordinate.
-                console.log(`🚨 SECURITY: Rejected anomalous movement for Knight: ${p.username}`);
-                socket.emit('moveReceipt', { success: false, x: combat.player.x, y: combat.player.y, message: "🚨 SECURITY: Anomalous movement detected and rejected." });
+    combat.turn = 'ENEMY';
+    
+    // ... (Keep your anti-teleport security block here) ...
+
+    let turnEvents = []; 
+
+    // === NEW: BUILD THE O(1) COLLISION MATRIX ===
+    let collisionMatrix = Array(combat.gridSize).fill(null).map(() => Array(combat.gridSize).fill(0));
+    
+    // 1 = Hard Wall (Obstacles)
+    combat.obstacles.forEach(o => {
+        if (o.x >= 0 && o.x < combat.gridSize && o.y >= 0 && o.y < combat.gridSize) collisionMatrix[o.x][o.y] = 1;
+    });
+    
+    // 2 = Dynamic Wall (Enemies)
+    combat.enemies.forEach(e => {
+        if (e.alive) {
+            let eSize = e.size || 1;
+            for (let bx = e.x; bx < e.x + eSize; bx++) {
+                for (let by = e.y; by < e.y + eSize; by++) {
+                    if (bx >= 0 && bx < combat.gridSize && by >= 0 && by < combat.gridSize) collisionMatrix[bx][by] = 2;
+                }
             }
         }
-        let turnEvents = []; // The "Movie Script" we will send to the browser
+    });
 
-        // Server-Side BFS Pathfinding
-        function getEnemyPathStep(e) {
-            let queue = [{x: e.x, y: e.y}];
-            let visited = new Set([`${e.x},${e.y}`]);
-            let parent = {};
-            let eSize = e.size || 1;
-            let dirs = [{x:0, y:-1}, {x:1, y:0}, {x:0, y:1}, {x:-1, y:0}];
-            let targetNode = null; let closestNode = {x: e.x, y: e.y}; let minDist = Infinity;
+    // Server-Side BFS Pathfinding
+    function getEnemyPathStep(e) {
+        let queue = [{x: e.x, y: e.y}];
+        let visited = new Set([`${e.x},${e.y}`]);
+        let parent = {};
+        let eSize = e.size || 1;
+        let dirs = [{x:0, y:-1}, {x:1, y:0}, {x:0, y:1}, {x:-1, y:0}];
+        let targetNode = null; let closestNode = {x: e.x, y: e.y}; let minDist = Infinity;
 
-            while(queue.length > 0) {
-                let curr = queue.shift();
-                let dist = getGridDistance(combat.player.x, combat.player.y, curr.x, curr.y, eSize);
-                let hasLos = false;
-                for (let bx = curr.x; bx < curr.x + eSize; bx++) {
-                    for (let by = curr.y; by < curr.y + eSize; by++) {
-                        if (hasLineOfSight(bx, by, combat.player.x, combat.player.y, combat.obstacles)) hasLos = true;
-                    }
+        while(queue.length > 0) {
+            let curr = queue.shift();
+            let dist = getGridDistance(combat.player.x, combat.player.y, curr.x, curr.y, eSize);
+            
+            // Note: Line of sight check is still slightly heavy, but necessary for ranged logic
+            let hasLos = false;
+            for (let bx = curr.x; bx < curr.x + eSize; bx++) {
+                for (let by = curr.y; by < curr.y + eSize; by++) {
+                    if (hasLineOfSight(bx, by, combat.player.x, combat.player.y, combat.obstacles)) hasLos = true;
                 }
-                if (dist < minDist) { minDist = dist; closestNode = curr; }
-                if (dist <= e.attackRange && hasLos) { targetNode = curr; break; }
+            }
+            if (dist < minDist) { minDist = dist; closestNode = curr; }
+            if (dist <= e.attackRange && hasLos) { targetNode = curr; break; }
 
-                for (let d of dirs) {
-                    let nx = curr.x + d.x; let ny = curr.y + d.y;
-                    let key = `${nx},${ny}`;
-                    if (!visited.has(key)) {
-                        visited.add(key);
-                        let blocked = false;
-                        for (let bx = nx; bx < nx + eSize; bx++) {
-                            for (let by = ny; by < ny + eSize; by++) {
-                                if (bx < 0 || bx >= combat.gridSize || by < 0 || by >= combat.gridSize) blocked = true;
-                                else if (combat.enemies.some(em => em.alive && em !== e && bx >= em.x && bx < em.x + (em.size||1) && by >= em.y && by < em.y + (em.size||1))) blocked = true;
-                                else if (combat.obstacles.some(o => o.x === bx && o.y === by)) {
-                                    if (eSize === 1) blocked = true; 
-                                }
+            for (let d of dirs) {
+                let nx = curr.x + d.x; let ny = curr.y + d.y;
+                let key = `${nx},${ny}`;
+                if (!visited.has(key)) {
+                    visited.add(key);
+                    
+                    // === NEW: INSTANT MATRIX LOOKUP ===
+                    let blocked = false;
+                    for (let bx = nx; bx < nx + eSize; bx++) {
+                        for (let by = ny; by < ny + eSize; by++) {
+                            if (bx < 0 || bx >= combat.gridSize || by < 0 || by >= combat.gridSize) {
+                                blocked = true;
+                            } else if (collisionMatrix[bx][by] === 2 && !(bx >= e.x && bx < e.x + eSize && by >= e.y && by < e.y + eSize)) {
+                                blocked = true; // Blocked by ANOTHER enemy
+                            } else if (collisionMatrix[bx][by] === 1 && eSize === 1) {
+                                blocked = true; // Blocked by an obstacle (Juggernauts ignore this)
                             }
                         }
-                        if (!blocked) { parent[key] = curr; queue.push({x: nx, y: ny}); }
                     }
+
+                    if (!blocked) { parent[key] = curr; queue.push({x: nx, y: ny}); }
                 }
             }
-            if (!targetNode) targetNode = closestNode;
-            if (targetNode.x === e.x && targetNode.y === e.y) return null;
-
-            let step = targetNode;
-            while (parent[`${step.x},${step.y}`] && (parent[`${step.x},${step.y}`].x !== e.x || parent[`${step.x},${step.y}`].y !== e.y)) { step = parent[`${step.x},${step.y}`]; }
-            return step;
         }
+        if (!targetNode) targetNode = closestNode;
+        if (targetNode.x === e.x && targetNode.y === e.y) return null;
+
+        let step = targetNode;
+        while (parent[`${step.x},${step.y}`] && (parent[`${step.x},${step.y}`].x !== e.x || parent[`${step.x},${step.y}`].y !== e.y)) { step = parent[`${step.x},${step.y}`]; }
+        return step;
+    }
 
         // Loop through living enemies and calculate actions!
         let activeEnemies = combat.enemies.filter(e => e.alive);
@@ -373,10 +383,23 @@ combat.turn = 'ENEMY';
                     }
                     if (dist <= e.attackRange && hasLos) break;
 
+// Phase 1: Movement execution inside your `for (let e of activeEnemies)` loop
                     let nextStep = getEnemyPathStep(e);
                     if (nextStep) {
-e.x = nextStep.x; e.y = nextStep.y;
-        turnEvents.push({ type: 'move', uid: e.uid, enemyId: e.id, name: e.name, finalX: e.x, finalY: e.y });
+                        // === NEW: UPDATE MATRIX REAL-TIME ===
+                        // Clear old position
+                        for(let bx = e.x; bx < e.x + eSize; bx++) {
+                            for(let by = e.y; by < e.y + eSize; by++) collisionMatrix[bx][by] = 0;
+                        }
+                        
+                        e.x = nextStep.x; e.y = nextStep.y;
+                        
+                        // Set new position
+                        for(let bx = e.x; bx < e.x + eSize; bx++) {
+                            for(let by = e.y; by < e.y + eSize; by++) collisionMatrix[bx][by] = 2;
+                        }
+
+                        turnEvents.push({ type: 'move', uid: e.uid, enemyId: e.id, name: e.name, finalX: e.x, finalY: e.y });
                         
                         if (eSize > 1) { // Juggernaut Boss crushing logic
                             let oLen = combat.obstacles.length;
