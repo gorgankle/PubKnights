@@ -31,7 +31,7 @@ const tutorialSequence = [
 ];
 
 function renderTutorialStep() {
-    const overlay = document.getElementById("tutorial-overlay");
+	const overlay = document.getElementById("tutorial-wrapper");
     const titleEl = document.getElementById("tutorial-title");
     const textEl = document.getElementById("tutorial-text");
     const btn = document.getElementById("tutorial-next-btn");
@@ -67,9 +67,10 @@ function renderTutorialStep() {
 function advanceTutorial() {
     currentTutorialStep++;
 
-    if (currentTutorialStep >= tutorialSequence.length) {
-        // --- TUTORIAL COMPLETE ---
-        document.getElementById("tutorial-overlay").style.display = "none";
+
+if (currentTutorialStep >= tutorialSequence.length) {
+    // --- TUTORIAL COMPLETE ---
+    document.getElementById("tutorial-wrapper").style.display = "none";
         
         // Update the player object so the server knows they graduated
         player.tutorialCompleted = true;
