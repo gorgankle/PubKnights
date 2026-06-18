@@ -269,107 +269,120 @@ io.on('connection', (socket) => {
         activeCombats[socket.id] = combatState;
         socket.emit('combatDeployed', combatState);
     });	
-	// --- SERVER-AUTHORITATIVE ENEMY AI ---
-// --- server.js (Inside endPlayerTurn) ---
+// --- SERVER-AUTHORITATIVE ENEMY AI ---
+    socket.on('endPlayerTurn', (data) => {
+        let p = activePlayers[socket.id];
+        let combat = activeCombats[socket.id];
+        if (!p || !combat) return;
 
-socket.on('endPlayerTurn', (data) => {
-    let p = activePlayers[socket.id];
-    let combat = activeCombats[socket.id];
-    if (!p || !combat) return;
+        combat.turn = 'ENEMY';
+        let turnEvents = []; 
 
-    combat.turn = 'ENEMY';
-    
-    // ... (Keep your anti-teleport security block here) ...
-
-    let turnEvents = []; 
-
-// === NEW: BUILD THE O(1) COLLISION MATRIX ===
-    let collisionMatrix = Array(combat.gridSize).fill(null).map(() => Array(combat.gridSize).fill(0));
-    // ... (Your existing matrix building logic here) ...
-
-    // === NEW: MATRIX-POWERED LINE OF SIGHT ===
-    function hasLineOfSightMatrix(x1, y1, x2, y2) {
-        let dx = Math.abs(x2 - x1); let dy = Math.abs(y2 - y1);
-        let sx = (x1 < x2) ? 1 : -1; let sy = (y1 < y2) ? 1 : -1;
-        let err = dx - dy; let cx = x1; let cy = y1;
-        while (true) {
-            if (cx === x2 && cy === y2) return true;
-            if (cx !== x1 || cy !== y1) {
-                // Instantly check the matrix for a hard wall (1)
-                if (collisionMatrix[cx][cy] === 1) return false; 
-            }
-            let e2 = 2 * err;
-            if (e2 > -dy) { err -= dy; cx += sx; }
-            if (e2 < dx) { err += dx; cy += sy; }
-        }
-    }
-
-    // Server-Side BFS Pathfinding
-    function getEnemyPathStep(e) {
-        // ... (existing queue setup)
+        // === BUILD THE O(1) COLLISION MATRIX ===
+        let collisionMatrix = Array(combat.gridSize).fill(null).map(() => Array(combat.gridSize).fill(0));
         
-        while(queue.length > 0) {
-            let curr = queue.shift();
-            let dist = getGridDistance(combat.player.x, combat.player.y, curr.x, curr.y, eSize);
-            
-            // === UPDATED: SKIP UNNECESSARY MATH ===
-            // Don't calculate Line of Sight if the enemy isn't even in attack range yet!
-            let hasLos = false;
-            if (dist <= e.attackRange) {
-                for (let bx = curr.x; bx < curr.x + eSize; bx++) {
-                    for (let by = curr.y; by < curr.y + eSize; by++) {
-                        // Use our new blazing fast matrix LOS checker
-                        if (hasLineOfSightMatrix(bx, by, combat.player.x, combat.player.y)) hasLos = true;
+        combat.obstacles.forEach(o => {
+            if (o.x >= 0 && o.x < combat.gridSize && o.y >= 0 && o.y < combat.gridSize) collisionMatrix[o.x][o.y] = 1;
+        });
+        
+        combat.enemies.forEach(e => {
+            if (e.alive) {
+                let eSize = e.size || 1;
+                for (let bx = e.x; bx < e.x + eSize; bx++) {
+                    for (let by = e.y; by < e.y + eSize; by++) {
+                        if (bx >= 0 && bx < combat.gridSize && by >= 0 && by < combat.gridSize) collisionMatrix[bx][by] = 2;
                     }
                 }
             }
+        });
 
-            if (dist < minDist) { minDist = dist; closestNode = curr; }
-            if (dist <= e.attackRange && hasLos) { targetNode = curr; break; }
+        // === MATRIX-POWERED LINE OF SIGHT ===
+        function hasLineOfSightMatrix(x1, y1, x2, y2) {
+            let dx = Math.abs(x2 - x1); let dy = Math.abs(y2 - y1);
+            let sx = (x1 < x2) ? 1 : -1; let sy = (y1 < y2) ? 1 : -1;
+            let err = dx - dy; let cx = x1; let cy = y1;
+            while (true) {
+                if (cx === x2 && cy === y2) return true;
+                if (cx !== x1 || cy !== y1) {
+                    if (collisionMatrix[cx][cy] === 1) return false; 
+                }
+                let e2 = 2 * err;
+                if (e2 > -dy) { err -= dy; cx += sx; }
+                if (e2 < dx) { err += dx; cy += sy; }
+            }
+        }
 
-            for (let d of dirs) {
-                let nx = curr.x + d.x; let ny = curr.y + d.y;
-                let key = `${nx},${ny}`;
-                if (!visited.has(key)) {
-                    visited.add(key);
-                    
-                    // === NEW: INSTANT MATRIX LOOKUP ===
-                    let blocked = false;
-                    for (let bx = nx; bx < nx + eSize; bx++) {
-                        for (let by = ny; by < ny + eSize; by++) {
-                            if (bx < 0 || bx >= combat.gridSize || by < 0 || by >= combat.gridSize) {
-                                blocked = true;
-                            } else if (collisionMatrix[bx][by] === 2 && !(bx >= e.x && bx < e.x + eSize && by >= e.y && by < e.y + eSize)) {
-                                blocked = true; // Blocked by ANOTHER enemy
-                            } else if (collisionMatrix[bx][by] === 1 && eSize === 1) {
-                                blocked = true; // Blocked by an obstacle (Juggernauts ignore this)
-                            }
+        // === RESTORED SERVER-SIDE BFS PATHFINDING ===
+        function getEnemyPathStep(e) {
+            let eSize = e.size || 1;
+            let queue = [{x: e.x, y: e.y}];
+            let visited = new Set([`${e.x},${e.y}`]);
+            let parent = {};
+            let dirs = [{x:0, y:-1}, {x:1, y:0}, {x:0, y:1}, {x:-1, y:0}];
+            let targetNode = null; 
+            let closestNode = {x: e.x, y: e.y}; 
+            let minDist = Infinity;
+            
+            while(queue.length > 0) {
+                let curr = queue.shift();
+                let dist = getGridDistance(combat.player.x, combat.player.y, curr.x, curr.y, eSize);
+                
+                let hasLos = false;
+                if (dist <= e.attackRange) {
+                    for (let bx = curr.x; bx < curr.x + eSize; bx++) {
+                        for (let by = curr.y; by < curr.y + eSize; by++) {
+                            if (hasLineOfSightMatrix(bx, by, combat.player.x, combat.player.y)) hasLos = true;
                         }
                     }
+                }
 
-                    if (!blocked) { parent[key] = curr; queue.push({x: nx, y: ny}); }
+                if (dist < minDist) { minDist = dist; closestNode = curr; }
+                if (dist <= e.attackRange && hasLos) { targetNode = curr; break; }
+
+                for (let d of dirs) {
+                    let nx = curr.x + d.x; let ny = curr.y + d.y;
+                    let key = `${nx},${ny}`;
+                    if (!visited.has(key)) {
+                        visited.add(key);
+                        
+                        let blocked = false;
+                        for (let bx = nx; bx < nx + eSize; bx++) {
+                            for (let by = ny; by < ny + eSize; by++) {
+                                if (bx < 0 || bx >= combat.gridSize || by < 0 || by >= combat.gridSize) {
+                                    blocked = true;
+                                } else if (collisionMatrix[bx][by] === 2 && !(bx >= e.x && bx < e.x + eSize && by >= e.y && by < e.y + eSize)) {
+                                    blocked = true; 
+                                } else if (collisionMatrix[bx][by] === 1 && eSize === 1) {
+                                    blocked = true; 
+                                }
+                            }
+                        }
+
+                        if (!blocked) { parent[key] = curr; queue.push({x: nx, y: ny}); }
+                    }
                 }
             }
+            if (!targetNode) targetNode = closestNode;
+            if (targetNode.x === e.x && targetNode.y === e.y) return null;
+
+            let step = targetNode;
+            while (parent[`${step.x},${step.y}`] && (parent[`${step.x},${step.y}`].x !== e.x || parent[`${step.x},${step.y}`].y !== e.y)) { step = parent[`${step.x},${step.y}`]; }
+            return step;
         }
-        if (!targetNode) targetNode = closestNode;
-        if (targetNode.x === e.x && targetNode.y === e.y) return null;
 
-        let step = targetNode;
-        while (parent[`${step.x},${step.y}`] && (parent[`${step.x},${step.y}`].x !== e.x || parent[`${step.x},${step.y}`].y !== e.y)) { step = parent[`${step.x},${step.y}`]; }
-        return step;
-    }
-
-        // Loop through living enemies and calculate actions!
+        // === EXECUTE AI LOOP ===
         let activeEnemies = combat.enemies.filter(e => e.alive);
         for (let e of activeEnemies) {
             if (!e.alive || p.hp <= 0) break;
             
             let eSize = e.size || 1;
             let dist = getGridDistance(combat.player.x, combat.player.y, e.x, e.y, eSize);
+            
+            // Replaced old array lookup with Matrix lookup
             let hasLos = false;
             for (let bx = e.x; bx < e.x + eSize; bx++) {
                 for (let by = e.y; by < e.y + eSize; by++) {
-                    if (hasLineOfSight(bx, by, combat.player.x, combat.player.y, combat.obstacles)) hasLos = true;
+                    if (hasLineOfSightMatrix(bx, by, combat.player.x, combat.player.y)) hasLos = true;
                 }
             }
 
@@ -378,16 +391,18 @@ socket.on('endPlayerTurn', (data) => {
                 let steps = e.moveRange;
                 while (steps > 0) {
                     dist = getGridDistance(combat.player.x, combat.player.y, e.x, e.y, eSize);
+                    
+                    // Replaced old array lookup with Matrix lookup
                     hasLos = false;
                     for (let bx = e.x; bx < e.x + eSize; bx++) {
-                        for (let by = e.y; by < e.y + eSize; by++) { if (hasLineOfSight(bx, by, combat.player.x, combat.player.y, combat.obstacles)) hasLos = true; }
+                        for (let by = e.y; by < e.y + eSize; by++) { 
+                            if (hasLineOfSightMatrix(bx, by, combat.player.x, combat.player.y)) hasLos = true; 
+                        }
                     }
                     if (dist <= e.attackRange && hasLos) break;
 
-// Phase 1: Movement execution inside your `for (let e of activeEnemies)` loop
                     let nextStep = getEnemyPathStep(e);
                     if (nextStep) {
-                        // === NEW: UPDATE MATRIX REAL-TIME ===
                         // Clear old position
                         for(let bx = e.x; bx < e.x + eSize; bx++) {
                             for(let by = e.y; by < e.y + eSize; by++) collisionMatrix[bx][by] = 0;
@@ -402,7 +417,7 @@ socket.on('endPlayerTurn', (data) => {
 
                         turnEvents.push({ type: 'move', uid: e.uid, enemyId: e.id, name: e.name, finalX: e.x, finalY: e.y });
                         
-                        if (eSize > 1) { // Juggernaut Boss crushing logic
+                        if (eSize > 1) { 
                             let oLen = combat.obstacles.length;
                             combat.obstacles = combat.obstacles.filter(o => !(o.x >= e.x && o.x < e.x + eSize && o.y >= e.y && o.y < e.y + eSize));
                             if (combat.obstacles.length < oLen) turnEvents.push({ type: 'crush', enemyName: e.name });
@@ -416,7 +431,9 @@ socket.on('endPlayerTurn', (data) => {
             dist = getGridDistance(combat.player.x, combat.player.y, e.x, e.y, eSize);
             hasLos = false;
             for (let bx = e.x; bx < e.x + eSize; bx++) {
-                for (let by = e.y; by < e.y + eSize; by++) { if (hasLineOfSight(bx, by, combat.player.x, combat.player.y, combat.obstacles)) hasLos = true; }
+                for (let by = e.y; by < e.y + eSize; by++) { 
+                    if (hasLineOfSightMatrix(bx, by, combat.player.x, combat.player.y)) hasLos = true; 
+                }
             }
 
             if (dist <= e.attackRange && hasLos) {
@@ -430,8 +447,8 @@ socket.on('endPlayerTurn', (data) => {
                     let variedDmg = Math.floor(Math.random() * (maxDmg - minDmg + 1)) + minDmg;
                     let isCrit = variedDmg >= Math.floor(e.attack * 1.06);
 
-p.hp -= variedDmg;
-        turnEvents.push({ type: 'hit', uid: e.uid, enemyName: e.name, damage: variedDmg, isCrit: isCrit, isPoacher: isPoacher, ex: e.x, ey: e.y });
+                    p.hp -= variedDmg;
+                    turnEvents.push({ type: 'hit', uid: e.uid, enemyName: e.name, damage: variedDmg, isCrit: isCrit, isPoacher: isPoacher, ex: e.x, ey: e.y });
 
                     if (e.name.includes("Mimic")) {
                         let bIdx = p.inventory.findIndex(i => i.type === 'brew');
@@ -441,7 +458,7 @@ p.hp -= variedDmg;
                     if (p.hp <= 0) {
                         p.gold = Math.max(0, p.gold - 100); p.hp = Math.floor((p.vitality || 70) * 0.5);
                         turnEvents.push({ type: 'death' });
-                        break; // Stop turn early if player dies
+                        break; 
                     }
                 }
             }
