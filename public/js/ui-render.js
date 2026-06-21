@@ -301,7 +301,7 @@ function refreshSystemUI() {
                     });
                 }
                 
-                if (combatPhase === 'TARGET_BOMB') {
+if (combatPhase === 'TARGET_BOMB') {
                     let cancelBtn = document.createElement("button");
                     cancelBtn.innerText = "✖ Cancel Throw";
                     cancelBtn.style.background = "#443a32"; cancelBtn.style.width = "100%"; cancelBtn.style.marginTop = "4px";
@@ -310,7 +310,8 @@ function refreshSystemUI() {
                 }
             }
         }
-else { 
+        } 
+        else { 
             // --- CONSOLIDATED TABBED VIEWS ---
             // We are out of combat, show the Nav Bar
             if (topNavBar) topNavBar.style.display = "flex";
@@ -682,13 +683,14 @@ else {
                 if (typeof renderMainScreenSprites === 'function') renderMainScreenSprites();
             }
 
-            if (player.tutorialCompleted === false) {
+if (player.tutorialCompleted === false) {
                 player.tutorialCompleted = 'active'; 
                 setTimeout(() => {
                     if (typeof renderTutorialStep === 'function') renderTutorialStep();
                 }, 500);
             }
         }
+        } 
     } catch(e) { console.error(e); }
 }
 
