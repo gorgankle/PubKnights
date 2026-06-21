@@ -156,6 +156,12 @@ function refreshSystemUI() {
             townVaultView.style.display = "none"; // Hide the Town
             vaultScreen.style.display = "none"; 
 
+            // === FIX: ACTUALLY TURN THE MINIGAME SCREEN ON ===
+            if (gameState === 'MINIGAME_LUMBER') {
+                if (combatScreen) combatScreen.style.display = "none";
+                if (lumberScreen) lumberScreen.style.display = "flex";
+            }
+
             if (gameState === 'COMBAT') {
                 if (lumberScreen) lumberScreen.style.display = "none";
                 combatScreen.style.display = "block";
