@@ -954,6 +954,23 @@ if (dist <= bomb.aoe) {
                 socket.emit('townReceipt', { success: false, message: "❌ Guild rejected fraudulent point submission." });
             }
         }
+		// 20. FISHING POND SECURE HANDLER
+        else if (data.action === 'claimFishingMinigame') {
+            // Anti-cheat verification
+            if (data.fishCaught >= 0 && data.fishCaught < 200) { 
+                p.fishingPoints = (p.fishingPoints || 0) + data.points;
+                p.fish = (p.fish || 0) + data.fishCaught;
+                
+                socket.emit('townReceipt', { 
+                    success: true, 
+                    action: 'minigameWin', 
+                    updatedPlayer: p, 
+                    message: `🎣 Angling Complete! Secured ${data.fishCaught} Fish and ${data.points} Pts.` 
+                });
+            } else {
+                socket.emit('townReceipt', { success: false, message: "❌ Guild rejected fraudulent catch log." });
+            }
+        }
     });
 
     // --- SERVER-AUTHORITATIVE INVENTORY & VAULT ---

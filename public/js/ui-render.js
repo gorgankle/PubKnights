@@ -150,20 +150,26 @@ function refreshSystemUI() {
 
 // === FULL SCREEN EXCLUSIVE VIEWS ===
         const lumberScreen = document.getElementById("minigame-lumber-screen");
+        const fishingScreen = document.getElementById("minigame-fishing-screen"); // NEW
 
-        if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER') {
+        if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === 'MINIGAME_FISHING') {
             if (topNavBar) topNavBar.style.display = "none"; // Hide Nav Bar
             townVaultView.style.display = "none"; // Hide the Town
             vaultScreen.style.display = "none"; 
 
-            // === FIX: ACTUALLY TURN THE MINIGAME SCREEN ON ===
             if (gameState === 'MINIGAME_LUMBER') {
                 if (combatScreen) combatScreen.style.display = "none";
+                if (fishingScreen) fishingScreen.style.display = "none";
                 if (lumberScreen) lumberScreen.style.display = "flex";
             }
-
-            if (gameState === 'COMBAT') {
+            else if (gameState === 'MINIGAME_FISHING') {
+                if (combatScreen) combatScreen.style.display = "none";
                 if (lumberScreen) lumberScreen.style.display = "none";
+                if (fishingScreen) fishingScreen.style.display = "flex";
+            }
+            else if (gameState === 'COMBAT') {
+                if (lumberScreen) lumberScreen.style.display = "none";
+                if (fishingScreen) fishingScreen.style.display = "none";
                 combatScreen.style.display = "block";
             
             let dynamicBg = "none";
@@ -334,9 +340,12 @@ if (combatPhase === 'TARGET_BOMB') {
             if (upgradesScreen) upgradesScreen.style.display = "none";
             
             // ADD THIS TO HIDE THE MINIGAME
+// Hide Minigames
             let lumberScreen = document.getElementById("minigame-lumber-screen");
             if (lumberScreen) lumberScreen.style.display = "none"; 
-
+            let fishingScreen = document.getElementById("minigame-fishing-screen");
+            if (fishingScreen) fishingScreen.style.display = "none";
+			
             document.querySelectorAll('.nav-bar button').forEach(btn => btn.classList.remove('active-tab'));
 
             if (gameState === 'KNIGHT') {

@@ -223,6 +223,30 @@
             <div id="lumber-feedback" style="min-height: 30px; margin-top: 20px; font-weight: bold; font-size: 18px;"></div>
         </div>
     </div>
+
+	<div id="minigame-fishing-screen" style="display: none; width: 100%; height: 100vh; flex-direction: column; align-items: center; justify-content: center; position: relative;">
+    <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: url('assets/images/wilds-bg.png'); background-size: cover; background-position: center bottom; filter: blur(4px) brightness(0.4) hue-rotate(180deg); z-index: -1;"></div>
+
+    <div class="dashboard-panel" style="width: 95%; max-width: 800px; padding: 15px; background: rgba(34, 26, 20, 0.95); border: 2px solid #634e3d; box-shadow: 0 0 30px rgba(0,0,0,0.8);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px dashed #4a3b2c; padding-bottom: 10px;">
+            <span style="color: #3498db; font-weight: bold; font-size: 18px;">🎣 The Fishing Pond</span>
+            <button onclick="leaveFishingMinigame()" style="background: #c0392b; margin:0; padding:8px 16px;">↩ Flee Lake</button>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 16px; font-weight: bold;">
+            <span style="color: #f1c40f;">Time: <span id="fishing-timer">90s</span></span>
+            <span style="color: #2ecc71;">Caught: <span id="fishing-score">0</span> 🐟 | Pts: <span id="fishing-points">0</span></span>
+        </div>
+
+        <div style="text-align: center; position: relative; width: 100%;">
+            <canvas id="fishing-pool-canvas" width="750" height="400" style="background: #0f3050; border: 2px inset #3498db; border-radius: 8px; width: 100%; max-width: 100%; touch-action: none; cursor: crosshair; box-sizing: border-box; box-shadow: inset 0 0 50px rgba(0,0,0,0.8);"></canvas>
+
+            <button id="fishing-start-btn" onclick="startFishingMinigame()" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #2980b9; padding: 20px 40px; font-size: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.8); border: 2px solid #3498db;">CAST LINE</button>
+        </div>
+
+        <div id="fishing-feedback" style="min-height: 24px; margin-top: 10px; font-weight: bold; font-size: 14px; text-align: center; color: #bbaaa0;">Click to Cast. Click again when fish is centered to Hook. Hold to Reel!</div>
+    </div>
+</div>
 </div>
 
 <div id="town-vault-view" class="columns-container">
@@ -400,8 +424,9 @@
 						<button id="abyss-btn" onclick="transitionToCombat('ABYSS')" style="background: #190a2e; border-color: #5b2c6f; color: #d7bde2; width: 98%; margin-top: 8px; border-style: dashed;">🌌 Descend into the Procedural Abyss (Depth <span id="abyss-depth-indicator">1</span>)</button>
                     </div>
 					<div class="dashboard-panel" style="border: 2px dashed #27ae60; background: #1a251e; margin-top: 15px;">
-						<h3 style="color: #2ecc71;">🪓 Guild Expeditions</h3>
-						<button onclick="setGameState('MINIGAME_LUMBER')" style="background: #27ae60; border-color: #2ecc71; width: 100%; padding: 10px;">🌲 Timber Camp (Active Chopping)</button>
+					<h3 style="color: #2ecc71;">🪓 Guild Expeditions</h3>
+					<button onclick="setGameState('MINIGAME_LUMBER')" style="background: #27ae60; border-color: #2ecc71; width: 100%; padding: 10px; margin-bottom: 8px;">🌲 Timber Camp (Active Chopping)</button>
+					<button onclick="setGameState('MINIGAME_FISHING')" style="background: #2980b9; border-color: #3498db; width: 100%; padding: 10px;">🐟 The Fishing Pond (Active Angling)</button>
 					</div>
                 </div>
 				
