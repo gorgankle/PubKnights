@@ -918,7 +918,7 @@ if (dist <= bomb.aoe) {
                 } else socket.emit('townReceipt', { success: false, message: "🎒 Backpack is full." });
             } else socket.emit('townReceipt', { success: false, message: "❌ Trader demands 50 Hops." });
         }
-JavaScript
+
         // 18. SELL FISH BULK
         else if (data.action === 'sellFishBulk') {
             if (!p.tradeRoutesExpanded) {
