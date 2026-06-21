@@ -365,6 +365,7 @@ if (combatPhase === 'TARGET_BOMB') {
 			} else if (gameState === 'UPGRADES') {
                 if (upgradesScreen) upgradesScreen.style.display = "flex";
                 document.getElementById('nav-town').classList.add('active-tab');
+            } 
 
             // --- NEW: DYNAMIC KNIGHT HEADER & STATS ---
             const knightHeader = document.getElementById("knight-header-name");
@@ -677,19 +678,19 @@ if (combatPhase === 'TARGET_BOMB') {
                     monumentBtn.innerText = "🗽 The Golden Monument (Built)";
                     monumentBtn.onclick = null;
                 }
-            }
+            }git a
 
             if (gameState === 'KNIGHT' || gameState === 'TOWN' || gameState === 'VAULT' || gameState === 'MERCHANT' || gameState === 'ADVENTURES') {
                 if (typeof renderMainScreenSprites === 'function') renderMainScreenSprites();
             }
 
-if (player.tutorialCompleted === false) {
+
+            if (player.tutorialCompleted === false) {
                 player.tutorialCompleted = 'active'; 
                 setTimeout(() => {
                     if (typeof renderTutorialStep === 'function') renderTutorialStep();
                 }, 500);
             }
-        }
         } 
     } catch(e) { console.error(e); }
 }
