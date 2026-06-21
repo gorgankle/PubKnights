@@ -7,29 +7,25 @@ const LootTables = {
         xpDrop: 20,
         dropChance: 0.45, 
         pools: [
-            { itemId: "boar_hide_armor", weight: 30 },   
-            { itemId: "scavenged_machete", weight: 25 },
-            { itemId: "rusty_mace", weight: 25 },        
+            { itemId: "boar_hide_armor", weight: 20 },   
+            { itemId: "scavenged_machete", weight: 20 },
+            { itemId: "rusty_mace", weight: 20 },        
             { itemId: "sturdy_boots", weight: 20 },
-            // Small chance to drop a consumable Stout
-            { itemId: "stout", weight: 5 } 
+            { itemId: "rusty_coif", weight: 20 } 
         ]
     },
     "alpha_poacher": {
         xpDrop: 45,
         dropChance: 0.75, 
         pools: [
-            { itemId: "hunters_spear", weight: 25 },     
-            { itemId: "poachers_grips", weight: 25 },    
-            { itemId: "wilderness_cloak", weight: 20 },  
-            { itemId: "hop_infused_boots", weight: 15 },
+            { itemId: "hunters_spear", weight: 20},     
+            { itemId: "poachers_grips", weight: 20},    
+            { itemId: "wilderness_cloak", weight: 20},  
+            { itemId: "hop_infused_boots", weight: 21},
             // Early tease of the Pubserker defensive pieces
             { itemId: "pubserker_flatcap", weight: 3 },
             { itemId: "pubserker_suspenders", weight: 3 },
             { itemId: "pubserker_stompers", weight: 3 },
-            // Small chance for specialty combat brews
-            { itemId: "ipa", weight: 5 },
-            { itemId: "lager", weight: 5 }
         ]
     },
     "wilderness_overlord": {

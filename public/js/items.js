@@ -37,6 +37,16 @@ const ItemDatabase = {
         value: 15,
         spriteId: "weap_rusty_mace" 
     },
+	    "rusty_coif": { 
+        id: "rusty_coif", 
+        name: "Rusty Coif", 
+        slot: "helmet", 
+        rarity: "common", 
+        deflectChance: 5, 
+        value: 15,
+        spriteId: "helm_rusty_coif"
+    },
+	
     "sturdy_boots": { 
         id: "sturdy_boots", 
         name: "Sturdy Boots", 
