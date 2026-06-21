@@ -918,7 +918,8 @@ if (dist <= bomb.aoe) {
                 } else socket.emit('townReceipt', { success: false, message: "🎒 Backpack is full." });
             } else socket.emit('townReceipt', { success: false, message: "❌ Trader demands 50 Hops." });
         }
-		// 18. SELL FISH BULK
+JavaScript
+        // 18. SELL FISH BULK
         else if (data.action === 'sellFishBulk') {
             if (!p.tradeRoutesExpanded) {
                 return socket.emit('townReceipt', { success: false, message: "❌ Trade routes are not expanded." });
@@ -933,6 +934,27 @@ if (dist <= bomb.aoe) {
                     message: "🚢 Exported 1,000 Fish to distant lands for 1,500 Gold." 
                 });
             } else {
+                socket.emit('townReceipt', { success: false, message: "❌ Not enough stock. The merchant ships require exactly 1,000 Fish." });
+            }
+        }
+        // 19. MINIGAME PAYOUT SECURE HANDLER
+        else if (data.action === 'claimLumberMinigame') {
+            // Basic Anti-Cheat Sanity Check
+            if (data.points > 0 && data.points < 250000) {
+                // Initialize the new currency if it doesn't exist
+                p.lumberPoints = (p.lumberPoints || 0) + data.points;
+                
+                socket.emit('townReceipt', { 
+                    success: true, 
+                    action: 'minigameWin', 
+                    updatedPlayer: p, 
+                    message: `🪓 Expedition Complete! Secured ${data.points} Lumber Points.` 
+                });
+            } else {
+                socket.emit('townReceipt', { success: false, message: "❌ Guild rejected fraudulent point submission." });
+            }
+        }
+			else {
                 socket.emit('townReceipt', { success: false, message: "❌ Not enough stock. The merchant ships require exactly 1,000 Fish." });
             }
         }

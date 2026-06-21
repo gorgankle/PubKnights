@@ -312,14 +312,17 @@ else {
 
             // Only show the column container if we are NOT in the Vault
             if (townVaultView) townVaultView.style.display = (gameState === 'VAULT') ? "none" : "flex"; 
-
-            // Hide ALL tabs first to ensure a clean slate
+// Hide ALL tabs first to ensure a clean slate
             if (knightScreen) knightScreen.style.display = "none";
             townScreen.style.display = "none";
             merchantScreen.style.display = "none";
             if (adventuresScreen) adventuresScreen.style.display = "none";
             vaultScreen.style.display = "none";
             if (upgradesScreen) upgradesScreen.style.display = "none";
+            
+            // ADD THIS TO HIDE THE MINIGAME
+            let lumberScreen = document.getElementById("minigame-lumber-screen");
+            if (lumberScreen) lumberScreen.style.display = "none"; 
 
             document.querySelectorAll('.nav-bar button').forEach(btn => btn.classList.remove('active-tab'));
 
@@ -335,7 +338,7 @@ else {
             } else if (gameState === 'ADVENTURES') {
                 if (adventuresScreen) adventuresScreen.style.display = "flex";
                 document.getElementById('nav-adventures').classList.add('active-tab');
-} else if (gameState === 'VAULT') {
+			} else if (gameState === 'VAULT') {
                 vaultScreen.style.display = "block";
                 document.getElementById('nav-vault').classList.add('active-tab');
 
@@ -355,6 +358,10 @@ else {
             } else if (gameState === 'UPGRADES') {
                 if (upgradesScreen) upgradesScreen.style.display = "flex";
                 document.getElementById('nav-town').classList.add('active-tab');
+            }
+			} else if (gameState === 'MINIGAME_LUMBER') {
+                if (lumberScreen) lumberScreen.style.display = "flex";
+                document.getElementById('nav-adventures').classList.add('active-tab');
             }
 
             // --- NEW: DYNAMIC KNIGHT HEADER & STATS ---
