@@ -678,7 +678,7 @@ if (combatPhase === 'TARGET_BOMB') {
                     monumentBtn.innerText = "🗽 The Golden Monument (Built)";
                     monumentBtn.onclick = null;
                 }
-            }git a
+            }
 
             if (gameState === 'KNIGHT' || gameState === 'TOWN' || gameState === 'VAULT' || gameState === 'MERCHANT' || gameState === 'ADVENTURES') {
                 if (typeof renderMainScreenSprites === 'function') renderMainScreenSprites();
