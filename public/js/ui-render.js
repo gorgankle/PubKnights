@@ -355,13 +355,15 @@ else {
 
                 renderVaultStorageList();
                 renderBackpackList(document.getElementById("vault-inventory-list"), true);
-            } else if (gameState === 'UPGRADES') {
+			} else if (gameState === 'UPGRADES') {
                 if (upgradesScreen) upgradesScreen.style.display = "flex";
                 document.getElementById('nav-town').classList.add('active-tab');
-            }
-			} else if (gameState === 'MINIGAME_LUMBER') {
+            } else if (gameState === 'MINIGAME_LUMBER') {
                 if (lumberScreen) lumberScreen.style.display = "flex";
-                document.getElementById('nav-adventures').classList.add('active-tab');
+                
+                // Safety wrapper prevents the crash!
+                let advTab = document.getElementById('nav-adventures');
+                if (advTab) advTab.classList.add('active-tab');
             }
 
             // --- NEW: DYNAMIC KNIGHT HEADER & STATS ---
