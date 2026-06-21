@@ -250,30 +250,18 @@ function refreshLootUI() {
     });
 }
 function takeLoot(idx) {
-    let item = pendingLoot[idx];
     if (player.inventory.length >= (player.maxInventorySlots || 5)) {
         logMessage("❌ Backpack is full! Sell items or expand capacity.");
         if (typeof playRetroSound === 'function') playRetroSound('error');
         return;
     }
-    player.inventory.push(item);
-    pendingLoot.splice(idx, 1);
-    if (typeof playRetroSound === 'function') playRetroSound('coin');
-    refreshLootUI();
-    
-    // === ADD THIS LINE: Instantly secure the item on the server! ===
-    if (typeof saveGame === 'function') saveGame(); 
+    // Ask the server to securely move the item from escrow to inventory
+    socket.emit('takePendingLoot', idx);
 }
 
 function sellLoot(idx, value) {
-    player.gold += value;
-    pendingLoot.splice(idx, 1);
-    logMessage(`💰 Sold dropped item for ${value}g.`);
-    if (typeof playRetroSound === 'function') playRetroSound('coin');
-    refreshLootUI();
-    
-    // === ADD THIS LINE: Instantly secure the gold on the server! ===
-    if (typeof saveGame === 'function') saveGame(); 
+    // Ask the server to securely sell the item from escrow
+    socket.emit('sellPendingLoot', idx);
 }
 
 // === UPDATED: FINALIZE LOOTING ===

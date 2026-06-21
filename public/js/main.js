@@ -65,20 +65,6 @@ socket.on('combatResult', (result) => {
             if (typeof spawnHitMarker === 'function') spawnHitMarker(selectedEnemy.x, selectedEnemy.y, `-${result.damage}`, "#e74c3c");
         }
 
-        // --- ENEMY DEATH LOGIC ---
-        enemies.forEach(e => {
-            if (e.alive && e.hp <= 0) {
-                e.alive = false;
-                
-                // Ask the Node server to calculate XP, Gold, and Loot securely!
-                socket.emit('processEnemyKill', { 
-                    enemyId: e.id, 
-                    enemyName: e.name,
-                    zone: activeCombatZone, 
-                    isBaited: player.mapBaited 
-                });
-            }
-        });
 
         if (selectedEnemy && !selectedEnemy.alive) selectedEnemy = null;
         
@@ -87,12 +73,6 @@ socket.on('combatResult', (result) => {
             logMessage("🏆 VICTORY Conditions verified.");
             if (typeof playRetroSound === 'function') playRetroSound('victory');
             
-            if (player.pet && player.pet.adopted) {
-                let scavengeChance = player.pet.level || 1;
-                if (Math.random() * 100 < scavengeChance) {
-                    socket.emit('processEnemyKill', { enemyId: "pet_scavenge" });
-                }
-            }
             
             // Ask the server to apply progression unlocks and massive zone bonuses!
             socket.emit('processCombatVictory', { 
@@ -156,34 +136,17 @@ socket.on('bombResult', (result) => {
 
             if (hitCount === 0) logMessage("💨 Blast hit nothing.");
             
-            // --- ENEMY DEATH LOGIC ---
-            enemies.forEach(e => {
-                if (e.alive && e.hp <= 0) {
-                    e.alive = false;
-                    
-                    // Ask the Node server to calculate XP, Gold, and Loot securely!
-                    socket.emit('processEnemyKill', { 
-                        enemyId: e.id, 
-                        enemyName: e.name,
-                        zone: activeCombatZone, 
-                        isBaited: player.mapBaited 
-                    });
-                }
-            });
 
+
+            // Keep this to clear the UI target!
             if (selectedEnemy && !selectedEnemy.alive) selectedEnemy = null;
             
-            // --- VICTORY CHECK ---
+            // --- VICTORY CHECK --- (Keep this!)
             if (enemies.every(e => !e.alive)) {
                 logMessage("🏆 VICTORY Conditions verified.");
                 if (typeof playRetroSound === 'function') playRetroSound('victory');
                 
-                if (player.pet && player.pet.adopted) {
-                    let scavengeChance = player.pet.level || 1;
-                    if (Math.random() * 100 < scavengeChance) {
-                        socket.emit('processEnemyKill', { enemyId: "pet_scavenge" });
-                    }
-                }
+                // [Pet Scavenge exploit was deleted from here]
                 
                 // Ask the server to apply progression unlocks and massive zone bonuses!
                 socket.emit('processCombatVictory', { 
@@ -195,7 +158,7 @@ socket.on('bombResult', (result) => {
                 return; 
             }
             
-            advancePhase(); 
+            advancePhase();
         });
     }
 });
@@ -277,15 +240,14 @@ socket.on('inventoryReceipt', (receipt) => {
         return;
     }
 
-    // Instantly overwrite local arrays with the server's master copy!
-    if (receipt.updatedPlayer) {
+	if (receipt.updatedPlayer) {
         Object.assign(player, receipt.updatedPlayer);
     }
 
-    // Play context-sensitive sounds
+    // UPDATED: Added 'takeLoot' to the coin sound triggers
     if (receipt.action === 'equip' || receipt.action === 'unequip' || receipt.action === 'deposit' || receipt.action === 'withdraw') {
         if (typeof playRetroSound === 'function') playRetroSound('equip');
-    } else if (receipt.action === 'sell') {
+    } else if (receipt.action === 'sell' || receipt.action === 'takeLoot') {
         if (typeof playRetroSound === 'function') playRetroSound('coin');
     }
 

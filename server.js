@@ -557,13 +557,14 @@ let isCrit = variedDmg >= Math.floor(baseDmg * 1.06);
                     // Find the exact enemy in the server's memory using the coordinates
                     let serverEnemy = combat.enemies.find(e => e.x === data.targetEnemy.x && e.y === data.targetEnemy.y && e.alive);
                     
-                    if (serverEnemy) {
-                        serverEnemy.hp -= finalDmg;
-                        if (serverEnemy.hp <= 0) {
-                            serverEnemy.hp = 0;
-                            serverEnemy.alive = false; // The AI loop will now ignore them!
-                        }
-                    }
+if (serverEnemy) {
+    serverEnemy.hp -= finalDmg;
+    if (serverEnemy.hp <= 0) {
+        serverEnemy.hp = 0;
+        serverEnemy.alive = false; 
+        processSecureKill(socket.id, serverEnemy); // Trigger secure kill
+    }
+}
                 }
 
                 socket.emit('combatResult', { type: 'hit', actionType: data.actionType, damage: finalDmg, isCrit: isCrit, newStamina: p.stamina });
@@ -592,13 +593,14 @@ let isCrit = variedDmg >= Math.floor(baseDmg * 1.06);
                 if (!e.alive) return;
                 // Calculate distance from explosion epicenter (data.tx, data.ty)
                 let dist = getGridDistance(data.tx, data.ty, e.x, e.y, e.size || 1);
-                if (dist <= bomb.aoe) {
-                    e.hp -= bomb.damage;
-                    if (e.hp <= 0) {
-                        e.hp = 0;
-                        e.alive = false;
-                    }
-                }
+if (dist <= bomb.aoe) {
+    e.hp -= bomb.damage;
+    if (e.hp <= 0) {
+        e.hp = 0;
+        e.alive = false;
+        processSecureKill(socket.id, e); // Trigger secure kill
+    }
+}
             });
         }
 
@@ -1018,35 +1020,29 @@ let isCrit = variedDmg >= Math.floor(baseDmg * 1.06);
             socket.emit('inventoryReceipt', { success: true, action: 'reorder', updatedPlayer: p });
         }
     });
-// --- SERVER-AUTHORITATIVE COMBAT ESCROW ---
+
+			// Server secure kill processor //
+
+function processSecureKill(socketId, serverEnemy) {
+    let p = activePlayers[socketId];
+    let combat = activeCombats[socketId];
+    if (!p || !combat) return;
+
+    let multiplier = p.monumentBuilt ? 2 : 1;
+    let isGorilla = (combat.zone === 'GORILLA_ARENA'); 
+    let isBaited = (combat.zone === 'WILDERNESS' && p.mapBaited);
+
+    let goldReward = ((isGorilla ? 500 : (isBaited ? 60 : 25)) * multiplier);
+    let xpReward = 0;
+
+    let droppedItemObj = null;
+    let table = LootTables[serverEnemy.id];
     
-    // 1. Process Individual Kills
-    socket.on('processEnemyKill', (data) => {
-        let p = activePlayers[socket.id];
-        if (!p) return;
-
-        let multiplier = p.monumentBuilt ? 2 : 1;
-        let isGorilla = (data.zone === 'GORILLA_ARENA'); 
-        let isBaited = (data.zone === 'WILDERNESS' && data.isBaited);
-
-        let goldReward = 0;
-        let xpReward = 0;
-
-        if (data.enemyId !== "pet_scavenge") {
-            // Server securely calculates Base Gold and XP
-            goldReward = ((isGorilla ? 500 : (isBaited ? 60 : 25)) * multiplier);
-            let table = LootTables[data.enemyId];
-            if (table) xpReward = (table.xpDrop || 0) * multiplier;
-        }
-
-        // Add to secure Server Escrow
-        p.pendingGold = (p.pendingGold || 0) + goldReward;
-        p.pendingXp = (p.pendingXp || 0) + xpReward;
-
+    if (table) {
+        xpReward = (table.xpDrop || 0) * multiplier;
+        
         // Roll Loot
-        let droppedItemObj = null;
-        let table = LootTables[data.enemyId];
-        if (table && Math.random() <= table.dropChance) {
+        if (Math.random() <= table.dropChance) {
             let totalWeight = table.pools.reduce((sum, entry) => sum + entry.weight, 0);
             let roll = Math.random() * totalWeight;
             let droppedItemId = null;
@@ -1058,8 +1054,70 @@ let isCrit = variedDmg >= Math.floor(baseDmg * 1.06);
                 droppedItemObj = JSON.parse(JSON.stringify(ItemDatabase[droppedItemId]));
             }
         }
+    }
 
-        socket.emit('killConfirmed', { gold: goldReward, xp: xpReward, item: droppedItemObj, isPet: data.enemyId === "pet_scavenge", enemyName: data.enemyName });
+    // Add to secure Server Escrow
+    p.pendingGold = (p.pendingGold || 0) + goldReward;
+    p.pendingXp = (p.pendingXp || 0) + xpReward;
+
+    // Secure the dropped item in the server's pending loot array
+    p.pendingLoot = p.pendingLoot || [];
+    if (droppedItemObj) {
+        p.pendingLoot.push(droppedItemObj);
+    }
+
+    // Tell the client to visually animate the rewards
+    global.io.to(socketId).emit('killConfirmed', { 
+        gold: goldReward, 
+        xp: xpReward, 
+        item: droppedItemObj, 
+        isPet: false, 
+        enemyName: serverEnemy.name 
+    });
+}
+
+
+
+// --- SERVER-AUTHORITATIVE COMBAT ESCROW ---
+    
+    // Secure Loot Handlers
+    socket.on('takePendingLoot', (idx) => {
+        let p = activePlayers[socket.id];
+        if (!p || !p.pendingLoot || !p.pendingLoot[idx]) return;
+
+        p.maxInventorySlots = p.maxInventorySlots || 5;
+        if (p.inventory.length < p.maxInventorySlots) {
+            let securedItem = p.pendingLoot.splice(idx, 1)[0];
+            p.inventory.push(securedItem);
+            
+            // Force client sync
+            socket.emit('inventoryReceipt', { 
+                success: true, 
+                action: 'takeLoot', 
+                updatedPlayer: p, 
+                message: `🎒 Secured ${securedItem.name} in backpack.` 
+            });
+        } else {
+            socket.emit('inventoryReceipt', { success: false, message: "❌ Backpack is full!" });
+        }
+    });
+
+    socket.on('sellPendingLoot', (idx) => {
+        let p = activePlayers[socket.id];
+        if (!p || !p.pendingLoot || !p.pendingLoot[idx]) return;
+
+        let itemToSell = p.pendingLoot.splice(idx, 1)[0];
+        let val = itemToSell.value || (itemToSell.rarity === "Gorilla" ? 500 : 15);
+        
+        p.gold += val;
+        
+        // CHANGED: action is now 'sell' to match your main.js sound trigger
+        socket.emit('inventoryReceipt', { 
+            success: true, 
+            action: 'sell', 
+            updatedPlayer: p, 
+            message: `💰 Sold dropped item for ${val}g.` 
+        });
     });
 
     // 2. Process Map Clear Bonuses
@@ -1112,8 +1170,8 @@ let isCrit = variedDmg >= Math.floor(baseDmg * 1.06);
             }
         }
 
-        // Zero out the escrow so it can't be claimed twice!
-        p.pendingGold = 0; p.pendingXp = 0;
+// Zero out the escrow so it can't be claimed twice!
+        p.pendingGold = 0; p.pendingXp = 0; p.pendingLoot = [];
 
         socket.emit('combatRewardsReceipt', { updatedPlayer: p });
     });
