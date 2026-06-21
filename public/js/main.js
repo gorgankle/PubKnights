@@ -252,7 +252,7 @@ socket.on('inventoryReceipt', (receipt) => {
         return;
     }
 
-	if (receipt.updatedPlayer) {
+    if (receipt.updatedPlayer) {
         Object.assign(player, receipt.updatedPlayer);
     }
 
@@ -261,6 +261,11 @@ socket.on('inventoryReceipt', (receipt) => {
         if (typeof playRetroSound === 'function') playRetroSound('equip');
     } else if (receipt.action === 'sell' || receipt.action === 'takeLoot') {
         if (typeof playRetroSound === 'function') playRetroSound('coin');
+        
+        // === THE FIX: VISUALLY CLEAR THE ITEM FROM THE LOOT SCREEN ===
+        pendingLoot.length = 0; // Wipe the old visual list
+        if (player.pendingLoot) pendingLoot.push(...player.pendingLoot); // Sync with the server's truth
+        if (typeof refreshLootUI === 'function') refreshLootUI(); // Force the window to redraw!
     }
 
     if (receipt.message) logMessage(receipt.message);
