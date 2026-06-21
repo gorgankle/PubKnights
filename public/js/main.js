@@ -53,7 +53,13 @@ socket.on('combatResult', (result) => {
         if (typeof spawnHitMarker === 'function') spawnHitMarker(selectedEnemy.x, selectedEnemy.y, "-0", "#3498db"); 
     } 
     else if (result.type === 'hit') {
-        selectedEnemy.hp -= result.damage;
+selectedEnemy.hp -= result.damage;
+        
+        // Tell the browser the monster is officially dead so the UI updates
+        if (selectedEnemy.hp <= 0) {
+            selectedEnemy.hp = 0;
+            selectedEnemy.alive = false;
+        }
         
         if (result.isCrit) {
             if (typeof playRetroSound === 'function') playRetroSound('playerCrit');
@@ -126,7 +132,13 @@ socket.on('bombResult', (result) => {
                 let overlaps = !(blastRight < enemyLeft || blastLeft > enemyRight || blastBottom < enemyTop || blastTop > enemyBottom);
                 
                 if (overlaps) {
-                    e.hp -= result.damage; 
+					e.hp -= result.damage; 
+                    
+                    // Tell the browser the monster caught in the blast is dead
+                    if (e.hp <= 0) {
+                        e.hp = 0;
+                        e.alive = false;
+                    }
                     hitCount++;
                     
                     logMessage(`🔥 ${e.name} caught in blast for ${result.damage} DMG!`);
