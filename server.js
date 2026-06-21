@@ -919,7 +919,7 @@ if (dist <= bomb.aoe) {
             } else socket.emit('townReceipt', { success: false, message: "❌ Trader demands 50 Hops." });
         }
 
-        // 18. SELL FISH BULK
+// 18. SELL FISH BULK
         else if (data.action === 'sellFishBulk') {
             if (!p.tradeRoutesExpanded) {
                 return socket.emit('townReceipt', { success: false, message: "❌ Trade routes are not expanded." });
@@ -952,10 +952,6 @@ if (dist <= bomb.aoe) {
                 });
             } else {
                 socket.emit('townReceipt', { success: false, message: "❌ Guild rejected fraudulent point submission." });
-            }
-        }
-			else {
-                socket.emit('townReceipt', { success: false, message: "❌ Not enough stock. The merchant ships require exactly 1,000 Fish." });
             }
         }
     });
