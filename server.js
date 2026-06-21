@@ -1067,7 +1067,7 @@ function processSecureKill(socketId, serverEnemy) {
     }
 
     // Tell the client to visually animate the rewards
-    global.io.to(socketId).emit('killConfirmed', { 
+    io.to(socketId).emit('killConfirmed', { 
         gold: goldReward, 
         xp: xpReward, 
         item: droppedItemObj, 
