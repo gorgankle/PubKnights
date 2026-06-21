@@ -22,18 +22,18 @@
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
         }
 
-        /* Blows up the 32x32 canvas for pixel-perfect inspection */
+        /* Blows up the canvas for pixel-perfect inspection */
         #tester-canvas {
             width: 256px;
             height: 256px;
             background-color: #1a1512;
             border: 4px solid #8b5a2b;
             border-radius: 4px;
-            image-rendering: pixelated; 
+            image-rendering: pixelated; /* Forces sharp scaling */
             margin-bottom: 20px;
         }
 
-        .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+        .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px;}
         
         button { 
             background: #8b5a2b; 
@@ -49,6 +49,21 @@
         }
         button:hover { background: #a06d3b; }
         button:active { transform: scale(0.95); }
+
+        /* Styling for the new equipment dropdowns */
+        select {
+            background: #1a1512;
+            color: #ffcc66;
+            border: 1px solid #634e3d;
+            padding: 8px;
+            font-family: monospace;
+            border-radius: 3px;
+            font-size: 11px;
+            cursor: pointer;
+            width: 100%;
+        }
+        select:focus { outline: none; border-color: #f1c40f; }
+        .section-title { color: #bbaaa0; font-size: 14px; text-transform: uppercase; margin: 20px 0 10px 0; border-bottom: 1px dashed #634e3d; padding-bottom: 5px; }
     </style>
 </head>
 <body>
@@ -59,8 +74,9 @@
         <div id="char-creation-screen" style="display:none;"></div>
         <canvas id="menuCharacterCanvas" style="display:none;"></canvas>
 
-        <canvas id="tester-canvas" width="32" height="32"></canvas>
+        <canvas id="tester-canvas" width="24" height="24"></canvas>
 
+        <div class="section-title">Genetics & Appearance</div>
         <div class="grid">
             <button onclick="testerCycle('gender')">Gender</button>
             <button onclick="testerCycle('skin')">Skin Tone</button>
@@ -69,11 +85,31 @@
             <button onclick="testerCycle('eyes')">Eye Color</button>
             <button onclick="testerCycle('shirtColor')">Shirt Color</button>
             <button onclick="testerCycle('pantsColor')">Pants Color</button>
-            <button onclick="testerCycle('bootsColor')">Boots Color</button>
+            <button onclick="testerCycle('bootsColor')">Base Boots Color</button>
+        </div>
+
+        <div class="section-title">Equipment Loadout Testing</div>
+        <div class="grid" style="grid-template-columns: repeat(5, 1fr);">
+            <select id="select-helmet" onchange="testerEquip('helmet', this.value)">
+                <option value="none">-- No Helmet --</option>
+            </select>
+            <select id="select-armor" onchange="testerEquip('armor', this.value)">
+                <option value="none">-- No Armor --</option>
+            </select>
+            <select id="select-weapon" onchange="testerEquip('weapon', this.value)">
+                <option value="none">-- No Weapon --</option>
+            </select>
+            <select id="select-gloves" onchange="testerEquip('gloves', this.value)">
+                <option value="none">-- No Gloves --</option>
+            </select>
+            <select id="select-boots" onchange="testerEquip('boots', this.value)">
+                <option value="none">-- No Boots --</option>
+            </select>
         </div>
     </div>
 
     <script>
+        // Mock Player Object
         var player = {
             appearance: {
                 gender: 'male', skin: 'light', hair: 'hair_messy',
@@ -85,19 +121,111 @@
     </script>
 
     <script src="js/character-creator.js"></script>
+    <script src="js/item-assets.js"></script>
+    <script src="js/items.js"></script>
 
     <script>
+        // === POPULATE EQUIPMENT DROPDOWNS ===
+        function initializeInventoryUI() {
+            const gearSlots = ['helmet', 'armor', 'weapon', 'gloves', 'boots'];
+            const availableGear = { helmet: [], armor: [], weapon: [], gloves: [], boots: [] };
+
+            // Parse the master ItemDatabase to sort items by slot
+            for (let key in ItemDatabase) {
+                let item = ItemDatabase[key];
+                if (availableGear[item.slot]) {
+                    availableGear[item.slot].push(item);
+                }
+            }
+
+            // Inject `<option>` elements into the HTML selects
+            gearSlots.forEach(slot => {
+                let select = document.getElementById(`select-${slot}`);
+                availableGear[slot].forEach(item => {
+                    let opt = document.createElement('option');
+                    opt.value = item.id;
+                    opt.innerText = item.name;
+                    select.appendChild(opt);
+                });
+            });
+        }
+
+        // === HANDLE DROPDOWN CHANGES ===
+        function testerEquip(slot, itemId) {
+            if (itemId === "none") {
+                player.equipment[slot] = null;
+            } else {
+                player.equipment[slot] = ItemDatabase[itemId];
+            }
+            renderPreview();
+        }
+
+        // === UPGRADED RENDERER (INCLUDES GEAR LOGIC) ===
         function renderPreview() {
             const canvas = document.getElementById('tester-canvas');
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+            // 1. Draw Base Anatomy
             let bodySprite = player.appearance.gender === 'female' ? 'body_female' : 'body_male';
+            if (SpriteMatrices[bodySprite]) drawProceduralSprite(ctx, SpriteMatrices[bodySprite], 0, 0, 24);
+            if (SpriteMatrices[player.appearance.eyes]) drawProceduralSprite(ctx, SpriteMatrices[player.appearance.eyes], 0, 0, 24);
+            
+            // 2. Draw Hair (Unless hidden by a helmet)
+            const hidesHair = player.equipment.helmet && player.equipment.helmet.hidesHair;
+            if (!hidesHair && SpriteMatrices[player.appearance.hair]) {
+                drawProceduralSprite(ctx, SpriteMatrices[player.appearance.hair], 0, 0, 24);
+            }
 
-            // Stack the matrices just like the main game loop
-            if (SpriteMatrices[bodySprite]) drawProceduralSprite(ctx, SpriteMatrices[bodySprite], 0, 0, 32);
-            if (SpriteMatrices[player.appearance.eyes]) drawProceduralSprite(ctx, SpriteMatrices[player.appearance.eyes], 0, 0, 32);
-            if (SpriteMatrices[player.appearance.hair]) drawProceduralSprite(ctx, SpriteMatrices[player.appearance.hair], 0, 0, 32);
+// 3. Draw Equipment Layers
+            const eq = player.equipment;
+            let gSuffix = player.appearance.gender === 'female' ? '_female' : '_male';
+            
+            // Armor (Checks for gendered variants first)
+            if (eq.armor && eq.armor.spriteId) {
+                let sId = eq.armor.spriteId + gSuffix;
+                if (SpriteMatrices[sId]) drawProceduralSprite(ctx, SpriteMatrices[sId], 0, 0, 24);
+                else if (SpriteMatrices[eq.armor.spriteId]) drawProceduralSprite(ctx, SpriteMatrices[eq.armor.spriteId], 0, 0, 24);
+            }
+            
+            if (eq.boots && eq.boots.spriteId) drawProceduralSprite(ctx, SpriteMatrices[eq.boots.spriteId], 0, 0, 24);
+            if (eq.gloves && eq.gloves.spriteId) drawProceduralSprite(ctx, SpriteMatrices[eq.gloves.spriteId], 0, 0, 24);
+            if (eq.helmet && eq.helmet.spriteId) drawProceduralSprite(ctx, SpriteMatrices[eq.helmet.spriteId], 0, 0, 24);
+            
+            // === UPGRADED WEAPON RENDERER (WITH OVERSIZE LOGIC) ===
+            if (eq.weapon && eq.weapon.spriteId) {
+                ctx.save();
+                
+                // 1. Find the standard hand pivot on a 24x24 canvas
+                let wPivotX = 24 * 0.7; // Column 16.8
+                let wPivotY = 24 * 0.5; // Row 12
+                
+                // 2. Move to the hand
+                ctx.translate(wPivotX, wPivotY);
+                
+                // 3. Apply the scale multiplier (fallback to 1.0)
+                let scaleMult = eq.weapon.oversizeScale || 1.0;
+                ctx.scale(scaleMult, scaleMult);
+                
+                // 4. Move back to the top-left origin to draw the matrix
+                ctx.translate(-wPivotX, -wPivotY);
+                
+                drawProceduralSprite(ctx, SpriteMatrices[eq.weapon.spriteId], 0, 0, 24);
+                
+                ctx.restore();
+            }
+            
+            // Armor (Checks for gendered variants first)
+            if (eq.armor && eq.armor.spriteId) {
+                let sId = eq.armor.spriteId + gSuffix;
+                if (SpriteMatrices[sId]) drawProceduralSprite(ctx, SpriteMatrices[sId], 0, 0, 24);
+                else if (SpriteMatrices[eq.armor.spriteId]) drawProceduralSprite(ctx, SpriteMatrices[eq.armor.spriteId], 0, 0, 24);
+            }
+            
+            if (eq.boots && eq.boots.spriteId) drawProceduralSprite(ctx, SpriteMatrices[eq.boots.spriteId], 0, 0, 24);
+            if (eq.gloves && eq.gloves.spriteId) drawProceduralSprite(ctx, SpriteMatrices[eq.gloves.spriteId], 0, 0, 24);
+            if (eq.helmet && eq.helmet.spriteId) drawProceduralSprite(ctx, SpriteMatrices[eq.helmet.spriteId], 0, 0, 24);
+            if (eq.weapon && eq.weapon.spriteId) drawProceduralSprite(ctx, SpriteMatrices[eq.weapon.spriteId], 0, 0, 24);
         }
 
         function testerCycle(part) {
@@ -107,8 +235,11 @@
             renderPreview();
         }
 
-        // Hook into window load to draw the first frame
-        window.addEventListener('load', renderPreview);
+        // Initialize UI and draw first frame on load
+        window.addEventListener('load', () => {
+            initializeInventoryUI();
+            renderPreview();
+        });
     </script>
 </body>
 </html>

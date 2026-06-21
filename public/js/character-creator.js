@@ -2,6 +2,7 @@
 // Procedural Matrix Sprite Engine (Upgraded 24x24 Anatomy)
 
 const PALETTE = {
+    // --- EXISTING BASE ---
     '.': 'transparent', 
     'S': '#f1c27d',     // Base Skin Tone (Dynamically Overridden)
     '@': '#c0392b',     // Mouth / Lips (Protected from NPC Overrides!)
@@ -12,7 +13,7 @@ const PALETTE = {
     'P': '#2c3e50',     // Dark Pants (Dynamically Overridden)
     'D': '#3e2723',     // Leather Boots (Dynamically Overridden)
 
-    // --- MASTER ITEM & GEAR PALETTE ---
+    // --- EXISTING MASTER ITEM & GEAR PALETTE ---
     'I': '#7f8c8d',     // Iron Plate Armor Gray
     'Y': '#f1c40f',     // Golden Trim / Accent
     'R': '#e74c3c',     // Crimson Weapon Ruby
@@ -27,22 +28,81 @@ const PALETTE = {
     'W': '#ffffff',     // White / Foam / Glass
     'm': '#f39c12',     // Amber / Stout Beer
     'K': '#d35400',     // Deep Orange / IPA Beer 
-    'k': '#1a0f2e'      // Static Abyssal Void Trim 
+    'k': '#1a0f2e',     // Static Abyssal Void Trim 
+
+    // --- EXISTING METALLIC TRIMS & HIGHLIGHTS ---
+    'N': '#cd7f32',     // Bronze / Copper Trim 
+    'O': '#fdfefe',     // Platinum / Bright Silver 
+    'J': '#212f3c',     // Dark Steel / Gunmetal 
+    '0': '#0b0b0b',     // Obsidian / True Black Trim 
+
+    // --- EXISTING CLOTH & LEATHER ACCENTS ---
+    'Q': '#641e16',     // Deep Crimson Trim 
+    'E': '#154360',     // Royal Blue Trim 
+    'F': '#145a32',     // Forest Green Trim 
+    'L': '#f5cba7',     // Pale Leather / Parchment 
+
+    // --- EXISTING MAGICAL & ELEMENTAL GLOWS ---
+    'z': '#c39bd3',     // Arcane Pink / Magenta Glow 
+    'n': '#aed6f1',     // Frost / Ice Blue Glow 
+    'u': '#7cfc00',     // Toxic / Fel Green Glow 
+
+    // === NEW: HIGH-CONTRAST WEAPON MATERIALS ===
+    '!': '#2e180d',     // Deep Walnut / Darkest Brown (Perfect for weapon handles)
+    '^': '#7fb3d5',     // Mythril Blue (Stands out sharply against standard gray iron)
+    '&': '#17202a',     // Damascus / Charcoal Steel (For ultra-heavy, dark blades)
+    '%': '#d39e82',     // Rose Gold / Copper-Pink Metallic (Unique hilt trim)
+    '$': '#00ff7f'      // Vibrant Emerald (A piercing gem color to break up dark armor)
 };
-
-const SkinTones = { 'light': '#f1c27d', 'tan': '#d3a068', 'dark': '#8d5524', 'orc': '#556b2f' };
-const PantsTones = { 'dark': '#2c3e50', 'brown': '#5c3a21', 'grey': '#7f8c8d', 'tan': '#d3a068', 'blue': '#2980b9' };
-const BootsTones = { 'leather': '#3e2723', 'black': '#111111', 'grey': '#95a5a6' };
-
-const HairTones = {
-    'brown': '#5c3a21', 'blonde': '#f1c40f', 'black': '#111111', 'white': '#ecf0f1',
-    'orange': '#d35400', 'red': '#c0392b', 'blue': '#2980b9', 'purple': '#8e44ad'
+const SkinTones = { 
+    'light': '#f1c27d', 'tan': '#d3a068', 'dark': '#8d5524', 'orc': '#556b2f',
+    // --- NEW ---
+    'pale': '#ffebcd',     // Very fair/alabaster
+    'deep': '#4a2511',     // Rich, deep brown
+    'goblin': '#7a9c59',   // A lighter, yellower green than the dark orc
+    'undead': '#87939a'    // Ashy, pale grey-blue for that crypt aesthetic
 };
 
 const ShirtTones = {
     'blue': '#2980b9', 'red': '#c0392b', 'green': '#27ae60', 'black': '#2c3e50',
-    'white': '#ecf0f1', 'purple': '#8e44ad', 'brown': '#8b5a2b'
+    'white': '#ecf0f1', 'purple': '#8e44ad', 'brown': '#8b5a2b',
+    // --- NEW ---
+    'navy': '#1a252f',     // Deep midnight blue
+    'olive': '#6b8e23',    // Earthy ranger green
+    'gold': '#f1c40f',     // Bright tavern yellow/gold
+    'burgundy': '#722f37', // Deep, warm wine red
+    'teal': '#16a085'      // A nice muted cyan/teal
 };
+
+const PantsTones = { 
+    'dark': '#2c3e50', 'brown': '#5c3a21', 'grey': '#7f8c8d', 'tan': '#d3a068', 'blue': '#2980b9',
+    // --- NEW ---
+    'olive': '#556b2f',    // Matches well with woodland themes
+    'khaki': '#c3b091',    // Lighter than tan, good for merchants
+    'charcoal': '#111111', // True black/dark grey
+    'maroon': '#641e16'    // Deep reddish-brown
+};
+const BootsTones = { 
+    'leather': '#3e2723', 'black': '#111111', 'grey': '#95a5a6',
+    // --- NEW ---
+    'suede': '#8b5a2b',    // Lighter, warm brown leather
+    'iron': '#7f8c8d',     // Matches the plate armor grey perfectly
+    'burgundy': '#641e16', // Dyed noble leather
+    'olive': '#556b2f'     // Muted woodland trapper boots
+};
+
+const HairTones = {
+    'brown': '#5c3a21', 'blonde': '#f1c40f', 'black': '#111111', 'white': '#ecf0f1',
+    'orange': '#d35400', 'red': '#c0392b', 'blue': '#2980b9', 'purple': '#8e44ad',
+    // --- NEW ---
+    'auburn': '#8a3324',  // Deep reddish-brown
+    'silver': '#bdc3c7',  // Veteran knight grey/silver
+    'pink': '#ffb6c1',    // Classic JRPG fantasy trope
+    'teal': '#1abc9c',    // Bright, magical blue-green
+    'green': '#27ae60'    // Woodland ranger green
+};
+
+
 
 // === NEW: DYNAMIC EYE TONES ===
 const EyeTones = {
@@ -52,13 +112,23 @@ const EyeTones = {
 
 const appearanceOptions = {
     gender: ['male', 'female'],
-    skin: ['light', 'tan', 'dark', 'orc'],
-    hair: ['hair_messy', 'hair_spiky', 'hair_long', 'hair_bob', 'hair_braid', 'hair_buzzcut', 'hair_mohawk', 'hair_ponytail', 'hair_bald'],
-    hairColor: ['brown', 'blonde', 'black', 'white', 'orange', 'red', 'blue', 'purple'],
+    skin: ['light', 'tan', 'dark', 'deep', 'pale', 'orc', 'goblin', 'undead'],
+    hair: [
+        'hair_messy', 'hair_spiky', 'hair_long', 'hair_bob', 
+        'hair_braid', 'hair_buzzcut', 'hair_mohawk', 'hair_ponytail', 
+        'hair_undercut', 'hair_topknot', 'hair_curly', 'hair_twintails', 
+        'hair_bald'
+    ],
+    
+    // Added: auburn, silver, pink, teal, green
+    hairColor: ['brown', 'blonde', 'black', 'white', 'orange', 'red', 'blue', 'purple', 'auburn', 'silver', 'pink', 'teal', 'green'],
+    
     eyes: ['eyes_blue', 'eyes_green', 'eyes_brown', 'eyes_red', 'eyes_purple', 'eyes_gold', 'eyes_grey', 'eyes_black', 'eyes_white'],
-    shirtColor: ['blue', 'red', 'green', 'black', 'white', 'purple', 'brown'],
-    pantsColor: ['dark', 'brown', 'grey', 'tan', 'blue'],
-    bootsColor: ['leather', 'black', 'grey']
+    shirtColor: ['blue', 'red', 'green', 'black', 'white', 'purple', 'brown', 'navy', 'olive', 'gold', 'burgundy', 'teal'],
+    pantsColor: ['dark', 'brown', 'grey', 'tan', 'blue', 'olive', 'khaki', 'charcoal', 'maroon'],
+    
+    // Added: suede, iron, burgundy, olive
+    bootsColor: ['leather', 'black', 'grey', 'suede', 'iron', 'burgundy', 'olive']
 };
 
 function buildSprite(stringArray) {
@@ -85,13 +155,13 @@ const SpriteMatrices = {
         ".........SS@@SS.........", 
         "..........SSSS..........", 
         "......UUUUUUUUUUUU......", 
-        ".....UUUUUUUUUUUUUU.....", 
-        ".....UU..UUUUUU..UU.....", 
-        ".....SS..UUUUUU..SS.....", 
-        ".....SS..UUUUUU..SS.....", 
-        ".....SS..UUUUUU..SS.....", 
+        "......UUUUUUUUUUUU......", 
+        "......UU.UUUUUU.UU......", 
+        "......SS.UUUUUU.SS......", 
+        "......SS.UUUUUU.SS......", 
+        "......SS.UUUUUU.SS......", 
         ".........UUUUUU.........", 
-        "........PPPPPPPP........", 
+        ".........PPPPPP.........", 
         "........PPPPPPPP........", 
         "........PPPPPPPP........", 
         "........PPP..PPP........", 
@@ -144,7 +214,7 @@ const SpriteMatrices = {
         "......HH........HH......",
         "......HH........HH......",
         "......HH........HH......",
-        "......HH........HH......",
+        "......H..........H......",
         "......H..........H......"
     ]),
     hair_bob: buildSprite([
@@ -159,16 +229,16 @@ const SpriteMatrices = {
         "........................",
         "........HHHHHHHH........",
         ".......HHHHHHHHHH.......",
-        "......HH........HH......",
-        "......H..........H......",
+        ".......H........HH......",
+        ".......H.........H......",
         "................HH......",
         "...............HH.......",
         "...............HH.......",
         "................HH......",
-        "................H......."
+        "...............HH......."
     ]),
     hair_spiky: buildSprite([ 
-        ".......H........H.......",
+        ".....HHH........HHH.....",
         "......HHHHHHHHHHHH......",
         ".......H........H.......",
         "......HH........HH......",
@@ -184,17 +254,58 @@ const SpriteMatrices = {
         ".........HHHHHH.........",
         "........H......H........"
     ]),
-    hair_ponytail: buildSprite([
+// --- ADJUSTED 24x24 HAIRSTYLES (Shifted Up 1 Row) ---
+
+    // Undercut: Uses Row 0 for volume, sits cleanly over the top of the skull.
+    hair_undercut: buildSprite([
+        ".........HHHHHH.........",
+        "........HHHHHHHH........",
+        "........H......H........"
+    ]),
+
+    // Topknot: Pushes the knot way up high, keeping the forehead clear.
+    hair_topknot: buildSprite([
+        "..........HH............",
+        ".........HHHHHHHH.......",
+        "........HHHHHHHH........",
+        "......HHH......HH.......",
+        ".......H........H.......",
+        ".......H........H......."
+    ]),
+
+    // Curly/Fro: Massive volume in Row 0, wrapping cleanly down the sides of the cheeks.
+    hair_curly: buildSprite([
+        ".......HHHHHHHHHH.......",
+        "......HHHHHHHHHHHH......",
+        "......HH........HH......",
+        "......HH........HH......",
+        "......HH........HH......",
+        ".......H........H......."
+    ]),
+
+    // Twin tails: Top volume added, and the tails drop beautifully past the chin (Row 6).
+    hair_twintails: buildSprite([
         "........................",
         "........HHHHHHHH........",
         ".......HHHHHHHHHH.......",
-        ".......H........H.......",
+        "......HHH......HHH......",
+        ".......HH......HH.......",
+        ".......HH......HH.......",
+        ".....H.HH......HH.H.....",
+        ".....HHH........HHH.....",
+        "........................"
+    ]),
+	
+    hair_ponytail: buildSprite([
+	        "........................",
+        "........HHHHHHHHH.......",
+        ".......HH.......HH......",
         ".......H........HH......",
-        ".................HHHH...",
-        "...................HH...",
-        "...................HH...",
-        "..................HH....",
-        "..................H....."
+        ".......H........HH......",
+        "........H......HH.......",
+        ".......,......HH........",
+        ".............HH.........",
+		".............HHH........",
     ]),
     hair_bald: buildSprite([]),
 

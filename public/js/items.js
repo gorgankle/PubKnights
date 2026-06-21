@@ -81,7 +81,7 @@ const ItemDatabase = {
         value: 25, 
         spriteId: "weap_machete" 
     },
-    "hunters_spear": { 
+"hunters_spear": { 
         id: "hunters_spear", 
         name: "Hunter's Spear", 
         slot: "weapon", 
@@ -90,7 +90,8 @@ const ItemDatabase = {
         atkBonus: 8, 
         attackRange: 2, 
         value: 40, 
-        spriteId: "weap_spear" 
+        spriteId: "weap_spear",
+
     },
     "boar_hide_armor": { 
         id: "boar_hide_armor", 
@@ -108,7 +109,7 @@ const ItemDatabase = {
         rarity: "Rare", 
         atkBonus: 6, 
         value: 35, 
-        spriteId: "gloves_poacher" 
+        spriteId: "poachers_grips" 
     },
     "wilderness_cloak": { 
         id: "wilderness_cloak", 

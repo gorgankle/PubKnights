@@ -253,13 +253,29 @@ mapObstacles.forEach(o => {
     if (eq.gloves && eq.gloves.spriteId && SpriteMatrices[eq.gloves.spriteId]) drawProceduralSprite(ctx, SpriteMatrices[eq.gloves.spriteId], pX, pY, currentTileSize);
     if (eq.helmet && eq.helmet.spriteId && SpriteMatrices[eq.helmet.spriteId]) drawProceduralSprite(ctx, SpriteMatrices[eq.helmet.spriteId], pX, pY, currentTileSize);
     
-    if (eq.weapon && eq.weapon.spriteId && SpriteMatrices[eq.weapon.spriteId]) {
+if (eq.weapon && eq.weapon.spriteId && SpriteMatrices[eq.weapon.spriteId]) {
         ctx.save();
-        let wPivotX = pX + (currentTileSize * 0.7); let wPivotY = pY + (currentTileSize * 0.5);
+        
+        // 1. Establish the hand's pivot point (Standard Left Hand / Viewer's Right)
+        let wPivotX = pX + (currentTileSize * 0.7); 
+        let wPivotY = pY + (currentTileSize * 0.5);
+        
+        // 2. Move the canvas origin to the hand
         ctx.translate(wPivotX, wPivotY);
+        
+        // 3. Apply standard rotation (attacking or chugging)
         ctx.rotate(pWeaponRot);
         if (player.chugTimer > 0) ctx.rotate(Math.PI / 4); // Tuck weapon slightly when drinking
+        
+        // === 4. THE ENGINE TRICK: SCALE THE CANVAS ===
+        let scaleMult = eq.weapon.oversizeScale || 1.0;
+        ctx.scale(scaleMult, scaleMult);
+        // =============================================
+
+        // 5. Move the origin back so the procedural matrix aligns correctly
         ctx.translate(-wPivotX, -wPivotY);
+        
+        // 6. Draw the weapon!
         drawProceduralSprite(ctx, SpriteMatrices[eq.weapon.spriteId], pX, pY, currentTileSize);
         ctx.restore();
     }
