@@ -102,16 +102,19 @@ io.on('connection', (socket) => {
                 activePlayers[socket.id] = {
                     ...data.saveData, // Accept the client's inventory, gold, and stats
                     
-                    // Fiercely protect Map Unlocks (Never let them roll backward)
+					// Fiercely protect Map Unlocks (Never let them roll backward)
                     wildernessLevel: Math.max(p.wildernessLevel || 1, data.saveData.wildernessLevel || 1),
                     cellarLevel: Math.max(p.cellarLevel || 1, data.saveData.cellarLevel || 1),
                     abyssDepth: Math.max(p.abyssDepth || 1, data.saveData.abyssDepth || 1),
                     cellarsUnlocked: p.cellarsUnlocked || data.saveData.cellarsUnlocked,
                     abyssUnlocked: p.abyssUnlocked || data.saveData.abyssUnlocked,
                     
-                    // Fiercely protect the XP/Gold Escrow
+                    // Fiercely protect the XP/Gold/Loot Escrow
                     pendingXp: p.pendingXp !== undefined ? p.pendingXp : data.saveData.pendingXp,
-                    pendingGold: p.pendingGold !== undefined ? p.pendingGold : data.saveData.pendingGold
+                    pendingGold: p.pendingGold !== undefined ? p.pendingGold : data.saveData.pendingGold,
+                    
+                    // === THE FIX: PROTECT THE LOOT ESCROW FROM BEING WIPED ===
+                    pendingLoot: p.pendingLoot !== undefined ? p.pendingLoot : data.saveData.pendingLoot
                 };
             } else {
                 activePlayers[socket.id] = data.saveData; 

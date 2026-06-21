@@ -284,8 +284,13 @@ socket.on('killConfirmed', (data) => {
     
     if (data.xp > 0) logMessage(`💀 Terminated entity: ${data.enemyName} (Stored ${data.xp} XP)`);
 
-    if (data.item) {
-        pendingLoot.push(data.item);
+if (data.item) {
+        pendingLoot.push(data.item); // For the visual UI
+        
+        // === THE FIX: STORE IT IN THE PLAYER'S LOCAL MEMORY TOO ===
+        player.pendingLoot = player.pendingLoot || [];
+        player.pendingLoot.push(data.item);
+
         if (data.isPet) logMessage(`🐾 ${player.pet.name} joyfully dug up a hidden treasure!`);
         else logMessage(`🎁 SECURED LOOT: ${data.item.name} [${data.item.rarity}]`);
     }
