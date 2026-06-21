@@ -148,11 +148,17 @@ function refreshSystemUI() {
             if (combatPhase === 'MOVE' || combatPhase === 'ACTION') combatPhase = 'PHASE_1';
         }
 
-        if (gameState === 'COMBAT') {
-            if (topNavBar) topNavBar.style.display = "none"; // Hide Nav Bar in battle
-            townVaultView.style.display = "none"; 
+// === FULL SCREEN EXCLUSIVE VIEWS ===
+        const lumberScreen = document.getElementById("minigame-lumber-screen");
+
+        if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER') {
+            if (topNavBar) topNavBar.style.display = "none"; // Hide Nav Bar
+            townVaultView.style.display = "none"; // Hide the Town
             vaultScreen.style.display = "none"; 
-            combatScreen.style.display = "block";
+
+            if (gameState === 'COMBAT') {
+                if (lumberScreen) lumberScreen.style.display = "none";
+                combatScreen.style.display = "block";
             
             let dynamicBg = "none";
             if (activeCombatZone === 'WILDERNESS') dynamicBg = "url('assets/images/wilds-bg.png')";
@@ -358,13 +364,6 @@ else {
 			} else if (gameState === 'UPGRADES') {
                 if (upgradesScreen) upgradesScreen.style.display = "flex";
                 document.getElementById('nav-town').classList.add('active-tab');
-            } else if (gameState === 'MINIGAME_LUMBER') {
-                if (lumberScreen) lumberScreen.style.display = "flex";
-                
-                // Safety wrapper prevents the crash!
-                let advTab = document.getElementById('nav-adventures');
-                if (advTab) advTab.classList.add('active-tab');
-            }
 
             // --- NEW: DYNAMIC KNIGHT HEADER & STATS ---
             const knightHeader = document.getElementById("knight-header-name");

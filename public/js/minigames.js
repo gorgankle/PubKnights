@@ -12,7 +12,7 @@ let currentSpeed = baseSpeed;
 let isFrozen = false;
 let animationFrameId = null;
 
-const barWidth = 440; // Approximate width of the container
+let barWidth = 440;// Approximate width of the container
 const targetWidth = 40;
 const indicatorWidth = 6;
 let targetPos = 200;
@@ -29,8 +29,12 @@ function startLumberMinigame() {
     lumberTimer = 90;
     lumberPoints = 0;
     lumberCombo = 1;
-    currentSpeed = baseSpeed;
+	currentSpeed = baseSpeed;
     indicatorPos = 0;
+    
+    // === NEW: DYNAMICALLY CALCULATE THE BAR WIDTH ===
+    let barContainer = document.getElementById("rhythm-bar-container");
+    if (barContainer) barWidth = barContainer.clientWidth;
     
     document.getElementById("lumber-start-btn").style.display = "none";
     document.getElementById("lumber-chop-btn").style.display = "block";
