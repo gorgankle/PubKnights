@@ -257,7 +257,7 @@ if (eq.weapon && eq.weapon.spriteId && SpriteMatrices[eq.weapon.spriteId]) {
         ctx.save();
         
         // 1. Establish the hand's pivot point (Standard Left Hand / Viewer's Right)
-        let wPivotX = pX + (currentTileSize * 0.7); 
+		let wPivotX = pX + (currentTileSize * 0.58);
         let wPivotY = pY + (currentTileSize * 0.5);
         
         // 2. Move the canvas origin to the hand
