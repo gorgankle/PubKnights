@@ -428,7 +428,7 @@ if (data.action === 'equip') {
 
             socket.emit('townReceipt', { success: success, action: 'trade', updatedPlayer: p, message: msg });
         }
-        // 23. UNBOX GAMBLE CRATES
+// 23. UNBOX GAMBLE CRATES
         else if (data.action === 'openCrate') {
             const invIndex = data.index; const crateId = data.crateId;
             if (!p.inventory[invIndex] || p.inventory[invIndex].id !== crateId) return socket.emit('townReceipt', { success: false, message: "❌ Invalid crate selection." });
@@ -469,6 +469,7 @@ if (data.action === 'equip') {
                         }
                     } else {
                         lootMsg = "The crate was mysteriously empty...";
+                        finalRarity = "None";
                     }
                 }
             } else {
