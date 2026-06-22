@@ -188,7 +188,7 @@ let isReeling = false;
 // Physics constants as requested by user
 const GRAVITY = 0.1;
 const LIFT = 0.1;
-const THRASH_SPEED = 1.5;
+const THRASH_SPEED = 1.0;
 
 // Phase State Machine: 0 = Sweeping, 1 = Dropping, 2 = Waiting, 3 = Reeling
 let fishingPhase = 0; 
