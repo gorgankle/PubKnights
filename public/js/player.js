@@ -5,6 +5,9 @@ let player = {
     level: 1, xp: 0, xpToNext: 100, skillPoints: 0,
     vitality: 70, hp: 70, stamina: 50, maxStamina: 50, power: 12, accuracy: 85, resilience: 5, swiftness: 3,
     vaultSlots: 10, gold: 0, hops: 0, wood: 0, fish: 0, 
+	lumberPoints: 0,  // NEW: Active timber game currency
+    fishingPoints: 0, // NEW: Active fishing game currency
+    hopsPoints: 0,    // NEW: Active hops game currency
     idleJob: 'TAVERN', wildernessLevel: 1, cellarsUnlocked: false, cellarLevel: 1,         
     
 	appearance: { gender: 'male', skin: 'light', hair: 'hair_messy', hairColor: 'brown', eyes: 'eyes_blue', shirtColor: 'blue', pantsColor: 'dark', bootsColor: 'leather' },

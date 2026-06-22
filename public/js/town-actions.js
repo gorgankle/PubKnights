@@ -139,6 +139,58 @@ function exchangePoints(type, tier) {
         tier: tier 
     });
 }
+// === UNBOXING SEQUENCE ===
+function triggerUnboxing(inventoryIndex, crateItem) {
+    if (gameState === 'COMBAT') {
+        logMessage("❌ You cannot open crates while in combat!");
+        return;
+    }
+
+    const overlay = document.getElementById('unboxing-overlay');
+    const crateVisual = document.getElementById('unboxing-crate-sprite');
+    const lootReveal = document.getElementById('unboxing-loot-reveal');
+    const title = document.getElementById('unboxing-title');
+
+    // 1. Reset UI State
+    overlay.style.display = 'flex';
+    lootReveal.style.display = 'none';
+    crateVisual.classList.add('shaking-crate');
+    crateVisual.classList.remove('popped-loot');
+    crateVisual.innerHTML = '📦'; // You can replace this with a canvas drawOptimizedSprite call later!
+    title.innerText = "Breaking the Seal...";
+
+    if (typeof playRetroSound === 'function') playRetroSound('step'); // Placeholder tension sound
+
+    // 2. Tell the server to consume the crate and roll the loot
+    socket.emit('townAction', { action: 'openCrate', index: inventoryIndex, crateId: crateItem.id });
+
+    // 3. Wait for the server to reply with the loot before finishing the animation
+    socket.once('crateOpened', (data) => {
+        setTimeout(() => {
+            // Stop shaking, pop the box
+            crateVisual.classList.remove('shaking-crate');
+            crateVisual.classList.add('popped-loot');
+            crateVisual.innerHTML = '✨';
+            
+            if (typeof playRetroSound === 'function') playRetroSound('victory'); // Placeholder victory sound
+            
+            title.innerText = "Crate Opened!";
+            title.style.color = "#2ecc71";
+            
+            document.getElementById('unboxing-loot-desc').innerText = data.lootMessage;
+            lootReveal.style.display = 'block';
+            
+            // Re-render the UI to show the new item in the inventory
+            if (typeof refreshSystemUI === 'function') refreshSystemUI();
+            
+        }, 1500); // 1.5 seconds of suspenseful shaking
+    });
+}
+
+function closeUnboxing() {
+    document.getElementById('unboxing-overlay').style.display = 'none';
+}
+
 
 // === PET PROGRESSION SYSTEM ===
 function trainPet() {

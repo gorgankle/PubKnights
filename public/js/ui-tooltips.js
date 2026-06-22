@@ -15,6 +15,13 @@ else if (type === 'pet_train') {
         let cost = getPetTrainingCost();
         html = `<h3>🦴 Hop-Infused Kibble</h3>Formulate a nutrient-dense superfood for your companion.<br>📈 <b>Reward:</b> +1% cumulative chance per level to dig up exclusive Pet-Only Loot after every combat victory!<br>💰 Cost: ${cost.hops} Hops, ${cost.fish} Fish, ${cost.gold}g`;
     }
+	
+	else if (item.slot === "consumable") {
+        if (item.type === "crate") {
+            html += `📦 <b>Mystery Box:</b> Click to break the seal and reveal the loot inside.<br>`;
+            html += `<span style="color: #bbaaa0; font-style: italic; font-size: 10px;">${item.desc}</span><br>`;
+        }
+		
     else if (type === 'adventures_enter') {
         html = `<h3>⚔️ Adventure Board</h3>Check the latest local bounties, adjust map difficulty levels, and deploy your Knight into combat zones.`;
     }

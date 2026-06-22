@@ -296,6 +296,40 @@ const ItemDatabase = {
         id: "blackout_staggers", name: "The Spins (Staggering Boots)", slot: "boots", rarity: "Relic", 
         moveBonus: 3, value: 2200, spriteId: "boots_blackout" 
     }
+	
+// === GAMBLE CRATES ===
+const GAMBLE_CRATES = {
+    timber_crate: {
+        id: "timber_crate",
+        name: "Sealed Timber Crate",
+        slot: "consumable",
+        type: "crate",
+        rarity: "Epic",
+        value: 1000, 
+        spriteId: "icon_crate_timber", // Your 24x24 sprite mapping
+        desc: "A heavy, splintering box smelling of pine. Who knows what the Quartermaster packed inside?"
+    },
+    angler_crate: {
+        id: "angler_crate",
+        name: "Waterlogged Angler Crate",
+        slot: "consumable",
+        type: "crate",
+        rarity: "Epic",
+        value: 1000,
+        spriteId: "icon_crate_angler",
+        desc: "A damp, barnacle-covered crate. It sloshes slightly when shaken."
+    },
+    harvest_crate: {
+        id: "harvest_crate",
+        name: "Overgrown Harvest Crate",
+        slot: "consumable",
+        type: "crate",
+        rarity: "Epic",
+        value: 1000,
+        spriteId: "icon_crate_harvest",
+        desc: "A crate wrapped in thick vines. Smells faintly of fermenting hops."
+    }
+	
 }; // <--- THIS CLOSES THE ITEM DATABASE!
 
 // The helper function stays safely OUTSIDE the database

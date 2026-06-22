@@ -989,7 +989,7 @@ if (dist <= bomb.aoe) {
                 socket.emit('townReceipt', { success: false, message: "❌ Guild rejected fraudulent harvest log." });
             }
         }	
-		// ==========================================
+// ==========================================
         // 22. QUARTERMASTER POINT EXCHANGE
         // ==========================================
         else if (data.action === 'exchangePoints') {
@@ -1014,8 +1014,10 @@ if (dist <= bomb.aoe) {
                     p.wood = (p.wood || 0) + rewardAmt;
                     msg = `🌲 Quartermaster traded ${cost} Pts for ${rewardAmt} Timber.`;
                 } else if (tier === 'gamble') {
-                    // TODO: Wire up to LootManager for Timber Crate
-                    msg = `📦 Purchased a Timber Gamble Crate! (Loot logic pending)`;
+                    let newCrate = JSON.parse(JSON.stringify(GAMBLE_CRATES.timber_crate));
+                    if (p.inventory.length < (p.maxInventorySlots || 5)) p.inventory.push(newCrate);
+                    else p.stash.push(newCrate);
+                    msg = `📦 Purchased a Sealed Timber Crate! It has been sent to your storage.`;
                 }
                 success = true;
             }
@@ -1026,8 +1028,10 @@ if (dist <= bomb.aoe) {
                     p.fish = (p.fish || 0) + rewardAmt;
                     msg = `🐟 Quartermaster traded ${cost} Pts for ${rewardAmt} Fish.`;
                 } else if (tier === 'gamble') {
-                    // TODO: Wire up to LootManager for Angler Crate
-                    msg = `📦 Purchased an Angler Gamble Crate! (Loot logic pending)`;
+                    let newCrate = JSON.parse(JSON.stringify(GAMBLE_CRATES.angler_crate));
+                    if (p.inventory.length < (p.maxInventorySlots || 5)) p.inventory.push(newCrate);
+                    else p.stash.push(newCrate);
+                    msg = `📦 Purchased an Angler Gamble Crate! It has been sent to your storage.`;
                 }
                 success = true;
             }
@@ -1038,8 +1042,10 @@ if (dist <= bomb.aoe) {
                     p.hops = (p.hops || 0) + rewardAmt;
                     msg = `🌾 Quartermaster traded ${cost} Pts for ${rewardAmt} Hops.`;
                 } else if (tier === 'gamble') {
-                    // TODO: Wire up to LootManager for Harvest Crate
-                    msg = `📦 Purchased a Harvest Gamble Crate! (Loot logic pending)`;
+                    let newCrate = JSON.parse(JSON.stringify(GAMBLE_CRATES.harvest_crate));
+                    if (p.inventory.length < (p.maxInventorySlots || 5)) p.inventory.push(newCrate);
+                    else p.stash.push(newCrate);
+                    msg = `📦 Purchased a Harvest Gamble Crate! It has been sent to your storage.`;
                 }
                 success = true;
             } else {
