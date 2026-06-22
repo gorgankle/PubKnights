@@ -37,14 +37,15 @@ socket.on('combatResult', (result) => {
     // Sync the server's authoritative stamina deduction/recovery
     player.stamina = result.newStamina;
 
-    // 1. Catch Server Rejections & Aggressively Unlock the UI
+// 1. Catch Server Rejections & Aggressively Unlock the UI
     if (result.type === 'error') {
         logMessage(result.message);
         if (typeof playRetroSound === 'function') playRetroSound('error');
 
-        // CRITICAL FIX: Force all animation locks open so the player isn't stuck!
-        if (typeof combatPhase !== 'undefined') combatPhase = 'ACTION';
-        if (typeof isAnimating !== 'undefined') window.isAnimating = false;
+        // CRITICAL FIX: Drop the 'window.' prefix to correctly target the 'let' variable!
+        // We wrap it in a try/catch just in case the variable scope is completely isolated.
+        try { isAnimating = false; } catch (e) {}
+        try { pendingAction = null; } catch (e) {}
 
         refreshSystemUI();
         return; 
