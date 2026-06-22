@@ -223,4 +223,4 @@ const CRATE_LOOT_TABLES = {
 
 
 // Make file readable by Node.js server
-if (typeof module !== 'undefined' && module.exports) module.exports = { LootTables };
+if (typeof module !== 'undefined' && module.exports) module.exports = { LootTables, CRATE_LOOT_TABLES };

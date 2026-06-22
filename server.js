@@ -7,7 +7,7 @@ const mongoose = require('mongoose');
 // Import game data dictionaries into the server
 const { GAMBLE_CRATES } = require('./public/js/items.js');
 const { ItemDatabase } = require('./public/js/items.js');
-const { LootTables } = require('./public/js/lootTables.js');
+const { LootTables, CRATE_LOOT_TABLES } = require('./public/js/lootTables.js');
 const { NpcDatabase, createEnemy } = require('./public/js/npc-database.js');
 
 // Initialize the Express app and wrap it in an HTTP server for Socket.io
@@ -66,59 +66,6 @@ app.get('/', (req, res) => {
 });
 
 
-// ==========================================
-// --- SECURE SERVER-SIDE LOOT TABLES ---
-// ==========================================
-const CRATE_LOOT_TABLES = {
-    timber_crate: {
-        common: [
-            { id: "wood", name: "Bundle of Wood", amt: 150, type: "resource" },
-            { id: "junk_splinters", name: "Handful of Splinters", amt: 1, type: "junk", desc: "Completely worthless. Better luck next time." }
-        ],
-        uncommon: [
-            { id: "wood", name: "Lumber Haul", amt: 1500, type: "resource" },
-            { id: "bomb_small", name: "Small Keg Bomb", amt: 2, type: "consumable" }
-        ],
-        rare: [
-            { id: "bomb_heavy", name: "Heavy Keg Bomb", amt: 3, type: "consumable" }
-        ],
-        jackpot: [
-            { id: "axe_timberlord", name: "Timber-Lord's Axe", type: "gear", slot: "weapon", desc: "A colossal axe. Guaranteed critical strikes against plant-based enemies." }
-        ]
-    },
-    angler_crate: {
-        common: [
-            { id: "fish", name: "Sack of Fish", amt: 150, type: "resource" },
-            { id: "junk_boots", name: "Waterlogged Boot", amt: 1, type: "junk", desc: "Smells awful." }
-        ],
-        uncommon: [
-            { id: "fish", name: "Trawler Catch", amt: 1500, type: "resource" },
-            { id: "lager", name: "Swift Lager", amt: 2, type: "consumable" }
-        ],
-        rare: [
-            { id: "fish_wholesale", name: "Wholesale Export Voucher", amt: 1, type: "consumable", desc: "Instantly claim 1500 Gold." }
-        ],
-        jackpot: [
-            { id: "waders_angler", name: "The Angler's Waders", type: "gear", slot: "boots", desc: "Grants +20% damage in the deepest levels of the Procedural Abyss." }
-        ]
-    },
-    harvest_crate: {
-        common: [
-            { id: "hops", name: "Sack of Hops", amt: 150, type: "resource" },
-            { id: "junk_vine", name: "Rotten Vine", amt: 1, type: "junk", desc: "Withered and useless." }
-        ],
-        uncommon: [
-            { id: "hops", name: "Bountiful Harvest", amt: 1500, type: "resource" },
-            { id: "ipa", name: "Furious IPA", amt: 2, type: "consumable" }
-        ],
-        rare: [
-            { id: "reserve", name: "Grandmaster Reserve", amt: 2, type: "consumable" }
-        ],
-        jackpot: [
-            { id: "hat_harvester", name: "Harvester's Straw Hat", type: "gear", slot: "helmet", desc: "A legendary farmer's hat. Grants a passive +5% to Deflection." }
-        ]
-    }
-};
 
 function rollSecureCrateLoot(crateId) {
     const table = CRATE_LOOT_TABLES[crateId];
