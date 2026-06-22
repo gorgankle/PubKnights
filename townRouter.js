@@ -400,7 +400,8 @@ if (data.action === 'equip') {
                 p.lumberPoints -= cost;
                 if (tier === 'low' || tier === 'mid') { p.wood = (p.wood || 0) + rewardAmt; msg = `🌲 Quartermaster traded ${cost} Pts for ${rewardAmt} Timber.`; } 
                 else if (tier === 'gamble') {
-                    let newCrate = JSON.parse(JSON.stringify(GAMBLE_CRATES.timber_crate));
+                    // FIX: Pull directly from ItemDatabase!
+                    let newCrate = JSON.parse(JSON.stringify(ItemDatabase["timber_crate"]));
                     if (p.inventory.length < (p.maxInventorySlots || 5)) p.inventory.push(newCrate); else p.stash.push(newCrate);
                     msg = `📦 Purchased a Sealed Timber Crate! It has been sent to your storage.`;
                 }
@@ -410,7 +411,8 @@ if (data.action === 'equip') {
                 p.fishingPoints -= cost;
                 if (tier === 'low' || tier === 'mid') { p.fish = (p.fish || 0) + rewardAmt; msg = `🐟 Quartermaster traded ${cost} Pts for ${rewardAmt} Fish.`; } 
                 else if (tier === 'gamble') {
-                    let newCrate = JSON.parse(JSON.stringify(GAMBLE_CRATES.angler_crate));
+                    // FIX: Pull directly from ItemDatabase!
+                    let newCrate = JSON.parse(JSON.stringify(ItemDatabase["angler_crate"]));
                     if (p.inventory.length < (p.maxInventorySlots || 5)) p.inventory.push(newCrate); else p.stash.push(newCrate);
                     msg = `📦 Purchased an Angler Gamble Crate! It has been sent to your storage.`;
                 }
@@ -420,7 +422,8 @@ if (data.action === 'equip') {
                 p.hopsPoints -= cost;
                 if (tier === 'low' || tier === 'mid') { p.hops = (p.hops || 0) + rewardAmt; msg = `🌾 Quartermaster traded ${cost} Pts for ${rewardAmt} Hops.`; } 
                 else if (tier === 'gamble') {
-                    let newCrate = JSON.parse(JSON.stringify(GAMBLE_CRATES.harvest_crate));
+                    // FIX: Pull directly from ItemDatabase!
+                    let newCrate = JSON.parse(JSON.stringify(ItemDatabase["harvest_crate"]));
                     if (p.inventory.length < (p.maxInventorySlots || 5)) p.inventory.push(newCrate); else p.stash.push(newCrate);
                     msg = `📦 Purchased a Harvest Gamble Crate! It has been sent to your storage.`;
                 }
@@ -458,7 +461,10 @@ else if (prize.type === "consumable" || prize.type === "gear" || prize.type === 
                 }
             } else lootMsg = "The crate was mysteriously empty...";
 
-            socket.emit('crateOpened', { success: true, lootMessage: lootMsg, rarity: rolledLoot.rarity });
+            // CRASH FIX: Safely check if rolledLoot exists before reading its rarity!
+            let finalRarity = rolledLoot ? rolledLoot.rarity : "None";
+            
+            socket.emit('crateOpened', { success: true, lootMessage: lootMsg, rarity: finalRarity });
             socket.emit('townReceipt', { success: true, action: 'inventoryUpdate', updatedPlayer: p, message: "" });
         }
 		// 24. SECURE IDLE JOB ASSIGNMENT
