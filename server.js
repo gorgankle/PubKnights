@@ -1014,27 +1014,23 @@ if (dist <= bomb.aoe) {
                 socket.emit('townReceipt', { success: false, message: "❌ Not enough stock. The merchant ships require exactly 1,000 Fish." });
             }
         }
-        // 19. MINIGAME PAYOUT SECURE HANDLER
-        else if (data.action === 'claimLumberMinigame') {
-            // Basic Anti-Cheat Sanity Check
-            if (data.points > 0 && data.points < 250000) {
-                // Initialize the new currency if it doesn't exist
+// 19. MINIGAME PAYOUT SECURE HANDLER
+		else if (data.action === 'claimLumberMinigame') {
+            if (data.points >= 0 && data.woodChopped >= 0 && data.woodChopped < 300) { 
                 p.lumberPoints = (p.lumberPoints || 0) + data.points;
+                p.wood = (p.wood || 0) + data.woodChopped;
                 
                 socket.emit('townReceipt', { 
                     success: true, 
                     action: 'minigameWin', 
                     updatedPlayer: p, 
-                    message: `🪓 Expedition Complete! Secured ${data.points} Lumber Points.` 
+                    message: `🌲 Timber Camp Complete! Secured ${data.woodChopped} Wood and ${data.points} Pts.` 
                 });
-            } else {
-                socket.emit('townReceipt', { success: false, message: "❌ Guild rejected fraudulent point submission." });
             }
         }
 		// 20. FISHING POND SECURE HANDLER
-        else if (data.action === 'claimFishingMinigame') {
-            // Anti-cheat verification
-            if (data.fishCaught >= 0 && data.fishCaught < 200) { 
+		else if (data.action === 'claimFishingMinigame') {
+            if (data.points >= 0 && data.fishCaught >= 0 && data.fishCaught < 300) { 
                 p.fishingPoints = (p.fishingPoints || 0) + data.points;
                 p.fish = (p.fish || 0) + data.fishCaught;
                 
@@ -1042,17 +1038,13 @@ if (dist <= bomb.aoe) {
                     success: true, 
                     action: 'minigameWin', 
                     updatedPlayer: p, 
-                    message: `🎣 Angling Complete! Secured ${data.fishCaught} Fish and ${data.points} Pts.` 
+                    message: `🐟 Fishing Complete! Secured ${data.fishCaught} Fish and ${data.points} Pts.` 
                 });
-            } else {
-                socket.emit('townReceipt', { success: false, message: "❌ Guild rejected fraudulent catch log." });
             }
         }
-// 21. HOPS HARVESTING SECURE HANDLER
+        // 21. HOPS HARVESTING SECURE HANDLER
         else if (data.action === 'claimHopsMinigame') {
-            // Anti-cheat verification
             if (data.points >= 0 && data.hopsHarvested >= 0 && data.hopsHarvested < 300) { 
-                // Initialize the new currency if it doesn't exist yet
                 p.hopsPoints = (p.hopsPoints || 0) + data.points;
                 p.hops = (p.hops || 0) + data.hopsHarvested;
                 
@@ -1062,10 +1054,8 @@ if (dist <= bomb.aoe) {
                     updatedPlayer: p, 
                     message: `🌾 Harvest Complete! Secured ${data.hopsHarvested} Hops and ${data.points} Pts.` 
                 });
-            } else {
-                socket.emit('townReceipt', { success: false, message: "❌ Guild rejected fraudulent harvest log." });
             }
-        }	
+        }
 // ==========================================
         // 22. QUARTERMASTER POINT EXCHANGE
         // ==========================================

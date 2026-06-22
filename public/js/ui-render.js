@@ -148,6 +148,17 @@ function refreshSystemUI() {
             if (combatPhase === 'MOVE' || combatPhase === 'ACTION') combatPhase = 'PHASE_1';
         }
 
+// === QUARTERMASTER POINTS UI UPDATE ===
+    let timberUi = document.getElementById('ui-timber-pts');
+    if (timberUi) timberUi.innerText = player.lumberPoints || 0;
+    
+    let fishUi = document.getElementById('ui-fish-pts');
+    if (fishUi) fishUi.innerText = player.fishingPoints || 0;
+    
+    let hopsUi = document.getElementById('ui-hops-pts');
+    if (hopsUi) hopsUi.innerText = player.hopsPoints || 0;
+
+
 // === FULL SCREEN EXCLUSIVE VIEWS ===
 const lumberScreen = document.getElementById("minigame-lumber-screen");
 const fishingScreen = document.getElementById("minigame-fishing-screen");
