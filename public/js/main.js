@@ -37,12 +37,16 @@ socket.on('combatResult', (result) => {
     // Sync the server's authoritative stamina deduction/recovery
     player.stamina = result.newStamina;
 
-    // Catch Server Rejections!
+// Catch Server Rejections!
     if (result.type === 'error') {
         logMessage(result.message);
         if (typeof playRetroSound === 'function') playRetroSound('error');
+        
+        // CRITICAL FIX: Unlock the UI so the player can click "Pass Turn" instead!
+        if (typeof combatPhase !== 'undefined') combatPhase = 'ACTION'; 
+        
         refreshSystemUI();
-        return; // Halt the UI, do NOT advance the phase!
+        return; 
     }
 
     // Catch the "Pass Turn" response!
@@ -514,3 +518,9 @@ document.addEventListener("click", function startMusicOnce() {
     document.removeEventListener("click", startMusicOnce);
 }, { once: true });
 
+// === RENDER WAKE-UP HEARTBEAT ===
+// Render free tiers kill servers after 15 mins of HTTP inactivity, ignoring WebSockets.
+// This silently pings the server every 10 minutes to keep your session alive and prevent 502s!
+setInterval(() => {
+    fetch('/').catch(err => console.log('Heartbeat skipped.'));
+}, 10 * 60 * 1000);

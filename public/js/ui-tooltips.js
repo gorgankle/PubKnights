@@ -2,6 +2,9 @@
 
 function showSystemTooltip(type, event) {
     let html = "";
+    // FIX: Safely define 'item' so the script doesn't crash on hover!
+    let item = typeof type === 'object' ? type : null;
+
     if (type === 'tavern_enter') {
         html = `<h3>🍻 The Tavern</h3>Step inside to visit the Provisioner and Brewmaster. Craft bombs, brew combat drinks, and trade on the Black Market.`;
     }
@@ -16,7 +19,7 @@ else if (type === 'pet_train') {
         html = `<h3>🦴 Hop-Infused Kibble</h3>Formulate a nutrient-dense superfood for your companion.<br>📈 <b>Reward:</b> +1% cumulative chance per level to dig up exclusive Pet-Only Loot after every combat victory!<br>💰 Cost: ${cost.hops} Hops, ${cost.fish} Fish, ${cost.gold}g`;
     }
 	
-	else if (item.slot === "consumable") {
+else if (item && item.slot === "consumable") {
         if (item.type === "crate") {
             html += `📦 <b>Mystery Box:</b> Click to break the seal and reveal the loot inside.<br>`;
             html += `<span style="color: #bbaaa0; font-style: italic; font-size: 10px;">${item.desc}</span><br>`;
