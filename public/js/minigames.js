@@ -258,9 +258,9 @@ class PoolFish {
             let overlap = !(fishBottom < zoneTop || fishTop > zoneBottom);
             
             if (overlap) {
-                this.captureProgress += 0.5; // Reeling in
+                this.captureProgress += 0.7; // Reeling in
             } else {
-                this.captureProgress -= 0.3; // Slipping away
+                this.captureProgress -= 0.15; // Slipping away
             }
             this.captureProgress = Math.max(0, Math.min(100, this.captureProgress));
 
