@@ -37,6 +37,14 @@ socket.on('combatResult', (result) => {
     // Sync the server's authoritative stamina deduction/recovery
     player.stamina = result.newStamina;
 
+    // Catch Server Rejections!
+    if (result.type === 'error') {
+        logMessage(result.message);
+        if (typeof playRetroSound === 'function') playRetroSound('error');
+        refreshSystemUI();
+        return; // Halt the UI, do NOT advance the phase!
+    }
+
     // Catch the "Pass Turn" response!
     if (result.type === 'pass') {
         logMessage(`💨 Passed phase. Restored ${result.recovered} Stamina.`);
@@ -179,15 +187,20 @@ socket.on('combatItemReceipt', (receipt) => {
     advancePhase(); // Advance the turn securely
 });
 
-// === ANTI-TELEPORT RECEIPT ===
+// === SERVER-AUTHORITATIVE MOVEMENT RECEIPT ===
 socket.on('moveReceipt', (receipt) => {
-    // If the server rejected our movement, snap the player back to reality!
     if (!receipt.success) {
         logMessage(receipt.message);
         player.x = receipt.x;
         player.y = receipt.y;
         if (typeof playRetroSound === 'function') playRetroSound('error');
         refreshSystemUI();
+    } else {
+        // Successfully moved! Keep client stamina perfectly in sync with the server
+        if (receipt.updatedPlayer) {
+            player.stamina = receipt.updatedPlayer.stamina;
+            refreshSystemUI();
+        }
     }
 });
 

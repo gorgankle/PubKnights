@@ -402,10 +402,13 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         
         let moveStaminaCost = Math.floor((dist / swiftness) * 10);
 
-        if (p.stamina >= moveStaminaCost) {
+if (p.stamina >= moveStaminaCost) {
             p.stamina -= moveStaminaCost;
             combat.player.x = data.tx;
             combat.player.y = data.ty;
+            socket.emit('moveReceipt', { success: true, updatedPlayer: p });
+        } else {
+            socket.emit('moveReceipt', { success: false, message: "❌ Server: Not enough stamina to move.", x: combat.player.x, y: combat.player.y });
         }
     });
 
@@ -420,11 +423,14 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             return socket.emit('combatResult', { type: 'pass', newStamina: p.stamina, recovered: recover });
         }
 
-        if (data.actionType === 'slash' || data.actionType === 'special') {
+if (data.actionType === 'slash' || data.actionType === 'special') {
             let staminaCost = data.actionType === 'special' ? 15 : 5;
-            if (p.stamina < staminaCost) return; 
             
-            p.stamina -= staminaCost; 
+            if (p.stamina < staminaCost) {
+                return socket.emit('combatResult', { type: 'error', message: `❌ Server: Insufficient stamina (${p.stamina}/${staminaCost} required).`, newStamina: p.stamina });
+            }
+            
+            p.stamina -= staminaCost;
             
             let enemyResilience = data.targetEnemy ? (data.targetEnemy.resilience || 0) : 0;
             let equipmentBonus = 0;
