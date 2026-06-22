@@ -19,7 +19,8 @@ function setIdleJob(jobType) {
     player.idleJob = jobType; 
     if (typeof playRetroSound === 'function') playRetroSound('menu');
     
-    // NEW: Tell the server about the job change immediately!
+    // Bypass the blocked save payload and explicitly tell the server via townAction
+    socket.emit('townAction', { action: 'setIdleJob', job: jobType }); 
     if (typeof saveGame === 'function') saveGame(); 
     
     refreshSystemUI(); 

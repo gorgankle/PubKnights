@@ -37,22 +37,29 @@ socket.on('combatResult', (result) => {
     // Sync the server's authoritative stamina deduction/recovery
     player.stamina = result.newStamina;
 
-// Catch Server Rejections!
+    // 1. Catch Server Rejections & Aggressively Unlock the UI
     if (result.type === 'error') {
         logMessage(result.message);
         if (typeof playRetroSound === 'function') playRetroSound('error');
-        
-        // CRITICAL FIX: Unlock the UI so the player can click "Pass Turn" instead!
-        if (typeof combatPhase !== 'undefined') combatPhase = 'ACTION'; 
-        
+
+        // CRITICAL FIX: Force all animation locks open so the player isn't stuck!
+        if (typeof combatPhase !== 'undefined') combatPhase = 'ACTION';
+        if (typeof isAnimating !== 'undefined') window.isAnimating = false;
+
         refreshSystemUI();
         return; 
     }
 
-    // Catch the "Pass Turn" response!
+    // 2. Catch the "Pass Turn" response & Force the AI to move!
     if (result.type === 'pass') {
-        logMessage(`💨 Passed phase. Restored ${result.recovered} Stamina.`);
-        advancePhase();
+        logMessage(`Passed turn. Recovered ${result.recovered} stamina.`);
+        if (typeof playRetroSound === 'function') playRetroSound('heal');
+        
+        // Lock the UI and explicitly tell the server to run the enemy turn!
+        if (typeof combatPhase !== 'undefined') combatPhase = 'ENEMY_TURN';
+        socket.emit('endPlayerTurn');
+        
+        refreshSystemUI();
         return;
     }
 

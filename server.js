@@ -97,10 +97,12 @@ const defaultTemplate = {
 
             // 2. ONLY accept purely cosmetic updates from the client's payload.
             // We surgically extract ONLY what is safe, ignoring Gold, Items, and Stats.
-            if (data.saveData) {
+if (data.saveData) {
                 if (data.saveData.appearance) {
                     p.appearance = data.saveData.appearance;
                 }
+                // Allow the server to remember their job when logging in!
+                if (data.saveData.idleJob) p.idleJob = data.saveData.idleJob;
                 
                 // Allow pet cosmetic updates, but fiercely protect the level and adoption status!
                 if (data.saveData.pet) {

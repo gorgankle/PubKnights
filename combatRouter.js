@@ -468,7 +468,13 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
 
                 let combat = activeCombats[socket.id];
                 if (combat && data.targetEnemy) {
-                    let serverEnemy = combat.enemies.find(e => e.x === data.targetEnemy.x && e.y === data.targetEnemy.y && e.alive);
+// Track by unique ID so we don't lose the enemy if coordinates desync
+                    let serverEnemy = null;
+                    if (data.targetEnemy.uid) {
+                        serverEnemy = combat.enemies.find(e => e.uid === data.targetEnemy.uid && e.alive);
+                    } else {
+                        serverEnemy = combat.enemies.find(e => e.x === data.targetEnemy.x && e.y === data.targetEnemy.y && e.alive);
+                    }
                     if (serverEnemy) {
                         serverEnemy.hp -= finalDmg;
                         if (serverEnemy.hp <= 0) {

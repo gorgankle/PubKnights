@@ -446,5 +446,12 @@ module.exports = function(socket, activePlayers) {
             socket.emit('crateOpened', { success: true, lootMessage: lootMsg, rarity: rolledLoot.rarity });
             socket.emit('townReceipt', { success: true, action: 'inventoryUpdate', updatedPlayer: p, message: "" });
         }
+		// 24. SECURE IDLE JOB ASSIGNMENT
+        else if (data.action === 'setIdleJob') {
+            if (['TAVERN', 'FOREST', 'LAKE', 'HOPS'].includes(data.job)) {
+                p.idleJob = data.job;
+                socket.emit('townReceipt', { success: true, action: 'setIdleJob', updatedPlayer: p, message: "" });
+            }
+        }
     });
 };
