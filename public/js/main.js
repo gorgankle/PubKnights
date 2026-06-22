@@ -50,14 +50,30 @@ socket.on('combatResult', (result) => {
         return; 
     }
 
-    // 2. Catch the "Pass Turn" response & Force the AI to move!
+// 2. Catch the "Pass Turn" response & Progress the Phase!
     if (result.type === 'pass') {
-        logMessage(`Passed turn. Recovered ${result.recovered} stamina.`);
+        logMessage(`Rested. Recovered ${result.recovered} stamina.`);
         if (typeof playRetroSound === 'function') playRetroSound('heal');
         
-        // Lock the UI and explicitly tell the server to run the enemy turn!
-        if (typeof combatPhase !== 'undefined') combatPhase = 'ENEMY_TURN';
-        socket.emit('endPlayerTurn');
+        // CRITICAL FIX: Step through the 3 Tactical Phases!
+        if (typeof combatPhase !== 'undefined') {
+            // If in Phase 1 (First Move), progress to Phase 2 (Action)
+            if (combatPhase === 'MOVE' || combatPhase === 'PHASE_1') {
+                combatPhase = combatPhase === 'MOVE' ? 'ACTION' : 'PHASE_2';
+            } 
+            // If in Phase 2 (Action), progress to Phase 3 (Second Move)
+            else if (combatPhase === 'ACTION' || combatPhase === 'PHASE_2') {
+                combatPhase = combatPhase === 'ACTION' ? 'MOVE_2' : 'PHASE_3';
+            } 
+            // If in Phase 3 (Second Move), hand the turn to the Enemy!
+            else {
+                combatPhase = 'ENEMY_TURN';
+                socket.emit('endPlayerTurn');
+            }
+        }
+        
+        // Ensure the UI isn't stuck waiting for an animation
+        if (typeof isAnimating !== 'undefined') window.isAnimating = false;
         
         refreshSystemUI();
         return;
