@@ -275,7 +275,7 @@ const ItemDatabase = {
         spriteId: "lager" 
     }, // Make sure there is a comma here!
 
-    // --- THE BLACKED-OUT SET (Abyssal Relic Tier) ---
+// --- THE BLACKED-OUT SET (Abyssal Relic Tier) ---
     "blackout_blinders": { 
         id: "blackout_blinders", name: "Blackout Blinders", slot: "helmet", rarity: "Relic", 
         deflectChance: 25, value: 2500, spriteId: "helm_blackout" 
@@ -284,7 +284,7 @@ const ItemDatabase = {
         id: "blackout_trench", name: "Bouncer's Blackout Trench", slot: "armor", rarity: "Relic", 
         deflectChance: 45, value: 3500, spriteId: "armor_blackout" 
     },
-"blackout_axe": { 
+    "blackout_axe": { 
         id: "blackout_axe", name: "Void-Forged Keg-Splitter", slot: "weapon", type: "Axe", rarity: "Relic", 
         atkBonus: 145, attackRange: 1, value: 5000, spriteId: "weap_blackout" 
     },
@@ -295,9 +295,23 @@ const ItemDatabase = {
     "blackout_staggers": { 
         id: "blackout_staggers", name: "The Spins (Staggering Boots)", slot: "boots", rarity: "Relic", 
         moveBonus: 3, value: 2200, spriteId: "boots_blackout" 
-    }
-};
-	
+    }, // <--- ADDED COMMA HERE!
+
+    // --- CRATE DROPS & JUNK (Safely inside the Item Database!) ---
+    "junk_splinters": { id: "junk_splinters", name: "Handful of Splinters", slot: "consumable", type: "junk", rarity: "Common", value: 1, spriteId: "icon_junk" },
+    "junk_boots": { id: "junk_boots", name: "Waterlogged Boot", slot: "consumable", type: "junk", rarity: "Common", value: 1, spriteId: "icon_junk" },
+    "junk_vine": { id: "junk_vine", name: "Rotten Vine", slot: "consumable", type: "junk", rarity: "Common", value: 1, spriteId: "icon_junk" },
+    "bomb_small": { id: "bomb_small", name: "Small Keg Bomb", slot: "consumable", type: "bomb", rarity: "Rare", damage: 45, aoe: 1, value: 10, spriteId: "icon_bomb" },
+    "bomb_heavy": { id: "bomb_heavy", name: "Heavy Keg Bomb", slot: "consumable", type: "bomb", rarity: "Epic", damage: 120, aoe: 1, value: 30, spriteId: "icon_bomb_heavy" },
+    "fish_wholesale": { id: "fish_wholesale", name: "Wholesale Export Voucher", slot: "consumable", type: "voucher", rarity: "Rare", value: 1500, spriteId: "icon_voucher" },
+    
+    // --- CRATE JACKPOT GEAR ---
+    "axe_timberlord": { id: "axe_timberlord", name: "Timber-Lord's Axe", slot: "weapon", type: "Axe", rarity: "Relic", atkBonus: 95, attackRange: 1, value: 800, spriteId: "weap_timberlord" },
+    "waders_angler": { id: "waders_angler", name: "The Angler's Waders", slot: "boots", rarity: "Relic", moveBonus: 2, deflectChance: 15, value: 800, spriteId: "boots_angler" },
+    "hat_harvester": { id: "hat_harvester", name: "Harvester's Straw Hat", slot: "helmet", rarity: "Relic", deflectChance: 25, value: 800, spriteId: "helm_harvester" }	
+
+}; // <--- THIS CLOSES THE ITEM DATABASE!
+
 // === GAMBLE CRATES ===
 const GAMBLE_CRATES = {
     timber_crate: {
@@ -307,7 +321,7 @@ const GAMBLE_CRATES = {
         type: "crate",
         rarity: "Epic",
         value: 1000, 
-        spriteId: "icon_crate_timber", // Your 24x24 sprite mapping
+        spriteId: "icon_crate_timber", 
         desc: "A heavy, splintering box smelling of pine. Who knows what the Quartermaster packed inside?"
     },
     angler_crate: {
@@ -330,21 +344,7 @@ const GAMBLE_CRATES = {
         spriteId: "icon_crate_harvest",
         desc: "A crate wrapped in thick vines. Smells faintly of fermenting hops."
     }
-	
-// --- CRATE DROPS & JUNK ---
-    "junk_splinters": { id: "junk_splinters", name: "Handful of Splinters", slot: "consumable", type: "junk", rarity: "Common", value: 1, spriteId: "icon_junk" },
-    "junk_boots": { id: "junk_boots", name: "Waterlogged Boot", slot: "consumable", type: "junk", rarity: "Common", value: 1, spriteId: "icon_junk" },
-    "junk_vine": { id: "junk_vine", name: "Rotten Vine", slot: "consumable", type: "junk", rarity: "Common", value: 1, spriteId: "icon_junk" },
-    "bomb_small": { id: "bomb_small", name: "Small Keg Bomb", slot: "consumable", type: "bomb", rarity: "Rare", damage: 45, aoe: 1, value: 10, spriteId: "icon_bomb" },
-    "bomb_heavy": { id: "bomb_heavy", name: "Heavy Keg Bomb", slot: "consumable", type: "bomb", rarity: "Epic", damage: 120, aoe: 1, value: 30, spriteId: "icon_bomb_heavy" },
-    "fish_wholesale": { id: "fish_wholesale", name: "Wholesale Export Voucher", slot: "consumable", type: "voucher", rarity: "Rare", value: 1500, spriteId: "icon_voucher" },
-    
-    // --- CRATE JACKPOT GEAR ---
-    "axe_timberlord": { id: "axe_timberlord", name: "Timber-Lord's Axe", slot: "weapon", type: "Axe", rarity: "Relic", atkBonus: 95, attackRange: 1, value: 800, spriteId: "weap_timberlord" },
-    "waders_angler": { id: "waders_angler", name: "The Angler's Waders", slot: "boots", rarity: "Relic", moveBonus: 2, deflectChance: 15, value: 800, spriteId: "boots_angler" },
-    "hat_harvester": { id: "hat_harvester", name: "Harvester's Straw Hat", slot: "helmet", rarity: "Relic", deflectChance: 25, value: 800, spriteId: "helm_harvester" }	
-	
-}; // <--- THIS CLOSES THE ITEM DATABASE!
+}; // <--- THIS CLOSES THE GAMBLE CRATES!
 
 // The helper function stays safely OUTSIDE the database
 function getItem(itemId) {
