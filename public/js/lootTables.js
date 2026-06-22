@@ -185,7 +185,7 @@ const LootTables = {
             { itemId: "alpha_collar", weight: 5 }         // 5% - The Relic Jackpot!
         ]
     }
-};
+},
 
 const CRATE_LOOT_TABLES = {
 // === GAMBLE CRATES ===
