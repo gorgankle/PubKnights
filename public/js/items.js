@@ -344,7 +344,6 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { ItemData
 // === EXPORT FOR NODE.JS SERVER ===
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { 
-        ITEMS, 
-        GAMBLE_CRATES // Make sure the crates are exported here!
+        GAMBLE_CRATES 
     };
 }

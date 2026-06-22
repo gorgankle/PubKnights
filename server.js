@@ -5,6 +5,7 @@ const { Server } = require('socket.io');
 const mongoose = require('mongoose');
 
 // Import game data dictionaries into the server
+const { GAMBLE_CRATES } = require('./public/js/items.js');
 const { ItemDatabase } = require('./public/js/items.js');
 const { LootTables } = require('./public/js/lootTables.js');
 const { NpcDatabase, createEnemy } = require('./public/js/npc-database.js');
