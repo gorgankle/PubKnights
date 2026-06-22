@@ -185,7 +185,7 @@ let fishes = [];
 let activeHookedFish = null;
 let isReeling = false;
 
-// Physics constants exactly as requested
+// Physics constants as requested by user
 const GRAVITY = 0.1;
 const LIFT = 0.1;
 const THRASH_SPEED = 1.5;
@@ -351,12 +351,20 @@ function startFishingMinigame() {
             fishingPhase = 1;
             if (typeof playRetroSound === 'function') playRetroSound('equip');
         } 
-        else if (fishingPhase === 2) {
-            // Player strikes while waiting!
+        else if (fishingPhase === 1 || fishingPhase === 2) {
+            // Player strikes while the hook is floating down (1) or resting at bottom (2)!
             let hit = false;
             for (let f of fishes) {
-                // Strict check: Is the fish perfectly inside the track?
-                if (Math.abs(f.x - (trackX + TRACK_W / 2)) < 20) {
+                // Strict check 1: Is the fish perfectly inside the vertical track?
+                let inTrack = Math.abs(f.x - (trackX + TRACK_W / 2)) < 25;
+                
+                // Strict check 2: Is the fish vertically overlapping the blue Catch Zone?
+                let fishTop = f.y - f.radius;
+                let fishBottom = f.y + f.radius;
+                let zoneBottom = zoneY + zoneH;
+                let inZone = !(fishBottom < zoneY || fishTop > zoneBottom);
+
+                if (inTrack && inZone) {
                     f.isHooked = true;
                     f.x = trackX + TRACK_W / 2; // Center it perfectly in the track
                     activeHookedFish = f;
@@ -415,15 +423,15 @@ function fishingLoop() {
         zoneY = TRACK_TOP; // Lock at top
     } 
     else if (fishingPhase === 1) {
-        // Dropping to the bottom
-        zoneY += 8;
+        // Sinks slowly ("floats" down the water column)
+        zoneY += 1.5; 
         if (zoneY >= TRACK_TOP + TRACK_H - zoneH) {
             zoneY = TRACK_TOP + TRACK_H - zoneH; // Lock at bottom
             fishingPhase = 2; // Move to waiting phase
         }
     } 
     else if (fishingPhase === 2) {
-        // Waiting at the bottom for a strike (NO BOBBING PERMITTED)
+        // Waiting at the bottom for a strike
         zoneY = TRACK_TOP + TRACK_H - zoneH; // Keep locked at bottom
     } 
     else if (fishingPhase === 3) {
