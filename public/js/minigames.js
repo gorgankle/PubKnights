@@ -188,7 +188,7 @@ let isReeling = false;
 // Physics constants as requested by user
 const GRAVITY = 0.1;
 const LIFT = 0.1;
-const THRASH_SPEED = 1.0;
+const THRASH_SPEED = .7;
 
 // Phase State Machine: 0 = Sweeping, 1 = Dropping, 2 = Waiting, 3 = Reeling
 let fishingPhase = 0; 
@@ -203,7 +203,7 @@ let TRACK_H = 300;
 
 let zoneY = 0;
 let zoneVel = 0;
-let zoneH = 40; // Small square catch zone
+let zoneH = 50; // Small square catch zone
 
 class PoolFish {
     constructor(canvasWidth, canvasHeight) {
