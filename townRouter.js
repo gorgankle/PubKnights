@@ -34,12 +34,18 @@ module.exports = function(socket, activePlayers) {
         let p = activePlayers[socket.id];
         if (!p) return;
 
-        if (data.action === 'equip') {
+if (data.action === 'equip') {
             let idx = data.index;
             let toEquip = p.inventory[idx];
             if (!toEquip) return;
             
-            let slotKey = toEquip.slot || "weapon";
+            // STRICT VALIDATION: Only allow proper gear slots!
+            const validSlots = ["weapon", "helmet", "armor", "gloves", "boots"];
+            if (!validSlots.includes(toEquip.slot)) {
+                return socket.emit('inventoryReceipt', { success: false, message: "❌ This item cannot be equipped." });
+            }
+            
+            let slotKey = toEquip.slot;
             let worn = p.equipment[slotKey];
             
             p.equipment[slotKey] = toEquip; 

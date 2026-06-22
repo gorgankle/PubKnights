@@ -560,8 +560,14 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 socket.emit('combatItemReceipt', { success: true, updatedPlayer: p, message: `🍺 Chugged ${item.name}. Restored ${heal} HP.` });
             } else socket.emit('combatItemReceipt', { success: false, message: "❌ Buff already active." });
         }
-        else if (data.action === 'equip') {
-            let slotKey = item.slot || "weapon";
+else if (data.action === 'equip') {
+            // STRICT VALIDATION: Only allow proper gear slots!
+            const validSlots = ["weapon", "helmet", "armor", "gloves", "boots"];
+            if (!validSlots.includes(item.slot)) {
+                return socket.emit('combatItemReceipt', { success: false, message: "❌ This item cannot be equipped." });
+            }
+
+            let slotKey = item.slot;
             let worn = p.equipment[slotKey];
             
             p.equipment[slotKey] = item;
