@@ -296,6 +296,7 @@ const ItemDatabase = {
         id: "blackout_staggers", name: "The Spins (Staggering Boots)", slot: "boots", rarity: "Relic", 
         moveBonus: 3, value: 2200, spriteId: "boots_blackout" 
     }
+};
 	
 // === GAMBLE CRATES ===
 const GAMBLE_CRATES = {
@@ -339,3 +340,11 @@ function getItem(itemId) {
 }
 // Make file readable by Node.js server
 if (typeof module !== 'undefined' && module.exports) module.exports = { ItemDatabase, getItem };
+
+// === EXPORT FOR NODE.JS SERVER ===
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { 
+        ITEMS, 
+        GAMBLE_CRATES // Make sure the crates are exported here!
+    };
+}
