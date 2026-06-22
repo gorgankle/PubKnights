@@ -149,28 +149,38 @@ function refreshSystemUI() {
         }
 
 // === FULL SCREEN EXCLUSIVE VIEWS ===
-        const lumberScreen = document.getElementById("minigame-lumber-screen");
-        const fishingScreen = document.getElementById("minigame-fishing-screen"); // NEW
+const lumberScreen = document.getElementById("minigame-lumber-screen");
+const fishingScreen = document.getElementById("minigame-fishing-screen");
+const hopsScreen = document.getElementById("minigame-hops-screen"); // NEW
 
-        if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === 'MINIGAME_FISHING') {
-            if (topNavBar) topNavBar.style.display = "none"; // Hide Nav Bar
-            townVaultView.style.display = "none"; // Hide the Town
-            vaultScreen.style.display = "none"; 
+if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === 'MINIGAME_FISHING' || gameState === 'MINIGAME_HOPS') {
+    if (topNavBar) topNavBar.style.display = "none"; 
+    townVaultView.style.display = "none"; 
+    vaultScreen.style.display = "none"; 
 
-            if (gameState === 'MINIGAME_LUMBER') {
-                if (combatScreen) combatScreen.style.display = "none";
-                if (fishingScreen) fishingScreen.style.display = "none";
-                if (lumberScreen) lumberScreen.style.display = "flex";
-            }
-            else if (gameState === 'MINIGAME_FISHING') {
-                if (combatScreen) combatScreen.style.display = "none";
-                if (lumberScreen) lumberScreen.style.display = "none";
-                if (fishingScreen) fishingScreen.style.display = "flex";
-            }
-            else if (gameState === 'COMBAT') {
-                if (lumberScreen) lumberScreen.style.display = "none";
-                if (fishingScreen) fishingScreen.style.display = "none";
-                combatScreen.style.display = "block";
+    if (gameState === 'MINIGAME_LUMBER') {
+        if (combatScreen) combatScreen.style.display = "none";
+        if (fishingScreen) fishingScreen.style.display = "none";
+        if (hopsScreen) hopsScreen.style.display = "none";
+        if (lumberScreen) lumberScreen.style.display = "flex";
+    }
+    else if (gameState === 'MINIGAME_FISHING') {
+        if (combatScreen) combatScreen.style.display = "none";
+        if (lumberScreen) lumberScreen.style.display = "none";
+        if (hopsScreen) hopsScreen.style.display = "none";
+        if (fishingScreen) fishingScreen.style.display = "flex";
+    }
+    else if (gameState === 'MINIGAME_HOPS') {
+        if (combatScreen) combatScreen.style.display = "none";
+        if (lumberScreen) lumberScreen.style.display = "none";
+        if (fishingScreen) fishingScreen.style.display = "none";
+        if (hopsScreen) hopsScreen.style.display = "flex";
+    }
+    else if (gameState === 'COMBAT') {
+        if (lumberScreen) lumberScreen.style.display = "none";
+        if (fishingScreen) fishingScreen.style.display = "none";
+        if (hopsScreen) hopsScreen.style.display = "none";
+        combatScreen.style.display = "block";
             
             let dynamicBg = "none";
             if (activeCombatZone === 'WILDERNESS') dynamicBg = "url('assets/images/wilds-bg.png')";
@@ -341,10 +351,12 @@ if (combatPhase === 'TARGET_BOMB') {
             
             // ADD THIS TO HIDE THE MINIGAME
 // Hide Minigames
-            let lumberScreen = document.getElementById("minigame-lumber-screen");
-            if (lumberScreen) lumberScreen.style.display = "none"; 
-            let fishingScreen = document.getElementById("minigame-fishing-screen");
-            if (fishingScreen) fishingScreen.style.display = "none";
+let lumberScreen = document.getElementById("minigame-lumber-screen");
+if (lumberScreen) lumberScreen.style.display = "none"; 
+let fishingScreen = document.getElementById("minigame-fishing-screen");
+if (fishingScreen) fishingScreen.style.display = "none";
+let hopsScreen = document.getElementById("minigame-hops-screen");
+if (hopsScreen) hopsScreen.style.display = "none";
 			
             document.querySelectorAll('.nav-bar button').forEach(btn => btn.classList.remove('active-tab'));
 

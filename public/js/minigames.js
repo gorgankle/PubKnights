@@ -531,3 +531,200 @@ function leaveFishingMinigame() {
     document.getElementById("fishing-start-btn").style.display = "block";
     setGameState('ADVENTURES');
 }
+
+// ==========================================
+// --- 2D RIPEN & PICK HOPS MINIGAME ---
+// ==========================================
+
+let hopsGameActive = false;
+let hopsTimer = 90;
+let hopsInterval = null;
+let hopsAnimFrameId = null;
+
+let hCanvas, hCtx;
+let hopsScore = 0;
+let hopsPoints = 0;
+let hopsGrid = [];
+let hCols = 5; 
+let hRows = 3;
+let hCellSize = 130;
+let hOffsetX = 0; 
+let hOffsetY = 0;
+
+function initHopsGrid() {
+    hopsGrid = [];
+    // Center the grid dynamically based on canvas size
+    hOffsetX = (hCanvas.width - (hCols * hCellSize)) / 2;
+    hOffsetY = (hCanvas.height - (hRows * hCellSize)) / 2;
+
+    for(let r=0; r<hRows; r++) {
+        for(let c=0; c<hCols; c++) {
+            // State: 0:Empty, 1:Growing, 2:Ripe, 3:Rotten
+            hopsGrid.push({ c, r, state: 0, timer: 0 }); 
+        }
+    }
+}
+
+function startHopsMinigame() {
+    hCanvas = document.getElementById("hops-farm-canvas");
+    hCtx = hCanvas.getContext("2d");
+    
+    hopsGameActive = true;
+    hopsTimer = 90;
+    hopsScore = 0;
+    hopsPoints = 0;
+    
+    initHopsGrid();
+
+    document.getElementById("hops-start-btn").style.display = "none";
+    document.getElementById("hops-feedback").innerText = "Harvest active! Watch the vines!";
+    updateHopsUI();
+
+    // --- INPUT LISTENER ---
+    hCanvas.onmousedown = (e) => handleHopsClick(e);
+    hCanvas.ontouchstart = (e) => { e.preventDefault(); handleHopsClick(e.touches[0] || e); };
+
+    if (typeof playRetroSound === 'function') playRetroSound('combatStart');
+
+    hopsInterval = setInterval(() => {
+        hopsTimer--;
+        document.getElementById("hops-timer").innerText = hopsTimer + "s";
+        if (hopsTimer <= 0) endHopsSession();
+    }, 1000);
+
+    cancelAnimationFrame(hopsAnimFrameId);
+    hopsLastTime = performance.now();
+    hopsLoop(hopsLastTime);
+}
+
+let hopsLastTime = 0;
+
+function hopsLoop(timestamp) {
+    if (!hopsGameActive) return;
+    
+    let dt = (timestamp - hopsLastTime) / 1000;
+    hopsLastTime = timestamp;
+    if (dt > 0.1) dt = 0.1; // Prevent lag spirals
+
+    hCtx.clearRect(0, 0, hCanvas.width, hCanvas.height);
+
+    // 1. Spawning Logic
+    if (Math.random() < 0.04) { // Spawn rate
+        let emptyCells = hopsGrid.filter(cell => cell.state === 0);
+        if (emptyCells.length > 0) {
+            let cell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+            cell.state = 1; cell.timer = 0;
+        }
+    }
+
+    // 2. Update States & Draw
+    hopsGrid.forEach(cell => {
+        let x = hOffsetX + cell.c * hCellSize;
+        let y = hOffsetY + cell.r * hCellSize;
+        let innerSize = hCellSize - 10;
+        
+        // Draw vine background
+        hCtx.strokeStyle = '#2d4a22';
+        hCtx.lineWidth = 4;
+        hCtx.strokeRect(x, y, innerSize, innerSize);
+
+        if (cell.state > 0) {
+            cell.timer += dt;
+            
+            // Speed up the life cycle slightly as time drops to increase tension
+            let speedMult = hopsTimer < 30 ? 0.8 : 1.0; 
+
+            if (cell.state === 1 && cell.timer > (1.5 * speedMult)) { cell.state = 2; cell.timer = 0; } // Grow -> Ripe
+            else if (cell.state === 2 && cell.timer > (1.8 * speedMult)) { cell.state = 3; cell.timer = 0; } // Ripe -> Rotten
+            else if (cell.state === 3 && cell.timer > 1.2) { cell.state = 0; cell.timer = 0; } // Rotten -> Empty
+
+            let cx = x + innerSize / 2;
+            let cy = y + innerSize / 2;
+            let radius = cell.state === 1 ? 20 : 40;
+            
+            hCtx.beginPath();
+            hCtx.arc(cx, cy, radius, 0, Math.PI * 2);
+            if (cell.state === 1) hCtx.fillStyle = '#a8e6cf'; // Growing
+            if (cell.state === 2) hCtx.fillStyle = '#2ecc71'; // Ripe (Bright Green)
+            if (cell.state === 3) hCtx.fillStyle = '#8b6b4a'; // Rotten (Brown)
+            hCtx.fill();
+        }
+    });
+
+    hopsAnimFrameId = requestAnimationFrame(hopsLoop);
+}
+
+function handleHopsClick(e) {
+    if (!hopsGameActive) return;
+    
+    const r = hCanvas.getBoundingClientRect();
+    const scaleX = hCanvas.width / r.width;
+    const scaleY = hCanvas.height / r.height;
+    
+    let mx = (e.clientX - r.left) * scaleX;
+    let my = (e.clientY - r.top) * scaleY;
+
+    hopsGrid.forEach(cell => {
+        let x = hOffsetX + cell.c * hCellSize;
+        let y = hOffsetY + cell.r * hCellSize;
+        let innerSize = hCellSize - 10;
+        
+        if (mx > x && mx < x + innerSize && my > y && my < y + innerSize) {
+            if (cell.state === 2) { 
+                // Hit!
+                hopsScore += 1; 
+                hopsPoints += 15;
+                cell.state = 0; 
+                if (typeof playRetroSound === 'function') playRetroSound('coin');
+            }
+            else if (cell.state === 1 || cell.state === 3) { 
+                // Miss/Bad click!
+                hopsPoints = Math.max(0, hopsPoints - 5); 
+                cell.state = 0; 
+                if (typeof playRetroSound === 'function') playRetroSound('error');
+            }
+            updateHopsUI();
+        }
+    });
+}
+
+function updateHopsUI() {
+    document.getElementById("hops-score").innerText = hopsScore;
+    document.getElementById("hops-points").innerText = hopsPoints;
+}
+
+function endHopsSession() {
+    hopsGameActive = false;
+    clearInterval(hopsInterval);
+    cancelAnimationFrame(hopsAnimFrameId);
+    
+    hCanvas.onmousedown = null;
+    hCanvas.ontouchstart = null;
+    
+    hCtx.clearRect(0, 0, hCanvas.width, hCanvas.height);
+    document.getElementById("hops-start-btn").style.display = "block";
+    document.getElementById("hops-start-btn").innerText = "FARM AGAIN";
+    
+    let fb = document.getElementById("hops-feedback");
+    
+    if (hopsScore > 0) {
+        fb.innerHTML = `<span style="color:#2ecc71;">Harvest Ended! Secured ${hopsScore} Hops and ${hopsPoints} Pts!</span>`;
+        if (typeof playRetroSound === 'function') playRetroSound('victory');
+        socket.emit('townAction', { action: 'claimHopsMinigame', points: hopsPoints, hopsHarvested: hopsScore });
+    } else {
+        fb.innerHTML = `<span style="color:#e74c3c;">Harvest Ended. The crops withered...</span>`;
+        if (typeof playRetroSound === 'function') playRetroSound('error');
+    }
+}
+
+function leaveHopsMinigame() {
+    if (hopsGameActive) {
+        if (!confirm("Abandon current harvest? You will lose any un-beamed crops!")) return;
+    }
+    hopsGameActive = false;
+    clearInterval(hopsInterval);
+    cancelAnimationFrame(hopsAnimFrameId);
+    
+    document.getElementById("hops-start-btn").style.display = "block";
+    setGameState('ADVENTURES');
+}

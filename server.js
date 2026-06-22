@@ -971,6 +971,25 @@ if (dist <= bomb.aoe) {
                 socket.emit('townReceipt', { success: false, message: "❌ Guild rejected fraudulent catch log." });
             }
         }
+// 21. HOPS HARVESTING SECURE HANDLER
+        else if (data.action === 'claimHopsMinigame') {
+            // Anti-cheat verification
+            if (data.points >= 0 && data.hopsHarvested >= 0 && data.hopsHarvested < 300) { 
+                // Initialize the new currency if it doesn't exist yet
+                p.hopsPoints = (p.hopsPoints || 0) + data.points;
+                p.hops = (p.hops || 0) + data.hopsHarvested;
+                
+                socket.emit('townReceipt', { 
+                    success: true, 
+                    action: 'minigameWin', 
+                    updatedPlayer: p, 
+                    message: `🌾 Harvest Complete! Secured ${data.hopsHarvested} Hops and ${data.points} Pts.` 
+                });
+            } else {
+                socket.emit('townReceipt', { success: false, message: "❌ Guild rejected fraudulent harvest log." });
+            }
+        }		
+		
     });
 
     // --- SERVER-AUTHORITATIVE INVENTORY & VAULT ---
