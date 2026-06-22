@@ -188,54 +188,34 @@ const LootTables = {
 };
 
 const CRATE_LOOT_TABLES = {
-    timber_crate: {
-		common: [
-            { id: "wood", name: "Bundle of Wood", amt: 150, type: "resource" },
-            { id: "junk_splinters", name: "Handful of Splinters", amt: 1, type: "junk", desc: "A useless handful of sharp wood." }
-        ],
-        uncommon: [
-            { id: "wood", name: "Lumber Haul", amt: 1500, type: "resource" },
-            { id: "bomb_small", name: "Small Keg Bomb", amt: 2, type: "consumable" }
-        ],
-        rare: [
-            { id: "bomb_heavy", name: "Heavy Keg Bomb", amt: 3, type: "consumable" }
-        ],
-        jackpot: [
-            { id: "axe_timberlord", name: "Timber-Lord's Axe", type: "gear", slot: "weapon", desc: "A colossal axe. Guaranteed critical strikes against plant-based enemies." }
+    "timber_crate": {
+        pools: [
+            { itemId: "wood", weight: 50, amt: 150, isResource: true },
+            { itemId: "junk_splinters", weight: 25 },
+            { itemId: "wood", weight: 10, amt: 1000, isResource: true },
+            { itemId: "bomb_small", weight: 10, amt: 2 },
+            { itemId: "bomb_heavy", weight: 4, amt: 1 },
+            { itemId: "axe_timberlord", weight: 1, isJackpot: true }
         ]
     },
-    
-    angler_crate: {
-		common: [
-            { id: "fish", name: "Trawler Catch", amt: 150, type: "resource" },
-            { id: "junk_boots", name: "Waterlogged Boot", amt: 1, type: "junk", desc: "Smells awful. Totally unwearable." }
-        ],
-        uncommon: [
-            { id: "fish", name: "Trawler Catch", amt: 1500, type: "resource" },
-            { id: "lager", name: "Swift Lager", amt: 2, type: "consumable" }
-        ],
-        rare: [
-            { id: "fish_wholesale", name: "Wholesale Export Voucher", amt: 1, type: "consumable", desc: "Instantly claim 1500 Gold." }
-        ],
-        jackpot: [
-            { id: "waders_angler", name: "The Angler's Waders", type: "gear", slot: "boots", desc: "Grants +20% damage in the deepest levels of the Procedural Abyss." }
+    "angler_crate": {
+        pools: [
+            { itemId: "fish", weight: 50, amt: 150, isResource: true },
+            { itemId: "junk_boots", weight: 25 },
+            { itemId: "fish", weight: 10, amt: 1000, isResource: true },
+            { itemId: "lager", weight: 10, amt: 2 },
+            { itemId: "fish_wholesale", weight: 4, amt: 1 },
+            { itemId: "waders_angler", weight: 1, isJackpot: true }
         ]
     },
-
-    harvest_crate: {
-		common: [
-            { id: "hops", name: "Sack of Hops", amt: 150, type: "resource" },
-            { id: "junk_vine", name: "Rotten Vine", amt: 1, type: "junk", desc: "Withered and useless." }
-        ],
-        uncommon: [
-            { id: "hops", name: "Bountiful Harvest", amt: 1500, type: "resource" },
-            { id: "ipa", name: "Furious IPA", amt: 2, type: "consumable" }
-        ],
-        rare: [
-            { id: "reserve", name: "Grandmaster Reserve", amt: 2, type: "consumable" }
-        ],
-        jackpot: [
-            { id: "hat_harvester", name: "Harvester's Straw Hat", type: "gear", slot: "helmet", desc: "A legendary farmer's hat. Grants a passive +5% to Deflection." }
+    "harvest_crate": {
+        pools: [
+            { itemId: "hops", weight: 50, amt: 150, isResource: true },
+            { itemId: "junk_vine", weight: 25 },
+            { itemId: "hops", weight: 10, amt: 1000, isResource: true },
+            { itemId: "ipa", weight: 10, amt: 2 },
+            { itemId: "reserve", weight: 4, amt: 1 },
+            { itemId: "hat_harvester", weight: 1, isJackpot: true }
         ]
     }
 };

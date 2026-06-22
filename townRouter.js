@@ -7,23 +7,19 @@ const { LootTables } = require('./public/js/lootTables.js');
 
 // 2. Bring over the secure unboxing math from server.js
 function rollSecureCrateLoot(crateId) {
-    // Point directly to LootTables, since the crates live inside it!
     const table = LootTables[crateId];
-    if (!table) return null;
-	
-    const roll = Math.floor(Math.random() * 100) + 1; 
-    let selectedTier = [];
-    let rarityName = "";
+    if (!table || !table.pools) return null;
+    
+    let totalWeight = table.pools.reduce((sum, entry) => sum + entry.weight, 0);
+    let roll = Math.random() * totalWeight;
+    let chosenEntry = null;
 
-    if (roll <= 84) { selectedTier = table.common; rarityName = "Common"; } 
-    else if (roll <= 94) { selectedTier = table.uncommon; rarityName = "Uncommon"; } 
-    else if (roll <= 98) { selectedTier = table.rare; rarityName = "Rare"; } 
-    else { selectedTier = table.jackpot; rarityName = "JACKPOT"; }
-
-    return {
-        prize: selectedTier[Math.floor(Math.random() * selectedTier.length)],
-        rarity: rarityName
-    };
+    for (let entry of table.pools) {
+        if (roll < entry.weight) { chosenEntry = entry; break; }
+        roll -= entry.weight;
+    }
+    
+    return chosenEntry;
 }
 
 // 3. Export the setup function that server.js will call
@@ -440,29 +436,45 @@ if (data.action === 'equip') {
             p.inventory.splice(invIndex, 1);
             const rolledLoot = rollSecureCrateLoot(crateId); 
             let lootMsg = "";
+            let finalRarity = "Common";
 
             if (rolledLoot) {
-                const prize = rolledLoot.prize;
-                if (prize.type === "resource") {
-                    p[prize.id] = (p[prize.id] || 0) + prize.amt; lootMsg = `${prize.amt}x ${prize.name}`;
-                } 
-else if (prize.type === "consumable" || prize.type === "gear" || prize.type === "junk") {
-                    // PULL SECURELY FROM ITEM DATABASE to attach sprites and stats!
-                    let dbItem = ItemDatabase[prize.id];
-                    let newItem = dbItem ? JSON.parse(JSON.stringify(dbItem)) : { id: prize.id, name: prize.name, type: prize.type, slot: prize.slot || "consumable" };
-                    
-                    if (prize.desc) newItem.desc = prize.desc;
-                    if (prize.amt && prize.amt > 1) newItem.name = `${prize.name} (x${prize.amt})`; 
-                    
-                    if (p.inventory.length < (p.maxInventorySlots || 5)) p.inventory.push(newItem); else p.stash.push(newItem); 
-                    
-                    lootMsg = `1x ${prize.name}`;
-                    if (rolledLoot.rarity === "JACKPOT") lootMsg = `🌟 ${prize.name} 🌟`;
-                }
-            } else lootMsg = "The crate was mysteriously empty...";
+                // Determine animation color based on weight rarity
+                if (rolledLoot.isJackpot) finalRarity = "JACKPOT";
+                else if (rolledLoot.weight <= 4) finalRarity = "Epic";
+                else if (rolledLoot.weight <= 10) finalRarity = "Rare";
+                else if (rolledLoot.weight <= 25) finalRarity = "Uncommon";
 
-            // CRASH FIX: Safely check if rolledLoot exists before reading its rarity!
-            let finalRarity = rolledLoot ? rolledLoot.rarity : "None";
+                if (rolledLoot.isResource) {
+                    p[rolledLoot.itemId] = (p[rolledLoot.itemId] || 0) + rolledLoot.amt; 
+                    let resName = rolledLoot.itemId.charAt(0).toUpperCase() + rolledLoot.itemId.slice(1);
+                    lootMsg = `${rolledLoot.amt}x ${resName}`;
+                } 
+                else {
+                    // PULL SECURELY FROM ITEM DATABASE to attach sprites and stats!
+                    let dbItem = ItemDatabase[rolledLoot.itemId];
+                    if (dbItem) {
+                        let newItem = JSON.parse(JSON.stringify(dbItem));
+                        
+                        if (rolledLoot.amt && rolledLoot.amt > 1) newItem.name = `${newItem.name} (x${rolledLoot.amt})`; 
+                        
+                        if (p.inventory.length < (p.maxInventorySlots || 5)) p.inventory.push(newItem); else p.stash.push(newItem); 
+                        
+                        lootMsg = `1x ${newItem.name}`;
+                        if (rolledLoot.isJackpot) {
+                            lootMsg = `🌟 ${newItem.name} 🌟`;
+                            finalRarity = "JACKPOT";
+                        } else if (newItem.rarity) {
+                            finalRarity = newItem.rarity;
+                        }
+                    } else {
+                        lootMsg = "The crate was mysteriously empty...";
+                    }
+                }
+            } else {
+                lootMsg = "The crate was mysteriously empty...";
+                finalRarity = "None";
+            }
             
             socket.emit('crateOpened', { success: true, lootMessage: lootMsg, rarity: finalRarity });
             socket.emit('townReceipt', { success: true, action: 'inventoryUpdate', updatedPlayer: p, message: "" });
