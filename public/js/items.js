@@ -56,6 +56,33 @@ const ItemDatabase = {
         value: 15,
         spriteId: "sturdy_boots"
     },
+	"leather_tunic": { 
+        id: "leather_tunic", 
+        name: "Leather Tunic", 
+        slot: "armor", 
+        rarity: "Common", 
+        deflectChance: 2, 
+        value: 10,
+        spriteId: "armor_tunic" 
+    },
+    "leather_mitts": { 
+        id: "leather_mitts", 
+        name: "Leather Mitts", 
+        slot: "gloves", 
+        rarity: "Common", 
+        atkBonus: 2, 
+        value: 10,
+        spriteId: "gloves_leather_mitts" 
+    },
+    "hide_boots": { 
+        id: "hide_boots", 
+        name: "Hide Boots", 
+        slot: "boots", 
+        rarity: "Common", 
+        moveBonus: 1, 
+        value: 10,
+        spriteId: "boots_hide" 
+    },
 	
 "behemoth_maw_crusher": { 
         id: "behemoth_maw_crusher", 

@@ -243,7 +243,7 @@ if (data.action === 'equip') {
                 socket.emit('townReceipt', { success: true, action: 'allocateStat', updatedPlayer: p, message: "🌟 Stat point allocated!" });
             } else socket.emit('townReceipt', { success: false, message: "❌ No Skill Points available." });
         }
-        // 13. CRAFT BOMB
+// 13. CRAFT BOMB
         else if (data.action === 'craftBomb') {
             let tier = data.tier;
             let costW = tier === 1 ? 10 : 25;   
@@ -253,33 +253,35 @@ if (data.action === 'equip') {
                 p.maxInventorySlots = p.maxInventorySlots || 5;
                 if (p.inventory.length < p.maxInventorySlots) {
                     p.wood -= costW; p.hops -= costH;
-                    let bomb = tier === 1 
-                        ? { id: "bomb_small", name: "Small Keg Bomb", slot: "consumable", type: "bomb", rarity: "Rare", damage: 45, aoe: 1, icon: "💣", value: 10 }
-                        : { id: "bomb_heavy", name: "Heavy Keg Bomb", slot: "consumable", type: "bomb", rarity: "Epic", damage: 120, aoe: 1, icon: "💣", value: 30 };
+                    
+                    // PULL SECURELY FROM ITEM DATABASE!
+                    let bombId = tier === 1 ? "bomb_small" : "bomb_heavy";
+                    let bomb = JSON.parse(JSON.stringify(ItemDatabase[bombId]));
+                    
                     p.inventory.push(bomb);
                     socket.emit('townReceipt', { success: true, action: 'craftBomb', updatedPlayer: p, message: `💣 Crafted ${bomb.name}!` });
                 } else socket.emit('townReceipt', { success: false, message: "🎒 Backpack is full." });
             } else socket.emit('townReceipt', { success: false, message: "❌ Insufficient materials for bomb." });
         }
-        // 14. CRAFT BREWS 
+// 14. CRAFT BREWS 
         else if (data.action === 'craftBrew') {
             p.maxInventorySlots = p.maxInventorySlots || 5;
             if (p.inventory.length >= p.maxInventorySlots) return socket.emit('townReceipt', { success: false, message: "🎒 Backpack is full." });
             
             if (data.brewType === 'STOUT') {
-                if (p.hops >= 1 && p.gold >= 10) { p.hops -= 1; p.gold -= 10; p.inventory.push({ id: "stout", name: "Combat Stout", slot: "consumable", type: "brew", rarity: "Common", value: 5 }); socket.emit('townReceipt', { success: true, action: 'craftBrew', updatedPlayer: p, message: "🍺 Crafted a Combat Stout!" }); }
+                if (p.hops >= 1 && p.gold >= 10) { p.hops -= 1; p.gold -= 10; p.inventory.push(JSON.parse(JSON.stringify(ItemDatabase["stout"]))); socket.emit('townReceipt', { success: true, action: 'craftBrew', updatedPlayer: p, message: "🍺 Crafted a Combat Stout!" }); }
                 else socket.emit('townReceipt', { success: false, message: "❌ Lacking resources for Stout." });
             }
             else if (data.brewType === 'IPA') {
-                if (p.hops >= 1 && p.wood >= 5) { p.hops -= 1; p.wood -= 5; p.inventory.push({ id: "ipa", name: "Furious IPA", slot: "consumable", type: "brew", rarity: "Rare", value: 15 }); socket.emit('townReceipt', { success: true, action: 'craftBrew', updatedPlayer: p, message: "🍺 Crafted a Furious IPA!" }); }
+                if (p.hops >= 1 && p.wood >= 5) { p.hops -= 1; p.wood -= 5; p.inventory.push(JSON.parse(JSON.stringify(ItemDatabase["ipa"]))); socket.emit('townReceipt', { success: true, action: 'craftBrew', updatedPlayer: p, message: "🍺 Crafted a Furious IPA!" }); }
                 else socket.emit('townReceipt', { success: false, message: "❌ Lacking resources for IPA." });
             }
             else if (data.brewType === 'LAGER') {
-                if (p.hops >= 2 && p.fish >= 5) { p.hops -= 2; p.fish -= 5; p.inventory.push({ id: "lager", name: "Swift Lager", slot: "consumable", type: "brew", rarity: "Rare", value: 15 }); socket.emit('townReceipt', { success: true, action: 'craftBrew', updatedPlayer: p, message: "🍺 Crafted a Swift Lager!" }); }
+                if (p.hops >= 2 && p.fish >= 5) { p.hops -= 2; p.fish -= 5; p.inventory.push(JSON.parse(JSON.stringify(ItemDatabase["lager"]))); socket.emit('townReceipt', { success: true, action: 'craftBrew', updatedPlayer: p, message: "🍺 Crafted a Swift Lager!" }); }
                 else socket.emit('townReceipt', { success: false, message: "❌ Lacking resources for Lager." });
             }
             else if (data.brewType === 'RESERVE') {
-                if (p.hops >= 200 && p.gold >= 50) { p.hops -= 200; p.gold -= 50; p.inventory.push({ id: "reserve", name: "Grandmaster Reserve", slot: "consumable", type: "brew", rarity: "Epic", value: 45 }); socket.emit('townReceipt', { success: true, action: 'craftBrew', updatedPlayer: p, message: "🍷 Crafted Grandmaster Reserve!" }); }
+                if (p.hops >= 200 && p.gold >= 50) { p.hops -= 200; p.gold -= 50; p.inventory.push(JSON.parse(JSON.stringify(ItemDatabase["reserve"]))); socket.emit('townReceipt', { success: true, action: 'craftBrew', updatedPlayer: p, message: "🍷 Crafted Grandmaster Reserve!" }); }
                 else socket.emit('townReceipt', { success: false, message: "❌ Lacking resources for Reserve." });
             }
         }
@@ -440,10 +442,16 @@ if (data.action === 'equip') {
                 if (prize.type === "resource") {
                     p[prize.id] = (p[prize.id] || 0) + prize.amt; lootMsg = `${prize.amt}x ${prize.name}`;
                 } 
-                else if (prize.type === "consumable" || prize.type === "gear" || prize.type === "junk") {
-                    let newItem = { id: prize.id, name: prize.name, type: prize.type, slot: prize.slot || "consumable", desc: prize.desc || "" };
+else if (prize.type === "consumable" || prize.type === "gear" || prize.type === "junk") {
+                    // PULL SECURELY FROM ITEM DATABASE to attach sprites and stats!
+                    let dbItem = ItemDatabase[prize.id];
+                    let newItem = dbItem ? JSON.parse(JSON.stringify(dbItem)) : { id: prize.id, name: prize.name, type: prize.type, slot: prize.slot || "consumable" };
+                    
+                    if (prize.desc) newItem.desc = prize.desc;
                     if (prize.amt && prize.amt > 1) newItem.name = `${prize.name} (x${prize.amt})`; 
+                    
                     if (p.inventory.length < (p.maxInventorySlots || 5)) p.inventory.push(newItem); else p.stash.push(newItem); 
+                    
                     lootMsg = `1x ${prize.name}`;
                     if (rolledLoot.rarity === "JACKPOT") lootMsg = `🌟 ${prize.name} 🌟`;
                 }
