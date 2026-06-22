@@ -122,6 +122,24 @@ function purchaseMonument() {
     socket.emit('townAction', { action: 'purchaseMonument' });
 }
 
+// === QUARTERMASTER EXCHANGE LOGIC ===
+function exchangePoints(type, tier) {
+    if (gameState === 'COMBAT') {
+        logMessage("❌ You cannot trade with the Quartermaster while in combat!");
+        return;
+    }
+    
+    // Play a nice click sound
+    if (typeof playRetroSound === 'function') playRetroSound('click');
+    
+    // Send the request directly to the secure server logic
+    socket.emit('townAction', { 
+        action: 'exchangePoints', 
+        exchangeType: type, 
+        tier: tier 
+    });
+}
+
 // === PET PROGRESSION SYSTEM ===
 function trainPet() {
     // Basic client-side check just to prevent spamming the button

@@ -488,7 +488,7 @@
                 <!-- === NEW: DEDICATED MERCHANT SCREEN === -->
 <div id="merchant-screen" class="panel" style="display: none; width: 100%; margin-bottom: 0; min-height: 486px; flex-direction: column; gap: 10px;">
                     <div class="dashboard-panel" style="background: #1a1512; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; margin-bottom: 5px; border: 1px solid #4a3b2c;">
-                        <span style="color: #ffcc66; font-weight: bold; font-size:15px;">🍻 The Tavern</span>
+                        <span style="color: #ffcc66; font-weight: bold; font-size:15px;">🤝 The Exchange</span>
                         <button onclick="setGameState('TOWN')" style="background: #c0392b; margin:0; padding:6px 14px;">↩ Return to Town</button>
                     </div>
                     
@@ -512,6 +512,39 @@
                             <button id="reserve-btn" onclick="craftReserveBrew()" style="background: #8e44ad; border-color: #9b59b6; grid-column: span 2;" onmouseenter="showSystemTooltip('reserve', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🍷 Grandmaster Reserve (200H, 50g)</button>
                         </div>
                     </div>
+					<div class="dashboard-panel" style="border: 2px dashed #f39c12; background: #2a221a; margin-top: 15px;">
+    <h3 style="color: #f1c40f;">🤝 Guild Quartermaster (Point Exchange)</h3>
+    
+    <div style="background: #1e271e; border: 1px solid #27ae60; padding: 8px; margin-bottom: 8px; border-radius: 4px;">
+        <span style="color: #2ecc71; font-weight: bold;">🌲 Timber Exchange (Pts: <span id="ui-timber-pts">0</span>)</span>
+        <div style="display: flex; gap: 5px; margin-top: 5px;">
+            <button onclick="exchangePoints('lumber', 'low')" style="flex: 1; background: #27ae60;">100 Pts ➔ 100 Wood</button>
+            <button onclick="exchangePoints('lumber', 'mid')" style="flex: 1; background: #27ae60;">1k Pts ➔ 1k Wood</button>
+            <button onclick="exchangePoints('lumber', 'gamble')" style="flex: 1; background: #d35400;">2.5k ➔ Timber Crate</button>
+            <button disabled style="flex: 1; background: #7f8c8d;">25k ➔ ???</button>
+        </div>
+    </div>
+
+    <div style="background: #1a242f; border: 1px solid #2980b9; padding: 8px; margin-bottom: 8px; border-radius: 4px;">
+        <span style="color: #3498db; font-weight: bold;">🐟 Angler's Exchange (Pts: <span id="ui-fish-pts">0</span>)</span>
+        <div style="display: flex; gap: 5px; margin-top: 5px;">
+            <button onclick="exchangePoints('fish', 'low')" style="flex: 1; background: #2980b9;">100 Pts ➔ 100 Fish</button>
+            <button onclick="exchangePoints('fish', 'mid')" style="flex: 1; background: #2980b9;">1k Pts ➔ 1k Fish</button>
+            <button onclick="exchangePoints('fish', 'gamble')" style="flex: 1; background: #d35400;">2.5k ➔ Angler Crate</button>
+            <button disabled style="flex: 1; background: #7f8c8d;">25k ➔ ???</button>
+        </div>
+    </div>
+
+    <div style="background: #2c1a35; border: 1px solid #8e44ad; padding: 8px; border-radius: 4px;">
+        <span style="color: #9b59b6; font-weight: bold;">🌾 Harvest Exchange (Pts: <span id="ui-hops-pts">0</span>)</span>
+        <div style="display: flex; gap: 5px; margin-top: 5px;">
+            <button onclick="exchangePoints('hops', 'low')" style="flex: 1; background: #8e44ad;">100 Pts ➔ 100 Hops</button>
+            <button onclick="exchangePoints('hops', 'mid')" style="flex: 1; background: #8e44ad;">1k Pts ➔ 1k Hops</button>
+            <button onclick="exchangePoints('hops', 'gamble')" style="flex: 1; background: #d35400;">2.5k ➔ Harvest Crate</button>
+            <button disabled style="flex: 1; background: #7f8c8d;">25k ➔ ???</button>
+        </div>
+    </div>
+</div>
                 </div>
 
             
