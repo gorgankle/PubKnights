@@ -4,42 +4,18 @@ const http = require('http');
 const { Server } = require('socket.io');
 const mongoose = require('mongoose');
 
-// Import game data dictionaries into the server
-const { GAMBLE_CRATES } = require('./public/js/items.js');
-const { ItemDatabase } = require('./public/js/items.js');
-const { LootTables, CRATE_LOOT_TABLES } = require('./public/js/lootTables.js');
-const { NpcDatabase, createEnemy } = require('./public/js/npc-database.js');
+// Import our new modular routers
 const injectTownRouter = require('./townRouter.js');
+const injectCombatRouter = require('./combatRouter.js');
 
 // Initialize the Express app and wrap it in an HTTP server for Socket.io
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+// Global in-memory state
 const activePlayers = {};
 const activeCombats = {};
-
-// --- MAP SPATIAL MATH HELPERS ---
-function getGridDistance(x1, y1, x2, y2, size2 = 1) {
-    let closeX = Math.max(x2, Math.min(x1, x2 + size2 - 1));
-    let closeY = Math.max(y2, Math.min(y1, y2 + size2 - 1));
-    return Math.max(Math.abs(x1 - closeX), Math.abs(y1 - closeY));
-}
-
-function hasLineOfSight(x1, y1, x2, y2, mapObstacles) {
-    let dx = Math.abs(x2 - x1); let dy = Math.abs(y2 - y1);
-    let sx = (x1 < x2) ? 1 : -1; let sy = (y1 < y2) ? 1 : -1;
-    let err = dx - dy; let cx = x1; let cy = y1;
-    while (true) {
-        if (cx === x2 && cy === y2) return true;
-        if (cx !== x1 || cy !== y1) {
-            if (mapObstacles.some(o => o.x === cx && o.y === cy)) return false;
-        }
-        let e2 = 2 * err;
-        if (e2 > -dy) { err -= dy; cx += sx; }
-        if (e2 < dx) { err += dx; cy += sy; }
-    }
-}
 
 // Middleware
 app.use(express.json());
@@ -66,11 +42,6 @@ app.get('/', (req, res) => {
     res.sendFile(__dirname + '/index.html');
 });
 
-
-
-
-
-
 // === SOCKET.IO COMMUNICATION HUB ===
 io.on('connection', (socket) => {
     console.log(`⚔️  A Knight has connected: ${socket.id}`);
@@ -83,10 +54,29 @@ io.on('connection', (socket) => {
                 return socket.emit('loginError', 'Name already taken by another Knight.');
             }
 
+// Generate a secure default template on the server
+const defaultTemplate = {
+                level: 1, xp: 0, xpToNext: 100, skillPoints: 0,
+                vitality: 70, hp: 70, stamina: 50, maxStamina: 50,
+                power: 12, accuracy: 85, resilience: 5, swiftness: 3,
+                vaultSlots: 10, gold: 0, hops: 0, wood: 0, fish: 0,
+                lumberPoints: 0, fishingPoints: 0, hopsPoints: 0,
+                pendingGold: 0, pendingXp: 0, pendingLoot: [],
+                wildernessLevel: 1, cellarLevel: 1, abyssDepth: 1,
+                appearance: { gender: 'male', skin: 'light', hair: 'hair_messy', hairColor: 'brown', eyes: 'eyes_blue', shirtColor: 'blue', pantsColor: 'dark', bootsColor: 'leather' },
+                equipment: { 
+                    weapon: { id: "rusty_mace", name: "Rusty Mace", slot: "weapon", type: "Mace", atkBonus: 8, rarity: "Common", attackRange: 1, value: 15, spriteId: "weap_rusty_mace" } 
+                },
+                inventory: [], stash: [], workers: { woodcutters: 0, fishermen: 0, farmers: 0 },
+                supplyCart: { wood: 0, fish: 0, hops: 0, max: 100, level: 1 },
+                maxInventorySlots: 5, backpackUpgrades: 0,
+                pet: { adopted: false, level: 1 }
+            };
+
             const newPlayer = new Player({
                 username: data.username,
                 password: data.password, 
-                saveData: {} 
+                saveData: defaultTemplate 
             });
 
             await newPlayer.save();
@@ -97,40 +87,37 @@ io.on('connection', (socket) => {
         }
     });
     
-// --- SAVE GAME STATE ---
+// --- SECURE GAME STATE SAVING ---
     socket.on('saveGame', async (data) => {
         try {
             let p = activePlayers[socket.id];
             
-            // === NEW: SECURE STATE MERGE ===
-            // Prevent the browser from accidentally downgrading server-side progression!
-            if (p) {
-                activePlayers[socket.id] = {
-                    ...data.saveData, // Accept the client's inventory, gold, and stats
-                    
-					// Fiercely protect Map Unlocks (Never let them roll backward)
-                    wildernessLevel: Math.max(p.wildernessLevel || 1, data.saveData.wildernessLevel || 1),
-                    cellarLevel: Math.max(p.cellarLevel || 1, data.saveData.cellarLevel || 1),
-                    abyssDepth: Math.max(p.abyssDepth || 1, data.saveData.abyssDepth || 1),
-                    cellarsUnlocked: p.cellarsUnlocked || data.saveData.cellarsUnlocked,
-                    abyssUnlocked: p.abyssUnlocked || data.saveData.abyssUnlocked,
-                    
-                    // Fiercely protect the XP/Gold/Loot Escrow
-                    pendingXp: p.pendingXp !== undefined ? p.pendingXp : data.saveData.pendingXp,
-                    pendingGold: p.pendingGold !== undefined ? p.pendingGold : data.saveData.pendingGold,
-                    
-                    // === THE FIX: PROTECT THE LOOT ESCROW FROM BEING WIPED ===
-                    pendingLoot: p.pendingLoot !== undefined ? p.pendingLoot : data.saveData.pendingLoot
-                };
-            } else {
-                activePlayers[socket.id] = data.saveData; 
+            // 1. If the player isn't loaded in server memory, reject the save entirely.
+            if (!p) return;
+
+            // 2. ONLY accept purely cosmetic updates from the client's payload.
+            // We surgically extract ONLY what is safe, ignoring Gold, Items, and Stats.
+            if (data.saveData) {
+                if (data.saveData.appearance) {
+                    p.appearance = data.saveData.appearance;
+                }
+                
+                // Allow pet cosmetic updates, but fiercely protect the level and adoption status!
+                if (data.saveData.pet) {
+                    p.pet = p.pet || {};
+                    p.pet.name = data.saveData.pet.name || p.pet.name;
+                    p.pet.type = data.saveData.pet.type || p.pet.type;
+                    p.pet.furColor = data.saveData.pet.furColor || p.pet.furColor;
+                    p.pet.collarColor = data.saveData.pet.collarColor || p.pet.collarColor;
+                }
             }
-            
+
+            // 3. Save the SERVER'S secure memory state to MongoDB, completely ignoring the client's economy data.
             await Player.findOneAndUpdate(
                 { username: data.username },
-                { saveData: activePlayers[socket.id] }
+                { saveData: p }
             );
-            console.log(`💾 Save file synced for Knight: ${data.username}`);
+            console.log(`💾 Secure save synced for Knight: ${data.username}`);
         } catch (err) {
             console.error('Error saving game data to MongoDB:', err);
         }
@@ -149,692 +136,20 @@ io.on('connection', (socket) => {
             socket.emit('loginError', 'Server error during login.');
         }
     });
-	
-// --- SERVER-HOSTED MAP GENERATOR ---
-    socket.on('deployToCombat', (data) => {
-        let p = activePlayers[socket.id];
-        if (!p) return;
-
-        // Force player out of gathering jobs while fighting
-		p.idleJob = 'NONE';
-        p.pendingXp = 0;
-
-        let zone = data.zoneChoice;
-        let combatState = {
-            zone: zone,
-            turn: 'PLAYER',
-            phase: 'MOVE',
-            gridSize: 8,
-            tileSize: 60,
-            player: { x: 1, y: 1 },
-            enemies: [],
-            obstacles: []
-        };
-
-        let baitMultiplier = (zone === 'WILDERNESS' && p.mapBaited) ? 1.4 : 1.0;
-        let prefixLabel = (zone === 'WILDERNESS' && p.mapBaited) ? "Frenzied " : "";
-
-        // 1. GENERATE ENEMIES SECURELY
-        if (zone === 'GORILLA_ARENA') {
-            combatState.gridSize = 14; combatState.tileSize = 34; combatState.player.x = 7; combatState.player.y = 7;
-            for (let i = 0; i < 100; i++) {
-                let sx, sy;
-                if (Math.random() > 0.5) { sx = Math.random() > 0.5 ? 0 : 13; sy = Math.floor(Math.random() * 14); } 
-                else { sx = Math.floor(Math.random() * 14); sy = Math.random() > 0.5 ? 0 : 13; }
-                combatState.enemies.push({ id: "enraged_gorilla", name: `Enraged Gorilla #${i+1}`, type: "MELEE", hp: 12000, maxHp: 12000, moveRange: 2, attackRange: 1, attack: 180, resilience: 30, accuracy: 120, alive: true, icon: "🦍", x: sx, y: sy, size: 1 });
-            }
-        } 
-        else if (zone === 'ABYSS') {
-            combatState.gridSize = 12; combatState.tileSize = 40; combatState.player.x = 0; combatState.player.y = 11;
-            let depth = p.abyssDepth || 1;
-            let statMult = 1 + (depth * 0.15) + (Math.pow(depth, 2) * 0.005);
-            let enemyCount = Math.min(12, 3 + Math.floor(depth / 3));
-
-            for (let i = 0; i < enemyCount; i++) {
-                let rng = Math.random();
-                let ex = Math.floor(Math.random() * 8) + 4; 
-                let ey = Math.floor(Math.random() * 12);
-                while(combatState.enemies.some(e => e.x === ex && e.y === ey)) {
-                    ex = Math.floor(Math.random() * 8) + 4; ey = Math.floor(Math.random() * 12);
-                }
-                if (rng > 0.7) combatState.enemies.push(createEnemy("spectral_barfly", ex, ey, "", statMult));
-                else if (rng > 0.3) combatState.enemies.push(createEnemy("mash_crawler", ex, ey, "", statMult));
-                else combatState.enemies.push(createEnemy("eldritch_keg", ex, ey, "", statMult));
-            }
-        }
-        else if (zone === 'CELLARS') {
-            let runCLvl = data.activeLevel || p.cellarLevel || 1;
-            if (runCLvl === 20) {
-                combatState.enemies.push(createEnemy("vintage_behemoth", 5, 4));
-            } else {
-                let swarmSize = Math.min(6, 1 + Math.floor(runCLvl / 2)); 
-                for (let i = 0; i < swarmSize; i++) {
-                    let spawnX = 7 - Math.floor(i / 3); let spawnY = 2 + (i % 3);
-                    combatState.enemies.push(createEnemy("corrupted_cask", spawnX, spawnY));
-                }
-                if (p.cellarsChummed) {
-                    for (let i = 0; i < 5; i++) combatState.enemies.push(createEnemy("pub_crawl_mimic", 2 + i, 5, "Chummed "));
-                } else if (runCLvl >= 5) {
-                    combatState.enemies.push(createEnemy("pub_crawl_mimic", 5, 6));
-                }
-            }
-        }
-        else { // WILDERNESS
-            let runLvl = data.activeLevel || p.wildernessLevel || 1;
-            if (runLvl === 20) {
-                combatState.enemies.push(createEnemy("wilderness_overlord", 5, 4, prefixLabel, baitMultiplier));
-            } else {
-                let swarmSize = Math.min(6, 1 + Math.floor(runLvl / 2)); 
-                for (let i = 0; i < swarmSize; i++) {
-                    let spawnX = 7 - Math.floor(i / 3); let spawnY = 2 + (i % 3);           
-                    combatState.enemies.push(createEnemy("wild_ravager", spawnX, spawnY, prefixLabel, baitMultiplier));
-                }
-                if (p.mapBaited) combatState.enemies.push(createEnemy("alpha_poacher", 2, 5));
-            }
-        }
-
-        // 2. GENERATE OBSTACLES SECURELY
-        let obsIcon = "🪨"; let obsSprite = "map_boulder";
-        if (zone === 'WILDERNESS') { obsIcon = "🌲"; obsSprite = "map_tree"; } 
-        else if (zone === 'CELLARS') { obsIcon = "🛢️"; obsSprite = "map_broken_cask"; }
-        else if (zone === 'ABYSS') { obsIcon = "🔮"; obsSprite = "map_pillar"; }
-
-        let runLvl = data.activeLevel || p.wildernessLevel || 1;
-        
-        // Static Boss Map
-        if (zone === 'WILDERNESS' && runLvl === 20) {
-            combatState.player.x = 0; combatState.player.y = 7;
-            let boss = combatState.enemies.find(e => e.id === "wilderness_overlord");
-            if (boss) { boss.x = 6; boss.y = 0; }
-            const bossLayout = [
-                [1, 1, 1, 1, 1, 1, 0, 0], [1, 0, 0, 0, 1, 1, 0, 1], [1, 0, 1, 0, 0, 0, 0, 1],
-                [1, 0, 1, 1, 1, 1, 1, 1], [1, 0, 0, 0, 0, 0, 1, 1], [1, 1, 1, 1, 1, 0, 1, 1],
-                [0, 0, 0, 1, 1, 0, 0, 1], [0, 1, 0, 0, 0, 0, 1, 1]
-            ];
-            for (let y = 0; y < 8; y++) {
-                for (let x = 0; x < 8; x++) {
-                    if (bossLayout[y][x] === 1) combatState.obstacles.push({ x: x, y: y, icon: obsIcon, spriteId: obsSprite });
-                }
-            }
-        } else {
-            // Procedural Maps
-            let obsCount = (zone === 'ABYSS') ? 25 : 12; 
-            for (let i = 0; i < obsCount; i++) {
-                let ox = Math.floor(Math.random() * combatState.gridSize); 
-                let oy = Math.floor(Math.random() * combatState.gridSize);
-                let blocked = (ox === combatState.player.x && oy === combatState.player.y);
-                combatState.enemies.forEach(em => {
-                    let s = em.size || 1;
-                    if (ox >= em.x && ox < em.x + s && oy >= em.y && oy < em.y + s) blocked = true;
-                });
-                if (!blocked) combatState.obstacles.push({ x: ox, y: oy, icon: obsIcon, spriteId: obsSprite });
-            }
-        }
-		
-// Save session to server memory & beam it to the browser
-        // === NEW: UNIQUE INSTANCE TRACKING ===
-        combatState.enemies.forEach((e, idx) => { e.uid = `mob_${idx}`; });
-
-        activeCombats[socket.id] = combatState;
-        socket.emit('combatDeployed', combatState);
-    });	
-// --- SERVER-AUTHORITATIVE ENEMY AI ---
-    socket.on('endPlayerTurn', (data) => {
-        let p = activePlayers[socket.id];
-        let combat = activeCombats[socket.id];
-        if (!p || !combat) return;
-
-        combat.turn = 'ENEMY';
-        let turnEvents = []; 
-
-        // === 1. BUILD THE O(1) COLLISION MATRIX ===
-        let collisionMatrix = Array(combat.gridSize).fill(null).map(() => Array(combat.gridSize).fill(0));
-        
-        // 1 = Hard Wall (Obstacles)
-        combat.obstacles.forEach(o => {
-            if (o.x >= 0 && o.x < combat.gridSize && o.y >= 0 && o.y < combat.gridSize) collisionMatrix[o.x][o.y] = 1;
-        });
-        
-        // 2 = Dynamic Wall (Enemies)
-        combat.enemies.forEach(e => {
-            if (e.alive) {
-                let eSize = e.size || 1;
-                for (let bx = e.x; bx < e.x + eSize; bx++) {
-                    for (let by = e.y; by < e.y + eSize; by++) {
-                        if (bx >= 0 && bx < combat.gridSize && by >= 0 && by < combat.gridSize) collisionMatrix[bx][by] = 2;
-                    }
-                }
-            }
-        });
-
-        // === THE BUG FIX: ADD THE PLAYER TO THE MATRIX ===
-        if (combat.player.x >= 0 && combat.player.x < combat.gridSize && combat.player.y >= 0 && combat.player.y < combat.gridSize) {
-            collisionMatrix[combat.player.x][combat.player.y] = 2; // Treat the player as a solid wall!
-        }
-
-        // === 2. SAFE MATRIX-POWERED LINE OF SIGHT ===
-        function hasLineOfSightMatrix(x1, y1, x2, y2) {
-            let dx = Math.abs(x2 - x1); let dy = Math.abs(y2 - y1);
-            let sx = (x1 < x2) ? 1 : -1; let sy = (y1 < y2) ? 1 : -1;
-            let err = dx - dy; let cx = x1; let cy = y1;
-            while (true) {
-                if (cx === x2 && cy === y2) return true;
-                if (cx !== x1 || cy !== y1) {
-                    // Safe bounds checking prevents crashes off the edge of the map!
-                    if (collisionMatrix[cx] === undefined || collisionMatrix[cx][cy] === 1) return false; 
-                }
-                let e2 = 2 * err;
-                if (e2 > -dy) { err -= dy; cx += sx; }
-                if (e2 < dx) { err += dx; cy += sy; }
-            }
-        }
-
-        // === 3. THROTTLED BFS PATHFINDING ===
-        function getEnemyPathStep(e) {
-            let eSize = e.size || 1;
-            let queue = [{x: e.x, y: e.y}];
-            let visited = new Set([`${e.x},${e.y}`]);
-            let parent = {};
-            let dirs = [{x:0, y:-1}, {x:1, y:0}, {x:0, y:1}, {x:-1, y:0}];
-            let targetNode = null; 
-            let closestNode = {x: e.x, y: e.y}; 
-            let minDist = Infinity;
-            
-            // === THE LAG FIX: THROTTLE THE BRAINS ===
-            // Prevents trapped Gorillas from searching the whole map!
-            let searchCount = 0; 
-            let searchLimit = 30; 
-            
-            while(queue.length > 0 && searchCount < searchLimit) {
-                searchCount++;
-                let curr = queue.shift();
-                let dist = getGridDistance(combat.player.x, combat.player.y, curr.x, curr.y, eSize);
-                
-                let hasLos = false;
-                if (dist <= e.attackRange) {
-                    for (let bx = curr.x; bx < curr.x + eSize; bx++) {
-                        for (let by = curr.y; by < curr.y + eSize; by++) {
-                            if (hasLineOfSightMatrix(bx, by, combat.player.x, combat.player.y)) hasLos = true;
-                        }
-                    }
-                }
-
-                if (dist < minDist) { minDist = dist; closestNode = curr; }
-                if (dist <= e.attackRange && hasLos) { targetNode = curr; break; }
-
-                for (let d of dirs) {
-                    let nx = curr.x + d.x; let ny = curr.y + d.y;
-                    let key = `${nx},${ny}`;
-                    if (!visited.has(key)) {
-                        visited.add(key);
-                        
-                        let blocked = false;
-                        for (let bx = nx; bx < nx + eSize; bx++) {
-                            for (let by = ny; by < ny + eSize; by++) {
-                                if (bx < 0 || bx >= combat.gridSize || by < 0 || by >= combat.gridSize) {
-                                    blocked = true;
-                                } else if (collisionMatrix[bx][by] === 2 && !(bx >= e.x && bx < e.x + eSize && by >= e.y && by < e.y + eSize)) {
-                                    blocked = true; 
-                                } else if (collisionMatrix[bx][by] === 1 && eSize === 1) {
-                                    blocked = true; 
-                                }
-                            }
-                        }
-
-                        if (!blocked) { parent[key] = curr; queue.push({x: nx, y: ny}); }
-                    }
-                }
-            }
-            if (!targetNode) targetNode = closestNode;
-            if (targetNode.x === e.x && targetNode.y === e.y) return null;
-
-            let step = targetNode;
-            while (parent[`${step.x},${step.y}`] && (parent[`${step.x},${step.y}`].x !== e.x || parent[`${step.x},${step.y}`].y !== e.y)) { 
-                step = parent[`${step.x},${step.y}`]; 
-            }
-            return step;
-        }
-
-        // === EXECUTE AI LOOP ===
-        let activeEnemies = combat.enemies.filter(e => e.alive);
-        for (let e of activeEnemies) {
-            if (!e.alive || p.hp <= 0) break;
-            
-            let eSize = e.size || 1;
-            let dist = getGridDistance(combat.player.x, combat.player.y, e.x, e.y, eSize);
-            let hasLos = false;
-            
-            if (dist <= e.attackRange) {
-                for (let bx = e.x; bx < e.x + eSize; bx++) {
-                    for (let by = e.y; by < e.y + eSize; by++) {
-                        if (hasLineOfSightMatrix(bx, by, combat.player.x, combat.player.y)) hasLos = true;
-                    }
-                }
-            }
-
-            // Phase 1: Movement
-            if (dist > e.attackRange || !hasLos) {
-                let steps = e.moveRange;
-                while (steps > 0) {
-                    dist = getGridDistance(combat.player.x, combat.player.y, e.x, e.y, eSize);
-                    hasLos = false;
-                    
-                    if (dist <= e.attackRange) {
-                        for (let bx = e.x; bx < e.x + eSize; bx++) {
-                            for (let by = e.y; by < e.y + eSize; by++) { 
-                                if (hasLineOfSightMatrix(bx, by, combat.player.x, combat.player.y)) hasLos = true; 
-                            }
-                        }
-                    }
-                    if (dist <= e.attackRange && hasLos) break;
-
-                    let nextStep = getEnemyPathStep(e);
-                    if (nextStep) {
-                        // Clear old position
-                        for(let bx = e.x; bx < e.x + eSize; bx++) {
-                            for(let by = e.y; by < e.y + eSize; by++) collisionMatrix[bx][by] = 0;
-                        }
-                        
-                        e.x = nextStep.x; e.y = nextStep.y;
-                        
-                        // Set new position
-                        for(let bx = e.x; bx < e.x + eSize; bx++) {
-                            for(let by = e.y; by < e.y + eSize; by++) collisionMatrix[bx][by] = 2;
-                        }
-
-                        turnEvents.push({ type: 'move', uid: e.uid, enemyId: e.id, name: e.name, finalX: e.x, finalY: e.y });
-                        
-                        if (eSize > 1) { 
-                            let oLen = combat.obstacles.length;
-                            combat.obstacles = combat.obstacles.filter(o => !(o.x >= e.x && o.x < e.x + eSize && o.y >= e.y && o.y < e.y + eSize));
-                            if (combat.obstacles.length < oLen) turnEvents.push({ type: 'crush', enemyName: e.name });
-                        }
-                    } else break;
-                    steps--;
-                }
-            }
-
-            // Phase 2: Attack Processing
-            dist = getGridDistance(combat.player.x, combat.player.y, e.x, e.y, eSize);
-            hasLos = false;
-            if (dist <= e.attackRange) {
-                for (let bx = e.x; bx < e.x + eSize; bx++) {
-                    for (let by = e.y; by < e.y + eSize; by++) { 
-                        if (hasLineOfSightMatrix(bx, by, combat.player.x, combat.player.y)) hasLos = true; 
-                    }
-                }
-            }
-
-            if (dist <= e.attackRange && hasLos) {
-                let isPoacher = e.attackRange > 1;
-                let effectiveDeflect = isPoacher ? 0 : (p.resilience || 5);
-
-                if (!isPoacher && Math.random() * 100 <= effectiveDeflect) {
-                    turnEvents.push({ type: 'deflect', enemyName: e.name });
-                } else {
-                    let minDmg = Math.floor(e.attack * 0.85); let maxDmg = Math.ceil(e.attack * 1.10);
-                    let variedDmg = Math.floor(Math.random() * (maxDmg - minDmg + 1)) + minDmg;
-                    let isCrit = variedDmg >= Math.floor(e.attack * 1.06);
-
-                    p.hp -= variedDmg;
-                    turnEvents.push({ type: 'hit', uid: e.uid, enemyName: e.name, damage: variedDmg, isCrit: isCrit, isPoacher: isPoacher, ex: e.x, ey: e.y });
-
-                    if (e.name.includes("Mimic")) {
-                        let bIdx = p.inventory.findIndex(i => i.type === 'brew');
-                        if (bIdx !== -1) { p.inventory.splice(bIdx, 1); turnEvents.push({ type: 'steal', enemyName: e.name }); }
-                    }
-
-                    if (p.hp <= 0) {
-                        p.gold = Math.max(0, p.gold - 100); p.hp = Math.floor((p.vitality || 70) * 0.5);
-                        turnEvents.push({ type: 'death' });
-                        break; 
-                    }
-                }
-            }
-        }
-
-        combat.turn = 'PLAYER';
-        socket.emit('enemyTurnReceipt', { events: turnEvents, updatedPlayer: p, updatedCombatState: combat });
-    });
-	
-	
-
-
-// --- SERVER-AUTHORITATIVE MOVEMENT SYNC ---
-    socket.on('combatMove', (data) => {
-        let p = activePlayers[socket.id];
-        let combat = activeCombats[socket.id];
-        if (!p || !combat) return;
-
-        // Securely calculate the stamina cost of the stride
-        let dist = getGridDistance(combat.player.x, combat.player.y, data.tx, data.ty, 1);
-        let swiftness = p.swiftness || 3;
-        if (p.activeBuffs && p.activeBuffs.includes('LAGER')) swiftness += 2;
-        
-        let moveStaminaCost = Math.floor((dist / swiftness) * 10);
-
-        // Deduct it securely so the server stays perfectly in sync with the browser
-        if (p.stamina >= moveStaminaCost) {
-            p.stamina -= moveStaminaCost;
-            combat.player.x = data.tx;
-            combat.player.y = data.ty;
-        }
-    });
-
-    // --- SERVER-AUTHORITATIVE COMBAT ENGINE ---
-    socket.on('combatAction', (data) => {
-        let p = activePlayers[socket.id];
-        if (!p) return;
-
-        if (data.actionType === 'end') {
-            let recover = Math.floor((p.maxStamina || 50) * 0.15); 
-            p.stamina = Math.min(p.maxStamina || 50, (p.stamina || 0) + recover);
-            
-            return socket.emit('combatResult', { type: 'pass', newStamina: p.stamina, recovered: recover });
-        }
-
-        if (data.actionType === 'slash' || data.actionType === 'special') {
-            let staminaCost = data.actionType === 'special' ? 15 : 5;
-            if (p.stamina < staminaCost) return; 
-            
-            p.stamina -= staminaCost; 
-            
-            let enemyResilience = data.targetEnemy ? (data.targetEnemy.resilience || 0) : 0;
-            let equipmentBonus = 0;
-            for (let slot in p.equipment) {
-                let item = p.equipment[slot];
-                if (item && item.atkBonus) equipmentBonus += item.atkBonus;
-            }
-            let baseDmg = (p.power || 12) + equipmentBonus;
-            if (p.activeBuffs && p.activeBuffs.includes('IPA')) baseDmg = Math.floor(baseDmg * 1.10);
-
-            let hitChance = (data.actionType === 'special' && p.equipment.weapon?.rarity === "Gorilla") ? 100 : Math.max(5, ((p.accuracy || 85) - enemyResilience));
-
-            if (Math.random() * 100 > hitChance) {
-                socket.emit('combatResult', { type: 'miss', hitChance: hitChance, newStamina: p.stamina });
-            } else {
-                let minDmg = Math.floor(baseDmg * 0.85);
-                let maxDmg = Math.ceil(baseDmg * 1.10);
-                let variedDmg = Math.floor(Math.random() * (maxDmg - minDmg + 1)) + minDmg;
-                
-let isCrit = variedDmg >= Math.floor(baseDmg * 1.06);
-                let finalDmg = data.actionType === 'special' ? Math.floor(variedDmg * (p.equipment.weapon?.rarity === "Gorilla" ? 4.0 : 1.5)) : variedDmg;
-
-                // === NEW: DEDUCT HP ON THE SERVER ===
-                let combat = activeCombats[socket.id];
-                if (combat && data.targetEnemy) {
-                    // Find the exact enemy in the server's memory using the coordinates
-                    let serverEnemy = combat.enemies.find(e => e.x === data.targetEnemy.x && e.y === data.targetEnemy.y && e.alive);
-                    
-if (serverEnemy) {
-    serverEnemy.hp -= finalDmg;
-    if (serverEnemy.hp <= 0) {
-        serverEnemy.hp = 0;
-        serverEnemy.alive = false; 
-        processSecureKill(socket.id, serverEnemy); // Trigger secure kill
-    }
-}
-                }
-
-                socket.emit('combatResult', { type: 'hit', actionType: data.actionType, damage: finalDmg, isCrit: isCrit, newStamina: p.stamina });
-            }
-        }
-    });
-
-    // --- SERVER-AUTHORITATIVE BOMB ENGINE ---
-    socket.on('bombAction', (data) => {
-        let p = activePlayers[socket.id];
-        if (!p) return;
-
-        let invIndex = data.invIndex;
-        let bomb = p.inventory[invIndex];
-
-        // Validate that the item exists and is actually a bomb
-        if (!bomb || bomb.type !== 'bomb') return;
-
-// Securely remove the bomb from the Server's master inventory
-        p.inventory.splice(invIndex, 1);
-
-        // === NEW: DEDUCT AOE BOMB DAMAGE ON THE SERVER ===
-        let combat = activeCombats[socket.id];
-        if (combat) {
-            combat.enemies.forEach(e => {
-                if (!e.alive) return;
-                // Calculate distance from explosion epicenter (data.tx, data.ty)
-                let dist = getGridDistance(data.tx, data.ty, e.x, e.y, e.size || 1);
-if (dist <= bomb.aoe) {
-    e.hp -= bomb.damage;
-    if (e.hp <= 0) {
-        e.hp = 0;
-        e.alive = false;
-        processSecureKill(socket.id, e); // Trigger secure kill
-    }
-}
-            });
-        }
-
-// Beam the verified bomb stats back to the browser to trigger the explosion!
-        socket.emit('bombResult', {
-            bombId: bomb.id,
-            bombName: bomb.name,
-            damage: bomb.damage,
-            aoe: bomb.aoe,
-            tx: data.tx,
-            ty: data.ty,
-            updatedPlayer: p // <--- Force sync the inventory securely!
-        });
-    });
-	
-	// --- SERVER-AUTHORITATIVE COMBAT INVENTORY ---
-    socket.on('combatItemAction', (data) => {
-        let p = activePlayers[socket.id];
-        let combat = activeCombats[socket.id];
-        if (!p || !combat) return;
-
-        let invIndex = data.index;
-        let item = p.inventory[invIndex];
-        if (!item) return;
-
-        if (data.action === 'brew' && item.type === 'brew') {
-            p.activeBuffs = p.activeBuffs || [];
-            
-            if (item.id === 'ipa' && !p.activeBuffs.includes('IPA')) {
-                p.activeBuffs.push('IPA');
-                p.inventory.splice(invIndex, 1);
-                socket.emit('combatItemReceipt', { success: true, updatedPlayer: p, message: "🍺 Drank a Furious IPA! Damage multipliers amplified." });
-            } 
-            else if (item.id === 'lager' && !p.activeBuffs.includes('LAGER')) {
-                p.activeBuffs.push('LAGER');
-                p.inventory.splice(invIndex, 1);
-                socket.emit('combatItemReceipt', { success: true, updatedPlayer: p, message: "🍺 Drank a Swift Lager! Stride movement capabilities expanded." });
-            }
-            else if (item.id === 'stout' || item.id === 'reserve') {
-                let healPct = item.id === 'reserve' ? 0.25 : 0.10;
-                let heal = Math.floor(p.vitality * healPct);
-                p.hp = Math.min(p.vitality, p.hp + heal);
-                p.inventory.splice(invIndex, 1);
-                socket.emit('combatItemReceipt', { success: true, updatedPlayer: p, message: `🍺 Chugged ${item.name}. Restored ${heal} HP.` });
-            } else {
-                socket.emit('combatItemReceipt', { success: false, message: "❌ Buff already active." });
-            }
-        }
-        else if (data.action === 'equip') {
-            let slotKey = item.slot || "weapon";
-            let worn = p.equipment[slotKey];
-            
-            p.equipment[slotKey] = item;
-            if (worn) p.inventory[invIndex] = worn; 
-            else p.inventory.splice(invIndex, 1);
-            
-            socket.emit('combatItemReceipt', { success: true, updatedPlayer: p, message: "⚙️ Swapped gear mid-combat." });
-        }
-    });
-	
 
     // --- DELEGATED TOWN & INVENTORY ROUTES ---
     injectTownRouter(socket, activePlayers);
 
-			// Server secure kill processor //
+    // --- DELEGATED COMBAT ROUTES ---
+    injectCombatRouter(socket, io, activePlayers, activeCombats);
 
-function processSecureKill(socketId, serverEnemy) {
-    let p = activePlayers[socketId];
-    let combat = activeCombats[socketId];
-    if (!p || !combat) return;
-
-    let multiplier = p.monumentBuilt ? 2 : 1;
-    let isGorilla = (combat.zone === 'GORILLA_ARENA'); 
-    let isBaited = (combat.zone === 'WILDERNESS' && p.mapBaited);
-
-    let goldReward = ((isGorilla ? 500 : (isBaited ? 60 : 25)) * multiplier);
-    let xpReward = 0;
-
-    let droppedItemObj = null;
-    let table = LootTables[serverEnemy.id];
-    
-    if (table) {
-        xpReward = (table.xpDrop || 0) * multiplier;
-        
-        // Roll Loot
-        if (Math.random() <= table.dropChance) {
-            let totalWeight = table.pools.reduce((sum, entry) => sum + entry.weight, 0);
-            let roll = Math.random() * totalWeight;
-            let droppedItemId = null;
-            for (let entry of table.pools) {
-                if (roll < entry.weight) { droppedItemId = entry.itemId; break; }
-                roll -= entry.weight;
-            }
-            if (droppedItemId && ItemDatabase[droppedItemId]) {
-                droppedItemObj = JSON.parse(JSON.stringify(ItemDatabase[droppedItemId]));
-            }
-        }
-    }
-
-    // Add to secure Server Escrow
-    p.pendingGold = (p.pendingGold || 0) + goldReward;
-    p.pendingXp = (p.pendingXp || 0) + xpReward;
-
-    // Secure the dropped item in the server's pending loot array
-    p.pendingLoot = p.pendingLoot || [];
-    if (droppedItemObj) {
-        p.pendingLoot.push(droppedItemObj);
-    }
-
-    // Tell the client to visually animate the rewards
-    io.to(socketId).emit('killConfirmed', { 
-        gold: goldReward, 
-        xp: xpReward, 
-        item: droppedItemObj, 
-        isPet: false, 
-        enemyName: serverEnemy.name 
-    });
-}
-
-
-
-// --- SERVER-AUTHORITATIVE COMBAT ESCROW ---
-    
-    // Secure Loot Handlers
-    socket.on('takePendingLoot', (idx) => {
-        let p = activePlayers[socket.id];
-        if (!p || !p.pendingLoot || !p.pendingLoot[idx]) return;
-
-        p.maxInventorySlots = p.maxInventorySlots || 5;
-        if (p.inventory.length < p.maxInventorySlots) {
-            let securedItem = p.pendingLoot.splice(idx, 1)[0];
-            p.inventory.push(securedItem);
-            
-            // Force client sync
-            socket.emit('inventoryReceipt', { 
-                success: true, 
-                action: 'takeLoot', 
-                updatedPlayer: p, 
-                message: `🎒 Secured ${securedItem.name} in backpack.` 
-            });
-        } else {
-            socket.emit('inventoryReceipt', { success: false, message: "❌ Backpack is full!" });
-        }
-    });
-
-    socket.on('sellPendingLoot', (idx) => {
-        let p = activePlayers[socket.id];
-        if (!p || !p.pendingLoot || !p.pendingLoot[idx]) return;
-
-        let itemToSell = p.pendingLoot.splice(idx, 1)[0];
-        let val = itemToSell.value || (itemToSell.rarity === "Gorilla" ? 500 : 15);
-        
-        p.gold += val;
-        
-        // CHANGED: action is now 'sell' to match your main.js sound trigger
-        socket.emit('inventoryReceipt', { 
-            success: true, 
-            action: 'sell', 
-            updatedPlayer: p, 
-            message: `💰 Sold dropped item for ${val}g.` 
-        });
-    });
-
-    // 2. Process Map Clear Bonuses
-    socket.on('processCombatVictory', (data) => {
-        let p = activePlayers[socket.id];
-        if (!p) return;
-
-        let goldReward = 0;
-        if (data.zone === 'GORILLA_ARENA') goldReward += 5000;
-        else if (data.zone === 'ABYSS') {
-            p.abyssDepth = (p.abyssDepth || 1) + 1;
-            goldReward += (50 + (10 * p.abyssDepth));
-        } else if (data.zone === 'WILDERNESS') {
-            if (p.wildernessLevel === 20 && !p.cellarsUnlocked) p.cellarsUnlocked = true;
-            else if (data.activeLevel === p.wildernessLevel) p.wildernessLevel = Math.min(20, p.wildernessLevel + 1);
-        } else if (data.zone === 'CELLARS') {
-            if (p.cellarLevel === 20 && !p.abyssUnlocked) p.abyssUnlocked = true;
-            else if (data.activeLevel === p.cellarLevel) p.cellarLevel = Math.min(20, p.cellarLevel + 1);
-        }
-        
-        if (goldReward > 0) p.pendingGold = (p.pendingGold || 0) + goldReward;
-    });
-
-// 3. Payout the Escrow!
-    socket.on('claimCombatRewards', () => {
-        let p = activePlayers[socket.id];
-        if (!p) return;
-
-        // === NEW: SAFE INITIALIZATION ===
-        // This prevents "NaN" corruption and auto-heals broken save files!
-        p.gold = p.gold || 0;
-        p.xp = p.xp || 0;
-        p.level = p.level || 1;
-        p.xpToNext = p.xpToNext || 100;
-
-        if (p.pendingGold > 0) { p.gold += p.pendingGold; }
-        if (p.pendingXp > 0) {
-            p.xp += p.pendingXp;
-            
-            while (p.xp >= p.xpToNext) {
-                p.xp -= p.xpToNext;
-                p.level += 1;
-                p.skillPoints = (p.skillPoints || 0) + 3;
-                
-                // Server securely calculates the next level threshold
-                let base = 100; let multiplier = Math.pow(1.15, p.level - 1); let flatBump = p.level * 50;
-                p.xpToNext = Math.floor((base * multiplier) + flatBump);
-                
-                p.hp = p.vitality; p.stamina = p.maxStamina;
-            }
-        }
-
-// Zero out the escrow so it can't be claimed twice!
-        p.pendingGold = 0; p.pendingXp = 0; p.pendingLoot = [];
-
-        socket.emit('combatRewardsReceipt', { updatedPlayer: p });
-    });
-	
+    // --- DISCONNECT ---
     socket.on('disconnect', () => {
         console.log(`💨  Knight disconnected: ${socket.id}`);
         delete activePlayers[socket.id];
+        delete activeCombats[socket.id]; // Prevent memory leaks for combats!
     });
-
-}); // <--- THE PROTECTIVE BUBBLE CLOSES HERE!
+});
 
 // === THE SERVER TICK (Runs every 3 seconds) ===
 setInterval(() => {
@@ -866,16 +181,15 @@ setInterval(() => {
             }
         }
 
-// Inside server.js
-io.to(socketId).emit('serverTick', {
-    hp: p.hp, 
-    wood: p.wood, 
-    fish: p.fish, 
-    hops: p.hops,
-    supplyCart: p.supplyCart, 
-    happyHourTicks: p.happyHourTicks,
-    upgrades: p.upgrades // <--- ADD THIS LINE
-});
+        io.to(socketId).emit('serverTick', {
+            hp: p.hp, 
+            wood: p.wood, 
+            fish: p.fish, 
+            hops: p.hops,
+            supplyCart: p.supplyCart, 
+            happyHourTicks: p.happyHourTicks,
+            upgrades: p.upgrades
+        });
     }
 }, 3000);
 
