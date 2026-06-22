@@ -440,10 +440,10 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             let staminaCost = data.actionType === 'special' ? 15 : 5;
             
             if (p.stamina < staminaCost) {
-                return socket.emit('combatResult', { type: 'error', message: `❌ Server: Insufficient stamina (${p.stamina}/${staminaCost} required).`, newStamina: p.stamina });
+                return socket.emit('combatResult', { type: 'error', message: `❌ Server: Insufficient stamina (${Math.floor(p.stamina)}/${staminaCost} required).`, newStamina: p.stamina });
             }
             
-            p.stamina -= staminaCost;
+            p.stamina -= staminaCost; 
             
             let enemyResilience = data.targetEnemy ? (data.targetEnemy.resilience || 0) : 0;
             let equipmentBonus = 0;
@@ -459,6 +459,25 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             if (Math.random() * 100 > hitChance) {
                 socket.emit('combatResult', { type: 'miss', hitChance: hitChance, newStamina: p.stamina });
             } else {
+                let combat = activeCombats[socket.id];
+                let serverEnemy = null;
+                
+                // CRITICAL CRASH FIX: Verify targetEnemy actually exists before checking UID!
+                if (combat && data.targetEnemy) {
+                    if (data.targetEnemy.uid) {
+                        serverEnemy = combat.enemies.find(e => e.uid === data.targetEnemy.uid && e.alive);
+                    } else {
+                        serverEnemy = combat.enemies.find(e => e.x === data.targetEnemy.x && e.y === data.targetEnemy.y && e.alive);
+                    }
+                }
+
+                // DESYNC FIX: If the server cannot find the enemy, cleanly reject the hit!
+                if (!serverEnemy) {
+                    p.stamina += staminaCost; // Refund the stamina
+                    return socket.emit('combatResult', { type: 'error', message: '❌ Target lost! You must select an enemy, or the enemy has moved.', newStamina: p.stamina });
+                }
+
+                // Only calculate damage if we confirmed the enemy exists!
                 let minDmg = Math.floor(baseDmg * 0.85);
                 let maxDmg = Math.ceil(baseDmg * 1.10);
                 let variedDmg = Math.floor(Math.random() * (maxDmg - minDmg + 1)) + minDmg;
@@ -466,24 +485,14 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 let isCrit = variedDmg >= Math.floor(baseDmg * 1.06);
                 let finalDmg = data.actionType === 'special' ? Math.floor(variedDmg * (p.equipment.weapon?.rarity === "Gorilla" ? 4.0 : 1.5)) : variedDmg;
 
-                let combat = activeCombats[socket.id];
-                if (combat && data.targetEnemy) {
-// Track by unique ID so we don't lose the enemy if coordinates desync
-                    let serverEnemy = null;
-                    if (data.targetEnemy.uid) {
-                        serverEnemy = combat.enemies.find(e => e.uid === data.targetEnemy.uid && e.alive);
-                    } else {
-                        serverEnemy = combat.enemies.find(e => e.x === data.targetEnemy.x && e.y === data.targetEnemy.y && e.alive);
-                    }
-                    if (serverEnemy) {
-                        serverEnemy.hp -= finalDmg;
-                        if (serverEnemy.hp <= 0) {
-                            serverEnemy.hp = 0;
-                            serverEnemy.alive = false; 
-                            processSecureKill(socket.id, serverEnemy);
-                        }
-                    }
+                serverEnemy.hp -= finalDmg;
+                if (serverEnemy.hp <= 0) {
+                    serverEnemy.hp = 0;
+                    serverEnemy.alive = false; 
+                    processSecureKill(socket.id, serverEnemy);
                 }
+                
+                // Only emit the hit AFTER the server actually applied the damage!
                 socket.emit('combatResult', { type: 'hit', actionType: data.actionType, damage: finalDmg, isCrit: isCrit, newStamina: p.stamina });
             }
         }
