@@ -5,20 +5,42 @@ let uiMemory = { gold: -1, wood: -1, fish: -1, hops: -1, cWood: -1, cFish: -1, c
 
 // === UI NAVIGATION ENGINE ===
 function switchTab(tabId) {
-    // 1. Hide all game screens
+    // 1. GHOSTING: Auto-leave the multiplayer zone if we navigate away to any other tab!
+    if (tabId !== 'social-view' && typeof currentSocialZone !== 'undefined' && currentSocialZone) {
+        if (typeof leaveMultiplayerZone === 'function') {
+            leaveMultiplayerZone(true); // True prevents an infinite loop!
+        }
+    }
+
+    // 2. DOM ESCAPE HATCH: If social-view is trapped inside the Knight panel wrapper, break it out!
+    const socialView = document.getElementById('social-view');
+    if (socialView && socialView.parentElement !== document.body) {
+        document.body.appendChild(socialView); // Moves it safely to the top level!
+    }
+
+    // 3. Hide all individual game screens
     document.querySelectorAll('.game-screen').forEach(screen => {
         screen.style.display = 'none';
     });
 
-    // 2. Remove active highlight from all nav buttons
+    // 4. Hide the entire master Town/Knight layout when in Social or Combat
+    const mainContainer = document.getElementById('main-game-container');
+    if (mainContainer) {
+        if (tabId === 'social-view' || tabId === 'combat-screen') {
+            mainContainer.style.display = 'none';
+        } else {
+            mainContainer.style.display = 'flex'; // Restore the Knight & Town panels
+        }
+    }
+
+    // 5. Remove active highlight from all nav buttons
     document.querySelectorAll('.nav-bar button').forEach(btn => {
         btn.classList.remove('active-tab');
     });
 
-    // 3. Show the requested screen
+    // 6. Show the requested screen
     let targetScreen = document.getElementById(tabId);
     if (targetScreen) {
-        // The Social tab uses a split-screen grid, the others use flex!
         if (tabId === 'social-view') {
             targetScreen.style.display = 'grid';
         } else {
@@ -26,7 +48,7 @@ function switchTab(tabId) {
         }
     }
 
-    // 4. Light up the clicked button
+    // 7. Light up the clicked button
     let btnId = '';
     if (tabId === 'town-vault-view') btnId = 'tab-town';
     else if (tabId === 'combat-screen') btnId = 'tab-combat';

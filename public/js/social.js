@@ -12,15 +12,22 @@ function joinMultiplayerZone(zoneId) {
     socket.emit('joinZone', { zoneId: zoneId });
 }
 
-function leaveMultiplayerZone() {
-    socket.emit('joinZone', { zoneId: null }); 
+function leaveMultiplayerZone(skipTabSwitch = false) {
+    socket.emit('joinZone', { zoneId: null }); // Passing null forces a clean exit
     currentSocialZone = null;
     playersInRoom = {};
-    document.getElementById('social-chat-box').innerHTML = '<span style="color:#7f8c8d; font-style:italic;">Disconnected from zone.</span><br>';
+    
+    let chatBox = document.getElementById('social-chat-box');
+    if (chatBox) chatBox.innerHTML = '<span style="color:#7f8c8d; font-style:italic;">Disconnected from zone.</span><br>';
+    
     updateSocialPlayerList();
     stopSocialRenderLoop();
     closeInspect();
-    switchTab('town-vault-view'); 
+    
+    // Only force a UI change if we manually clicked the [Leave Zone] button!
+    if (!skipTabSwitch) {
+        switchTab('town-vault-view'); 
+    }
 }
 
 function sendSocialChat() {
