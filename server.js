@@ -7,6 +7,7 @@ const mongoose = require('mongoose');
 // Import our new modular routers
 const injectTownRouter = require('./townRouter.js');
 const injectCombatRouter = require('./combatRouter.js');
+const injectSocialRouter = require('./socialRouter.js');
 const { ItemDatabase } = require('./public/js/items.js');
 
 // Initialize the Express app and wrap it in an HTTP server for Socket.io
@@ -152,6 +153,9 @@ if (data.saveData) {
 
     // --- DELEGATED COMBAT ROUTES ---
     injectCombatRouter(socket, io, activePlayers, activeCombats);
+	
+	// Inject the Multiplayer Social Router
+    injectSocialRouter(socket, io, activePlayers);
 
     // --- DISCONNECT ---
     socket.on('disconnect', () => {

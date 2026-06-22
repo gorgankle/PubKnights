@@ -957,6 +957,60 @@ function savePetEdits() {
     if (typeof playRetroSound === 'function') playRetroSound('coin');
 }
 
+
+// --- MULTIPLAYER SOCIAL LOGIC ---
+let currentSocialZone = null;
+let playersInRoom = {};
+
+function joinMultiplayerZone(zoneId) {
+    // If we're already here, don't rejoin
+    if (currentSocialZone === zoneId) return; 
+    
+    document.getElementById('social-view').style.display = 'grid'; // Enable the split layout
+    socket.emit('joinZone', { zoneId: zoneId });
+}
+
+function leaveMultiplayerZone() {
+    socket.emit('joinZone', { zoneId: null }); // Passing null forces a clean exit
+    currentSocialZone = null;
+    playersInRoom = {};
+    document.getElementById('social-chat-box').innerHTML = '<span style="color:#7f8c8d; font-style:italic;">Disconnected from zone.</span><br>';
+    updateSocialPlayerList();
+    switchTab('town-vault-view'); // Kick them back to their private town
+}
+
+function sendSocialChat() {
+    const input = document.getElementById('social-chat-input');
+    const msg = input.value.trim();
+    if (msg.length > 0) {
+        socket.emit('sendSocialChat', { message: msg });
+        input.value = '';
+    }
+}
+
+function appendChatLog(htmlString) {
+    const box = document.getElementById('social-chat-box');
+    box.innerHTML += htmlString + '<br>';
+    box.scrollTop = box.scrollHeight; // Auto-scroll to bottom
+}
+
+function updateSocialPlayerList() {
+    const list = document.getElementById('social-player-list');
+    const count = document.getElementById('social-player-count');
+    
+    let keys = Object.keys(playersInRoom);
+    count.innerText = keys.length;
+    
+    list.innerHTML = '';
+    keys.forEach(id => {
+        let p = playersInRoom[id];
+        list.innerHTML += `<div style="padding: 3px 0; border-bottom: 1px solid #3e3126;">
+            <span style="color: #f1c40f;">${p.name}</span>
+        </div>`;
+    });
+}
+
+
 // === MISSING: PET CYCLING ENGINE ===
 window.cyclePetAppearance = function(part) {
     // 1. Safety check: ensure the pet object exists
@@ -993,3 +1047,4 @@ function updateTownUI(data) {
     // The core UI refresh now handles cart math directly via getCartUpgradeCost().
     // This function remains available to catch future server-only Town data payloads.
 }
+

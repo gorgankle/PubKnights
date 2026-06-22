@@ -241,5 +241,8 @@ const CRATE_LOOT_TABLES = {
 };
 
 
-// Make file readable by Node.js server
-if (typeof module !== 'undefined' && module.exports) module.exports = { LootTables, CRATE_LOOT_TABLES };
+// === NODE.JS EXPORT BRIDGE ===
+// This allows the server to read this file securely without breaking the client browser!
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { LootTables };
+}
