@@ -74,18 +74,10 @@ selectedEnemy.hp -= result.damage;
 
         if (selectedEnemy && !selectedEnemy.alive) selectedEnemy = null;
         
-        // --- VICTORY CHECK ---
+// --- SECURE VICTORY HANDLER ---
         if (enemies.every(e => !e.alive)) {
             logMessage("🏆 VICTORY Conditions verified.");
             if (typeof playRetroSound === 'function') playRetroSound('victory');
-            
-            
-            // Ask the server to apply progression unlocks and massive zone bonuses!
-            socket.emit('processCombatVictory', { 
-                zone: activeCombatZone,
-                activeLevel: activeCombatZone === 'CELLARS' ? player.selectedCellarLevel : player.selectedWildernessLevel
-            });
-
             setTimeout(showLootScreen, 1200); 
             return; 
         }
@@ -153,19 +145,10 @@ socket.on('bombResult', (result) => {
             // Keep this to clear the UI target!
             if (selectedEnemy && !selectedEnemy.alive) selectedEnemy = null;
             
-            // --- VICTORY CHECK --- (Keep this!)
+// --- SECURE VICTORY HANDLER ---
             if (enemies.every(e => !e.alive)) {
                 logMessage("🏆 VICTORY Conditions verified.");
                 if (typeof playRetroSound === 'function') playRetroSound('victory');
-                
-                // [Pet Scavenge exploit was deleted from here]
-                
-                // Ask the server to apply progression unlocks and massive zone bonuses!
-                socket.emit('processCombatVictory', { 
-                    zone: activeCombatZone,
-                    activeLevel: activeCombatZone === 'CELLARS' ? player.selectedCellarLevel : player.selectedWildernessLevel
-                });
-
                 setTimeout(showLootScreen, 1200); 
                 return; 
             }

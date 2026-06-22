@@ -1,20 +1,16 @@
 // --- combatRouter.js ---
 // Handles server-authoritative combat, AI, pathfinding, and loot distribution.
 
-// 1. Import the specific dictionaries this router needs
 const { ItemDatabase } = require('./public/js/items.js');
 const { LootTables } = require('./public/js/lootTables.js');
 const { NpcDatabase, createEnemy } = require('./public/js/npc-database.js');
 
-// 2. Pure Math Helper for Combat Grids
 function getGridDistance(x1, y1, x2, y2, size2 = 1) {
     let closeX = Math.max(x2, Math.min(x1, x2 + size2 - 1));
     let closeY = Math.max(y2, Math.min(y1, y2 + size2 - 1));
     return Math.max(Math.abs(x1 - closeX), Math.abs(y1 - closeY));
 }
 
-// 3. Export the setup function that server.js will call
-// Notice we inject 'io' and 'activeCombats' alongside 'socket' and 'activePlayers'
 module.exports = function(socket, io, activePlayers, activeCombats) {
 
     // --- SECURE KILL PROCESSOR ---
@@ -35,8 +31,6 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         
         if (table) {
             xpReward = (table.xpDrop || 0) * multiplier;
-            
-            // Roll Loot
             if (Math.random() <= table.dropChance) {
                 let totalWeight = table.pools.reduce((sum, entry) => sum + entry.weight, 0);
                 let roll = Math.random() * totalWeight;
@@ -51,24 +45,35 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             }
         }
 
-        // Add to secure Server Escrow
         p.pendingGold = (p.pendingGold || 0) + goldReward;
         p.pendingXp = (p.pendingXp || 0) + xpReward;
-
-        // Secure the dropped item in the server's pending loot array
         p.pendingLoot = p.pendingLoot || [];
-        if (droppedItemObj) {
-            p.pendingLoot.push(droppedItemObj);
-        }
+        if (droppedItemObj) p.pendingLoot.push(droppedItemObj);
 
-        // Tell the client to visually animate the rewards
         io.to(socketId).emit('killConfirmed', { 
-            gold: goldReward, 
-            xp: xpReward, 
-            item: droppedItemObj, 
-            isPet: false, 
-            enemyName: serverEnemy.name 
+            gold: goldReward, xp: xpReward, item: droppedItemObj, isPet: false, enemyName: serverEnemy.name 
         });
+
+        // === THE FIX: SERVER AUTOMATICALLY DETECTS VICTORY ===
+        let allDead = combat.enemies.every(e => !e.alive);
+        if (allDead) {
+            let zoneGoldReward = 0;
+            if (combat.zone === 'GORILLA_ARENA') zoneGoldReward += 5000;
+            else if (combat.zone === 'ABYSS') {
+                p.abyssDepth = (p.abyssDepth || 1) + 1;
+                zoneGoldReward += (50 + (10 * p.abyssDepth));
+            } else if (combat.zone === 'WILDERNESS') {
+                if (p.wildernessLevel === 20 && !p.cellarsUnlocked) p.cellarsUnlocked = true;
+                else if (combat.activeLevel === p.wildernessLevel) p.wildernessLevel = Math.min(20, p.wildernessLevel + 1);
+            } else if (combat.zone === 'CELLARS') {
+                if (p.cellarLevel === 20 && !p.abyssUnlocked) p.abyssUnlocked = true;
+                else if (combat.activeLevel === p.cellarLevel) p.cellarLevel = Math.min(20, p.cellarLevel + 1);
+            }
+            if (zoneGoldReward > 0) p.pendingGold = (p.pendingGold || 0) + zoneGoldReward;
+            
+            // Clean up server memory
+            delete activeCombats[socketId];
+        }
     }
 
     // --- SERVER-HOSTED MAP GENERATOR ---
@@ -80,8 +85,16 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         p.pendingXp = 0;
 
         let zone = data.zoneChoice;
+        
+        // === THE FIX: SERVER FORCES LEVEL VERIFICATION ===
+        let requestedLvl = data.activeLevel || 1;
+        let runLvl = 1;
+        if (zone === 'WILDERNESS') runLvl = Math.min(requestedLvl, p.wildernessLevel || 1);
+        if (zone === 'CELLARS') runLvl = Math.min(requestedLvl, p.cellarLevel || 1);
+
         let combatState = {
-            zone: zone, turn: 'PLAYER', phase: 'MOVE',
+            zone: zone, activeLevel: runLvl, // <--- Secured level saved to state!
+            turn: 'PLAYER', phase: 'MOVE',
             gridSize: 8, tileSize: 60,
             player: { x: 1, y: 1 }, enemies: [], obstacles: []
         };
@@ -89,7 +102,6 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         let baitMultiplier = (zone === 'WILDERNESS' && p.mapBaited) ? 1.4 : 1.0;
         let prefixLabel = (zone === 'WILDERNESS' && p.mapBaited) ? "Frenzied " : "";
 
-        // 1. GENERATE ENEMIES SECURELY
         if (zone === 'GORILLA_ARENA') {
             combatState.gridSize = 14; combatState.tileSize = 34; combatState.player.x = 7; combatState.player.y = 7;
             for (let i = 0; i < 100; i++) {
@@ -117,22 +129,20 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             }
         }
         else if (zone === 'CELLARS') {
-            let runCLvl = data.activeLevel || p.cellarLevel || 1;
-            if (runCLvl === 20) {
+            if (runLvl === 20) {
                 combatState.enemies.push(createEnemy("vintage_behemoth", 5, 4));
             } else {
-                let swarmSize = Math.min(6, 1 + Math.floor(runCLvl / 2)); 
+                let swarmSize = Math.min(6, 1 + Math.floor(runLvl / 2)); 
                 for (let i = 0; i < swarmSize; i++) {
                     let spawnX = 7 - Math.floor(i / 3); let spawnY = 2 + (i % 3);
                     combatState.enemies.push(createEnemy("corrupted_cask", spawnX, spawnY));
                 }
                 if (p.cellarsChummed) {
                     for (let i = 0; i < 5; i++) combatState.enemies.push(createEnemy("pub_crawl_mimic", 2 + i, 5, "Chummed "));
-                } else if (runCLvl >= 5) combatState.enemies.push(createEnemy("pub_crawl_mimic", 5, 6));
+                } else if (runLvl >= 5) combatState.enemies.push(createEnemy("pub_crawl_mimic", 5, 6));
             }
         }
         else { // WILDERNESS
-            let runLvl = data.activeLevel || p.wildernessLevel || 1;
             if (runLvl === 20) {
                 combatState.enemies.push(createEnemy("wilderness_overlord", 5, 4, prefixLabel, baitMultiplier));
             } else {
@@ -145,13 +155,10 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             }
         }
 
-        // 2. GENERATE OBSTACLES SECURELY
         let obsIcon = "🪨"; let obsSprite = "map_boulder";
         if (zone === 'WILDERNESS') { obsIcon = "🌲"; obsSprite = "map_tree"; } 
         else if (zone === 'CELLARS') { obsIcon = "🛢️"; obsSprite = "map_broken_cask"; }
         else if (zone === 'ABYSS') { obsIcon = "🔮"; obsSprite = "map_pillar"; }
-
-        let runLvl = data.activeLevel || p.wildernessLevel || 1;
         
         if (zone === 'WILDERNESS' && runLvl === 20) {
             combatState.player.x = 0; combatState.player.y = 7;
@@ -555,25 +562,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         socket.emit('inventoryReceipt', { success: true, action: 'sell', updatedPlayer: p, message: `💰 Sold dropped item for ${val}g.` });
     });
 
-    socket.on('processCombatVictory', (data) => {
-        let p = activePlayers[socket.id];
-        if (!p) return;
-
-        let goldReward = 0;
-        if (data.zone === 'GORILLA_ARENA') goldReward += 5000;
-        else if (data.zone === 'ABYSS') {
-            p.abyssDepth = (p.abyssDepth || 1) + 1;
-            goldReward += (50 + (10 * p.abyssDepth));
-        } else if (data.zone === 'WILDERNESS') {
-            if (p.wildernessLevel === 20 && !p.cellarsUnlocked) p.cellarsUnlocked = true;
-            else if (data.activeLevel === p.wildernessLevel) p.wildernessLevel = Math.min(20, p.wildernessLevel + 1);
-        } else if (data.zone === 'CELLARS') {
-            if (p.cellarLevel === 20 && !p.abyssUnlocked) p.abyssUnlocked = true;
-            else if (data.activeLevel === p.cellarLevel) p.cellarLevel = Math.min(20, p.cellarLevel + 1);
-        }
-        
-        if (goldReward > 0) p.pendingGold = (p.pendingGold || 0) + goldReward;
-    });
+    // THE VULNERABLE "socket.on('processCombatVictory')" WAS PERMANENTLY DELETED FROM HERE!
 
     socket.on('claimCombatRewards', () => {
         let p = activePlayers[socket.id];
