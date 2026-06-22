@@ -188,6 +188,7 @@ const LootTables = {
 };
 
 const CRATE_LOOT_TABLES = {
+// === GAMBLE CRATES ===
     "timber_crate": {
         pools: [
             { itemId: "wood", weight: 50, amt: 150, isResource: true },
