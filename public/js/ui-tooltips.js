@@ -21,7 +21,7 @@ else if (type === 'pet_train') {
             html += `📦 <b>Mystery Box:</b> Click to break the seal and reveal the loot inside.<br>`;
             html += `<span style="color: #bbaaa0; font-style: italic; font-size: 10px;">${item.desc}</span><br>`;
         }
-		
+	} 	
     else if (type === 'adventures_enter') {
         html = `<h3>⚔️ Adventure Board</h3>Check the latest local bounties, adjust map difficulty levels, and deploy your Knight into combat zones.`;
     }
