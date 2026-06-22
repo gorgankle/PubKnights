@@ -306,13 +306,17 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
                             btnText = `Throw (${item.damage} DMG)`;
                             onclickStr = `prepBomb(${idx})`;
                             bgColor = "#c0392b";
-                        } else if (item.type === "brew") {
+						} else if (item.type === "brew") {
                             if (item.id === 'ipa') btnText = `Drink (+10% ATK)`;
                             else if (item.id === 'lager') btnText = `Drink (+1 Stride)`;
                             else btnText = `Chug (+10% HP)`; 
                             
                             onclickStr = `consumeBrew(${idx})`;
                             bgColor = "#2980b9";
+                        } else if (item.type === "crate") {
+                            btnText = `Sealed`;
+                            onclickStr = ``;
+                            bgColor = "#55443a";
                         } else {
                             btnText = `Equip`;
                             onclickStr = `handleCombatEquip(${idx})`;
@@ -740,7 +744,10 @@ function renderBackpackList(domContainer, showVaultOption) {
         let rc = item.rarity === "Gorilla" ? "GorillaTier" : item.rarity;
         let actionsHtml = ``;
         
-        if (item.type !== "bomb" && item.type !== "brew") {
+// === NEW: GAMBLE CRATE OPEN BUTTON ===
+        if (item.type === "crate") {
+            actionsHtml += `<button onclick="triggerUnboxing(${idx}, player.inventory[${idx}])" style="padding: 1px 4px; font-size: 9px; background: #d35400; border: 1px solid #e67e22;">📦 Open</button>`;
+        } else if (item.type !== "bomb" && item.type !== "brew") {
             actionsHtml += `<button onclick="equipItem(${idx})" style="padding: 1px 4px; font-size: 9px; background: #27ae60;">Equip</button>`;
         }
         if (item.type === "brew" && !showVaultOption) { 
