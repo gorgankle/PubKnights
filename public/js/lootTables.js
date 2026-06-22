@@ -184,10 +184,8 @@ const LootTables = {
             { itemId: "beastmaster_tunic", weight: 10 },  // 10% - Epic
             { itemId: "alpha_collar", weight: 5 }         // 5% - The Relic Jackpot!
         ]
-    }
-},
+    }, // <--- CHANGED TO A COMMA!
 
-const CRATE_LOOT_TABLES = {
 // === GAMBLE CRATES ===
     "timber_crate": {
         pools: [

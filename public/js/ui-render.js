@@ -3,6 +3,41 @@
 // --- UI: RENDER & REFRESH MANAGER ---
 let uiMemory = { gold: -1, wood: -1, fish: -1, hops: -1, cWood: -1, cFish: -1, cHops: -1 }
 
+// === UI NAVIGATION ENGINE ===
+function switchTab(tabId) {
+    // 1. Hide all game screens
+    document.querySelectorAll('.game-screen').forEach(screen => {
+        screen.style.display = 'none';
+    });
+
+    // 2. Remove active highlight from all nav buttons
+    document.querySelectorAll('.nav-bar button').forEach(btn => {
+        btn.classList.remove('active-tab');
+    });
+
+    // 3. Show the requested screen
+    let targetScreen = document.getElementById(tabId);
+    if (targetScreen) {
+        // The Social tab uses a split-screen grid, the others use flex!
+        if (tabId === 'social-view') {
+            targetScreen.style.display = 'grid';
+        } else {
+            targetScreen.style.display = 'flex';
+        }
+    }
+
+    // 4. Light up the clicked button
+    let btnId = '';
+    if (tabId === 'town-vault-view') btnId = 'tab-town';
+    else if (tabId === 'combat-screen') btnId = 'tab-combat';
+    else if (tabId === 'social-view') btnId = 'tab-social';
+    
+    if (btnId) {
+        let btn = document.getElementById(btnId);
+        if (btn) btn.classList.add('active-tab');
+    }
+}
+
 function getItemSpriteURL(item) {
     if (!item) return "";
     
