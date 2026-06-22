@@ -65,6 +65,82 @@ app.get('/', (req, res) => {
 });
 
 
+// ==========================================
+// --- SECURE SERVER-SIDE LOOT TABLES ---
+// ==========================================
+const CRATE_LOOT_TABLES = {
+    timber_crate: {
+        common: [
+            { id: "wood", name: "Bundle of Wood", amt: 150, type: "resource" },
+            { id: "junk_splinters", name: "Handful of Splinters", amt: 1, type: "junk", desc: "Completely worthless. Better luck next time." }
+        ],
+        uncommon: [
+            { id: "wood", name: "Lumber Haul", amt: 1500, type: "resource" },
+            { id: "bomb_small", name: "Small Keg Bomb", amt: 2, type: "consumable" }
+        ],
+        rare: [
+            { id: "bomb_heavy", name: "Heavy Keg Bomb", amt: 3, type: "consumable" }
+        ],
+        jackpot: [
+            { id: "axe_timberlord", name: "Timber-Lord's Axe", type: "gear", slot: "weapon", desc: "A colossal axe. Guaranteed critical strikes against plant-based enemies." }
+        ]
+    },
+    angler_crate: {
+        common: [
+            { id: "fish", name: "Sack of Fish", amt: 150, type: "resource" },
+            { id: "junk_boots", name: "Waterlogged Boot", amt: 1, type: "junk", desc: "Smells awful." }
+        ],
+        uncommon: [
+            { id: "fish", name: "Trawler Catch", amt: 1500, type: "resource" },
+            { id: "lager", name: "Swift Lager", amt: 2, type: "consumable" }
+        ],
+        rare: [
+            { id: "fish_wholesale", name: "Wholesale Export Voucher", amt: 1, type: "consumable", desc: "Instantly claim 1500 Gold." }
+        ],
+        jackpot: [
+            { id: "waders_angler", name: "The Angler's Waders", type: "gear", slot: "boots", desc: "Grants +20% damage in the deepest levels of the Procedural Abyss." }
+        ]
+    },
+    harvest_crate: {
+        common: [
+            { id: "hops", name: "Sack of Hops", amt: 150, type: "resource" },
+            { id: "junk_vine", name: "Rotten Vine", amt: 1, type: "junk", desc: "Withered and useless." }
+        ],
+        uncommon: [
+            { id: "hops", name: "Bountiful Harvest", amt: 1500, type: "resource" },
+            { id: "ipa", name: "Furious IPA", amt: 2, type: "consumable" }
+        ],
+        rare: [
+            { id: "reserve", name: "Grandmaster Reserve", amt: 2, type: "consumable" }
+        ],
+        jackpot: [
+            { id: "hat_harvester", name: "Harvester's Straw Hat", type: "gear", slot: "helmet", desc: "A legendary farmer's hat. Grants a passive +5% to Deflection." }
+        ]
+    }
+};
+
+function rollSecureCrateLoot(crateId) {
+    const table = CRATE_LOOT_TABLES[crateId];
+    if (!table) return null;
+
+    // Secure Server-Side D100 Roll
+    const roll = Math.floor(Math.random() * 100) + 1; 
+    
+    let selectedTier = [];
+    let rarityName = "";
+
+    if (roll <= 84) { selectedTier = table.common; rarityName = "Common"; } 
+    else if (roll <= 94) { selectedTier = table.uncommon; rarityName = "Uncommon"; } 
+    else if (roll <= 98) { selectedTier = table.rare; rarityName = "Rare"; } 
+    else { selectedTier = table.jackpot; rarityName = "JACKPOT"; }
+
+    return {
+        prize: selectedTier[Math.floor(Math.random() * selectedTier.length)],
+        rarity: rarityName
+    };
+}
+
+
 // === SOCKET.IO COMMUNICATION HUB ===
 io.on('connection', (socket) => {
     console.log(`⚔️  A Knight has connected: ${socket.id}`);
@@ -1061,7 +1137,65 @@ if (dist <= bomb.aoe) {
             });
         }
 
+// ==========================================
+        // 23. UNBOX GAMBLE CRATES
+        // ==========================================
+        else if (data.action === 'openCrate') {
+            const invIndex = data.index;
+            const crateId = data.crateId;
 
+            // 1. Verify ownership securely on the server
+            if (!p.inventory[invIndex] || p.inventory[invIndex].id !== crateId) {
+                socket.emit('townReceipt', { success: false, message: "❌ Invalid crate selection." });
+                return;
+            }
+
+            // 2. Consume the crate
+            p.inventory.splice(invIndex, 1);
+
+            // 3. Execute the secure roll
+            const rolledLoot = rollSecureCrateLoot(crateId); 
+            let lootMsg = "";
+
+            if (rolledLoot) {
+                const prize = rolledLoot.prize;
+                
+                // 4. Apply reward
+                if (prize.type === "resource") {
+                    p[prize.id] = (p[prize.id] || 0) + prize.amt;
+                    lootMsg = `${prize.amt}x ${prize.name}`;
+                } 
+                else if (prize.type === "consumable" || prize.type === "gear" || prize.type === "junk") {
+                    let newItem = {
+                        id: prize.id,
+                        name: prize.name,
+                        type: prize.type,
+                        slot: prize.slot || "consumable",
+                        desc: prize.desc || ""
+                    };
+                    
+                    if (prize.amt && prize.amt > 1) newItem.name = `${prize.name} (x${prize.amt})`; 
+                    
+                    if (p.inventory.length < (p.maxInventorySlots || 5)) p.inventory.push(newItem);
+                    else p.stash.push(newItem); 
+                    
+                    lootMsg = `1x ${prize.name}`;
+                    if (rolledLoot.rarity === "JACKPOT") lootMsg = `🌟 ${prize.name} 🌟`;
+                }
+            } else {
+                lootMsg = "The crate was mysteriously empty...";
+            }
+
+            // 5. Send result back to the client for the unboxing animation
+            socket.emit('crateOpened', { 
+                success: true, 
+                lootMessage: lootMsg,
+                rarity: rolledLoot.rarity
+            });
+
+            // Sync the updated state to the player's MongoDB document
+            socket.emit('townReceipt', { success: true, action: 'inventoryUpdate', updatedPlayer: p, message: "" });
+        }
 		
     });
 
