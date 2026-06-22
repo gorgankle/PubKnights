@@ -139,7 +139,7 @@ function exchangePoints(type, tier) {
         tier: tier 
     });
 }
-// === UNBOXING SEQUENCE ===
+// === ROULETTE UNBOXING SEQUENCE ===
 function triggerUnboxing(inventoryIndex, crateItem) {
     if (gameState === 'COMBAT') {
         logMessage("❌ You cannot open crates while in combat!");
@@ -147,49 +147,117 @@ function triggerUnboxing(inventoryIndex, crateItem) {
     }
 
     const overlay = document.getElementById('unboxing-overlay');
-    const crateVisual = document.getElementById('unboxing-crate-sprite');
+    const track = document.getElementById('roulette-track');
     const lootReveal = document.getElementById('unboxing-loot-reveal');
     const title = document.getElementById('unboxing-title');
 
     // 1. Reset UI State
     overlay.style.display = 'flex';
     lootReveal.style.display = 'none';
-    crateVisual.classList.add('shaking-crate');
-    crateVisual.classList.remove('popped-loot');
-    crateVisual.innerHTML = '📦'; // You can replace this with a canvas drawOptimizedSprite call later!
-    title.innerText = "Breaking the Seal...";
+    track.style.transition = 'none';      
+    track.style.transform = 'translateX(0px)';
+    track.innerHTML = '';                 
+    title.innerText = `Unlocking ${crateItem.name}...`;
+    
+    // Clear any lingering double-click listeners
+    overlay.ondblclick = null;
 
-    if (typeof playRetroSound === 'function') playRetroSound('step'); // Placeholder tension sound
+    if (typeof playRetroSound === 'function') playRetroSound('step');
 
     // 2. Tell the server to consume the crate and roll the loot
     socket.emit('townAction', { action: 'openCrate', index: inventoryIndex, crateId: crateItem.id });
 
-    // 3. Wait for the server to reply with the loot before finishing the animation
+    // 3. Wait for the server to reply with the winning item
     socket.once('crateOpened', (data) => {
-        setTimeout(() => {
-            // Stop shaking, pop the box
-            crateVisual.classList.remove('shaking-crate');
-            crateVisual.classList.add('popped-loot');
-            crateVisual.innerHTML = '✨';
+        if (!data.success) {
+            closeUnboxing();
+            return;
+        }
+
+        // --- BUILD THE ROULETTE TRACK ---
+        const totalItems = 45;       
+        const winningIndex = 40;     
+        const itemWidth = 110;       
+        let html = '';
+
+        const fillerColors = ['#bdc3c7', '#3498db', '#9b59b6', '#2ecc71'];
+
+        for (let i = 0; i < totalItems; i++) {
+            if (i === winningIndex) {
+                let borderCol = data.rarity === 'JACKPOT' ? '#f1c40f' : (data.rarity === 'Rare' ? '#9b59b6' : '#2ecc71');
+                html += `
+                    <div style="width: 100px; height: 100%; margin-right: 10px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #2c3e50; border-bottom: 6px solid ${borderCol}; border-radius: 4px;">
+                        <div style="font-size: 36px; margin-bottom: 4px;">✨</div>
+                        <div style="font-size: 10px; color: #fff; text-align: center; padding: 0 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%;">${data.rarity}</div>
+                    </div>`;
+            } else {
+                let rCol = fillerColors[Math.floor(Math.random() * fillerColors.length)];
+                html += `
+                    <div style="width: 100px; height: 100%; margin-right: 10px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #1a1a1a; border-bottom: 6px solid ${rCol}; border-radius: 4px; opacity: 0.7;">
+                        <div style="font-size: 28px; opacity: 0.5;">❓</div>
+                    </div>`;
+            }
+        }
+        track.innerHTML = html;
+
+        // --- CALCULATE THE SLIDE MATH ---
+        void track.offsetWidth; 
+
+        const windowWidth = document.getElementById('roulette-window').offsetWidth;
+        const centerPoint = windowWidth / 2;
+        let randomOffset = Math.floor(Math.random() * 70) - 35; 
+        let finalPosition = (winningIndex * itemWidth) + (itemWidth / 2) - centerPoint + randomOffset;
+
+        // --- TRIGGER THE ANIMATION (WITH SKIP TRACKERS) ---
+        let spinTimer = setTimeout(() => {
+            track.style.transition = 'transform 4.5s cubic-bezier(0.1, 0.9, 0.15, 1)';
+            track.style.transform = `translateX(-${finalPosition}px)`;
+        }, 50);
+
+        let revealTimer = setTimeout(() => {
+            finishUnboxing(data);
+        }, 4700); 
+
+        // --- THE DOUBLE-CLICK SKIP LOGIC ---
+        overlay.ondblclick = () => {
+            // 1. Cancel the planned timers
+            clearTimeout(spinTimer);
+            clearTimeout(revealTimer);
             
-            if (typeof playRetroSound === 'function') playRetroSound('victory'); // Placeholder victory sound
+            // 2. Instantly snap the visual track to the winning item
+            track.style.transition = 'none';
+            track.style.transform = `translateX(-${finalPosition}px)`;
             
-            title.innerText = "Crate Opened!";
-            title.style.color = "#2ecc71";
+            // 3. Reveal the loot immediately
+            finishUnboxing(data);
             
-            document.getElementById('unboxing-loot-desc').innerText = data.lootMessage;
-            lootReveal.style.display = 'block';
-            
-            // Re-render the UI to show the new item in the inventory
-            if (typeof refreshSystemUI === 'function') refreshSystemUI();
-            
-        }, 1500); // 1.5 seconds of suspenseful shaking
+            // 4. Remove the listener so it doesn't fire again while reading the results
+            overlay.ondblclick = null;
+        };
     });
 }
 
-function closeUnboxing() {
-    document.getElementById('unboxing-overlay').style.display = 'none';
+// Extracted the reveal logic into a helper function so both the timer and the skip-click can use it
+function finishUnboxing(data) {
+    if (typeof playRetroSound === 'function') playRetroSound('victory');
+    
+    document.getElementById('unboxing-title').innerText = "Seal Broken!";
+    document.getElementById('unboxing-rarity-text').innerText = data.rarity === 'JACKPOT' ? '🌟 JACKPOT! 🌟' : 'Loot Acquired!';
+    document.getElementById('unboxing-rarity-text').style.color = data.rarity === 'JACKPOT' ? '#f1c40f' : '#2ecc71';
+    document.getElementById('unboxing-loot-desc').innerText = data.lootMessage;
+    
+    document.getElementById('unboxing-loot-reveal').style.display = 'block';
+    
+    // Re-render the UI so the new item actually shows up in the inventory grid
+    if (typeof refreshSystemUI === 'function') refreshSystemUI();
 }
+
+function closeUnboxing() {
+    const overlay = document.getElementById('unboxing-overlay');
+    overlay.style.display = 'none';
+    overlay.ondblclick = null; // Clean up the listener
+}
+
 
 
 // === PET PROGRESSION SYSTEM ===

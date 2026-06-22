@@ -609,20 +609,36 @@
 	<script src="js/minigames.js"></script>
 
 
-<div id="unboxing-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); z-index: 10000; flex-direction: column; align-items: center; justify-content: center;">
+<div id="unboxing-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.92); z-index: 10000; flex-direction: column; align-items: center; justify-content: center;">
     
-    <h2 id="unboxing-title" style="color: #f1c40f; text-shadow: 0 0 10px #d35400; font-size: 28px; margin-bottom: 30px;">Breaking the Seal...</h2>
-    
-    <div id="unboxing-crate-sprite" style="width: 120px; height: 120px; background-color: #5c4033; border: 4px solid #3e2723; border-radius: 8px; box-shadow: 0 0 20px #d35400; display: flex; align-items: center; justify-content: center; font-size: 48px; transition: all 0.2s;">
-        📦
+    <h2 id="unboxing-title" style="color: #f1c40f; text-shadow: 0 0 10px #d35400; font-size: 28px; margin-bottom: 20px;">Unlocking Crate...</h2>
+
+    <div id="roulette-window" style="position: relative; width: 600px; max-width: 95vw; height: 110px; background: #110d0a; border: 3px solid #634e3d; border-radius: 4px; overflow: hidden; box-shadow: inset 0 0 30px rgba(0,0,0,1), 0 0 20px rgba(0,0,0,0.5);">
+        
+        <div style="position: absolute; top: 0; left: 50%; width: 4px; height: 100%; background: #e74c3c; z-index: 10; transform: translateX(-50%); box-shadow: 0 0 15px #e74c3c, 0 0 5px #fff;"></div>
+        
+        <div style="position: absolute; top: 0; left: 0; width: 30px; height: 100%; background: linear-gradient(90deg, #110d0a 0%, transparent 100%); z-index: 5;"></div>
+        <div style="position: absolute; top: 0; right: 0; width: 30px; height: 100%; background: linear-gradient(-90deg, #110d0a 0%, transparent 100%); z-index: 5;"></div>
+
+        <div id="roulette-track" style="display: flex; height: 100%; width: max-content; transition: transform 4s cubic-bezier(0.1, 0.85, 0.2, 1);">
+        </div>
     </div>
 
-    <div id="unboxing-loot-reveal" style="display: none; margin-top: 30px; text-align: center;">
-        <h3 style="color: #2ecc71; font-size: 24px;">Loot Acquired!</h3>
-        <div id="unboxing-loot-desc" style="color: #fff; font-size: 18px; margin-bottom: 20px;">1x Grandmaster Reserve</div>
-        <button onclick="closeUnboxing()" style="background: #27ae60; padding: 10px 30px; font-size: 16px;">Collect</button>
+    <div id="unboxing-loot-reveal" style="display: none; margin-top: 30px; text-align: center; animation: popIn 0.5s ease-out;">
+        <h3 id="unboxing-rarity-text" style="color: #2ecc71; font-size: 24px; text-shadow: 0 0 10px rgba(46, 204, 113, 0.5);">Loot Acquired!</h3>
+        <div id="unboxing-loot-desc" style="color: #fff; font-size: 20px; margin-bottom: 20px; font-weight: bold;">1x Grandmaster Reserve</div>
+        <button onclick="closeUnboxing()" style="background: #27ae60; padding: 10px 40px; font-size: 18px; border: 2px solid #2ecc71; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">Collect</button>
     </div>
+
 </div>
+
+<style>
+@keyframes popIn {
+    0% { transform: scale(0.8); opacity: 0; }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); opacity: 1; }
+}
+</style>
 
 </body>
 </html>
