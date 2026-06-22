@@ -189,9 +189,9 @@ const LootTables = {
 
 const CRATE_LOOT_TABLES = {
     timber_crate: {
-        common: [
+		common: [
             { id: "wood", name: "Bundle of Wood", amt: 150, type: "resource" },
-            { id: "junk_splinters", name: "Handful of Splinters", amt: 1, type: "junk", desc: "Completely worthless. Better luck next time." }
+            { id: "junk_splinters", name: "Handful of Splinters", amt: 1, type: "junk", desc: "A useless handful of sharp wood." }
         ],
         uncommon: [
             { id: "wood", name: "Lumber Haul", amt: 1500, type: "resource" },
@@ -206,9 +206,9 @@ const CRATE_LOOT_TABLES = {
     },
     
     angler_crate: {
-        common: [
-            { id: "fish", name: "Sack of Fish", amt: 150, type: "resource" },
-            { id: "junk_boots", name: "Waterlogged Boot", amt: 1, type: "junk", desc: "Smells awful. The Quartermaster scammed you." }
+		common: [
+            { id: "fish", name: "Trawler Catch", amt: 150, type: "resource" },
+            { id: "junk_boots", name: "Waterlogged Boot", amt: 1, type: "junk", desc: "Smells awful. Totally unwearable." }
         ],
         uncommon: [
             { id: "fish", name: "Trawler Catch", amt: 1500, type: "resource" },
@@ -223,7 +223,7 @@ const CRATE_LOOT_TABLES = {
     },
 
     harvest_crate: {
-        common: [
+		common: [
             { id: "hops", name: "Sack of Hops", amt: 150, type: "resource" },
             { id: "junk_vine", name: "Rotten Vine", amt: 1, type: "junk", desc: "Withered and useless." }
         ],

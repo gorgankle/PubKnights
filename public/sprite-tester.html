@@ -174,7 +174,7 @@
             });
         }
 
-        // === 2. AUTO-SORT & POPULATE BOXES 2, 3, 4 ===
+// === 2. AUTO-SORT & POPULATE BOXES 2, 3, 4 ===
         function initializeAssetBoxes() {
             let mapSel = document.getElementById("map-selector");
             let npcSel = document.getElementById("npc-selector");
@@ -182,6 +182,20 @@
 
             setTimeout(() => {
                 if (typeof SpriteMatrices !== 'undefined') {
+                    
+                    // NEW: Dynamically map all equipment sprites from the database!
+                    let equipmentSprites = new Set();
+                    if (typeof ItemDatabase !== 'undefined') {
+                        for (let key in ItemDatabase) {
+                            let sId = ItemDatabase[key].spriteId;
+                            if (sId) {
+                                equipmentSprites.add(sId);
+                                equipmentSprites.add(sId + '_male'); // Catch gendered variants
+                                equipmentSprites.add(sId + '_female');
+                            }
+                        }
+                    }
+
                     Object.keys(SpriteMatrices).sort().forEach(key => {
                         let opt = document.createElement("option");
                         opt.value = key; opt.text = key;
@@ -191,12 +205,12 @@
                             iconSel.appendChild(opt);
                         } 
                         // Route Maps
-                        else if (key.startsWith('map_') || key.startsWith('ground_') || key.startsWith('wall_') || key.startsWith('obj_')) {
+                        else if (key.match(/^(map_|ground_|wall_|obj_)/)) {
                             mapSel.appendChild(opt);
                         } 
-                        // Skip Paperdoll Anatomy (Handled in Box 1)
-                        else if (key.match(/^(weap_|armor_|helm_|gloves_|boots_|body_|hair_|eyes_)/)) {
-                            return; 
+                        // Route Paperdoll Anatomy & Equipment (Using the dynamic Set!)
+                        else if (key.match(/^(body_|hair_|eyes_)/) || equipmentSprites.has(key)) {
+                            return; // Skip entirely, handled by Box 1
                         } 
                         // Route everything else to NPCs
                         else {
