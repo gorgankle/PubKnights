@@ -423,7 +423,7 @@ function fishingLoop() {
         }
     } 
     else if (fishingPhase === 2) {
-        // Waiting at the bottom for a strike
+        // Waiting at the bottom for a strike (NO BOBBING PERMITTED)
         zoneY = TRACK_TOP + TRACK_H - zoneH; // Keep locked at bottom
     } 
     else if (fishingPhase === 3) {
