@@ -200,3 +200,21 @@ function trainPet() {
     // Ask the server to process the transaction securely
     socket.emit('townAction', { action: 'trainPet' });
 }
+
+// === QUARTERMASTER EXCHANGE LOGIC ===
+function exchangePoints(type, tier) {
+    if (gameState === 'COMBAT') {
+        logMessage("❌ You cannot trade with the Quartermaster while in combat!");
+        return;
+    }
+    
+    // Play a nice click sound
+    if (typeof playRetroSound === 'function') playRetroSound('click');
+    
+    // Send the request directly to the secure server logic
+    socket.emit('townAction', { 
+        action: 'exchangePoints', 
+        exchangeType: type, 
+        tier: tier 
+    });
+}
