@@ -193,14 +193,16 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         socket.emit('combatDeployed', combatState);
     });
 
-    // --- SERVER-AUTHORITATIVE ENEMY AI ---
+// --- SERVER-AUTHORITATIVE ENEMY AI ---
     socket.on('endPlayerTurn', (data) => {
         let p = activePlayers[socket.id];
         let combat = activeCombats[socket.id];
-        if (!p || !combat) return;
+        
+        // FIX: Prevent Silent Ghost Sockets
+        if (!p || !combat) return socket.emit('combatResult', { type: 'error', message: '❌ Server connection lost. Please refresh the page.' });
 
         combat.turn = 'ENEMY';
-        let turnEvents = []; 
+        let turnEvents = [];
 
         let collisionMatrix = Array(combat.gridSize).fill(null).map(() => Array(combat.gridSize).fill(0));
         
@@ -390,32 +392,43 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         socket.emit('enemyTurnReceipt', { events: turnEvents, updatedPlayer: p, updatedCombatState: combat });
     });
 
-    // --- SERVER-AUTHORITATIVE MOVEMENT SYNC ---
+// --- SERVER-AUTHORITATIVE MOVEMENT SYNC ---
     socket.on('combatMove', (data) => {
         let p = activePlayers[socket.id];
         let combat = activeCombats[socket.id];
-        if (!p || !combat) return;
+        
+        // FIX 1: Prevent Silent Ghost Sockets
+        if (!p || !combat) return socket.emit('moveReceipt', { success: false, message: '❌ Server connection lost. Please refresh the page.' });
+
+        // FIX 2: Proper Swiftness Calculation (Matches Client!)
+        let equipmentBonus = 0;
+        for (let slot in p.equipment) {
+            let item = p.equipment[slot];
+            if (item && item.moveBonus) equipmentBonus += item.moveBonus;
+        }
+        let swiftness = (p.swiftness || 3) + equipmentBonus;
+        if (p.activeBuffs && p.activeBuffs.includes('LAGER')) swiftness += 1;
+        swiftness = Math.max(1, Math.min(12, swiftness));
 
         let dist = getGridDistance(combat.player.x, combat.player.y, data.tx, data.ty, 1);
-        let swiftness = p.swiftness || 3;
-        if (p.activeBuffs && p.activeBuffs.includes('LAGER')) swiftness += 2;
-        
         let moveStaminaCost = Math.floor((dist / swiftness) * 10);
 
-if (p.stamina >= moveStaminaCost) {
+        if (p.stamina >= moveStaminaCost) {
             p.stamina -= moveStaminaCost;
             combat.player.x = data.tx;
             combat.player.y = data.ty;
             socket.emit('moveReceipt', { success: true, updatedPlayer: p });
         } else {
-            socket.emit('moveReceipt', { success: false, message: "❌ Server: Not enough stamina to move.", x: combat.player.x, y: combat.player.y });
+            socket.emit('moveReceipt', { success: false, message: `❌ Server: Not enough stamina to move (${p.stamina}/${moveStaminaCost}).`, x: combat.player.x, y: combat.player.y });
         }
     });
 
-    // --- SERVER-AUTHORITATIVE COMBAT ENGINE ---
+// --- SERVER-AUTHORITATIVE COMBAT ENGINE ---
     socket.on('combatAction', (data) => {
         let p = activePlayers[socket.id];
-        if (!p) return;
+        
+        // FIX: Prevent Silent Ghost Sockets
+        if (!p) return socket.emit('combatResult', { type: 'error', message: '❌ Server connection lost or rebooted. Please refresh the page.' });
 
         if (data.actionType === 'end') {
             let recover = Math.floor((p.maxStamina || 50) * 0.15); 
@@ -423,7 +436,7 @@ if (p.stamina >= moveStaminaCost) {
             return socket.emit('combatResult', { type: 'pass', newStamina: p.stamina, recovered: recover });
         }
 
-if (data.actionType === 'slash' || data.actionType === 'special') {
+        if (data.actionType === 'slash' || data.actionType === 'special') {
             let staminaCost = data.actionType === 'special' ? 15 : 5;
             
             if (p.stamina < staminaCost) {
