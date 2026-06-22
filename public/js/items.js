@@ -335,13 +335,10 @@ const ItemDatabase = {
     // --- CRATE JACKPOT GEAR ---
     "axe_timberlord": { id: "axe_timberlord", name: "Timber-Lord's Axe", slot: "weapon", type: "Axe", rarity: "Relic", atkBonus: 95, attackRange: 1, value: 800, spriteId: "weap_timberlord" },
     "waders_angler": { id: "waders_angler", name: "The Angler's Waders", slot: "boots", rarity: "Relic", moveBonus: 2, deflectChance: 15, value: 800, spriteId: "boots_angler" },
-    "hat_harvester": { id: "hat_harvester", name: "Harvester's Straw Hat", slot: "helmet", rarity: "Relic", deflectChance: 25, value: 800, spriteId: "helm_harvester" }	
+"hat_harvester": { id: "hat_harvester", name: "Harvester's Straw Hat", slot: "helmet", rarity: "Relic", deflectChance: 25, value: 800, spriteId: "helm_harvester" }, // <--- ADDED COMMA HERE
 
-}; // <--- THIS CLOSES THE ITEM DATABASE!
-
-// === GAMBLE CRATES ===
-const GAMBLE_CRATES = {
-    timber_crate: {
+    // === GAMBLE CRATES (NOW INSIDE THE MASTER DATABASE) ===
+    "timber_crate": {
         id: "timber_crate",
         name: "Sealed Timber Crate",
         slot: "consumable",
@@ -351,7 +348,7 @@ const GAMBLE_CRATES = {
         spriteId: "icon_crate_timber", 
         desc: "A heavy, splintering box smelling of pine. Who knows what the Quartermaster packed inside?"
     },
-    angler_crate: {
+    "angler_crate": {
         id: "angler_crate",
         name: "Waterlogged Angler Crate",
         slot: "consumable",
@@ -361,7 +358,7 @@ const GAMBLE_CRATES = {
         spriteId: "icon_crate_angler",
         desc: "A damp, barnacle-covered crate. It sloshes slightly when shaken."
     },
-    harvest_crate: {
+    "harvest_crate": {
         id: "harvest_crate",
         name: "Overgrown Harvest Crate",
         slot: "consumable",
@@ -371,19 +368,15 @@ const GAMBLE_CRATES = {
         spriteId: "icon_crate_harvest",
         desc: "A crate wrapped in thick vines. Smells faintly of fermenting hops."
     }
-}; // <--- THIS CLOSES THE GAMBLE CRATES!
+}; // <--- THIS NOW SECURELY CLOSES THE UNIFIED ITEM DATABASE!
 
 // The helper function stays safely OUTSIDE the database
 function getItem(itemId) {
     if (!ItemDatabase[itemId]) return null;
     return { ...ItemDatabase[itemId] }; 
 }
-// Make file readable by Node.js server
-if (typeof module !== 'undefined' && module.exports) module.exports = { ItemDatabase, getItem };
 
-// === EXPORT FOR NODE.JS SERVER ===
+// === NODE.JS EXPORT BRIDGE ===
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { 
-        GAMBLE_CRATES 
-    };
+    module.exports = { ItemDatabase, getItem };
 }

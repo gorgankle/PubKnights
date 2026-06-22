@@ -550,12 +550,23 @@
 
 <div id="social-view" class="game-screen" style="display:none; max-width: 1000px; margin: 0 auto; gap: 15px; grid-template-columns: 2fr 1fr; padding-top: 20px;">
     
-    <div class="panel" style="grid-column: 1; height: 500px; display: flex; flex-direction: column;">
+<div class="panel" style="grid-column: 1; height: 500px; display: flex; flex-direction: column; position: relative;">
         <h3 style="color: #f1c40f; border-bottom: 1px dashed #634e3d; padding-bottom: 10px; margin-top: 0; display: flex; justify-content: space-between;">
             <span>📍 Central Hub</span>
             <span style="font-size: 12px; color: #bbaaa0; cursor: pointer;" onclick="leaveMultiplayerZone()">[Leave Zone]</span>
         </h3>
+        
         <canvas id="social-canvas" width="600" height="400" style="background: #1a1512; border: 2px solid #634e3d; width: 100%; flex-grow: 1; image-rendering: pixelated;"></canvas>
+
+        <div id="social-inspect-panel" style="display: none; position: absolute; top: 60px; left: 20px; background: rgba(26, 21, 18, 0.95); border: 2px solid #8b5a2b; padding: 15px; border-radius: 5px; color: #f4ebd9; z-index: 100; box-shadow: 0 5px 15px rgba(0,0,0,0.8); width: 220px;">
+            <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #634e3d; margin-bottom: 10px; padding-bottom: 5px;">
+                <b id="inspect-name" style="color: #f1c40f; font-size: 14px;">PlayerName</b>
+                <span onclick="closeInspect()" style="color: #e74c3c; cursor: pointer; font-weight: bold;">[X]</span>
+            </div>
+            <div id="inspect-gear-list" style="font-size: 11px; line-height: 1.6; color: #bdc3c7;">
+                </div>
+            <button onclick="alert('Trade endpoint coming in Phase 3!')" style="width: 100%; margin-top: 15px; font-size: 11px; padding: 5px;">📦 Request Trade</button>
+        </div>
     </div>
 
     <div style="grid-column: 2; display: flex; flex-direction: column; gap: 15px; height: 500px;">

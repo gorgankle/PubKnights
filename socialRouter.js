@@ -64,6 +64,23 @@ module.exports = function(socket, io, activePlayers) {
         io.to(p.currentZone).emit('socialMessage', { sender: p.username, message: safeMsg });
     });
 
+// --- PHASE 2: SOCIAL MOVEMENT ---
+    socket.on('socialMove', (data) => {
+        let p = activePlayers[socket.id];
+        if (!p || !p.currentZone) return;
+
+        // The canvas is 600x400. With 24x24 sprites, the grid is roughly 25x16.
+        // Securely clamp the movement so players can't walk off the screen!
+        let tx = Math.max(0, Math.min(24, data.tx));
+        let ty = Math.max(0, Math.min(15, data.ty));
+
+        p.socialX = tx;
+        p.socialY = ty;
+
+        // Broadcast the movement instantly to everyone standing in the room
+        io.to(p.currentZone).emit('playerMoved', { id: socket.id, x: tx, y: ty });
+    });
+
     // Clean up if the player disconnects or refreshes the page entirely
     socket.on('disconnect', () => {
         leaveCurrentZone();
