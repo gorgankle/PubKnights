@@ -125,15 +125,21 @@ if (data.saveData) {
         }
     });
 
-    // --- LOGIN EXISTING KNIGHT ---
+// --- LOGIN EXISTING KNIGHT ---
     socket.on('login', async (data) => {
         try {
             const playerDoc = await Player.findOne({ username: data.username, password: data.password });
             if (!playerDoc) return socket.emit('loginError', 'Invalid Knight Name or Password.');
 
+            // === SAVE REPAIR SYSTEM ===
+            // If the player's save was corrupted by the old missing-payload bug, restore their body!
+            if (!playerDoc.saveData.appearance) {
+                playerDoc.saveData.appearance = { gender: 'male', skin: 'light', hair: 'hair_messy', hairColor: 'brown', eyes: 'eyes_blue', shirtColor: 'blue', pantsColor: 'dark', bootsColor: 'leather' };
+            }
+
             activePlayers[socket.id] = playerDoc.saveData;
             socket.emit('loginSuccess', playerDoc.saveData);
-        } catch (err) { 
+        } catch (err) {
             console.error(err);
             socket.emit('loginError', 'Server error during login.');
         }

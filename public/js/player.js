@@ -161,6 +161,7 @@ function saveGame(manualNotify = false) {
 		lumberPoints: player.lumberPoints, fishingPoints: player.fishingPoints, hopsPoints: player.hopsPoints,
         wildernessLevel: player.wildernessLevel, cellarsUnlocked: player.cellarsUnlocked, cellarLevel: player.cellarLevel, 
         abyssUnlocked: player.abyssUnlocked, abyssDepth: player.abyssDepth,
+        appearance: player.appearance, // <--- CRITICAL FIX!
         equipment: player.equipment, inventory: player.inventory, stash: player.stash,
         workers: player.workers, supplyCart: player.supplyCart, idleJob: player.idleJob, mapBaited: player.mapBaited,
         maxInventorySlots: player.maxInventorySlots, sharpeningStoneBought: player.sharpeningStoneBought,
