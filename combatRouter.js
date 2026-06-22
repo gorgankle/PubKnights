@@ -142,14 +142,27 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 } else if (runLvl >= 5) combatState.enemies.push(createEnemy("pub_crawl_mimic", 5, 6));
             }
         }
-        else { // WILDERNESS
+else { // WILDERNESS
             if (runLvl === 20) {
                 combatState.enemies.push(createEnemy("wilderness_overlord", 5, 4, prefixLabel, baitMultiplier));
             } else {
                 let swarmSize = Math.min(6, 1 + Math.floor(runLvl / 2)); 
+                
+                // PUBLING MILESTONE LOGIC
+                let publingsToSpawn = 0;
+                if (runLvl === 5) publingsToSpawn = 1;
+                else if (runLvl === 10) publingsToSpawn = 2;
+                else if (runLvl === 15) publingsToSpawn = 3;
+
                 for (let i = 0; i < swarmSize; i++) {
                     let spawnX = 7 - Math.floor(i / 3); let spawnY = 2 + (i % 3);           
-                    combatState.enemies.push(createEnemy("wild_ravager", spawnX, spawnY, prefixLabel, baitMultiplier));
+                    
+                    if (publingsToSpawn > 0) {
+                        combatState.enemies.push(createEnemy("publing", spawnX, spawnY, prefixLabel, baitMultiplier));
+                        publingsToSpawn--;
+                    } else {
+                        combatState.enemies.push(createEnemy("wild_ravager", spawnX, spawnY, prefixLabel, baitMultiplier));
+                    }
                 }
                 if (p.mapBaited) combatState.enemies.push(createEnemy("alpha_poacher", 2, 5));
             }

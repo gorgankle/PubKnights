@@ -7,6 +7,7 @@ const mongoose = require('mongoose');
 // Import our new modular routers
 const injectTownRouter = require('./townRouter.js');
 const injectCombatRouter = require('./combatRouter.js');
+const { ItemDatabase } = require('./public/js/items.js');
 
 // Initialize the Express app and wrap it in an HTTP server for Socket.io
 const app = express();
@@ -63,9 +64,10 @@ const defaultTemplate = {
                 lumberPoints: 0, fishingPoints: 0, hopsPoints: 0,
                 pendingGold: 0, pendingXp: 0, pendingLoot: [],
                 wildernessLevel: 1, cellarLevel: 1, abyssDepth: 1,
-                appearance: { gender: 'male', skin: 'light', hair: 'hair_messy', hairColor: 'brown', eyes: 'eyes_blue', shirtColor: 'blue', pantsColor: 'dark', bootsColor: 'leather' },
+appearance: { gender: 'male', skin: 'light', hair: 'hair_messy', hairColor: 'brown', eyes: 'eyes_blue', shirtColor: 'blue', pantsColor: 'dark', bootsColor: 'leather' },
                 equipment: { 
-                    weapon: { id: "rusty_mace", name: "Rusty Mace", slot: "weapon", type: "Mace", atkBonus: 8, rarity: "Common", attackRange: 1, value: 15, spriteId: "weap_rusty_mace" } 
+                    // PULL SECURELY FROM ITEM DATABASE!
+                    weapon: JSON.parse(JSON.stringify(ItemDatabase["rusty_mace"])),
                 },
                 inventory: [], stash: [], workers: { woodcutters: 0, fishermen: 0, farmers: 0 },
                 supplyCart: { wood: 0, fish: 0, hops: 0, max: 100, level: 1 },

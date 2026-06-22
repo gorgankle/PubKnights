@@ -4,6 +4,7 @@
 const NpcDatabase = {
     // Wilderness
     "wild_ravager": { name: "Wild Ravager", type: "MELEE", hp: 45, maxHp: 45, moveRange: 2, attackRange: 1, attack: 7, resilience: 5, accuracy: 75, icon: "👾", size: 1 },
+	"publing": { name: "Wild Publing", type: "MELEE", hp: 65, maxHp: 65, moveRange: 2, attackRange: 1, attack: 11, resilience: 8, accuracy: 80, icon: "🐻", size: 1 },
     "alpha_poacher": { name: "Wilderness Alpha-Poacher", type: "RANGED", hp: 110, maxHp: 110, moveRange: 1, attackRange: 3, attack: 22, resilience: 10, accuracy: 100, icon: "🏹", size: 1 },
     "wilderness_overlord": { name: "Wilderness Apex Overlord (BOSS)", type: "MELEE", hp: 650, maxHp: 650, moveRange: 3, attackRange: 1, attack: 40, resilience: 30, accuracy: 110, icon: "🐗", size: 2 },
     

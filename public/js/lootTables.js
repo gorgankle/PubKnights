@@ -2,16 +2,33 @@
 // Maps enemy IDs to their specific loot pools, drop chances, and guaranteed XP rewards.
 
 const LootTables = {
-    // === WILDERNESS MOBS ===
+// === WILDERNESS MOBS ===
     "wild_ravager": {
         xpDrop: 20,
-        dropChance: 0.45, 
+        dropChance: 0.9, 
         pools: [
-            { itemId: "boar_hide_armor", weight: 20 },   
-            { itemId: "scavenged_machete", weight: 20 },
-            { itemId: "rusty_mace", weight: 20 },        
-            { itemId: "sturdy_boots", weight: 20 },
-            { itemId: "rusty_coif", weight: 20 } 
+            { itemId: "boar_hide_armor", weight: 5 },   
+            { itemId: "scavenged_machete", weight: 10 },
+            { itemId: "rusty_mace", weight: 10 },        
+            { itemId: "sturdy_boots", weight: 15 },
+            { itemId: "rusty_coif", weight: 15 },
+            // Added Starter Leather Gear
+            { itemId: "leather_tunic", weight: 15 },
+            { itemId: "leather_mitts", weight: 15 },
+            { itemId: "hide_boots", weight: 15 }
+        ]
+    },
+	"publing": {
+        xpDrop: 35,
+        dropChance: 0.65, 
+        pools: [
+            { itemId: "boar_hide_armor", weight: 20 },
+            { itemId: "leather_tunic", weight: 20 },
+            { itemId: "leather_mitts", weight: 15 },
+            { itemId: "hide_boots", weight: 15 },
+            { itemId: "scavenged_machete", weight: 15 },
+            // Small chance for mid-game gear 
+            { itemId: "brewmasters_club", weight: 15 }
         ]
     },
     "alpha_poacher": {
@@ -104,11 +121,13 @@ const LootTables = {
         dropChance: 1.0, 
         pools: [
             // Reverted back to mostly early-game gear for the 50 Hops price tag
-            { itemId: "rusty_mace", weight: 35 },
-            { itemId: "sturdy_boots", weight: 35 },
-            { itemId: "boar_hide_armor", weight: 30 },
-            { itemId: "scavenged_machete", weight: 20 },
-            { itemId: "wilderness_cloak", weight: 20 },
+            { itemId: "rusty_mace", weight: 25 },
+            { itemId: "sturdy_boots", weight: 20 },
+            { itemId: "boar_hide_armor", weight: 20 },
+            { itemId: "scavenged_machete", weight: 15 },
+            { itemId: "wilderness_cloak", weight: 10 },
+            { itemId: "leather_tunic", weight: 5 },
+            { itemId: "leather_mitts", weight: 5 },
             // A microscopic tease for mid-game gear to keep them gambling
             { itemId: "brewmasters_club", weight: 2 },
             { itemId: "hop_infused_boots", weight: 2 },

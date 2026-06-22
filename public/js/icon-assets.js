@@ -843,7 +843,111 @@ Object.assign(SpriteMatrices, {
         "........................",
         "........................",
         "........................"
+    ]),
+
+// === GAMBLE CRATES ===
+    "icon_crate_timber": buildSprite([
+        "........................",
+        "........................",
+        ".......iiiiiiiiii.......",
+        "......idcccccccddi......",
+        ".....idcddcccdccddi.....",
+        "....idccccdccdccccdi....",
+        "....idccccccccccccdi....",
+        "....iiiiiiiiiiiiiiii....",
+        "....idccccccccccccdi....",
+        "....idcdccccccccdcdi....",
+        "....idcccdccccdccccdi....",
+        "....idccccdccdccccdi....",
+        "....idcccccddcccccdi....",
+        "....iiiiiiiiiiiiiiii....",
+        "....idccccccccccccdi....",
+        "....idcccdccccdcccdi....",
+        ".....idcddcccdccddi.....",
+        "......idcccccccddi......",
+        ".......iiiiiiiiii.......",
+        "........................"
+    ]),
+    "icon_crate_angler": buildSprite([
+        "........................",
+        "........................",
+        ".......iiiiiiiiii.......",
+        "......idccUccccddi......",
+        ".....idcdUcccdccddi.....",
+        "....ifcccUcccdccccdi....",
+        "....idccccccUcccccdi....",
+        "....iiiiiiiiiiiiiiii....",
+        "....idccUcccccccccfi....",
+        "....idcdcccfccccdcdi....",
+        "....idcccdccccUccccdi....",
+        "....idccccfccdccccdi....",
+        "....ifcccccddcccccfi....",
+        "....iiiiiiiiiiiiiiii....",
+        "....idccUcccccccccdi....",
+        "....idcccdccccdccUdi....",
+        ".....idcfdcccdccddi.....",
+        "......idccUccccddi......",
+        ".......iiiiiiiiii.......",
+        "........................"
+    ]),
+    "icon_crate_harvest": buildSprite([
+        "........................",
+        "........................",
+        ".......iiiiiiiiii.......",
+        "......idcccchhhddi......",
+        ".....ihhhdccchccddi.....",
+        "....idcccchccdchccdi....",
+        "....idccccchhcchccdi....",
+        "....iiiiiiiiiiiiiiii....",
+        "....idccccccccchccdi....",
+        "....idchhcchccchcdi....",
+        "....idhcchccccchcccdi....",
+        "....idhcchhhcdccccdi....",
+        "....idccccddhhccccdi....",
+        "....iiiiiiiiiiiiiiii....",
+        "....idchhhccccccccdi....",
+        "....idcccdchccdcccdi....",
+        ".....idcddccchccddi.....",
+        "......idcccchhhddi......",
+        ".......iiiiiiiiii.......",
+        "........................"
+    ]),
+
+    // === CONSUMABLES & MISC ===
+
+    "icon_voucher": buildSprite([
+        "........................",
+        "........................",
+        "........LLLLLL..........",
+        ".......LllllllL.........",
+        ".......LllllllL.........",
+        ".......LllllllL.........",
+        ".......LllllllL.........",
+        ".......LllllllL.........",
+        ".......LllllllL.........",
+        ".......LllllllL.........",
+        ".......LllllllL.........",
+        "........LLLLLL..........",
+        ".........RRR............",
+        "........RRRRR...........",
+        ".........RRR............",
+        "........................"
+    ]),
+    "icon_junk": buildSprite([
+        "........................",
+        "........................",
+        "........................",
+        "........................",
+        "..........ccc...........",
+        ".........cddc...........",
+        "........cddddc..........",
+        ".........cccd...........",
+        "..........cc............",
+        "........................",
+        "........................"
     ])
+	
+	
 });
 
 // === SPECIALTY BREW ICONS ===

@@ -50,6 +50,34 @@ Object.assign(SpriteMatrices, {
         "........................",
         "........................"
     ]),
+	
+	// --- 24x24 Wild Publing (Miniboss) ---
+    "publing": buildSprite([
+        "........................",
+        "........................",
+        "........................",
+        "........................",
+        "......bb........bb......",
+        ".....bbbb......bbbb.....",
+        "....bbbbbbbbbbbbbbbb....",
+        "....bbbbbbbbbbbbbbbb....",
+        "....bbWbbbbbbbbbbWbb....",
+        "....bbxbbbbbbbbbbxbb....",
+        "....bbbbbbbbbbbbbbbb....",
+        ".....bbbbboooobbbbb.....",
+        "......bbbboooobbbb......",
+        ".....bbbbbbbbbbbbbb.....",
+        "....bbbbbbbbbbbbbbbb....",
+        "....bbbbbbbbbbbbbbbb....",
+        "....bbbbbbbbbbbbbbbb....",
+        "....bbbb........bbbb....",
+        "....WWWW........WWWW....",
+        "........................",
+        "........................",
+        "........................",
+        "........................",
+        "........................"
+    ]),
 
     // --- 24x24 Alpha Poacher ---
     "alpha_poacher": buildSprite([

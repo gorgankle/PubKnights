@@ -328,7 +328,7 @@ const ItemDatabase = {
     "junk_splinters": { id: "junk_splinters", name: "Handful of Splinters", slot: "consumable", type: "junk", rarity: "Common", value: 1, spriteId: "icon_junk" },
     "junk_boots": { id: "junk_boots", name: "Waterlogged Boot", slot: "consumable", type: "junk", rarity: "Common", value: 1, spriteId: "icon_junk" },
     "junk_vine": { id: "junk_vine", name: "Rotten Vine", slot: "consumable", type: "junk", rarity: "Common", value: 1, spriteId: "icon_junk" },
-    "bomb_small": { id: "bomb_small", name: "Small Keg Bomb", slot: "consumable", type: "bomb", rarity: "Rare", damage: 45, aoe: 1, value: 10, spriteId: "icon_bomb" },
+	"bomb_small": { id: "bomb_small", name: "Small Keg Bomb", slot: "consumable", type: "bomb", rarity: "Rare", damage: 45, aoe: 1, value: 10, spriteId: "icon_bomb_small" },
     "bomb_heavy": { id: "bomb_heavy", name: "Heavy Keg Bomb", slot: "consumable", type: "bomb", rarity: "Epic", damage: 120, aoe: 1, value: 30, spriteId: "icon_bomb_heavy" },
     "fish_wholesale": { id: "fish_wholesale", name: "Wholesale Export Voucher", slot: "consumable", type: "voucher", rarity: "Rare", value: 1500, spriteId: "icon_voucher" },
     
