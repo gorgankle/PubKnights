@@ -2,14 +2,15 @@
 // Handles all non-combat economy, inventory, and tavern management logic.
 
 // 1. Import the specific dictionaries this router needs
-const { GAMBLE_CRATES, ItemDatabase } = require('./public/js/items.js');
-const { LootTables, CRATE_LOOT_TABLES } = require('./public/js/lootTables.js');
+const { ItemDatabase } = require('./public/js/items.js');
+const { LootTables } = require('./public/js/lootTables.js');
 
 // 2. Bring over the secure unboxing math from server.js
 function rollSecureCrateLoot(crateId) {
-    const table = CRATE_LOOT_TABLES[crateId];
+    // Point directly to LootTables, since the crates live inside it!
+    const table = LootTables[crateId];
     if (!table) return null;
-
+	
     const roll = Math.floor(Math.random() * 100) + 1; 
     let selectedTier = [];
     let rarityName = "";
