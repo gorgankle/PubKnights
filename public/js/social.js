@@ -10,8 +10,13 @@ function joinMultiplayerZone(zoneId) {
     if (currentSocialZone === zoneId) return; 
     document.getElementById('social-view').style.display = 'grid'; 
     
+    // FIX: Safely grab the bare variable without the window. prefix!
+    let myName = "Unknown Knight";
+    if (typeof currentUsername !== 'undefined') {
+        myName = currentUsername;
+    }
 
-    socket.emit('joinZone', { zoneId: zoneId, username: window.currentUsername || "Unknown Knight" });
+    socket.emit('joinZone', { zoneId: zoneId, username: myName });
 }
 
 function leaveMultiplayerZone(skipTabSwitch = false) {
