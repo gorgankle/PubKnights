@@ -14,7 +14,8 @@ let isFrozen = false;
 let animationFrameId = null;
 
 let barWidth = 600; // Fixed canvas width
-const targetWidth = 60; // Widened slightly to fit the 24x24 sprite nicely
+// CRITICAL ADJUSTMENT: Widen target zone to fit much larger Log
+const targetWidth = 160; 
 const indicatorWidth = 10;
 let targetPos = 200;
 
@@ -86,17 +87,21 @@ function lumberLoop() {
 
     // 3. Draw the Target Sprite (Log)
     if (typeof drawProceduralSprite === 'function' && SpriteMatrices["sprite_minigame_log"]) {
-        let logSize = 60;
+        // ENLARGEMENT CHANGE: Log size increased from 60 to 150
+        let logSize = 150;
         let logX = targetPos + (targetWidth / 2) - (logSize / 2);
+        // reposition logic centers the bigger log within the taller canvas
         let logY = (lCanvas.height / 2) - (logSize / 2);
         drawProceduralSprite(lCtx, SpriteMatrices["sprite_minigame_log"], logX, logY, logSize);
     }
 
     // 4. Draw the Moving Indicator (Axe)
     if (typeof drawProceduralSprite === 'function' && SpriteMatrices["sprite_minigame_axe"]) {
-        let axeSize = 60;
+        // ENLARGEMENT CHANGE: Axe size increased from 60 to 150
+        let axeSize = 150;
         // Center the axe horizontally over the mathematical indicatorPos
         let axeX = indicatorPos - (axeSize / 2) + (indicatorWidth / 2);
+        // reposition logic handles vertical centering
         let axeY = (lCanvas.height / 2) - (axeSize / 2);
         
         lCtx.save();
@@ -194,7 +199,7 @@ function endLumberMinigame() {
     
     if (typeof playRetroSound === 'function') playRetroSound('victory');
 
-    // Reverted the payload to only send the minigame points for the Quartermaster
+    // Payloads remain clean, only emitting points for the store
     socket.emit('townAction', { action: 'claimLumberMinigame', points: lumberPoints });
 
     setTimeout(() => {
