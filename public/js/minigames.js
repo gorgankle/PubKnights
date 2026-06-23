@@ -5,41 +5,38 @@ let lumberInterval = null;
 let lumberPoints = 0;
 let lumberCombo = 1;
 
+let lCanvas, lCtx;
 let indicatorPos = 0;
 let indicatorDirection = 1; // 1 for right, -1 for left
-let baseSpeed = 3; 
+let baseSpeed = 4; // Sped up slightly for the larger canvas
 let currentSpeed = baseSpeed;
 let isFrozen = false;
 let animationFrameId = null;
 
-let barWidth = 440;// Approximate width of the container
-const targetWidth = 40;
-const indicatorWidth = 6;
+let barWidth = 600; // Fixed canvas width
+const targetWidth = 60; // Widened slightly to fit the 24x24 sprite nicely
+const indicatorWidth = 10;
 let targetPos = 200;
 
 function setRandomTarget() {
     // Keep target completely within the bounds of the bar
     let maxPos = barWidth - targetWidth;
     targetPos = Math.floor(Math.random() * maxPos);
-    document.getElementById("rhythm-target").style.left = targetPos + "px";
 }
 
 function startLumberMinigame() {
+    lCanvas = document.getElementById("lumber-canvas");
+    lCtx = lCanvas.getContext("2d");
+    
     lumberGameActive = true;
     lumberTimer = 90;
     lumberPoints = 0;
     lumberCombo = 1;
-	currentSpeed = baseSpeed;
+    currentSpeed = baseSpeed;
     indicatorPos = 0;
-    
-    // === NEW: DYNAMICALLY CALCULATE THE BAR WIDTH ===
-    let barContainer = document.getElementById("rhythm-bar-container");
-    if (barContainer) barWidth = barContainer.clientWidth;
     
     document.getElementById("lumber-start-btn").style.display = "none";
     document.getElementById("lumber-chop-btn").style.display = "block";
-    document.getElementById("rhythm-target").style.display = "block";
-    document.getElementById("rhythm-indicator").style.display = "block";
     
     updateLumberUI();
     setRandomTarget();
@@ -58,34 +55,89 @@ function startLumberMinigame() {
     // Start the visual bounce loop
     isFrozen = false;
     cancelAnimationFrame(animationFrameId);
-    animateIndicator();
+    lumberLoop();
 }
 
-function animateIndicator() {
-    if (!lumberGameActive || isFrozen) return;
+function lumberLoop() {
+    if (!lumberGameActive) return;
 
-    indicatorPos += (currentSpeed * indicatorDirection);
+    if (!isFrozen) {
+        indicatorPos += (currentSpeed * indicatorDirection);
 
-    // Bounce off walls
-    if (indicatorPos >= (barWidth - indicatorWidth)) {
-        indicatorPos = barWidth - indicatorWidth;
-        indicatorDirection = -1;
-    } else if (indicatorPos <= 0) {
-        indicatorPos = 0;
-        indicatorDirection = 1;
+        // Bounce off walls
+        if (indicatorPos >= (barWidth - indicatorWidth)) {
+            indicatorPos = barWidth - indicatorWidth;
+            indicatorDirection = -1;
+        } else if (indicatorPos <= 0) {
+            indicatorPos = 0;
+            indicatorDirection = 1;
+        }
     }
 
-    document.getElementById("rhythm-indicator").style.left = indicatorPos + "px";
-    animationFrameId = requestAnimationFrame(animateIndicator);
+    // 1. Clear Canvas Background
+    lCtx.clearRect(0, 0, lCanvas.width, lCanvas.height);
+
+    // 2. Draw Target Zone
+    lCtx.fillStyle = 'rgba(46, 204, 113, 0.2)';
+    lCtx.fillRect(targetPos, 0, targetWidth, lCanvas.height);
+    lCtx.strokeStyle = '#2ecc71';
+    lCtx.lineWidth = 2;
+    lCtx.strokeRect(targetPos, 0, targetWidth, lCanvas.height);
+
+    // 3. Draw the Target Sprite (Log)
+    if (typeof drawProceduralSprite === 'function' && SpriteMatrices["sprite_minigame_log"]) {
+        let logSize = 60;
+        let logX = targetPos + (targetWidth / 2) - (logSize / 2);
+        let logY = (lCanvas.height / 2) - (logSize / 2);
+        drawProceduralSprite(lCtx, SpriteMatrices["sprite_minigame_log"], logX, logY, logSize);
+    }
+
+    // 4. Draw the Moving Indicator (Axe)
+    if (typeof drawProceduralSprite === 'function' && SpriteMatrices["sprite_minigame_axe"]) {
+        let axeSize = 60;
+        // Center the axe horizontally over the mathematical indicatorPos
+        let axeX = indicatorPos - (axeSize / 2) + (indicatorWidth / 2);
+        let axeY = (lCanvas.height / 2) - (axeSize / 2);
+        
+        lCtx.save();
+        
+        // Flip the axe depending on the direction it's traveling
+        if (indicatorDirection === -1) {
+            lCtx.translate(axeX * 2 + axeSize, 0);
+            lCtx.scale(-1, 1);
+        }
+        
+        // If frozen (chopping), rotate it downward!
+        if (isFrozen) {
+            // Pivot around the bottom center of the axe handle
+            let pivotX = axeX + (axeSize / 2);
+            let pivotY = axeY + axeSize;
+            lCtx.translate(pivotX, pivotY);
+            lCtx.rotate(Math.PI / 3); // 60 degrees down
+            lCtx.translate(-pivotX, -pivotY);
+        }
+        
+        drawProceduralSprite(lCtx, SpriteMatrices["sprite_minigame_axe"], axeX, axeY, axeSize);
+        lCtx.restore();
+        
+        // Draw a tiny red dot to show the exact mathematical collision center
+        lCtx.fillStyle = '#e74c3c';
+        lCtx.fillRect(indicatorPos, lCanvas.height - 4, indicatorWidth, 4);
+    } else {
+        // Fallback if sprites fail
+        lCtx.fillStyle = '#f1c40f';
+        lCtx.fillRect(indicatorPos, 0, indicatorWidth, lCanvas.height);
+    }
+
+    animationFrameId = requestAnimationFrame(lumberLoop);
 }
 
 function executeChop() {
     if (!lumberGameActive || isFrozen) return;
 
-    // Freeze the indicator so the player sees exactly where they hit
+    // Freeze the indicator so the player sees the axe hit the log
     isFrozen = true;
     
-    // Check overlap (if indicator's left edge or right edge is inside the target zone)
     let indLeft = indicatorPos;
     let indRight = indicatorPos + indicatorWidth;
     let tgtLeft = targetPos;
@@ -113,14 +165,13 @@ function executeChop() {
 
     updateLumberUI();
 
-    // Thaw after 300ms, pick a new target, and resume moving
+    // Thaw after 400ms (slightly longer to admire the animation)
     setTimeout(() => {
         if (!lumberGameActive) return;
         setRandomTarget();
         feedbackEl.innerHTML = "";
         isFrozen = false;
-        animateIndicator(); // Resume loop
-    }, 300);
+    }, 400);
 }
 
 function updateLumberUI() {
@@ -133,16 +184,17 @@ function endLumberMinigame() {
     clearInterval(lumberInterval);
     cancelAnimationFrame(animationFrameId);
     
+    // Clear canvas visually
+    if (lCtx) lCtx.clearRect(0, 0, lCanvas.width, lCanvas.height);
+    
     document.getElementById("lumber-chop-btn").style.display = "none";
-    document.getElementById("rhythm-target").style.display = "none";
-    document.getElementById("rhythm-indicator").style.display = "none";
     
     let feedbackEl = document.getElementById("lumber-feedback");
     feedbackEl.innerHTML = `<span style="color:#f1c40f;">ROUND OVER! Final Score: ${lumberPoints}</span>`;
     
     if (typeof playRetroSound === 'function') playRetroSound('victory');
 
-// Beam the verified score to the server!
+    // Reverted the payload to only send the minigame points for the Quartermaster
     socket.emit('townAction', { action: 'claimLumberMinigame', points: lumberPoints });
 
     setTimeout(() => {
@@ -274,28 +326,40 @@ class PoolFish {
     }
 
     draw(ctx) {
-        ctx.fillStyle = this.isHooked ? '#2ecc71' : this.color;
-        
-        // Draw Fish Body
-        ctx.beginPath();
-        ctx.ellipse(this.x, this.y, this.radius * 1.5, this.radius, 0, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Draw Tail
-        ctx.beginPath();
-        ctx.moveTo(this.x - (this.radius * 1.2 * this.dir), this.y);
-        ctx.lineTo(this.x - (this.radius * 2 * this.dir), this.y - this.radius);
-        ctx.lineTo(this.x - (this.radius * 2 * this.dir), this.y + this.radius);
-        ctx.fill();
-        
-        // Draw Eye
-        ctx.fillStyle = '#000';
-        ctx.beginPath();
-        ctx.arc(this.x + (this.radius * 0.8 * this.dir), this.y - (this.radius * 0.2), this.radius * 0.15, 0, Math.PI * 2);
-        ctx.fill();
+        // We calculate the top-left X/Y based on the center coordinates and radius
+        let spriteSize = this.radius * 2.5; // Scale the 24x24 matrix up based on fish tier
+        let startX = this.x - (spriteSize / 2);
+        let startY = this.y - (spriteSize / 2);
 
+        // Save context state to handle the directional flipping
+        ctx.save();
+        
+        // If the fish is swimming left, we mirror the canvas horizontally
+        if (this.dir === -1) {
+            ctx.translate(this.x * 2, 0); // Shift over by 2x the X pos
+            ctx.scale(-1, 1);             // Flip horizontally
+        }
+
+        // Apply a visual tint if hooked! We do this by dropping a semi-transparent overlay
         if (this.isHooked) {
-            // Draw Progress Bar next to the dynamically moving track
+            ctx.globalAlpha = 0.5;
+            // Draw a green highlight behind it
+            ctx.fillStyle = '#2ecc71';
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius * 1.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+        }
+
+        // Call your established Procedural Renderer!
+        if (typeof drawProceduralSprite === 'function' && SpriteMatrices["sprite_minigame_fish"]) {
+            drawProceduralSprite(ctx, SpriteMatrices["sprite_minigame_fish"], startX, startY, spriteSize);
+        }
+
+        ctx.restore();
+
+        // Draw Progress Bar next to the dynamically moving track
+        if (this.isHooked) {
             ctx.fillStyle = '#110d0a';
             ctx.fillRect(trackX + TRACK_W + 10, TRACK_TOP, 10, TRACK_H);
             
@@ -623,7 +687,9 @@ function hopsLoop(timestamp) {
         let y = hOffsetY + cell.r * hCellSize;
         let innerSize = hCellSize - 10;
         
-        // Draw vine background
+        // Draw vine background ("Map" flooring for the node)
+        hCtx.fillStyle = '#1e2d17'; // Dark dirt/leaf background
+        hCtx.fillRect(x, y, innerSize, innerSize);
         hCtx.strokeStyle = '#2d4a22';
         hCtx.lineWidth = 4;
         hCtx.strokeRect(x, y, innerSize, innerSize);
@@ -638,16 +704,22 @@ function hopsLoop(timestamp) {
             else if (cell.state === 2 && cell.timer > (1.8 * speedMult)) { cell.state = 3; cell.timer = 0; } // Ripe -> Rotten
             else if (cell.state === 3 && cell.timer > 1.2) { cell.state = 0; cell.timer = 0; } // Rotten -> Empty
 
-            let cx = x + innerSize / 2;
-            let cy = y + innerSize / 2;
-            let radius = cell.state === 1 ? 20 : 40;
+            let spriteKey = null;
+            let padding = 10;
             
-            hCtx.beginPath();
-            hCtx.arc(cx, cy, radius, 0, Math.PI * 2);
-            if (cell.state === 1) hCtx.fillStyle = '#a8e6cf'; // Growing
-            if (cell.state === 2) hCtx.fillStyle = '#2ecc71'; // Ripe (Bright Green)
-            if (cell.state === 3) hCtx.fillStyle = '#8b6b4a'; // Rotten (Brown)
-            hCtx.fill();
+            // Determine which 24x24 matrix to pass to the renderer
+            if (cell.state === 1) { spriteKey = "sprite_minigame_hops_growing"; padding = 30; } 
+            else if (cell.state === 2) { spriteKey = "sprite_minigame_hops_ripe"; padding = 10; } 
+            else if (cell.state === 3) { spriteKey = "sprite_minigame_hops_rotten"; padding = 10; }
+
+            if (spriteKey && typeof drawProceduralSprite === 'function' && SpriteMatrices[spriteKey]) {
+                // We calculate a slightly padded size to fit beautifully inside the grid box
+                let renderSize = innerSize - padding;
+                let renderX = x + (padding / 2);
+                let renderY = y + (padding / 2);
+                
+                drawProceduralSprite(hCtx, SpriteMatrices[spriteKey], renderX, renderY, renderSize);
+            }
         }
     });
 
