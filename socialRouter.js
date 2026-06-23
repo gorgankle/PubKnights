@@ -187,7 +187,11 @@ module.exports = function(socket, io, activePlayers) {
     socket.on('confirmTradeExecution', () => {
         let p = activePlayers[socket.id];
         if (!p || !p.activeTradePartner) return;
-        let partner = activePlayers[p.activeTradePartner];
+        
+        // CRITICAL FIX: Save the partner's socket ID before we wipe the state!
+        let partnerSocketId = p.activeTradePartner;
+        let partner = activePlayers[partnerSocketId];
+        if (!partner) return;
 
         // Security check: Both MUST be locked to confirm!
         if (!p.tradeLocked || !partner.tradeLocked) return;
@@ -196,15 +200,18 @@ module.exports = function(socket, io, activePlayers) {
 
         if (p.tradeConfirmed && partner.tradeConfirmed) {
             // THE SWAP! Staging arrays dump into the OPPOSITE player's inventory
-            p.inventory = p.inventory.concat(partner.tradeStaging);
-            partner.inventory = partner.inventory.concat(p.tradeStaging);
+            p.inventory = p.inventory.concat(partner.tradeStaging || []);
+            partner.inventory = partner.inventory.concat(p.tradeStaging || []);
 
             // Wipe staging so abortTrade doesn't dupe them
-            p.tradeStaging = null; partner.tradeStaging = null;
-            p.activeTradePartner = null; partner.activeTradePartner = null;
+            p.tradeStaging = null; 
+            partner.tradeStaging = null;
+            p.activeTradePartner = null; 
+            partner.activeTradePartner = null;
 
+            // Emit completion using the safely stored Socket IDs!
             io.to(socket.id).emit('tradeCompleted', { updatedInventory: p.inventory });
-            io.to(partner.id).emit('tradeCompleted', { updatedInventory: partner.inventory });
+            io.to(partnerSocketId).emit('tradeCompleted', { updatedInventory: partner.inventory });
         }
     });
 
