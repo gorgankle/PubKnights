@@ -565,7 +565,7 @@
             </div>
             <div id="inspect-gear-list" style="font-size: 11px; line-height: 1.6; color: #bdc3c7;">
                 </div>
-            <button onclick="alert('Trade endpoint coming in Phase 3!')" style="width: 100%; margin-top: 15px; font-size: 11px; padding: 5px;">📦 Request Trade</button>
+            <button onclick="requestTradeFromInspect()" style="width: 100%; margin-top: 15px; font-size: 11px; padding: 5px;">📦 Request Trade</button>
         </div>
     </div>
 
@@ -612,6 +612,55 @@
         <div id="log">--- Tavern Records ---<br>Engine v0.8.13 modular running... All synchronization pipelines functional.</div>
 
     </div>
+
+ <!-- === New: Trade WIndow === -->
+ 
+ <div id="trade-request-toast" style="display:none; position:fixed; top:20px; right:20px; background:rgba(26, 21, 18, 0.95); border:2px solid #3498db; padding:15px; z-index:9000; box-shadow: 0 5px 15px rgba(0,0,0,0.8); border-radius: 5px;">
+    <p style="margin-top:0; font-size:14px;"><b id="trade-request-name" style="color:#f1c40f">Someone</b> wants to trade!</p>
+    <div style="display: flex; gap: 10px;">
+        <button onclick="acceptTradeRequest()" style="background: #2ecc71; flex-grow: 1;">Accept</button>
+        <button onclick="declineTradeRequest()" style="background: #e74c3c; flex-grow: 1;">Decline</button>
+    </div>
+</div>
+
+<div id="trade-escrow-window" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:600px; height:450px; background:#2c2520; border:3px inset #634e3d; z-index:9999; padding:15px; flex-direction:column; box-shadow: 0 10px 30px rgba(0,0,0,0.9);">
+    <h2 style="text-align:center; margin:0 0 15px 0; color:#f1c40f; border-bottom: 1px dashed #634e3d; padding-bottom: 10px;">Secure Trading Post</h2>
+    
+    <div style="display:flex; flex-grow:1; gap:15px;">
+        
+        <div style="flex:1; display:flex; flex-direction:column; gap: 10px;">
+            <div style="flex:1; border:2px solid #4a3b2c; background:#1a1512; padding:5px; display:flex; flex-direction:column;">
+                <h3 style="margin:0 0 5px 0; color:#2ecc71; font-size: 14px; display:flex; justify-content:space-between;">
+                    <span>My Offer</span> <span id="trade-my-status" style="color:#7f8c8d; font-size:12px;">[Unlocking]</span>
+                </h3>
+                <div id="trade-my-offer-list" style="flex-grow:1; overflow-y:auto; font-size: 12px; line-height:1.6;"></div>
+            </div>
+            
+            <div style="height:120px; border:2px dashed #4a3b2c; background:#110d0a; padding:5px; display:flex; flex-direction:column;">
+                <h3 style="margin:0 0 5px 0; color:#bdc3c7; font-size: 12px;">My Inventory (Click to Offer)</h3>
+                <div id="trade-my-inventory-list" style="flex-grow:1; overflow-y:auto; font-size: 11px; line-height:1.6;"></div>
+            </div>
+        </div>
+
+        <div style="flex:1; border:2px solid #4a3b2c; background:#1a1512; padding:5px; display:flex; flex-direction:column;">
+            <h3 style="margin:0 0 5px 0; color:#e74c3c; font-size: 14px; display:flex; justify-content:space-between;">
+                <span id="trade-partner-name">Partner</span> <span id="trade-partner-status" style="color:#7f8c8d; font-size:12px;">[Unlocking]</span>
+            </h3>
+            <div id="trade-their-offer-list" style="flex-grow:1; overflow-y:auto; font-size: 12px; line-height:1.6;"></div>
+        </div>
+
+    </div>
+
+    <div style="display:flex; justify-content:space-between; margin-top:15px; border-top: 1px dashed #634e3d; padding-top: 15px;">
+        <button onclick="cancelTrade()" style="background:#c0392b; color:#fff;">❌ Cancel Trade</button>
+        <div style="display:flex; gap:10px;">
+            <button id="btn-trade-lock" onclick="toggleTradeLock()" style="background:#3498db; width: 120px;">🔒 Lock Offer</button>
+            <button id="btn-trade-confirm" onclick="confirmTrade()" disabled style="background:#7f8c8d; width: 120px; cursor:not-allowed;">✅ Confirm</button>
+        </div>
+    </div>
+</div>
+
+
 
     <div id="game-tooltip"></div>
 

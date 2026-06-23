@@ -245,3 +245,126 @@ socket.on('zoneNotification', (data) => {
 socket.on('socialMessage', (data) => {
     appendChatLog(`<b style="color:#f1c40f;">[${data.sender}]:</b> <span style="color:#f4ebd9;">${data.message}</span>`);
 });
+
+
+// === 5. SECURE TRADING MODULE ===
+
+let activeTradeRequester = null;
+
+function requestTradeFromInspect() {
+    let targetName = document.getElementById('inspect-name').innerText;
+    let targetId = Object.keys(playersInRoom).find(key => playersInRoom[key].name === targetName);
+    
+    if (targetId && targetId !== socket.id) {
+        socket.emit('requestTrade', { targetId: targetId });
+        appendChatLog(`<span style="color:#3498db; font-style:italic;">Trade request sent to ${targetName}.</span>`);
+        closeInspect();
+    }
+}
+
+// Format items cleanly for the lists
+function drawTradeItemLine(item, index, listType) {
+    if (!item) return "";
+    let color = item.rarity === 'Relic' ? '#e74c3c' : item.rarity === 'Epic' ? '#9b59b6' : item.rarity === 'Rare' ? '#3498db' : '#bdc3c7';
+    
+    if (listType === 'inventory') {
+        return `<div style="cursor:pointer; padding:2px; border-bottom:1px solid #3e3126;" onclick="socket.emit('modifyTradeOffer', {action: 'offer', index: ${index}})">➕ <span style="color:${color}">${item.name}</span></div>`;
+    } else if (listType === 'myOffer') {
+        return `<div style="cursor:pointer; padding:2px; border-bottom:1px solid #3e3126;" onclick="socket.emit('modifyTradeOffer', {action: 'revoke', index: ${index}})">➖ <span style="color:${color}">${item.name}</span></div>`;
+    } else {
+        return `<div style="padding:2px; border-bottom:1px solid #3e3126;">📦 <span style="color:${color}">${item.name}</span></div>`;
+    }
+}
+
+// Handshake Listeners
+socket.on('incomingTradeRequest', (data) => {
+    activeTradeRequester = data.requesterId;
+    document.getElementById('trade-request-name').innerText = data.requesterName;
+    document.getElementById('trade-request-toast').style.display = 'block';
+});
+
+function acceptTradeRequest() {
+    socket.emit('acceptTrade', { requesterId: activeTradeRequester });
+    document.getElementById('trade-request-toast').style.display = 'none';
+}
+
+function declineTradeRequest() {
+    socket.emit('declineTrade', { requesterId: activeTradeRequester });
+    document.getElementById('trade-request-toast').style.display = 'none';
+}
+
+// UI Rendering Listeners
+socket.on('tradeStarted', (data) => {
+    document.getElementById('trade-escrow-window').style.display = 'flex';
+    document.getElementById('trade-partner-name').innerText = data.partnerName;
+    
+    // Reset UI
+    document.getElementById('trade-their-offer-list').innerHTML = "";
+    document.getElementById('trade-my-offer-list').innerHTML = "";
+    
+    // Draw personal inventory
+    let invHtml = "";
+    data.myInventory.forEach((item, i) => invHtml += drawTradeItemLine(item, i, 'inventory'));
+    document.getElementById('trade-my-inventory-list').innerHTML = invHtml;
+});
+
+socket.on('tradeUpdated', (data) => {
+    // 1. Redraw Both Offers
+    let myHtml = ""; data.myOffer.forEach((item, i) => myHtml += drawTradeItemLine(item, i, 'myOffer'));
+    document.getElementById('trade-my-offer-list').innerHTML = myHtml;
+    
+    let theirHtml = ""; data.theirOffer.forEach((item, i) => theirHtml += drawTradeItemLine(item, i, 'theirOffer'));
+    document.getElementById('trade-their-offer-list').innerHTML = theirHtml;
+
+    // 2. Redraw Source Inventory
+    let invHtml = ""; data.myInventory.forEach((item, i) => invHtml += drawTradeItemLine(item, i, 'inventory'));
+    document.getElementById('trade-my-inventory-list').innerHTML = invHtml;
+
+    // 3. Handle Lock UI State
+    document.getElementById('trade-my-status').innerText = data.myLock ? "[🔒 LOCKED]" : "[Unlocking]";
+    document.getElementById('trade-my-status').style.color = data.myLock ? "#2ecc71" : "#7f8c8d";
+    
+    document.getElementById('trade-partner-status').innerText = data.theirLock ? "[🔒 LOCKED]" : "[Unlocking]";
+    document.getElementById('trade-partner-status').style.color = data.theirLock ? "#2ecc71" : "#7f8c8d";
+
+    let btnLock = document.getElementById('btn-trade-lock');
+    btnLock.innerText = data.myLock ? "Unlock Offer" : "🔒 Lock Offer";
+    btnLock.style.background = data.myLock ? "#e67e22" : "#3498db";
+
+    // 4. Handle Confirm Button (Only activates if BOTH are locked)
+    let btnConfirm = document.getElementById('btn-trade-confirm');
+    if (data.myLock && data.theirLock) {
+        btnConfirm.disabled = false;
+        btnConfirm.style.background = "#2ecc71";
+        btnConfirm.style.cursor = "pointer";
+    } else {
+        btnConfirm.disabled = true;
+        btnConfirm.style.background = "#7f8c8d";
+        btnConfirm.style.cursor = "not-allowed";
+        btnConfirm.innerText = "✅ Confirm"; // Reset text
+    }
+});
+
+// Control Button Functions
+function toggleTradeLock() { socket.emit('lockTradeOffer'); }
+function cancelTrade() { socket.emit('cancelTrade'); }
+function confirmTrade() { 
+    socket.emit('confirmTradeExecution'); 
+    document.getElementById('btn-trade-confirm').innerText = "Waiting...";
+    document.getElementById('btn-trade-confirm').style.background = "#f1c40f";
+}
+
+// Cleanup Listeners
+socket.on('tradeCanceled', (data) => {
+    document.getElementById('trade-escrow-window').style.display = 'none';
+    appendChatLog(`<span style="color:#e74c3c; font-style:italic;">${data.reason}</span>`);
+});
+
+socket.on('tradeCompleted', (data) => {
+    document.getElementById('trade-escrow-window').style.display = 'none';
+    appendChatLog(`<span style="color:#2ecc71; font-weight:bold;">Trade Completed Successfully!</span>`);
+    
+    // Update local state to match the new server reality
+    player.inventory = data.updatedInventory;
+    if (typeof saveGame === 'function') saveGame();
+});
