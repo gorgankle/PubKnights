@@ -91,16 +91,22 @@ module.exports = function(socket, io, activePlayers) {
         let p1 = activePlayers[p1Id];
         let p2 = activePlayers[p2Id];
 
-        // Refund any items sitting in the staging escrow back to original inventories
+        // Refund any items AND resources sitting in the staging escrow
         if (p1 && p1.tradeStaging) {
             p1.inventory = p1.inventory.concat(p1.tradeStaging);
-            p1.tradeStaging = null;
-            p1.activeTradePartner = null;
+            p1.gold = (p1.gold || 0) + (p1.tradeResources?.gold || 0);
+            p1.wood = (p1.wood || 0) + (p1.tradeResources?.wood || 0);
+            p1.fish = (p1.fish || 0) + (p1.tradeResources?.fish || 0);
+            p1.hops = (p1.hops || 0) + (p1.tradeResources?.hops || 0);
+            p1.tradeStaging = null; p1.tradeResources = null; p1.activeTradePartner = null;
         }
         if (p2 && p2.tradeStaging) {
             p2.inventory = p2.inventory.concat(p2.tradeStaging);
-            p2.tradeStaging = null;
-            p2.activeTradePartner = null;
+            p2.gold = (p2.gold || 0) + (p2.tradeResources?.gold || 0);
+            p2.wood = (p2.wood || 0) + (p2.tradeResources?.wood || 0);
+            p2.fish = (p2.fish || 0) + (p2.tradeResources?.fish || 0);
+            p2.hops = (p2.hops || 0) + (p2.tradeResources?.hops || 0);
+            p2.tradeStaging = null; p2.tradeResources = null; p2.activeTradePartner = null;
         }
 
         io.to(p1Id).emit('tradeCanceled', { reason });
@@ -127,8 +133,8 @@ module.exports = function(socket, io, activePlayers) {
         requester.activeTradePartner = socket.id;
         
         // Initialize secure staging arrays and states
-        p.tradeStaging = []; p.tradeLocked = false; p.tradeConfirmed = false;
-        requester.tradeStaging = []; requester.tradeLocked = false; requester.tradeConfirmed = false;
+        p.tradeStaging = []; p.tradeResources = { gold: 0, wood: 0, fish: 0, hops: 0 }; p.tradeLocked = false; p.tradeConfirmed = false;
+        requester.tradeStaging = []; requester.tradeResources = { gold: 0, wood: 0, fish: 0, hops: 0 }; requester.tradeLocked = false; requester.tradeConfirmed = false;
 
         io.to(socket.id).emit('tradeStarted', { partnerId: data.requesterId, partnerName: requester.username, myInventory: p.inventory });
         io.to(data.requesterId).emit('tradeStarted', { partnerId: socket.id, partnerName: p.username, myInventory: requester.inventory });
@@ -138,34 +144,73 @@ module.exports = function(socket, io, activePlayers) {
         io.to(data.requesterId).emit('zoneNotification', { message: `❌ Your trade request was declined.` });
     });
 
-    // 3. Modifying the Escrow (Moving items to/from staging)
+// 3a. Modifying Escrow (ITEMS)
     socket.on('modifyTradeOffer', (data) => {
         let p = activePlayers[socket.id];
         if (!p || !p.activeTradePartner) return;
         let partner = activePlayers[p.activeTradePartner];
 
-        // SHATTER THE LOCKS! If anyone changes anything, safety locks drop instantly.
+        // SHATTER THE LOCKS!
         p.tradeLocked = false; p.tradeConfirmed = false;
         partner.tradeLocked = false; partner.tradeConfirmed = false;
 
         if (data.action === 'offer' && p.inventory[data.index]) {
-            // Securely move item from inventory to staging array
             let item = p.inventory.splice(data.index, 1)[0];
             p.tradeStaging.push(item);
         } 
         else if (data.action === 'revoke' && p.tradeStaging[data.index]) {
-            // Securely move item from staging back to inventory
             let item = p.tradeStaging.splice(data.index, 1)[0];
             p.inventory.push(item);
         }
 
-        // Blast the new synchronized state to both players
         io.to(socket.id).emit('tradeUpdated', { 
             myOffer: p.tradeStaging, theirOffer: partner.tradeStaging, 
+            myRes: p.tradeResources, theirRes: partner.tradeResources,
             myLock: p.tradeLocked, theirLock: partner.tradeLocked, myInventory: p.inventory 
         });
         io.to(p.activeTradePartner).emit('tradeUpdated', { 
             myOffer: partner.tradeStaging, theirOffer: p.tradeStaging, 
+            myRes: partner.tradeResources, theirRes: p.tradeResources,
+            myLock: partner.tradeLocked, theirLock: p.tradeLocked, myInventory: partner.inventory 
+        });
+    });
+
+    // 3b. Modifying Escrow (RESOURCES)
+    socket.on('modifyTradeResources', (data) => {
+        let p = activePlayers[socket.id];
+        if (!p || !p.activeTradePartner) return;
+        let partner = activePlayers[p.activeTradePartner];
+
+        // SHATTER LOCKS!
+        p.tradeLocked = false; p.tradeConfirmed = false;
+        partner.tradeLocked = false; partner.tradeConfirmed = false;
+
+        // Secure Refund: Put the currently offered resources back in their wallet first
+        p.gold = (p.gold || 0) + p.tradeResources.gold; p.tradeResources.gold = 0;
+        p.wood = (p.wood || 0) + p.tradeResources.wood; p.tradeResources.wood = 0;
+        p.fish = (p.fish || 0) + p.tradeResources.fish; p.tradeResources.fish = 0;
+        p.hops = (p.hops || 0) + p.tradeResources.hops; p.tradeResources.hops = 0;
+
+        // Secure Deduction: Check limits and pull the new requested amounts
+        let reqG = Math.max(0, Math.min(p.gold, parseInt(data.gold) || 0));
+        let reqW = Math.max(0, Math.min(p.wood, parseInt(data.wood) || 0));
+        let reqF = Math.max(0, Math.min(p.fish, parseInt(data.fish) || 0));
+        let reqH = Math.max(0, Math.min(p.hops, parseInt(data.hops) || 0));
+
+        p.gold -= reqG; p.tradeResources.gold = reqG;
+        p.wood -= reqW; p.tradeResources.wood = reqW;
+        p.fish -= reqF; p.tradeResources.fish = reqF;
+        p.hops -= reqH; p.tradeResources.hops = reqH;
+
+        // Blast updates
+        io.to(socket.id).emit('tradeUpdated', { 
+            myOffer: p.tradeStaging, theirOffer: partner.tradeStaging, 
+            myRes: p.tradeResources, theirRes: partner.tradeResources,
+            myLock: p.tradeLocked, theirLock: partner.tradeLocked, myInventory: p.inventory 
+        });
+        io.to(p.activeTradePartner).emit('tradeUpdated', { 
+            myOffer: partner.tradeStaging, theirOffer: p.tradeStaging, 
+            myRes: partner.tradeResources, theirRes: p.tradeResources,
             myLock: partner.tradeLocked, theirLock: p.tradeLocked, myInventory: partner.inventory 
         });
     });
@@ -179,8 +224,16 @@ module.exports = function(socket, io, activePlayers) {
         p.tradeLocked = !p.tradeLocked; // Toggle lock
         p.tradeConfirmed = false; // Always reset confirm if lock is toggled
 
-        io.to(socket.id).emit('tradeUpdated', { myOffer: p.tradeStaging, theirOffer: partner.tradeStaging, myLock: p.tradeLocked, theirLock: partner.tradeLocked, myInventory: p.inventory });
-        io.to(p.activeTradePartner).emit('tradeUpdated', { myOffer: partner.tradeStaging, theirOffer: p.tradeStaging, myLock: partner.tradeLocked, theirLock: p.tradeLocked, myInventory: partner.inventory });
+        io.to(socket.id).emit('tradeUpdated', { 
+            myOffer: p.tradeStaging, theirOffer: partner.tradeStaging, 
+            myRes: p.tradeResources, theirRes: partner.tradeResources,
+            myLock: p.tradeLocked, theirLock: partner.tradeLocked, myInventory: p.inventory 
+        });
+        io.to(p.activeTradePartner).emit('tradeUpdated', { 
+            myOffer: partner.tradeStaging, theirOffer: p.tradeStaging, 
+            myRes: partner.tradeResources, theirRes: p.tradeResources,
+            myLock: partner.tradeLocked, theirLock: p.tradeLocked, myInventory: partner.inventory 
+        });
     });
 
     // 5. The Final Execution Swap
@@ -203,15 +256,24 @@ module.exports = function(socket, io, activePlayers) {
             p.inventory = p.inventory.concat(partner.tradeStaging || []);
             partner.inventory = partner.inventory.concat(p.tradeStaging || []);
 
-            // Wipe staging so abortTrade doesn't dupe them
-            p.tradeStaging = null; 
-            partner.tradeStaging = null;
-            p.activeTradePartner = null; 
-            partner.activeTradePartner = null;
+            // RESOURCE SWAP!
+            p.gold = (p.gold || 0) + partner.tradeResources.gold;
+            p.wood = (p.wood || 0) + partner.tradeResources.wood;
+            p.fish = (p.fish || 0) + partner.tradeResources.fish;
+            p.hops = (p.hops || 0) + partner.tradeResources.hops;
 
-            // Emit completion using the safely stored Socket IDs!
-            io.to(socket.id).emit('tradeCompleted', { updatedInventory: p.inventory });
-            io.to(partnerSocketId).emit('tradeCompleted', { updatedInventory: partner.inventory });
+            partner.gold = (partner.gold || 0) + p.tradeResources.gold;
+            partner.wood = (partner.wood || 0) + p.tradeResources.wood;
+            partner.fish = (partner.fish || 0) + p.tradeResources.fish;
+            partner.hops = (partner.hops || 0) + p.tradeResources.hops;
+
+            // Wipe staging so abortTrade doesn't dupe them
+            p.tradeStaging = null; p.tradeResources = null;
+            partner.tradeStaging = null; partner.tradeResources = null;
+            p.activeTradePartner = null; partner.activeTradePartner = null;
+
+            io.to(socket.id).emit('tradeCompleted', { updatedInventory: p.inventory, updatedStats: {gold: p.gold, wood: p.wood, fish: p.fish, hops: p.hops} });
+            io.to(partnerSocketId).emit('tradeCompleted', { updatedInventory: partner.inventory, updatedStats: {gold: partner.gold, wood: partner.wood, fish: partner.fish, hops: partner.hops} });
         }
     });
 
@@ -221,8 +283,14 @@ module.exports = function(socket, io, activePlayers) {
     });	
 	
 
-    // Clean up if the player disconnects or refreshes the page entirely
+    /// Clean up if the player disconnects or refreshes the page entirely
     socket.on('disconnect', () => {
+        let p = activePlayers[socket.id];
+        
+        // CRITICAL: Prevent orphaned items if they disconnect during a trade!
+        if (p && p.activeTradePartner) {
+            abortTrade(socket.id, p.activeTradePartner, "Trade partner disconnected.");
+        }
+        
         leaveCurrentZone();
     });
-};

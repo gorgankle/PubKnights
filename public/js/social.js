@@ -308,6 +308,25 @@ socket.on('tradeStarted', (data) => {
     document.getElementById('trade-my-inventory-list').innerHTML = invHtml;
 });
 
+function offerTradeResources() {
+    socket.emit('modifyTradeResources', {
+        gold: document.getElementById('trade-in-gold').value,
+        wood: document.getElementById('trade-in-wood').value,
+        fish: document.getElementById('trade-in-fish').value,
+        hops: document.getElementById('trade-in-hops').value
+    });
+}
+
+function formatResourceString(res) {
+    if (!res) return "";
+    let str = [];
+    if (res.gold > 0) str.push(`${res.gold}g`);
+    if (res.wood > 0) str.push(`<span style="color:#e67e22">${res.wood} Wood</span>`);
+    if (res.fish > 0) str.push(`<span style="color:#3498db">${res.fish} Fish</span>`);
+    if (res.hops > 0) str.push(`<span style="color:#2ecc71">${res.hops} Hops</span>`);
+    return str.join(' | ');
+}
+
 socket.on('tradeUpdated', (data) => {
     // 1. Redraw Both Offers
     let myHtml = ""; data.myOffer.forEach((item, i) => myHtml += drawTradeItemLine(item, i, 'myOffer'));
@@ -315,6 +334,10 @@ socket.on('tradeUpdated', (data) => {
     
     let theirHtml = ""; data.theirOffer.forEach((item, i) => theirHtml += drawTradeItemLine(item, i, 'theirOffer'));
     document.getElementById('trade-their-offer-list').innerHTML = theirHtml;
+
+// Update Resource Display
+    document.getElementById('trade-my-resource-display').innerHTML = formatResourceString(data.myRes);
+    document.getElementById('trade-their-resource-display').innerHTML = formatResourceString(data.theirRes);
 
     // 2. Redraw Source Inventory
     let invHtml = ""; data.myInventory.forEach((item, i) => invHtml += drawTradeItemLine(item, i, 'inventory'));
@@ -366,5 +389,15 @@ socket.on('tradeCompleted', (data) => {
     
     // Update local state to match the new server reality
     player.inventory = data.updatedInventory;
+    
+    // NEW: Update resources!
+    if (data.updatedStats) {
+        player.gold = data.updatedStats.gold;
+        player.wood = data.updatedStats.wood;
+        player.fish = data.updatedStats.fish;
+        player.hops = data.updatedStats.hops;
+        if (typeof refreshSystemUI === 'function') refreshSystemUI();
+    }
+    
     if (typeof saveGame === 'function') saveGame();
 });

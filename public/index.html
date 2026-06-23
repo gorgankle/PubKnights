@@ -633,11 +633,19 @@
                 <h3 style="margin:0 0 5px 0; color:#2ecc71; font-size: 14px; display:flex; justify-content:space-between;">
                     <span>My Offer</span> <span id="trade-my-status" style="color:#7f8c8d; font-size:12px;">[Unlocking]</span>
                 </h3>
+                <div id="trade-my-resource-display" style="font-size: 11px; color: #f1c40f; margin-bottom: 5px; border-bottom: 1px dashed #4a3b2c; padding-bottom: 5px;"></div>
                 <div id="trade-my-offer-list" style="flex-grow:1; overflow-y:auto; font-size: 12px; line-height:1.6;"></div>
             </div>
             
-            <div style="height:120px; border:2px dashed #4a3b2c; background:#110d0a; padding:5px; display:flex; flex-direction:column;">
-                <h3 style="margin:0 0 5px 0; color:#bdc3c7; font-size: 12px;">My Inventory (Click to Offer)</h3>
+            <div style="height:140px; border:2px dashed #4a3b2c; background:#110d0a; padding:5px; display:flex; flex-direction:column;">
+                <h3 style="margin:0 0 5px 0; color:#bdc3c7; font-size: 12px;">My Inventory</h3>
+                <div style="display:flex; flex-wrap:wrap; gap: 3px; margin-bottom: 5px;">
+                    <input type="number" id="trade-in-gold" placeholder="Gold" min="0" style="width: 45px; background:#2c2520; color:#f1c40f; border:1px solid #634e3d; font-size:10px;" title="Gold">
+                    <input type="number" id="trade-in-wood" placeholder="Wood" min="0" style="width: 45px; background:#2c2520; color:#e67e22; border:1px solid #634e3d; font-size:10px;" title="Wood">
+                    <input type="number" id="trade-in-fish" placeholder="Fish" min="0" style="width: 45px; background:#2c2520; color:#3498db; border:1px solid #634e3d; font-size:10px;" title="Fish">
+                    <input type="number" id="trade-in-hops" placeholder="Hops" min="0" style="width: 45px; background:#2c2520; color:#2ecc71; border:1px solid #634e3d; font-size:10px;" title="Hops">
+                    <button onclick="offerTradeResources()" style="font-size:10px; padding: 2px 5px; background:#8b5a2b; color:#fff; border:none; cursor:pointer;">Set</button>
+                </div>
                 <div id="trade-my-inventory-list" style="flex-grow:1; overflow-y:auto; font-size: 11px; line-height:1.6;"></div>
             </div>
         </div>
@@ -646,6 +654,7 @@
             <h3 style="margin:0 0 5px 0; color:#e74c3c; font-size: 14px; display:flex; justify-content:space-between;">
                 <span id="trade-partner-name">Partner</span> <span id="trade-partner-status" style="color:#7f8c8d; font-size:12px;">[Unlocking]</span>
             </h3>
+            <div id="trade-their-resource-display" style="font-size: 11px; color: #f1c40f; margin-bottom: 5px; border-bottom: 1px dashed #4a3b2c; padding-bottom: 5px;"></div>
             <div id="trade-their-offer-list" style="flex-grow:1; overflow-y:auto; font-size: 12px; line-height:1.6;"></div>
         </div>
 
