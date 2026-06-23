@@ -6,6 +6,11 @@ let globalAnimClock = 0; // Global engine clock tick count for procedural breath
 // === NEW: HARDWARE-ACCELERATED RASTER CACHE ===
 const SpriteRasterCache = {};
 
+// === NEW: PLAYER COMPOSITE BUFFER ===
+// Used to safely apply clipping masks without punching through the map floor
+const playerBufferCanvas = document.createElement('canvas');
+const playerBufferCtx = playerBufferCanvas.getContext('2d', { alpha: true });
+
 function drawOptimizedSprite(ctx, spriteKey, matrix, x, y, size) {
     if (!matrix) return;
     
@@ -232,28 +237,37 @@ mapObstacles.forEach(o => {
     let pPivotX = pX + currentTileSize / 2; let pPivotY = pY + currentTileSize;
     ctx.translate(pPivotX, pPivotY); ctx.scale(pScaleX, pScaleY); ctx.translate(-pPivotX, -pPivotY);
 
+    // === NEW: RENDER BODY TO BUFFER FIRST FOR MASKING ===
+    playerBufferCanvas.width = currentTileSize;
+    playerBufferCanvas.height = currentTileSize;
+    playerBufferCtx.clearRect(0, 0, currentTileSize, currentTileSize);
+
     let bodySprite = player.appearance.gender === 'female' ? 'body_female' : 'body_male';
-    if (SpriteMatrices[bodySprite]) drawProceduralSprite(ctx, SpriteMatrices[bodySprite], pX, pY, currentTileSize);
-    if (SpriteMatrices[player.appearance.eyes]) drawProceduralSprite(ctx, SpriteMatrices[player.appearance.eyes], pX, pY, currentTileSize);
+    if (SpriteMatrices[bodySprite]) drawProceduralSprite(playerBufferCtx, SpriteMatrices[bodySprite], 0, 0, currentTileSize);
+    if (SpriteMatrices[player.appearance.eyes]) drawProceduralSprite(playerBufferCtx, SpriteMatrices[player.appearance.eyes], 0, 0, currentTileSize);
     
     const hidesHair = player.equipment.helmet && player.equipment.helmet.hidesHair;
     if (!hidesHair && SpriteMatrices[player.appearance.hair]) {
-        drawProceduralSprite(ctx, SpriteMatrices[player.appearance.hair], pX, pY, currentTileSize);
+        drawProceduralSprite(playerBufferCtx, SpriteMatrices[player.appearance.hair], 0, 0, currentTileSize);
     }
 
     const eq = player.equipment; let gSuffix = player.appearance.gender === 'female' ? '_female' : '_male';
     
     if (eq.armor && eq.armor.spriteId) {
         let sId = eq.armor.spriteId + gSuffix;
-        if (SpriteMatrices[sId]) drawProceduralSprite(ctx, SpriteMatrices[sId], pX, pY, currentTileSize);
-        else if (SpriteMatrices[eq.armor.spriteId]) drawProceduralSprite(ctx, SpriteMatrices[eq.armor.spriteId], pX, pY, currentTileSize);
+        if (SpriteMatrices[sId]) drawProceduralSprite(playerBufferCtx, SpriteMatrices[sId], 0, 0, currentTileSize);
+        else if (SpriteMatrices[eq.armor.spriteId]) drawProceduralSprite(playerBufferCtx, SpriteMatrices[eq.armor.spriteId], 0, 0, currentTileSize);
     }
     
-    if (eq.boots && eq.boots.spriteId && SpriteMatrices[eq.boots.spriteId]) drawProceduralSprite(ctx, SpriteMatrices[eq.boots.spriteId], pX, pY, currentTileSize);
-    if (eq.gloves && eq.gloves.spriteId && SpriteMatrices[eq.gloves.spriteId]) drawProceduralSprite(ctx, SpriteMatrices[eq.gloves.spriteId], pX, pY, currentTileSize);
-    if (eq.helmet && eq.helmet.spriteId && SpriteMatrices[eq.helmet.spriteId]) drawProceduralSprite(ctx, SpriteMatrices[eq.helmet.spriteId], pX, pY, currentTileSize);
-    
-if (eq.weapon && eq.weapon.spriteId && SpriteMatrices[eq.weapon.spriteId]) {
+    if (eq.boots && eq.boots.spriteId && SpriteMatrices[eq.boots.spriteId]) drawProceduralSprite(playerBufferCtx, SpriteMatrices[eq.boots.spriteId], 0, 0, currentTileSize);
+    if (eq.gloves && eq.gloves.spriteId && SpriteMatrices[eq.gloves.spriteId]) drawProceduralSprite(playerBufferCtx, SpriteMatrices[eq.gloves.spriteId], 0, 0, currentTileSize);
+    if (eq.helmet && eq.helmet.spriteId && SpriteMatrices[eq.helmet.spriteId]) drawProceduralSprite(playerBufferCtx, SpriteMatrices[eq.helmet.spriteId], 0, 0, currentTileSize);
+
+    // Stamp the fully assembled/masked character onto the main canvas
+    ctx.drawImage(playerBufferCanvas, pX, pY);
+    // ====================================================
+
+    if (eq.weapon && eq.weapon.spriteId && SpriteMatrices[eq.weapon.spriteId]) {
         ctx.save();
         
         // 1. Establish the hand's pivot point (Standard Left Hand / Viewer's Right)

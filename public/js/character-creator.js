@@ -1,58 +1,84 @@
 // --- js/character-creator.js ---
 // Procedural Matrix Sprite Engine (Upgraded 24x24 Anatomy)
 
+// THE UNIFIED MASTER PALETTE (Single Source of Truth)
 const PALETTE = {
-    // --- EXISTING BASE ---
+    // --- 1. CORE BODY & ANATOMY ---
     '.': 'transparent', 
-    'S': '#f1c27d',     // Base Skin Tone (Dynamically Overridden)
-    '@': '#c0392b',     // Mouth / Lips (Protected from NPC Overrides!)
-    'H': '#5c3a21',     // Base Hair Tone (Dynamically Overridden)
-    'B': '#111111',     // Black/Bald
-    'Z': '#ffffff',     // Dynamic Eye Tone (Protected!)
-    'U': '#2980b9',     // Blue Tunic (Dynamically Overridden)
-    'P': '#2c3e50',     // Dark Pants (Dynamically Overridden)
-    'D': '#3e2723',     // Leather Boots (Dynamically Overridden)
+    'S': '#f1c27d',     // Skin Tone (Dynamic)
+    '@': '#c0392b',     // Lips / Deep Red
+    'H': '#5c3a21',     // Hair Tone (Dynamic)
+    'B': '#111111',     // Black / Bald
+    'Z': '#ffffff',     // Eye Tone (Dynamic)
 
-    // --- EXISTING MASTER ITEM & GEAR PALETTE ---
+    // --- 2. DEFAULT CLOTHING ---
+    'U': '#2980b9',     // Blue Tunic
+    'P': '#2c3e50',     // Dark Pants / Midnight Blue
+    'D': '#3e2723',     // Dark Leather Boots / Shadow
+
+    // --- 3. MASTER MATERIALS & METALS ---
     'I': '#7f8c8d',     // Iron Plate Armor Gray
-    'Y': '#f1c40f',     // Golden Trim / Accent
-    'R': '#e74c3c',     // Crimson Weapon Ruby
-    's': '#bdc3c7',     // Silver / Iron Blade
-    'c': '#8b5a2b',     // Cask Light Wood (Safe replacement for 'w')
-    'd': '#5c3a21',     // Dark Wood
-    'l': '#8d5524',     // Leather
-    'b': '#f4ebd9',     // Bone / Teeth
-    'h': '#2ecc71',     // Hops / Green Leaves
-    'v': '#8e44ad',     // Epic Purple Glow
-    'j': '#f1c40f',     // Gold / Mimic Gem
+    'Y': '#f1c40f',     // Golden Trim / Mimic Gold
+    'R': '#e74c3c',     // Crimson Ruby / Glowing Red Eyes
+    's': '#bdc3c7',     // Silver / Iron Bands
+    'c': '#8b5a2b',     // Light Wood / Cask Light
+    'd': '#5c3a21',     // Dark Wood / Cask Dark
+    'l': '#8d5524',     // Standard Leather
+    'b': '#f4ebd9',     // Bone / Teeth / Ivory / Bow String
+    'h': '#2ecc71',     // Hops / Green Leaves / Corrupted Glow
+    'v': '#8e44ad',     // Vivid Purple / Epic Glow
     'W': '#ffffff',     // White / Foam / Glass
-    'm': '#f39c12',     // Amber / Stout Beer
-    'K': '#d35400',     // Deep Orange / IPA Beer 
-    'k': '#1a0f2e',     // Static Abyssal Void Trim 
 
-    // --- EXISTING METALLIC TRIMS & HIGHLIGHTS ---
+    // --- 4. TAVERN FOOD & BREWS ---
+    'm': '#f39c12',     // Amber / Stout Beer
+    'K': '#d35400',     // Deep Orange / IPA Beer
+    'p': '#e8c396',     // Flatbread Dough / Pastry Base
+    't': '#cb4335',     // Tomato Sauce
+    'C': '#f4d03f',     // Melted Cheese
+    'w': '#722f37',     // Vintage Wine / Burgundy
+
+    // --- 5. ENVIRONMENT & MAP TILES ---
+    '1': '#273c24',     // Wilderness Dark Grass
+    '2': '#344e31',     // Wilderness Light Grass
+    '3': '#2a221f',     // Cellar Dark Stone
+    '4': '#3b312b',     // Cellar Light Stone
+    '5': '#6b543f',     // Arena Sand/Dirt
+    '6': '#4a3b2c',     // Arena Dark Dirt
+    '7': '#5f6a6a',     // Boulder Dark Gray
+    '8': '#839192',     // Boulder Light Gray
+    '9': '#1a1512',     // Deep Shadow
+    'q': '#1e5128',     // Dark Tree Leaves
+    'e': '#4caf50',     // Light Tree Leaves
+    'y': '#5c4033',     // Tree Bark
+    '[': '#27ae60',     // Plant Stem
+    '{': '#1a0f2e',     // Void Mid-Tone
+    '}': '#3a1f5c',     // Eldritch Swirl
+    'A': '#110a1f',     // Void Deep Shadow
+
+    // --- 6. BEAST FUR & NPC HIDES ---
+    '-': '#5d4037',     // Boar Brown
+    'G': '#222222',     // Gorilla Dark Fur
+    '~': '#2c2c2e',     // Bandit Black / Deep Fur
+    '*': '#ff9eaa',     // Princess Pink
+    '+': '#f5deb3',     // Consuela Cream
+    'a': '#a6acaf',     // Silver Wolf Fur
+    'o': '#d35400',     // Fox Orange / Poacher Tunic
+
+    // --- 7. SPECIAL TRIMS & MAGIC GLOWS ---
     'N': '#cd7f32',     // Bronze / Copper Trim 
     'O': '#fdfefe',     // Platinum / Bright Silver 
     'J': '#212f3c',     // Dark Steel / Gunmetal 
     '0': '#0b0b0b',     // Obsidian / True Black Trim 
-
-    // --- EXISTING CLOTH & LEATHER ACCENTS ---
-    'Q': '#641e16',     // Deep Crimson Trim 
-    'E': '#154360',     // Royal Blue Trim 
-    'F': '#145a32',     // Forest Green Trim 
-    'L': '#f5cba7',     // Pale Leather / Parchment 
-
-    // --- EXISTING MAGICAL & ELEMENTAL GLOWS ---
-    'z': '#c39bd3',     // Arcane Pink / Magenta Glow 
-    'n': '#aed6f1',     // Frost / Ice Blue Glow 
-    'u': '#7cfc00',     // Toxic / Fel Green Glow 
-
-    // === NEW: HIGH-CONTRAST WEAPON MATERIALS ===
-    '!': '#2e180d',     // Deep Walnut / Darkest Brown (Perfect for weapon handles)
-    '^': '#7fb3d5',     // Mythril Blue (Stands out sharply against standard gray iron)
-    '&': '#17202a',     // Damascus / Charcoal Steel (For ultra-heavy, dark blades)
-    '%': '#d39e82',     // Rose Gold / Copper-Pink Metallic (Unique hilt trim)
-    '$': '#00ff7f'      // Vibrant Emerald (A piercing gem color to break up dark armor)
+    'k': '#1a0f2e',     // Abyssal Void Trim 
+    '!': '#ff4500',     // Hellfire Orange
+    '^': '#00ffff',     // Pure Cyan / Lightning
+    '&': '#9932cc',     // Dark Void Purple
+    '%': '#ffd700',     // Holy Radiance
+    '$': '#00ff00',     // Pure Emerald Glow
+	
+	// === NEW: ENGINE CLIPPING MASK ===
+    '_': 'ERASE'        // Magic Masking Pixel (Hides layers beneath it)
+	
 };
 const SkinTones = { 
     'light': '#f1c27d', 'tan': '#d3a068', 'dark': '#8d5524', 'orc': '#556b2f',
@@ -336,9 +362,14 @@ function drawProceduralSprite(context, matrix, startX, startY, size) {
                 color = EyeTones[eyeColor] || EyeTones['blue'];
             }
 
-            if (color && color !== 'transparent') {
-                context.fillStyle = color;
-                context.fillRect(startX + (col * pixelSize), startY + (row * pixelSize), Math.ceil(pixelSize), Math.ceil(pixelSize));
+if (color && color !== 'transparent') {
+                // === NEW: MAGIC ERASER MASK LOGIC ===
+                if (color === 'ERASE') {
+                    context.clearRect(startX + (col * pixelSize), startY + (row * pixelSize), Math.ceil(pixelSize), Math.ceil(pixelSize));
+                } else {
+                    context.fillStyle = color;
+                    context.fillRect(startX + (col * pixelSize), startY + (row * pixelSize), Math.ceil(pixelSize), Math.ceil(pixelSize));
+                }
             }
         }
     }

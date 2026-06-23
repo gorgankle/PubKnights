@@ -1,46 +1,26 @@
 // --- js/npc-assets.js ---
 // Procedural Matrix definitions for NPCs (Upgraded to 24x24)
 
-Object.assign(PALETTE, {
-    'V': '#8e44ad',     // Vivid Purple (Ravager Base)
-    'M': '#2c3e50',     // Midnight Blue (Ravager Contrast)
-    'r': '#c0392b',     // Deep Red (Ravager Mouth/Highlights)
-    'T': '#e67e22',     // Poacher Tunic Orange
-    'f': '#2ecc71',     // Green Accents / Quiver
-    'w': '#f4ebd9',     // Wood / String Color
-    'b': '#5d4037',     // Boar Brown Fur
-    'o': '#3e2723',     // Dark Shadows / Outline
-    't': '#f4ebd9',     // Ivory Tusks
-    'x': '#e74c3c',     // Glowing Red Eyes
-    'c': '#8b5a2b',     // Cask Light Wood
-    'C': '#5c3a21',     // Cask Dark Wood
-    'i': '#bdc3c7',     // Iron Bands
-    'g': '#2ecc71',     // Corrupted Green Glow
-    'm': '#f1c40f',     // Beer / Mimic Gold
-    'W': '#ffffff',     // Foam / Teeth / Eyes
-    'G': '#222222',     // Gorilla Dark Fur
-    'A': '#7f8c8d'      // Gorilla Skin / Highlights
-});
 
 Object.assign(SpriteMatrices, {
     // --- 24x24 Wild Ravager ---
     "wild_ravager": buildSprite([
         "........................",
         "........................",
-        "......MMMM........MMMM..",
-        ".....VVVVMMMMMMMMVVVV...",
-        ".....VVVVVVVVVVVVVVVV...",
-        "......VVVVVVVVVVVVVV....",
-        "........VrrrrrrrrV......",
-        ".........r......r.......",
-        ".......VVVVVVVVVVVV.....",
-        ".....VVVVVVVVVVVVVVVV...",
-        "...VVVVVVMMMMVVMMMMVVVV.",
-        "..VVVVVVM....MM....MVVVV",
-        "....VVVM............MVV.",
-        "....VVVM............MVV.",
-        ".......M............M...",
-        "......VV............VV..",
+        "......PPPP........PPPP..",
+        ".....vvvvPPPPPPPPvvvv...",
+        ".....vvvvvvvvvvvvvvvv...",
+        "......vvvvvvvvvvvvvv....",
+        "........v@@@@@@@@v......",
+        ".........@......@.......",
+        ".......vvvvvvvvvvvv.....",
+        ".....vvvvvvvvvvvvvvvv...",
+        "...vvvvvvPPPPvvPPPPvvvv.",
+        "..vvvvvvP....PP....Pvvvv",
+        "....vvvP............Pvv.",
+        "....vvvP............Pvv.",
+        ".......P............P...",
+        "......vv............vv..",
         "........................",
         "........................",
         "........................",
@@ -50,27 +30,27 @@ Object.assign(SpriteMatrices, {
         "........................",
         "........................"
     ]),
-	
-	// --- 24x24 Wild Publing (Miniboss) ---
+    
+    // --- 24x24 Wild Publing (Miniboss) ---
     "publing": buildSprite([
         "........................",
         "........................",
         "........................",
         "........................",
-        "......bb........bb......",
-        ".....bbbb......bbbb.....",
-        "....bbbbbbbbbbbbbbbb....",
-        "....bbbbbbbbbbbbbbbb....",
-        "....bbWbbbbbbbbbbWbb....",
-        "....bbxbbbbbbbbbbxbb....",
-        "....bbbbbbbbbbbbbbbb....",
-        ".....bbbbboooobbbbb.....",
-        "......bbbboooobbbb......",
-        ".....bbbbbbbbbbbbbb.....",
-        "....bbbbbbbbbbbbbbbb....",
-        "....bbbbbbbbbbbbbbbb....",
-        "....bbbbbbbbbbbbbbbb....",
-        "....bbbb........bbbb....",
+        "......--........--......",
+        ".....----......----.....",
+        "....----------------....",
+        "....----------------....",
+        "....--W----------W--....",
+        "....--R----------R--....",
+        "....----------------....",
+        ".....-----DDDD-----.....",
+        "......----DDDD----......",
+        ".....--------------.....",
+        "....----------------....",
+        "....----------------....",
+        "....----------------....",
+        "....----........----....",
         "....WWWW........WWWW....",
         "........................",
         "........................",
@@ -86,12 +66,12 @@ Object.assign(SpriteMatrices, {
         "........SSSSSSSS........",
         "........SWSSSSWS........",
         "........SSSSSSSS........",
-        ".......wTTTTTTTT........",
-        ".......wfwTTTTTTTTf.....",
-        "......wfffwTTTTTTTfff...",
-        "......wffffwTTTTTffff...",
-        ".......wffffwTTTffff....",
-        "........wffffwTffff.....",
+        ".......boooooooo........",
+        ".......bhbooooooooh.....",
+        "......bhhhooooooohhh...",
+        "......bhhhhooooohhhh...",
+        ".......bhhhhooohhhh....",
+        "........bhhhhohhhh.....",
         "..........PPPPPPPP......",
         "..........PP....PP......",
         "..........PP....PP......",
@@ -111,21 +91,21 @@ Object.assign(SpriteMatrices, {
     "wilderness_overlord": buildSprite([
         "........................",
         "........................",
-        ".........ooooooooo......",
-        ".......obbbbbbbbbbo.....",
-        "......obbbxbbbbxbbbo....",
-        "......obbbbbbbbbbbbo....",
-        "....ttoboooooooboottt...",
-        "...t..oobbbbbbbboo..t...",
-        "......obbbbbbbbbbbo.....",
-        ".....obbbbbbbbbbbbbo....",
-        ".....obboobbbbbboobo....",
-        ".....obooobbbbbbooob....",
-        ".....oo..obbbbbbo..oo...",
-        ".........obooobbo.......",
-        ".........obooobbo.......",
-        "........obbooobboo......",
-        "........ooo...ooo.......",
+        ".........DDDDDDDDD......",
+        ".......D----------D.....",
+        "......D---R----R---D....",
+        "......D------------D....",
+        "....bbD-DDDDDDD-DDbbb...",
+        "...b..DD--------DD..b...",
+        "......D-----------D.....",
+        ".....D-------------D....",
+        ".....D--DD------DD-D....",
+        ".....D-DDD------DDD-....",
+        ".....DD..D------D..DD...",
+        ".........D-DDD--D.......",
+        ".........D-DDD--D.......",
+        "........D--DDD--DD......",
+        "........DDD...DDD.......",
         "........................",
         "........................",
         "........................",
@@ -139,19 +119,19 @@ Object.assign(SpriteMatrices, {
     "corrupted_cask": buildSprite([
         "........................",
         "........................",
-        "........CCCCCCCC........",
-        "......CccccccccccC......",
-        ".....CiiiiiiiiiiiiC.....",
-        ".....CccccccccccccC.....",
-        ".....CcgcccggcccccC.....",
-        ".....CcggcgggccgcgC.....",
-        ".....CcccggcgcgcccC.....",
-        ".....CccccccccccccC.....",
-        ".....CccccccccccccC.....",
-        ".....CiiiiiiiiiiiiC.....",
-        ".....CccccccccccccC.....",
-        "......CccccccccccC......",
-        "........CCCCCCCC........",
+        "........dddddddd........",
+        "......dccccccccccd......",
+        ".....dssssssssssssd.....",
+        ".....dccccccccccccd.....",
+        ".....dchccchhcccccd.....",
+        ".....dchhchhhcchchd.....",
+        ".....dccchhchchcccd.....",
+        ".....dccccccccccccd.....",
+        ".....dccccccccccccd.....",
+        ".....dssssssssssssd.....",
+        ".....dccccccccccccd.....",
+        "......dccccccccccd......",
+        "........dddddddd........",
         "........................",
         "........................",
         "........................",
@@ -169,15 +149,15 @@ Object.assign(SpriteMatrices, {
         "........................",
         "........WWWWWWWW........",
         "......WWWWWWWWWWWW......",
-        "......WmmmmmmmmmmWW.....",
-        "......WmxmmmxmmxmmWWW...",
-        "......WmxmmmxmmxmmWmW...",
-        "......WmmmmmmmmmmmWmW...",
-        "......WmCCCCCCCCmmWmW...",
-        "......WmWxxWxxWmmmWmW...",
-        "......WmWWWWWWWWmmWmW...",
-        "......WmmmmmmmmmmmWmW...",
-        "......WmmmmmmmmmmmWW....",
+        "......WYYYYYYYYYYWW.....",
+        "......WYRYYYRYYRYYWWW...",
+        "......WYRYYYRYYRYYWYW...",
+        "......WYYYYYYYYYYYWYW...",
+        "......WYddddddddYYWYW...",
+        "......WYWRRWRRWYYYWYW...",
+        "......WYWWWWWWWWYYWYW...",
+        "......WYYYYYYYYYYYWYW...",
+        "......WYYYYYYYYYYYWW....",
         "......WWWWWWWWWWWW......",
         "........................",
         "........................",
@@ -196,15 +176,15 @@ Object.assign(SpriteMatrices, {
         "........................",
         "........WWWWWWWW........",
         "......WWWWWWWWWWWW......",
-        "......WmmmmmmmmmmWW.....",
-        "......WmxmmmxmmxmmWWW...",
-        "......WmxmmmxmmxmmWmW...",
-        "......WmmmmmmmmmmmWmW...",
-        "......WmCCCCCCCCmmWmW...",
-        "......WmWxxWxxWmmmWmW...",
-        "......WmWWWWWWWWmmWmW...",
-        "......WmmmmmmmmmmmWmW...",
-        "......WmmmmmmmmmmmWW....",
+        "......WYYYYYYYYYYWW.....",
+        "......WYRYYYRYYRYYWWW...",
+        "......WYRYYYRYYRYYWYW...",
+        "......WYYYYYYYYYYYWYW...",
+        "......WYddddddddYYWYW...",
+        "......WYWRRWRRWYYYWYW...",
+        "......WYWWWWWWWWYYWYW...",
+        "......WYYYYYYYYYYYWYW...",
+        "......WYYYYYYYYYYYWW....",
         "......WWWWWWWWWWWW......",
         "........................",
         "........................",
@@ -217,52 +197,52 @@ Object.assign(SpriteMatrices, {
         "........................",
         "........................"
     ]),
-	
-	// --- 24x24 Vintage Behemoth (CELLAR BOSS - SIZE 2) ---
+    
+    // --- 24x24 Vintage Behemoth (CELLAR BOSS - SIZE 2) ---
     "vintage_behemoth": buildSprite([
         "........................",
-        ".....CCCCCC..CCCCCC.....",
-        "....CccccccCCccccccC....",
-        "...CiiiiiiiiiiiiiiiiC...", // Top Iron Band
-        "..CccccccccccccccccccC..",
-        ".CccccccccccccccccccccC.",
-        ".CcgcccgccgccgccgcccgcC.", // Some corrupted green glow creeping in
-        ".CccccccCccccCccccccccC.",
-        ".CcccCccCccccCccCcccccC.",
-        ".CiiiiiiiiiiiiiiiiiiiiC.", // Mid-Top Iron Band
-        ".CcccWWWccCcccWWWcccccC.", // Yellow/White Glowing Eyes
-        ".CccWWxWWcCccWWxWWccccC.", 
-        ".CcccWWWccCcccWWWcccccC.",
-        ".CcccWWWWWWWWWWWWWWcccC.", // Upper Teeth
-        ".CcccVVVVVVVVVVVVVVcccC.", // The massive open purple maw
-        ".CcccVVVVVVMMMMVVVVcccC.", 
-        ".CcccVVVVVMMMMMMVVVcccC.", 
-        ".CcccWWWWWWWWWWWWWWcccC.", // Lower Teeth
-        ".CiiiiiiiiiiiiiiiiiiiiC.", // Mid-Bottom Iron Band
-        ".CccccccccccccccccccccC.",
-        "..CccccccccccccccccccC..",
-		"...CiiiiiiiiiiiiiiiiC...", // Bottom Iron Band
-        "....CccccccCCccccccC....",
-        ".....CCCCCC..CCCCCC....."
-    ]), // <--- ADD THIS COMMA RIGHT HERE!
+        ".....dddddd..dddddd.....",
+        "....dccccccddccccccd....",
+        "...dssssssssssssssssd...", 
+        "..dccccccccccccccccccd..",
+        ".dccccccccccccccccccccd.",
+        ".dchccchcchcchcchccchcd.", 
+        ".dccccccdccccdccccccccd.",
+        ".dcccdccdccccdccdcccccd.",
+        ".dssssssssssssssssssssd.", 
+        ".dcccWWWccdcccWWWcccccd.", 
+        ".dccWWRWWcdccWWRWWccccd.", 
+        ".dcccWWWccdcccWWWcccccd.",
+        ".dcccWWWWWWWWWWWWWWcccd.", 
+        ".dcccvvvvvvvvvvvvvvcccd.", 
+        ".dcccvvvvvvPPPPvvvvcccd.", 
+        ".dcccvvvvvPPPPPPvvvcccd.", 
+        ".dcccWWWWWWWWWWWWWWcccd.", 
+        ".dssssssssssssssssssssd.", 
+        ".dccccccccccccccccccccd.",
+        "..dccccccccccccccccccd..",
+        "...dssssssssssssssssd...", 
+        "....dccccccddccccccd....",
+        ".....dddddd..dddddd....."
+    ]),
 
     // --- 24x24 Enraged Gorilla ---
     "enraged_gorilla": buildSprite([
         "........................",
         ".........GGGGGGGG.......",
-        ".......GGAAAAAAAAGG.....",
-        "......GGAxAATxAxAAGG....",
-        "......GGAAAAAAAAAAGG....",
-        "....GGGGAAAWWWWAAGGGG...",
-        "....GGGGGAAAAAAAAGGGG...",
+        ".......GGIIIIIIIIGG.....",
+        "......GGIRIIRIRIIIGG....",
+        "......GGIIIIIIIIIIGG....",
+        "....GGGGIIIWWWWIIIGGGG...",
+        "....GGGGGIIIIIIIIGGGG...",
         "..GGGGGGGGGGGGGGGGGGGG..",
-        "..GGAAGGGGGGGGGGGGGAAG..",
-        "GGAAGGGGGGGGGGGGGGGAAGG.",
+        "..GGIIGGGGGGGGGGGGGIIG..",
+        "GGIIGGGGGGGGGGGGGGGIIGG.",
         "GGGGGGGGGGGGGGGGGGGGGGG.",
         "GG..GGGGGGGGGGGGGG..GG..",
         "GG..GG..........GG..GG..",
         "....GG..........GG......",
-        "....AA..........AA......",
+        "....II..........II......",
         "........................",
         "........................",
         "........................",
@@ -273,29 +253,28 @@ Object.assign(SpriteMatrices, {
         "........................",
         "........................"
     ]),
-	// --- 24x24 Spectral Barfly (ABYSS RANGED) ---
-    // A floating, ghostly patron holding a shattered, ethereal glass.
+    // --- 24x24 Spectral Barfly (ABYSS RANGED) ---
     "spectral_barfly": buildSprite([
         "........................",
         "........................",
         ".........PPPPPP.........",
         ".......PPPBBBBPPP.......",
         "......PPBBPWWPBBP.......",
-        ".....PPBPBxWWxBPBPP.....",
+        ".....PPBPBRWWRBPBPP.....",
         ".....PBPBBWWWWBBBPB.....",
         ".....PBPPBBBBBBPPBP.....",
         "......PBPPPPPPPPBP......",
         ".....PPPBBBBBBBBPPP.....",
         "....PBPBPPPPPPPPBPBP....",
-        "...PBPBPPPVVVVPPPBPBP...",
-        "..PBPBPBPPVVVVPPBPBPBP..",
-        ".PBP..PBPPVVVVPPBP..PBP.",
-        ".VV...PBPPVVVVPPBP...VV.", // Glowing hands throwing spectral shards
+        "...PBPBPPPvvvvPPPBPBP...",
+        "..PBPBPBPPvvvvPPBPBPBP..",
+        ".PBP..PBPPvvvvPPBP..PBP.",
+        ".vv...PBPPvvvvPPBP...vv.", 
         "......PBPPPVVPPPBP......",
         ".......BPPPPPPPPB.......",
-        ".......BPPPVVPPPB.......",
+        ".......BPPPvvPPPB.......",
         "........BPPPPPPB........",
-        "........BPPVVPPB........",
+        "........BPPvvPPB........",
         ".........BPPPPB.........",
         "..........BPPB..........",
         "...........BB...........",
@@ -303,7 +282,6 @@ Object.assign(SpriteMatrices, {
     ]),
 
     // --- 24x24 Blighted Mash-Crawler (ABYSS SWARM) ---
-    // A mutated, crawling pile of corrupted yeast and glowing ooze.
     "mash_crawler": buildSprite([
         "........................",
         "........................",
@@ -315,48 +293,47 @@ Object.assign(SpriteMatrices, {
         "........................",
         "........................",
         "..........BBBB..........",
-        "........BBmmmmBB........",
-        "......BBmmmmmmmmBB......",
-        ".....BmmgmmmmmmgmmB.....",
-        "....BmmgWWmgmmWWgmmB....",
-        "...BmmmgxWmgmgxWmmmB...", // Multiple wandering red eyes
-        "..BmmmmWWWmgggWWWmmmmB..",
-        ".BmmgmmmmmmmmmmmmmgmmB..",
-        ".BmmmmggmmmmmmmmmgmmmB..",
-        ".BmmmmmmmmmggmmmmmmmmB..",
-        ".BmmgmmmmmmmmmmmmmgmmB..",
-        "..BBmmmmmgmmmmmgmmmmBB..",
+        "........BBYYYYBB........",
+        "......BBYYYYYYYYBB......",
+        ".....BYYhYYYYYYhYYB.....",
+        "....BYYhWWYhYYWWhYYB....",
+        "...BYYYhRWhYhRWhYYYB...", 
+        "..BYYYYWWWYhhhWWWYYYYB..",
+        ".BYYhYYYYYYYYYYYYYhYYB..",
+        ".BYYYYhhYYYYYYYYYhYYYB..",
+        ".BYYYYYYYYYhhYYYYYYYYB..",
+        ".BYYhYYYYYYYYYYYYYhYYB..",
+        "..BBYYYYYhYYYYYhYYYYBB..",
         "....BBBBBBBBBBBBBBBB....",
         "........................",
         "........................"
     ]),
 
     // --- 24x24 Eldritch Keg-Walker (ABYSS HEAVY) ---
-    // A shattered keg being puppeteered by terrifying void-spider legs.
     "eldritch_keg": buildSprite([
         "........................",
         "........................",
         "........BBBBBBBB........",
-        "......BBCCCCCCCCBB......",
-        ".....BCciiiiiiiicCB.....", // Top Iron Band
-        "....BCccCCCCCCCCccCB....",
-        "....BCcCcVVVVVVcCcCB....", // The wood splitting open...
-        "....BCcCVVMMMMVVcCcB....",
-        "....BCcCVMMxxMMVcCcB....", // ...Revealing glowing void eyes inside!
-        "....BCcCVVMMMMVVcCcB....",
-        "....BCcCcVVVVVVcCcCB....",
-        "....BCciiiiiiiiiiCcB....", // Bottom Iron Band
-        "....BCccCCCCCCCCccCB....",
-        ".....BCciiiiiiiicCB.....",
-        "......BBCCCCCCCCBB......",
+        "......BBddddddddBB......",
+        ".....BdcsssssssscdB.....", 
+        "....BdccddddddddccdB....",
+        "....BdcdcvvvvvvcdcdB....", 
+        "....BdcdvvPPPPvvcdcB....",
+        "....BdcdvPPRRPPvcdcB....", 
+        "....BdcdvvPPPPvvcdcB....",
+        "....BdcdcvvvvvvcdcdB....",
+        "....BdcsssssssssscdB....", 
+        "....BdccddddddddccdB....",
+        ".....BdcsssssssscdB.....",
+        "......BBddddddddBB......",
         "........BBBBBBBB........",
         "........B.B..B.B........",
-        ".......BV.B..B.VB.......", // Void-energy legs dripping out the bottom
-        "......BV..B..B..VB......",
-        ".....BV...B..B...VB.....",
-        "....BV...B....B...VB....",
-        "...BV....B....B....VB...",
-        "..BV....BV....VB....VB..",
+        ".......Bv.B..B.vB.......", 
+        "......Bv..B..B..vB......",
+        ".....Bv...B..B...vB.....",
+        "....Bv...B....B...vB....",
+        "...Bv....B....B....vB...",
+        "..Bv....Bv....vB....vB..",
         ".BB.....BB....BB.....BB."
     ])
 });

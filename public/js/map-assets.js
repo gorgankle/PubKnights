@@ -1,35 +1,7 @@
 // --- js/map-assets.js ---
 // Procedural Matrix definitions for Environment and Map Tiles (Upgraded to 24x24)
 
-Object.assign(PALETTE, {
-// --- MAP ENVIRONMENT COLORS ---
-    '1': '#273c24',     // Wilderness Dark Grass
-    '2': '#344e31',     // Wilderness Light Grass
-    '3': '#2a221f',     // Cellar Dark Stone
-    '4': '#3b312b',     // Cellar Light Stone
-    '5': '#6b543f',     // Arena Sand/Dirt
-    '6': '#4a3b2c',     // Arena Dark Dirt
-    '7': '#5f6a6a',     // Boulder Dark Gray
-    '8': '#839192',     // Boulder Light Gray
-    '9': '#1a1512',     // Deep Shadow
-    
-    // === NEW: ABYSS COLORS ===
-    'A': '#110a1f',     // Void Deep Shadow
-    'B': '#1a0f2e',     // Void Mid-Tone
-    'V': '#3a1f5c',     // Eldritch Purple Swirl
-    
-    // --- OBSTACLE COLORS ---
-    'q': '#1e5128',     // Dark Tree Leaves
-    'e': '#4caf50',     // Light Tree Leaves
-    'y': '#5c4033',     // Tree Bark
-    'c': '#8b5a2b',     // Cask Light Wood
-    'C': '#5c3a21',     // Cask Dark Wood
-    'i': '#bdc3c7',     // Iron Bands
-    
-    // === NEW: ABYSS PILLAR COLORS ===
-    'p': '#5b2c6f',     // Dark Crystal
-    'P': '#a569bd',     // Bright Crystal Core
-});
+
 
 Object.assign(SpriteMatrices, {
     // --- 24x24 GROUND TILES ---
@@ -112,28 +84,28 @@ Object.assign(SpriteMatrices, {
         "666666665566666666666666"
     ]),
 "ground_abyss": buildSprite([
-        "AAAAAABBAAAAAAAAABBAAAAA",
-        "AAAAAABBAAAAAAAAABBAAAAA",
-        "AAVVAAAAAAAAAAAAAAAAVVAA",
-        "AAVVAAAAAAAAAAAAAAAAVVAA",
-        "AAAAAAABBAAAAAAAAAAAAAAA",
-        "AAAAAAABBAAAAAAAAAAAAAAA",
+        "AAAAAA{{AAAAAAAAA{{AAAAA",
+        "AAAAAA{{AAAAAAAAA{{AAAAA",
+        "AA}}AAAAAAAAAAAAAAAA}}AA",
+        "AA}}AAAAAAAAAAAAAAAA}}AA",
+        "AAAAAAA{{AAAAAAAAAAAAAAA",
+        "AAAAAAA{{AAAAAAAAAAAAAAA",
         "AAAAAAAAAAAAAAAAAAAAAAAA",
         "AAAAAAAAAAAAAAAAAAAAAAAA",
-        "AAAAAAAAAAVVAAAAAAAAAAAA",
-        "AAAAAAAAAAVVAAAAAAAAAAAA",
-        "AAAAAAAAAAAAAAAAAABBAAAA",
-        "AAAAAAAAAAAAAAAAAABBAAAA",
-        "AAAAAAVVAAAAAAAAAAAAAAAA",
-        "AAAAAAVVAAAAAAAAAAAAAAAA",
+        "AAAAAAAAAA}}AAAAAAAAAAAA",
+        "AAAAAAAAAA}}AAAAAAAAAAAA",
+        "AAAAAAAAAAAAAAAAAA{{AAAA",
+        "AAAAAAAAAAAAAAAAAA{{AAAA",
+        "AAAAAA}}AAAAAAAAAAAAAAAA",
+        "AAAAAA}}AAAAAAAAAAAAAAAA",
         "AAAAAAAAAAAAAAAAAAAAAAAA",
         "AAAAAAAAAAAAAAAAAAAAAAAA",
-        "AAAAAAAAAAAABBAAAAAAAAAA",
-        "AAAAAAAAAAAABBAAAAAAAAAA",
-        "AABBAAAAAAAAAAAAAAAAAAAA",
-        "AABBAAAAAAAAAAAAAAAAAAAA",
-        "AAAAAAAAAAAAAAAAAAVVAAAA",
-        "AAAAAAAAAAAAAAAAAAVVAAAA",
+        "AAAAAAAAAAAA{{AAAAAAAAAA",
+        "AAAAAAAAAAAA{{AAAAAAAAAA",
+        "AA{{AAAAAAAAAAAAAAAAAAAA",
+        "AA{{AAAAAAAAAAAAAAAAAAAA",
+        "AAAAAAAAAAAAAAAAAA}}AAAA",
+        "AAAAAAAAAAAAAAAAAA}}AAAA",
         "AAAAAAAAAAAAAAAAAAAAAAAA",
         "AAAAAAAAAAAAAAAAAAAAAAAA"
     ]),
@@ -190,21 +162,22 @@ Object.assign(SpriteMatrices, {
         "........................",
         "........................"
     ]),
+// --- 24x24 OBSTACLES ---
     "map_broken_cask": buildSprite([
         "........................",
         "........................",
         "........................",
         "........................",
-        ".......CCCCCC....CCC....",
-        ".....CCccccccCC.CcccC...",
-        "....CCiiiiiiiiiiCiiiiC..",
-        "....CCccCCcc..ccCccCccC.",
-        "....CCcCCcc....cCCcCccC.",
-        "....CCcccC......cCCccC..",
-        "....CCiiii......iiiiC...",
-"....CCccCcc....ccCccC...",
-        "....CCcccccC..cccccccC..",
-        ".....CCCCCCCCCCCCCCCC...",
+        ".......dddddd....ddd....",
+        ".....ddccccccdd.dcccd...",
+        "....ddssssssssssdssssC..",
+        "....ddccddcc..ccdccddcd.",
+        "....ddcddcc....cddcdccd.",
+        "....ddcccd......cddccd..",
+        "....ddssss......ssssd...",
+        "....ddccdcc....ccdccd...",
+        "....ddcccccd..cccccccd..",
+        ".....dddddddddddddddd...",
         "........99999999........",
         "......999999999999......",
         "........................",
@@ -215,27 +188,27 @@ Object.assign(SpriteMatrices, {
         "........................",
         "........................",
         "........................"
-    ]), // <--- ADD THIS COMMA RIGHT HERE!
+    ]),
 	
-	"map_pillar": buildSprite([
+"map_pillar": buildSprite([
         "........................",
         "........................",
-        "..........PPPP..........",
-        "........PppppppP........",
-        ".......PppppppppP.......",
-        "......PppppPpppppP......",
-        "......PpppPPPppppP......",
-        ".....PppppPPPpppppP.....",
-        ".....PpppPPpPPppppP.....",
-        ".....PpppPpPpPppppP.....",
-        ".....PppppPPPpppppP.....",
-        ".....PppppPPPpppppP.....",
-        "......PppppPpppppP......",
-        "......PppppPpppppP......",
-        ".......PppppppppP.......",
-        "........PppppppP........",
-        ".........PppppP.........",
-        "...........PP...........",
+        "..........JJJJ..........",
+        "........JssssssJ........",
+        ".......JssssssssJ.......",
+        "......JssssJsssssJ......",
+        "......JsssJJJssssJ......",
+        ".....JssssJJJsssssJ.....",
+        ".....JsssJJsJJssssJ.....",
+        ".....JsssJsJsJssssJ.....",
+        ".....JssssJJJsssssJ.....",
+        ".....JssssJJJsssssJ.....",
+        "......JssssJsssssJ......",
+        "......JssssJsssssJ......",
+        ".......JssssssssJ.......",
+        "........JssssssJ........",
+        ".........JssssJ.........",
+        "...........JJ...........",
         "........................",
         "........................",
         "........................",

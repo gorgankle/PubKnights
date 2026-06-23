@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Pub Knights - Tavern Beat Maker</title>
+    <style>
+        body {
+            background-color: #2c2520;
+            color: #f4ebd9;
+            font-family: 'Courier New', monospace;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            color: #ffcc66;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            margin-bottom: 5px;
+        }
+        p.subtitle {
+            color: #bbaaa0;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        .container {
+            background: rgba(34, 26, 20, 0.95);
+            padding: 20px;
+            border: 2px solid #634e3d;
+            border-radius: 6px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-width: 1200px;
+            overflow-x: auto;
+        }
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            background: #1a1512;
+            padding: 15px;
+            border: 1px solid #4a3b2c;
+            border-radius: 4px;
+        }
+        button, input[type="number"], select {
+            background: #110d0a;
+            color: #f1c40f;
+            border: 2px solid #634e3d;
+            padding: 8px 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            border-radius: 4px;
+        }
+        select {
+            cursor: pointer;
+            padding-right: 30px; /* space for arrow */
+        }
+        select:focus {
+            outline: none;
+            border-color: #ffcc66;
+        }
+        button {
+            background: #8b5a2b;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        button:hover { background: #a06d3b; }
+        #play-btn { background: #27ae60; border-color: #2ecc71; }
+        #play-btn:hover { background: #2ecc71; }
+        #play-btn.playing { background: #e74c3c; border-color: #c0392b; }
+        
+        /* The Sequencer Grid */
+        .sequencer {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .track {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .track-label {
+            width: 150px;
+            font-size: 12px;
+            font-weight: bold;
+            color: #ffcc66;
+            text-align: right;
+            padding-right: 15px;
+            user-select: none;
+        }
+        .step {
+            width: 24px;
+            height: 30px;
+            background: #110d0a;
+            border: 2px solid #4a3b2c;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.1s, border-color 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 1px 1px 0px rgba(0,0,0,0.8);
+            overflow: hidden;
+            user-select: none;
+        }
+        /* Group beats into 4s visually */
+        .step:nth-child(4n + 2) { border-left-width: 4px; border-left-color: #634e3d; }
+        
+        .step:hover { border-color: #f1c40f; }
+        .step.active {
+            background: #2ecc71;
+            border-color: #27ae60;
+            box-shadow: 0 0 8px rgba(46, 204, 113, 0.6);
+        }
+        .step.current-playhead {
+            background: #f1c40f !important;
+            border-color: #f39c12 !important;
+            box-shadow: 0 0 10px rgba(241, 196, 15, 0.8) !important;
+        }
+
+        .export-area {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        textarea {
+            width: 100%;
+            height: 250px;
+            background: #110d0a;
+            color: #bdc3c7;
+            border: 2px solid #634e3d;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            border-radius: 4px;
+            resize: none;
+            box-sizing: border-box;
+        }
+        textarea:focus { outline: none; border-color: #ffcc66; }
+    </style>
+</head>
+<body>
+
+    <h1>🎶 Tavern Beat Maker</h1>
+    <p class="subtitle">32-Step Web Audio Sequencer with Pitch Control</p>
+
+    <div class="container">
+        
+        <div class="controls">
+            <button id="play-btn" onclick="togglePlay()">▶ PLAY</button>
+            <button onclick="clearGrid()">🗑️ CLEAR</button>
+            
+            <div style="margin-left: 20px;">
+                <label style="color: #bbaaa0; font-size: 12px; font-weight: bold;">TEMPO:</label>
+                <input type="number" id="bpm-input" value="120" min="60" max="240" style="width: 60px;">
+            </div>
+
+            <div style="margin-left: 20px; display: flex; flex-direction: column;">
+                <label style="color: #bbaaa0; font-size: 12px; font-weight: bold; margin-bottom: 5px;">BRUSH PITCH (Melodies Only):</label>
+                <select id="note-select">
+                    <!-- Javascript generates notes here -->
+                </select>
+            </div>
+            
+            <div style="margin-left: auto;">
+                <button onclick="exportSequence()" style="background: #2980b9; border-color: #3498db;">💾 EXPORT TO CODE</button>
+            </div>
+        </div>
+
+        <div class="sequencer" id="sequencer-grid">
+            <!-- Grid generated by JS -->
+        </div>
+
+        <div class="export-area">
+            <label style="color: #bbaaa0; font-size: 12px; font-weight: bold;">EXPORTED ENGINE ARRAY:</label>
+            <textarea id="export-output" readonly placeholder="Your generated loop will appear here..."></textarea>
+        </div>
+
+    </div>
+
+    <script>
+        // --- 1. FREQUENCY DICTIONARY & INSTRUMENT SETUP ---
+        
+        // Exact frequencies for tuning our synthesizers
+        const NOTES = {
+            "C2": 65.41, "C#2": 69.30, "D2": 73.42, "Eb2": 77.78, "E2": 82.41, "F2": 87.31, "F#2": 92.50, "G2": 98.00, "G#2": 103.83, "A2": 110.00, "Bb2": 116.54, "B2": 123.47,
+            "C3": 130.81, "C#3": 138.59, "D3": 146.83, "Eb3": 155.56, "E3": 164.81, "F3": 174.61, "F#3": 185.00, "G3": 196.00, "G#3": 207.65, "A3": 220.00, "Bb3": 233.08, "B3": 246.94,
+            "C4": 261.63, "C#4": 277.18, "D4": 293.66, "Eb4": 311.13, "E4": 329.63, "F4": 349.23, "F#4": 369.99, "G4": 392.00, "G#4": 415.30, "A4": 440.00, "Bb4": 466.16, "B4": 493.88,
+            "C5": 523.25, "C#5": 554.37, "D5": 587.33, "Eb5": 622.25, "E5": 659.25, "F5": 698.46, "F#5": 739.99, "G5": 783.99, "G#5": 830.61, "A5": 880.00, "Bb5": 932.33, "B5": 987.77,
+            "C6": 1046.50
+        };
+
+        const STEPS = 32;
+        const INSTRUMENTS = [
+            { id: 'flute', name: 'Flute (High)', color: '#3498db', isMelodic: true },
+            { id: 'lute', name: 'Lute Chord', color: '#9b59b6', isMelodic: true },
+            { id: 'bass', name: 'Upright Bass', color: '#e67e22', isMelodic: true },
+            { id: 'hat', name: 'Tambourine', color: '#f1c40f', isMelodic: false },
+            { id: 'snare', name: 'Tavern Clap', color: '#ecf0f1', isMelodic: false },
+            { id: 'kick', name: 'Heavy Kick', color: '#e74c3c', isMelodic: false }
+        ];
+
+        // The master state array. Now stores strings ('C4', 'HIT') instead of just booleans!
+        let gridState = {};
+        
+        // Populate the Note Picker Dropdown
+        const noteSelect = document.getElementById('note-select');
+        for (let noteName in NOTES) {
+            let opt = document.createElement('option');
+            opt.value = noteName;
+            opt.innerText = noteName;
+            if (noteName === "C4") opt.selected = true; // Default start note
+            noteSelect.appendChild(opt);
+        }
+
+        // --- 2. BUILD THE GRID ---
+        const gridContainer = document.getElementById('sequencer-grid');
+
+        INSTRUMENTS.forEach(inst => {
+            gridState[inst.id] = new Array(STEPS).fill(false);
+            
+            let row = document.createElement('div');
+            row.className = 'track';
+            
+            let label = document.createElement('div');
+            label.className = 'track-label';
+            label.innerText = inst.name;
+            row.appendChild(label);
+            
+            for (let i = 0; i < STEPS; i++) {
+                let stepEl = document.createElement('div');
+                stepEl.className = 'step';
+                stepEl.id = `cell-${inst.id}-${i}`;
+                
+                // Toggle & Pitch Logic
+                stepEl.onclick = () => {
+                    let currentVal = gridState[inst.id][i];
+                    let activePitch = document.getElementById('note-select').value;
+                    let newVal = false;
+
+                    if (currentVal) {
+                        // If it's active AND it's melodic AND it's a different pitch, repaint it!
+                        if (inst.isMelodic && currentVal !== activePitch) {
+                            newVal = activePitch; 
+                        } else {
+                            // Otherwise, turn it off
+                            newVal = false; 
+                        }
+                    } else {
+                        // Paint the cell!
+                        newVal = inst.isMelodic ? activePitch : 'HIT';
+                    }
+                    
+                    gridState[inst.id][i] = newVal;
+                    
+                    if (newVal) {
+                        stepEl.classList.add('active');
+                        stepEl.style.backgroundColor = inst.color;
+                        stepEl.style.borderColor = inst.color;
+                        stepEl.style.boxShadow = `0 0 8px ${inst.color}80`;
+                        
+                        // Visually stamp the note name into the box!
+                        stepEl.innerText = inst.isMelodic ? newVal : '';
+                        
+                        // Audition the sound immediately
+                        if(audioCtx && audioCtx.state === 'running') playSound(inst.id, audioCtx.currentTime, newVal);
+                    } else {
+                        stepEl.classList.remove('active');
+                        stepEl.style.backgroundColor = '';
+                        stepEl.style.borderColor = '';
+                        stepEl.style.boxShadow = '';
+                        stepEl.innerText = '';
+                    }
+                };
+                
+                row.appendChild(stepEl);
+            }
+            gridContainer.appendChild(row);
+        });
+
+        function clearGrid() {
+            if(!confirm("Wipe the entire sequence?")) return;
+            INSTRUMENTS.forEach(inst => {
+                gridState[inst.id].fill(false);
+                for (let i = 0; i < STEPS; i++) {
+                    let cell = document.getElementById(`cell-${inst.id}-${i}`);
+                    cell.classList.remove('active');
+                    cell.style.backgroundColor = '';
+                    cell.style.borderColor = '';
+                    cell.style.boxShadow = '';
+                    cell.innerText = '';
+                }
+            });
+        }
+
+        // --- 3. WEB AUDIO API SYNTHESIZERS ---
+        let audioCtx;
+        let isPlaying = false;
+        let currentStep = 0;
+        let nextNoteTime = 0;
+        let timerID;
+        let noiseBuffer;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                
+                noiseBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 2, audioCtx.sampleRate);
+                let output = noiseBuffer.getChannelData(0);
+                for (let i = 0; i < audioCtx.sampleRate * 2; i++) {
+                    output[i] = Math.random() * 2 - 1;
+                }
+            }
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        // DYNAMIC SOUND GENERATOR
+        function playSound(instrumentId, time, noteVal = 'C4') {
+            const masterGain = audioCtx.createGain();
+            masterGain.connect(audioCtx.destination);
+            
+            // Look up the exact frequency from our dictionary
+            const freq = NOTES[noteVal] || 261.63;
+            
+            if (instrumentId === 'kick') {
+                let osc = audioCtx.createOscillator();
+                osc.type = 'sine';
+                osc.connect(masterGain);
+                osc.frequency.setValueAtTime(150, time);
+                osc.frequency.exponentialRampToValueAtTime(0.01, time + 0.1);
+                masterGain.gain.setValueAtTime(1.2, time);
+                masterGain.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
+                osc.start(time);
+                osc.stop(time + 0.2);
+            } 
+            else if (instrumentId === 'snare') {
+                let noiseSource = audioCtx.createBufferSource();
+                noiseSource.buffer = noiseBuffer;
+                let filter = audioCtx.createBiquadFilter();
+                filter.type = 'highpass';
+                filter.frequency.value = 1000;
+                noiseSource.connect(filter);
+                filter.connect(masterGain);
+                masterGain.gain.setValueAtTime(1, time);
+                masterGain.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
+                noiseSource.start(time);
+                noiseSource.stop(time + 0.2);
+            }
+            else if (instrumentId === 'hat') {
+                let noiseSource = audioCtx.createBufferSource();
+                noiseSource.buffer = noiseBuffer;
+                let filter = audioCtx.createBiquadFilter();
+                filter.type = 'highpass';
+                filter.frequency.value = 5000;
+                noiseSource.connect(filter);
+                filter.connect(masterGain);
+                masterGain.gain.setValueAtTime(0.5, time);
+                masterGain.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
+                noiseSource.start(time);
+                noiseSource.stop(time + 0.1);
+            }
+            else if (instrumentId === 'bass') {
+                // Pitched Sawtooth Bass
+                let osc = audioCtx.createOscillator();
+                osc.type = 'sawtooth';
+                let filter = audioCtx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(800, time);
+                filter.frequency.exponentialRampToValueAtTime(100, time + 0.2);
+                
+                osc.connect(filter);
+                filter.connect(masterGain);
+                
+                osc.frequency.value = freq; // Use dynamic pitch!
+                
+                masterGain.gain.setValueAtTime(0.8, time);
+                masterGain.gain.exponentialRampToValueAtTime(0.01, time + 0.3);
+                osc.start(time);
+                osc.stop(time + 0.4);
+            }
+            else if (instrumentId === 'lute') {
+                // Procedural Minor Chord based on selected root note!
+                // Root, Minor 3rd (+3 semitones), Perfect 5th (+7 semitones)
+                let minorChordFreqs = [
+                    freq, 
+                    freq * Math.pow(2, 3/12), 
+                    freq * Math.pow(2, 7/12)
+                ];
+                
+                masterGain.gain.setValueAtTime(0.3, time);
+                masterGain.gain.exponentialRampToValueAtTime(0.01, time + 0.3);
+                
+                minorChordFreqs.forEach(f => {
+                    let osc = audioCtx.createOscillator();
+                    osc.type = 'square';
+                    osc.frequency.value = f;
+                    osc.connect(masterGain);
+                    osc.start(time);
+                    osc.stop(time + 0.4);
+                });
+            }
+            else if (instrumentId === 'flute') {
+                // Pitched Triangle lead
+                let osc = audioCtx.createOscillator();
+                osc.type = 'triangle';
+                osc.connect(masterGain);
+                
+                osc.frequency.value = freq; // Use dynamic pitch!
+                
+                masterGain.gain.setValueAtTime(0, time);
+                masterGain.gain.linearRampToValueAtTime(0.4, time + 0.05); 
+                masterGain.gain.linearRampToValueAtTime(0, time + 0.4);
+                osc.start(time);
+                osc.stop(time + 0.5);
+            }
+        }
+
+        // --- 4. SEQUENCER LOOP ENGINE ---
+        function nextNote() {
+            const bpm = parseInt(document.getElementById('bpm-input').value) || 120;
+            const secondsPerBeat = 60.0 / bpm;
+            nextNoteTime += 0.25 * secondsPerBeat;
+            
+            currentStep++;
+            if (currentStep >= STEPS) currentStep = 0;
+        }
+
+        function scheduleNote(stepNumber, time) {
+            document.querySelectorAll('.step').forEach(el => el.classList.remove('current-playhead'));
+            
+            INSTRUMENTS.forEach(inst => {
+                let cell = document.getElementById(`cell-${inst.id}-${stepNumber}`);
+                
+                let timeUntilPlay = (time - audioCtx.currentTime) * 1000;
+                setTimeout(() => {
+                    cell.classList.add('current-playhead');
+                    setTimeout(() => cell.classList.remove('current-playhead'), 100);
+                }, Math.max(0, timeUntilPlay));
+
+                let noteVal = gridState[inst.id][stepNumber];
+                // If there's a note string or 'HIT', play it!
+                if (noteVal) {
+                    playSound(inst.id, time, noteVal);
+                }
+            });
+        }
+
+        function scheduler() {
+            while (nextNoteTime < audioCtx.currentTime + 0.1) {
+                scheduleNote(currentStep, nextNoteTime);
+                nextNote();
+            }
+            timerID = requestAnimationFrame(scheduler);
+        }
+
+        function togglePlay() {
+            initAudio();
+            const btn = document.getElementById('play-btn');
+            
+            if (isPlaying) {
+                cancelAnimationFrame(timerID);
+                isPlaying = false;
+                btn.innerText = "▶ PLAY";
+                btn.classList.remove('playing');
+                document.querySelectorAll('.step').forEach(el => el.classList.remove('current-playhead'));
+            } else {
+                isPlaying = true;
+                btn.innerText = "⏸ STOP";
+                btn.classList.add('playing');
+                
+                currentStep = 0;
+                nextNoteTime = audioCtx.currentTime + 0.05;
+                scheduler();
+            }
+        }
+
+        // --- 5. SMART EXPORTER ---
+        function exportSequence() {
+            const bpm = document.getElementById('bpm-input').value;
+            
+            let trackData = `    {\n        name: "Custom Tavern Track",\n        bpm: ${bpm},\n        length: ${STEPS},\n        tracks: {\n`;
+            
+            INSTRUMENTS.forEach((inst, index) => {
+                let rowArray = gridState[inst.id];
+                
+                let formattedArray = "[";
+                for(let i=0; i<rowArray.length; i++){
+                    let val = rowArray[i];
+                    
+                    if (!val) formattedArray += "0";                // Silence
+                    else if (val === 'HIT') formattedArray += "1";  // Drum Hit
+                    else formattedArray += `"${val}"`;              // Exact Note String (e.g. "C4")
+                    
+                    if (i < rowArray.length - 1) formattedArray += ", ";
+                    if ((i + 1) % 4 === 0 && i !== rowArray.length - 1) formattedArray += " "; // Visual spacing
+                }
+                formattedArray += "]";
+
+                trackData += `            ${inst.id}: ${formattedArray}`;
+                trackData += (index < INSTRUMENTS.length - 1) ? ",\n" : "\n";
+            });
+            
+            trackData += `        }\n    }`;
+            
+            const outArea = document.getElementById('export-output');
+            outArea.value = trackData;
+            
+            outArea.select();
+            document.execCommand('copy');
+            
+            let btn = document.querySelector('button[onclick="exportSequence()"]');
+            let oldText = btn.innerText;
+            btn.innerText = "📋 COPIED TO CLIPBOARD!";
+            setTimeout(() => btn.innerText = oldText, 1500);
+        }
+
+    </script>
+</body>
+</html>

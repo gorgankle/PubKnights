@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Pub Knights - Matrix Pixel Studio</title>
+    
+    <script src="js/character-creator.js"></script>
+    <script src="js/item-assets.js"></script>
+    <script src="js/map-assets.js"></script>
+    <script src="js/npc-assets.js"></script>
+
+    <style>
+        body {
+            background-color: #2c2520;
+            color: #f4ebd9;
+            font-family: 'Courier New', monospace;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            color: #ffcc66;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            margin-bottom: 20px;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+            background: rgba(34, 26, 20, 0.95);
+            padding: 20px;
+            border: 2px solid #634e3d;
+            border-radius: 6px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
+        }
+        .canvas-container {
+            position: relative;
+        }
+        #paint-canvas {
+            background-color: #1a1512;
+            border: 4px solid #8b5a2b;
+            cursor: crosshair;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+        }
+        .controls {
+            display: flex;
+            flex-direction: column;
+            width: 300px;
+            gap: 15px;
+        }
+        button, textarea, select {
+            background: #110d0a;
+            color: #f1c40f;
+            border: 2px solid #634e3d;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            border-radius: 4px;
+        }
+        textarea:focus, select:focus {
+            outline: none;
+            border-color: #ffcc66;
+        }
+        button {
+            background: #8b5a2b;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        button:hover { background: #a06d3b; }
+        
+        #export-btn { background: #27ae60; border-color: #2ecc71; font-size: 16px; }
+        #export-btn:hover { background: #2ecc71; }
+        #clear-btn { background: #c0392b; border-color: #e74c3c; }
+        
+        textarea {
+            height: 200px;
+            resize: none;
+            white-space: pre;
+            color: #bdc3c7;
+        }
+        .swatch-preview {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #1a1512;
+            padding: 10px;
+            border: 1px solid #4a3b2c;
+            border-radius: 4px;
+        }
+        #current-color-box {
+            width: 40px;
+            height: 40px;
+            border: 2px solid #fff;
+            border-radius: 4px;
+        }
+
+        /* CUSTOM DROPDOWN STYLES */
+        .custom-select-wrapper { position: relative; user-select: none; width: 100%; margin-top: 5px; }
+        .custom-select {
+            display: flex; align-items: center; justify-content: space-between;
+            background: #110d0a; color: #f1c40f; border: 2px solid #634e3d;
+            padding: 8px 10px; font-family: 'Courier New', monospace; font-size: 14px;
+            border-radius: 4px; cursor: pointer;
+        }
+        .custom-select.open { border-color: #ffcc66; }
+        .custom-options {
+            position: absolute; top: 100%; left: 0; right: 0;
+            background: #110d0a; border: 2px solid #634e3d; border-top: none;
+            border-radius: 0 0 4px 4px; max-height: 250px; overflow-y: auto;
+            z-index: 100; display: none; box-shadow: 0 5px 15px rgba(0,0,0,0.8);
+        }
+        .custom-options.open { display: block; }
+        .custom-option {
+            display: flex; align-items: center; padding: 8px 10px;
+            cursor: pointer; border-bottom: 1px solid #2a221f;
+        }
+        .custom-option:hover { background: #2a221f; }
+        .color-swatch-sm {
+            width: 20px; height: 20px; border: 1px solid #fff;
+            border-radius: 2px; margin-right: 10px; flex-shrink: 0;
+        }
+        .checkerboard {
+            background-color: #1a1512;
+            background-image: linear-gradient(45deg, #333 25%, transparent 25%, transparent 75%, #333 75%, #333), 
+                              linear-gradient(45deg, #333 25%, transparent 25%, transparent 75%, #333 75%, #333);
+            background-size: 10px 10px; background-position: 0 0, 5px 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🍻 Matrix Pixel Studio</h1>
+
+    <div class="container">
+        <div class="canvas-container">
+            <canvas id="paint-canvas" width="480" height="480"></canvas>
+        </div>
+
+        <div class="controls">
+            
+            <div style="display: flex; gap: 10px;">
+                <div style="flex: 1;">
+                    <label style="color: #bbaaa0; font-size: 11px; font-weight: bold;">BACKGROUND:</label>
+                    <select id="bg-model-select" style="width: 100%; margin-top: 5px; padding: 8px;">
+                        <option value="none">Ghost (Off)</option>
+                        <option value="body_male">Male Base</option>
+                        <option value="body_female">Female Base</option>
+                    </select>
+                </div>
+                <div style="flex: 1;">
+                    <label style="color: #bbaaa0; font-size: 11px; font-weight: bold;">BRUSH SIZE:</label>
+                    <select id="brush-size-select" style="width: 100%; margin-top: 5px; padding: 8px;">
+                        <option value="1">1x1 Pixel</option>
+                        <option value="2">2x2 Block</option>
+                        <option value="3">3x3 Block</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label style="color: #bbaaa0; font-size: 11px; font-weight: bold;">SELECT BRUSH (PULLED FROM PALETTE):</label>
+                <div class="custom-select-wrapper">
+                    <div class="custom-select" id="custom-select-trigger">
+                        <div style="display: flex; align-items: center;">
+                            <div id="trigger-swatch" class="color-swatch-sm checkerboard"></div>
+                            <span id="trigger-text">[ . ] Eraser (Transparent)</span>
+                        </div>
+                        <span>▼</span>
+                    </div>
+                    <div class="custom-options" id="custom-options-list"></div>
+                </div>
+            </div>
+
+            <div class="swatch-preview">
+                <div id="current-color-box" class="checkerboard"></div>
+                <div style="display: flex; flex-direction: column;">
+                    <span style="color: #bbaaa0; font-size: 11px;">Active Character:</span>
+                    <strong id="current-char-display" style="font-size: 18px; color: #fff;">.</strong>
+                </div>
+            </div>
+
+            <button id="clear-btn" onclick="clearCanvas()">🗑️ Clear Matrix</button>
+            <button id="export-btn" onclick="exportSprite()">💾 Export to Code</button>
+
+            <div>
+                <label style="color: #bbaaa0; font-size: 11px; font-weight: bold;">EXPORTED ENGINE ARRAY:</label>
+                <textarea id="export-output" readonly placeholder="Your generated code will appear here..."></textarea>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('paint-canvas');
+        const ctx = canvas.getContext('2d');
+        const colorBox = document.getElementById('current-color-box');
+        const charDisplay = document.getElementById('current-char-display');
+        const exportOutput = document.getElementById('export-output');
+        const bgSelect = document.getElementById('bg-model-select');
+        const brushSelect = document.getElementById('brush-size-select');
+
+        const GRID_SIZE = 24;
+        const CELL_SIZE = canvas.width / GRID_SIZE;
+        
+        let grid = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill('.'));
+        let isDrawing = false;
+        let activeChar = '.';
+
+        // Listen for template changes to redraw immediately
+        bgSelect.addEventListener('change', drawGrid);
+
+        // --- CUSTOM DROPDOWN LOGIC ---
+        const trigger = document.getElementById('custom-select-trigger');
+        const optionsList = document.getElementById('custom-options-list');
+        const triggerText = document.getElementById('trigger-text');
+        const triggerSwatch = document.getElementById('trigger-swatch');
+
+        trigger.addEventListener('click', function(e) {
+            e.stopPropagation();
+            optionsList.classList.toggle('open');
+            trigger.classList.toggle('open');
+        });
+
+        document.addEventListener('click', function() {
+            optionsList.classList.remove('open');
+            trigger.classList.remove('open');
+        });
+
+        function updateActiveBrush(char, hex, label) {
+            activeChar = char;
+            charDisplay.innerText = activeChar;
+            triggerText.innerText = label;
+            
+            if (char === '.' || hex === 'transparent') {
+                triggerSwatch.style.background = '';
+                triggerSwatch.classList.add('checkerboard');
+                colorBox.style.background = '';
+                colorBox.classList.add('checkerboard');
+            } else {
+                triggerSwatch.style.background = hex;
+                triggerSwatch.classList.remove('checkerboard');
+                colorBox.style.background = hex;
+                colorBox.classList.remove('checkerboard');
+            }
+        }
+
+        function initPalette() {
+            if (typeof PALETTE === 'undefined') {
+                alert("CRITICAL ERROR: PALETTE object not found! Ensure character-creator.js is loading correctly.");
+                return;
+            }
+
+            optionsList.innerHTML = ''; 
+
+            for (let char in PALETTE) {
+                let hex = PALETTE[char];
+                let labelText = char === '.' ? `[ . ] Eraser (Transparent)` : `[ ${char} ] ${hex}`;
+                
+                let optionRow = document.createElement('div');
+                optionRow.className = 'custom-option';
+                
+                let miniSwatch = document.createElement('div');
+                miniSwatch.className = 'color-swatch-sm';
+                if (char === '.' || hex === 'transparent') miniSwatch.classList.add('checkerboard');
+                else miniSwatch.style.backgroundColor = hex;
+
+                let textSpan = document.createElement('span');
+                textSpan.innerText = labelText;
+
+                optionRow.appendChild(miniSwatch);
+                optionRow.appendChild(textSpan);
+
+                optionRow.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    updateActiveBrush(char, hex, labelText);
+                    optionsList.classList.remove('open');
+                    trigger.classList.remove('open');
+                });
+
+                optionsList.appendChild(optionRow);
+            }
+        }
+
+// --- RENDERING ENGINE WITH GHOST MANNEQUIN & MASKS ---
+        function drawGrid() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Draw the Ghosted Background Template (if active)
+            const bgModel = bgSelect.value;
+            if (bgModel !== 'none' && typeof SpriteMatrices !== 'undefined' && SpriteMatrices[bgModel]) {
+                ctx.globalAlpha = 0.35; 
+                let matrix = SpriteMatrices[bgModel];
+                
+                for (let y = 0; y < GRID_SIZE; y++) {
+                    if (!matrix[y]) continue;
+                    for (let x = 0; x < GRID_SIZE; x++) {
+                        let char = matrix[y][x];
+                        if (char && char !== '.') {
+                            let color = PALETTE[char] || '#ff00ff';
+                            if (char === 'S') color = '#f1c27d'; 
+                            if (char === 'P') color = '#2c3e50'; 
+                            if (char === 'U') color = '#2980b9'; 
+                            if (char === 'D') color = '#3e2723'; 
+                            
+                            ctx.fillStyle = color;
+                            ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                        }
+                    }
+                }
+                ctx.globalAlpha = 1.0; 
+            }
+
+            // 2. Draw the Painted Pixels & Grid Outlines
+            for (let y = 0; y < GRID_SIZE; y++) {
+                for (let x = 0; x < GRID_SIZE; x++) {
+                    let char = grid[y][x];
+                    
+                    if (char === '.') {
+                        ctx.strokeStyle = '#2a221f';
+                        ctx.lineWidth = 1;
+                        ctx.strokeRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                    } 
+                    // === NEW: VISUALIZE THE ERASER MASK ===
+                    else if (char === '_') {
+                        ctx.fillStyle = 'rgba(231, 76, 60, 0.4)'; // Translucent Red
+                        ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                        ctx.strokeStyle = '#e74c3c';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(x * CELL_SIZE, y * CELL_SIZE);
+                        ctx.lineTo((x + 1) * CELL_SIZE, (y + 1) * CELL_SIZE);
+                        ctx.stroke();
+                    } 
+                    else {
+                        ctx.fillStyle = PALETTE[char] || '#ff00ff'; 
+                        ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                    }
+                }
+            }
+        }
+
+        // --- MULTI-SIZE PAINTING LOGIC ---
+        function paintCell(event) {
+            if (!isDrawing) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((event.clientX - rect.left) / CELL_SIZE);
+            const y = Math.floor((event.clientY - rect.top) / CELL_SIZE);
+            
+            const size = parseInt(brushSelect.value);
+
+            // Center a 3x3 brush, but expand 2x2 downwards
+            const offset = size === 3 ? 1 : 0;
+
+            for (let sy = 0; sy < size; sy++) {
+                for (let sx = 0; sx < size; sx++) {
+                    let px = x + sx - offset;
+                    let py = y + sy - offset;
+
+                    if (px >= 0 && px < GRID_SIZE && py >= 0 && py < GRID_SIZE) {
+                        grid[py][px] = activeChar;
+                    }
+                }
+            }
+            drawGrid();
+        }
+
+        canvas.addEventListener('mousedown', (e) => { isDrawing = true; paintCell(e); });
+        canvas.addEventListener('mousemove', paintCell);
+        window.addEventListener('mouseup', () => isDrawing = false);
+
+        function clearCanvas() {
+            if(confirm("Are you sure you want to wipe the matrix?")) {
+                grid = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill('.'));
+                drawGrid();
+                exportOutput.value = "";
+            }
+        }
+
+        // --- THE EXPORTER ---
+        function exportSprite() {
+            let output = "buildSprite([\n";
+            
+            for (let y = 0; y < GRID_SIZE; y++) {
+                let rowString = grid[y].join('');
+                output += `    "${rowString}"`;
+                
+                if (y < GRID_SIZE - 1) {
+                    output += ",\n";
+                } else {
+                    output += "\n";
+                }
+            }
+            output += "])";
+            
+            exportOutput.value = output;
+            exportOutput.select();
+            document.execCommand('copy');
+            
+            let btn = document.getElementById('export-btn');
+            let originalText = btn.innerText;
+            btn.innerText = "📋 Copied to Clipboard!";
+            setTimeout(() => btn.innerText = originalText, 1500);
+        }
+
+        window.onload = () => {
+            initPalette();
+            drawGrid();
+        };
+    </script>
+</body>
+</html>
