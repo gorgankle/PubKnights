@@ -153,7 +153,7 @@
     <script src="js/npc-assets.js"></script>
     <script src="js/map-assets.js"></script>
 
-    <script>
+   <script>
         // === 1. POPULATE BOX 1 (EQUIPMENT) ===
         function initializeInventoryUI() {
             const gearSlots = ['helmet', 'armor', 'weapon', 'gloves', 'boots'];
@@ -174,7 +174,7 @@
             });
         }
 
-// === 2. AUTO-SORT & POPULATE BOXES 2, 3, 4 ===
+        // === 2. AUTO-SORT & POPULATE BOXES 2, 3, 4 ===
         function initializeAssetBoxes() {
             let mapSel = document.getElementById("map-selector");
             let npcSel = document.getElementById("npc-selector");
@@ -183,14 +183,13 @@
             setTimeout(() => {
                 if (typeof SpriteMatrices !== 'undefined') {
                     
-                    // NEW: Dynamically map all equipment sprites from the database!
                     let equipmentSprites = new Set();
                     if (typeof ItemDatabase !== 'undefined') {
                         for (let key in ItemDatabase) {
                             let sId = ItemDatabase[key].spriteId;
                             if (sId) {
                                 equipmentSprites.add(sId);
-                                equipmentSprites.add(sId + '_male'); // Catch gendered variants
+                                equipmentSprites.add(sId + '_male'); 
                                 equipmentSprites.add(sId + '_female');
                             }
                         }
@@ -200,20 +199,13 @@
                         let opt = document.createElement("option");
                         opt.value = key; opt.text = key;
 
-                        // Route Icons
                         if (key.startsWith('icon_')) {
                             iconSel.appendChild(opt);
-                        } 
-                        // Route Maps
-                        else if (key.match(/^(map_|ground_|wall_|obj_)/)) {
+                        } else if (key.match(/^(map_|ground_|wall_|obj_)/)) {
                             mapSel.appendChild(opt);
-                        } 
-                        // Route Paperdoll Anatomy & Equipment (Using the dynamic Set!)
-                        else if (key.match(/^(body_|hair_|eyes_)/) || equipmentSprites.has(key)) {
-                            return; // Skip entirely, handled by Box 1
-                        } 
-                        // Route everything else to NPCs
-                        else {
+                        } else if (key.match(/^(body_|hair_|eyes_)/) || equipmentSprites.has(key)) {
+                            return; 
+                        } else {
                             npcSel.appendChild(opt);
                         }
                     });
@@ -229,7 +221,6 @@
         }
 
         function previewStandalone(activeSelectorId) {
-            // Clear selections in the other two boxes visually
             const selectors = ['map-selector', 'npc-selector', 'icon-selector'];
             selectors.forEach(id => {
                 if (id !== activeSelectorId) document.getElementById(id).selectedIndex = -1;
@@ -240,23 +231,32 @@
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
+            let originalB = PALETTE['b'];
+            if (activeSelectorId === 'npc-selector') {
+                PALETTE['b'] = '#5d4037'; // Boar Brown
+            } else {
+                PALETTE['b'] = '#f4ebd9'; // Bone White
+            }
+
             if (selected && SpriteMatrices[selected]) {
                 drawProceduralSprite(ctx, SpriteMatrices[selected], 0, 0, 24);
             } else {
-                renderPreview(); // Failsafe
+                renderPreview(); 
             }
+
+            PALETTE['b'] = originalB;
         }
 
         // === 4. PAPERDOLL EVENT TRIGGERS ===
         function testerEquip(slot, itemId) {
-            resetStandaloneSelectors(); // Clear boxes 2,3,4 if user interacts with Box 1
+            resetStandaloneSelectors(); 
             if (itemId === "none") player.equipment[slot] = null;
             else player.equipment[slot] = ItemDatabase[itemId];
             renderPreview();
         }
 
         function testerCycle(part) {
-            resetStandaloneSelectors(); // Clear boxes 2,3,4 if user interacts with Box 1
+            resetStandaloneSelectors(); 
             let currentIdx = appearanceOptions[part].indexOf(player.appearance[part]);
             let nextIdx = (currentIdx + 1) % appearanceOptions[part].length;
             player.appearance[part] = appearanceOptions[part][nextIdx];
@@ -268,6 +268,9 @@
             const canvas = document.getElementById('tester-canvas');
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            let originalB = PALETTE['b'];
+            PALETTE['b'] = '#f4ebd9';
 
             let bodySprite = player.appearance.gender === 'female' ? 'body_female' : 'body_male';
             if (SpriteMatrices[bodySprite]) drawProceduralSprite(ctx, SpriteMatrices[bodySprite], 0, 0, 24);
@@ -302,6 +305,8 @@
                 drawProceduralSprite(ctx, SpriteMatrices[eq.weapon.spriteId], 0, 0, 24);
                 ctx.restore();
             }
+
+            PALETTE['b'] = originalB;
         }
 
         // === 6. BOOT INITIALIZATION ===

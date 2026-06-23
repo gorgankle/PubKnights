@@ -337,6 +337,41 @@ const ItemDatabase = {
     "waders_angler": { id: "waders_angler", name: "The Angler's Waders", slot: "boots", rarity: "Relic", moveBonus: 2, deflectChance: 15, value: 800, spriteId: "boots_angler" },
 "hat_harvester": { id: "hat_harvester", name: "Harvester's Straw Hat", slot: "helmet", rarity: "Relic", deflectChance: 25, value: 800, spriteId: "helm_harvester" }, // <--- ADDED COMMA HERE
 
+// --- NEW TIMBER CRATE EXPANSION ---
+    "junk_pinecone": { id: "junk_pinecone", name: "Crushed Pinecone", slot: "consumable", type: "junk", rarity: "Common", value: 2, spriteId: "junk_pinecone" },
+    "junk_petrified_leaf": { id: "junk_petrified_leaf", name: "Petrified Leaf", slot: "consumable", type: "junk", rarity: "Common", value: 3, spriteId: "junk_petrified_leaf" },
+    "flannel_shirt": { id: "flannel_shirt", name: "Lumberjack's Flannel", slot: "armor", rarity: "Uncommon", deflectChance: 4, value: 25, spriteId: "flannel_shirt" },
+    "beanie_hat": { id: "beanie_hat", name: "Wool Beanie", slot: "helmet", rarity: "Uncommon", deflectChance: 2, value: 20, spriteId: "beanie_hat" },
+    "bark_wraps": { id: "bark_wraps", name: "Rough Bark Wraps", slot: "gloves", rarity: "Rare", atkBonus: 10, value: 55, spriteId: "bark_wraps" },
+    "stump_stompers": { id: "stump_stompers", name: "Stump Stompers", slot: "boots", rarity: "Rare", moveBonus: 1, value: 65, spriteId: "stump_stompers" },
+    "sawblade_chakram": { id: "sawblade_chakram", name: "Rusty Sawblade", slot: "weapon", type: "Sword", rarity: "Epic", atkBonus: 28, attackRange: 1, value: 140, spriteId: "sawblade_chakram" },
+    "heartwood_cuirass": { id: "heartwood_cuirass", name: "Heartwood Cuirass", slot: "armor", rarity: "Epic", deflectChance: 22, value: 160, spriteId: "heartwood_cuirass" },
+    "heartwood_crown": { id: "heartwood_crown", name: "Heartwood Crown", slot: "helmet", rarity: "Relic", deflectChance: 35, value: 1200, spriteId: "heartwood_crown" },
+
+    // --- NEW ANGLER CRATE EXPANSION ---
+    "junk_seaweed": { id: "junk_seaweed", name: "Soggy Seaweed", slot: "consumable", type: "junk", rarity: "Common", value: 2, spriteId: "junk_seaweed" },
+    "junk_fishbones": { id: "junk_fishbones", name: "Old Fishbones", slot: "consumable", type: "junk", rarity: "Common", value: 3, spriteId: "junk_fishbones" },
+    "slicker_jacket": { id: "slicker_jacket", name: "Yellow Rain Slicker", slot: "armor", rarity: "Uncommon", deflectChance: 5, value: 30, spriteId: "slicker_jacket" },
+    "fishermans_hat": { id: "fishermans_hat", name: "Fisherman's Bucket Hat", slot: "helmet", rarity: "Uncommon", deflectChance: 3, value: 25, spriteId: "fishermans_hat" },
+    "barnacle_bracers": { id: "barnacle_bracers", name: "Barnacle Bracers", slot: "gloves", rarity: "Rare", atkBonus: 12, value: 60, spriteId: "barnacle_bracers" },
+    "coral_sabatons": { id: "coral_sabatons", name: "Coral Sabatons", slot: "boots", rarity: "Rare", moveBonus: 1, value: 70, spriteId: "coral_sabatons" },
+    "harpoon_trident": { id: "harpoon_trident", name: "Whaler's Harpoon", slot: "weapon", type: "Spear", rarity: "Epic", atkBonus: 24, attackRange: 2, value: 150, spriteId: "harpoon_trident" },
+    "abyssal_diving_suit": { id: "abyssal_diving_suit", name: "Abyssal Diving Suit", slot: "armor", rarity: "Epic", deflectChance: 25, value: 180, spriteId: "abyssal_diving_suit" },
+    "abyssal_lantern": { id: "abyssal_lantern", name: "Lantern of the Deep", slot: "helmet", rarity: "Relic", deflectChance: 30, value: 1300, spriteId: "abyssal_lantern" },
+
+    // --- NEW HARVEST CRATE EXPANSION ---
+    "junk_horseshoe": { id: "junk_horseshoe", name: "Rusted Horseshoe", slot: "consumable", type: "junk", rarity: "Common", value: 2, spriteId: "junk_horseshoe" },
+    "junk_corncob": { id: "junk_corncob", name: "Gnawed Corncob", slot: "consumable", type: "junk", rarity: "Common", value: 3, spriteId: "junk_corncob" },
+    "denim_overalls": { id: "denim_overalls", name: "Denim Overalls", slot: "armor", rarity: "Uncommon", deflectChance: 4, value: 25, spriteId: "denim_overalls" },
+    "straw_hat": { id: "straw_hat", name: "Woven Straw Hat", slot: "helmet", rarity: "Uncommon", deflectChance: 2, value: 20, spriteId: "straw_hat" },
+    "work_gloves": { id: "work_gloves", name: "Sturdy Work Gloves", slot: "gloves", rarity: "Rare", atkBonus: 11, value: 50, spriteId: "work_gloves" },
+    "muddy_boots": { id: "muddy_boots", name: "Mud-Caked Boots", slot: "boots", rarity: "Rare", moveBonus: 2, value: 65, spriteId: "muddy_boots" },
+    "pitchfork_spear": { id: "pitchfork_spear", name: "Farmer's Pitchfork", slot: "weapon", type: "Spear", rarity: "Epic", atkBonus: 22, attackRange: 2, value: 130, spriteId: "pitchfork_spear" },
+    "burlap_sack_mask": { id: "burlap_sack_mask", name: "Scarecrow's Sack", slot: "helmet", rarity: "Epic", deflectChance: 18, value: 140, spriteId: "burlap_sack_mask" },
+    "scythe_of_reaping": { id: "scythe_of_reaping", name: "Scythe of Reaping", slot: "weapon", type: "Axe", rarity: "Relic", atkBonus: 115, attackRange: 1, value: 1600, spriteId: "scythe_of_reaping" },
+
+
+
     // === GAMBLE CRATES (NOW INSIDE THE MASTER DATABASE) ===
     "timber_crate": {
         id: "timber_crate",

@@ -189,32 +189,53 @@ const LootTables = {
 // === GAMBLE CRATES ===
     "timber_crate": {
         pools: [
-            { itemId: "wood", weight: 50, amt: 150, isResource: true },
-            { itemId: "junk_splinters", weight: 25 },
-            { itemId: "wood", weight: 10, amt: 1000, isResource: true },
-            { itemId: "bomb_small", weight: 10, amt: 2 },
-            { itemId: "bomb_heavy", weight: 4, amt: 1 },
-            { itemId: "axe_timberlord", weight: 1, isJackpot: true }
+            { itemId: "wood", weight: 350, amt: 150, isResource: true },
+            { itemId: "junk_splinters", weight: 150 },
+            { itemId: "junk_pinecone", weight: 150 },
+            { itemId: "junk_petrified_leaf", weight: 100 },
+            { itemId: "flannel_shirt", weight: 80 },
+            { itemId: "beanie_hat", weight: 70 },
+            { itemId: "bark_wraps", weight: 35 },
+            { itemId: "stump_stompers", weight: 30 },
+            { itemId: "heartwood_cuirass", weight: 15 },
+            { itemId: "sawblade_chakram", weight: 10 },
+            { itemId: "wood", weight: 5, amt: 1000, isResource: true },
+            { itemId: "axe_timberlord", weight: 2.5, isJackpot: true },
+            { itemId: "heartwood_crown", weight: 2.5, isJackpot: true }
         ]
     },
     "angler_crate": {
         pools: [
-            { itemId: "fish", weight: 50, amt: 150, isResource: true },
-            { itemId: "junk_boots", weight: 25 },
-            { itemId: "fish", weight: 10, amt: 1000, isResource: true },
-            { itemId: "lager", weight: 10, amt: 2 },
-            { itemId: "fish_wholesale", weight: 4, amt: 1 },
-            { itemId: "waders_angler", weight: 1, isJackpot: true }
+            { itemId: "fish", weight: 350, amt: 150, isResource: true },
+            { itemId: "junk_boots", weight: 150 },
+            { itemId: "junk_seaweed", weight: 150 },
+            { itemId: "junk_fishbones", weight: 100 },
+            { itemId: "slicker_jacket", weight: 80 },
+            { itemId: "fishermans_hat", weight: 70 },
+            { itemId: "barnacle_bracers", weight: 35 },
+            { itemId: "coral_sabatons", weight: 30 },
+            { itemId: "abyssal_diving_suit", weight: 15 },
+            { itemId: "harpoon_trident", weight: 10 },
+            { itemId: "fish", weight: 5, amt: 1000, isResource: true },
+            { itemId: "waders_angler", weight: 2.5, isJackpot: true },
+            { itemId: "abyssal_lantern", weight: 2.5, isJackpot: true }
         ]
     },
     "harvest_crate": {
         pools: [
-            { itemId: "hops", weight: 50, amt: 150, isResource: true },
-            { itemId: "junk_vine", weight: 25 },
-            { itemId: "hops", weight: 10, amt: 1000, isResource: true },
-            { itemId: "ipa", weight: 10, amt: 2 },
-            { itemId: "reserve", weight: 4, amt: 1 },
-            { itemId: "hat_harvester", weight: 1, isJackpot: true }
+            { itemId: "hops", weight: 350, amt: 150, isResource: true },
+            { itemId: "junk_vine", weight: 150 },
+            { itemId: "junk_horseshoe", weight: 150 },
+            { itemId: "junk_corncob", weight: 100 },
+            { itemId: "denim_overalls", weight: 80 },
+            { itemId: "straw_hat", weight: 70 },
+            { itemId: "work_gloves", weight: 35 },
+            { itemId: "muddy_boots", weight: 30 },
+            { itemId: "burlap_sack_mask", weight: 15 },
+            { itemId: "pitchfork_spear", weight: 10 },
+            { itemId: "hops", weight: 5, amt: 1000, isResource: true },
+            { itemId: "hat_harvester", weight: 2.5, isJackpot: true },
+            { itemId: "scythe_of_reaping", weight: 2.5, isJackpot: true }
         ]
     }
 };
