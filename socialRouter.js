@@ -21,6 +21,9 @@ module.exports = function(socket, io, activePlayers) {
     socket.on('joinZone', (data) => {
         let p = activePlayers[socket.id];
         if (!p) return;
+		
+		// NEW: Grab the username directly from the client's packet!
+        if (data.username) p.username = data.username;
 
         // 1. Leave any existing zone first
         leaveCurrentZone();

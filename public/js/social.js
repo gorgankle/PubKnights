@@ -9,7 +9,9 @@ let socialAnimationLoop = null;
 function joinMultiplayerZone(zoneId) {
     if (currentSocialZone === zoneId) return; 
     document.getElementById('social-view').style.display = 'grid'; 
-    socket.emit('joinZone', { zoneId: zoneId });
+    
+
+    socket.emit('joinZone', { zoneId: zoneId, username: window.currentUsername || "Unknown Knight" });
 }
 
 function leaveMultiplayerZone(skipTabSwitch = false) {
@@ -83,11 +85,17 @@ function renderSocialZone() {
     ctx.fillStyle = PALETTE['3'] || '#2a221f'; 
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    // --- CRITICAL PALETTE FIX: Backup the local player's appearance! ---
+    let originalAppearance = JSON.parse(JSON.stringify(player.appearance));
+
     // 2. Loop through all players and draw their procedural avatars
     for (let id in playersInRoom) {
         let p = playersInRoom[id];
         let drawX = p.x * 24; 
         let drawY = p.y * 24;
+
+        // --- CRITICAL PALETTE FIX: Hijack the global appearance for this render cycle! ---
+        player.appearance = p.appearance;
 
         // Base Anatomy
         let bodySprite = p.appearance.gender === 'female' ? 'body_female' : 'body_male';
@@ -128,6 +136,9 @@ function renderSocialZone() {
         ctx.textAlign = "center";
         ctx.fillText(p.name, drawX + 12, drawY - 4);
     }
+
+    // --- CRITICAL PALETTE FIX: Restore local appearance! ---
+    player.appearance = originalAppearance;
 }
 
 // === 3. INPUT (MOVEMENT & INSPECTION) ===
