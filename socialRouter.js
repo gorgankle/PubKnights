@@ -283,7 +283,7 @@ module.exports = function(socket, io, activePlayers) {
     });	
 	
 
-    /// Clean up if the player disconnects or refreshes the page entirely
+// Clean up if the player disconnects or refreshes the page entirely
     socket.on('disconnect', () => {
         let p = activePlayers[socket.id];
         
@@ -294,3 +294,4 @@ module.exports = function(socket, io, activePlayers) {
         
         leaveCurrentZone();
     });
+};
