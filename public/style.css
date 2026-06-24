@@ -288,6 +288,14 @@ button:hover:not(:disabled) { background: #a06d3b; }
         width: 95% !important;
         max-width: 450px !important;
     }
+	/* Force the Studio Wrapper to maximize screen real estate */
+    #studio-screen {
+        height: 88vh !important;
+        border-radius: 0 !important;
+        border-left: none !important;
+        border-right: none !important;
+        margin-top: 5px !important;
+    }
 }
 
 /* --- TOP NAVIGATION BAR --- */
