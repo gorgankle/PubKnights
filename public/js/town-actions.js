@@ -29,6 +29,15 @@ function setIdleJob(jobType) {
 // === NEW: ITEM-BASED CONSUMPTION IN TOWN ===
 function drinkBrewFromInventory(idx) { socket.emit('townAction', { action: 'drinkBrew', idx: idx }); }
 
+// === CRATE UNBOXING LOGIC ===
+function openCrate(index, crateId) {
+    // 1. Hide the tooltip so it doesn't get stuck on screen
+    if (typeof hideTooltip === 'function') hideTooltip();
+    
+    // 2. Send the unbox request to the secure Node.js router
+    socket.emit('townAction', { action: 'openCrate', index: index, crateId: crateId });
+}
+
 function hireBrewmasterServices() { socket.emit('townAction', { action: 'craftBrew', brewType: 'STOUT' }); }
 
 function craftSpecialtyBrew(brewType) { socket.emit('townAction', { action: 'craftBrew', brewType: brewType }); }

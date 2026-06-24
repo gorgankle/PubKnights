@@ -309,7 +309,7 @@ function showItemTooltip(event, item, index, location) {
             actionsHtml += `<button onclick="drinkBrewFromInventory(${index})" style="background: #3498db; padding: 5px;">Consume</button>`;
         }
         if (item.id && item.id.includes('crate') && !isCombat) {
-            actionsHtml += `<button onclick="emitInventoryAction('openCrate', ${index}, '${item.id}')" style="background: #e67e22; padding: 5px;">Unbox</button>`;
+            actionsHtml += `<button onclick="openCrate(${index}, '${item.id}')" style="background: #e67e22; padding: 5px;">Unbox</button>`;
         }
         // Universally allow Vaulting and Selling outside of combat
         if (!isCombat) {
