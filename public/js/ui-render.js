@@ -506,17 +506,20 @@ if (hopsScreen) hopsScreen.style.display = "none";
                         let imgUrl = getItemSpriteURL(item);
                         let imgHtml = imgUrl ? `<img src="${imgUrl}" style="width:36px;height:36px;image-rendering:pixelated;display:block;margin:6px auto;">` : ``;
                         
+                        // Removed the hardcoded button - the tooltip handles it now!
                         el.innerHTML = `
                             <div class="slot-title">${slotKey}</div>
                             ${imgHtml}
                             <span class="${rc}">${item.name}</span>
-                            <button onclick="unequipItem('${slotKey}')" style="background:#c0392b; border-color:#e74c3c; font-size:9px; padding:2px 6px; margin-top:4px; width:80%;">Unequip</button>
                         `;
                         
-                        el.onmouseenter = (e) => showTooltip(getItemTooltip(item), e);
+                        // === NEW: Pass the equipment item to the smart tooltip ===
+                        el.onmouseenter = (e) => showItemTooltip(e, item, slotKey, 'equipment');
+                        el.onmouseleave = hideItemTooltip;
                     } else {
                         el.innerHTML = `<div class="slot-title">${slotKey}</div><div style="height:48px;"></div><span style="color:#55443a;">Empty</span>`;
                         el.onmouseenter = null;
+                        el.onmouseleave = null;
                     }
                 }
             });

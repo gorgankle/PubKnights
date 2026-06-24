@@ -263,52 +263,63 @@ function showVaultTooltip(idx, e) { showTooltip(getItemTooltip(player.stash[idx]
 
 			//The Tooltip Logic & Combat Safety
 
+let tooltipHideTimer = null;
+
 function showItemTooltip(event, item, index, location) {
+    clearTimeout(tooltipHideTimer); // Cancel any pending hides!
+
     const tooltip = document.getElementById('game-tooltip');
     if (!tooltip || !item) return;
 
-    let rarityColor = "#7f8c8d"; // Default Common
+    // === NEW: Allow the user to hover inside the tooltip without it closing ===
+    tooltip.style.pointerEvents = "auto";
+    tooltip.onmouseenter = () => clearTimeout(tooltipHideTimer);
+    tooltip.onmouseleave = () => hideItemTooltip();
+
+    let rarityColor = "#7f8c8d";
     if (item.rarity === 'Uncommon') rarityColor = "#2ecc71";
     if (item.rarity === 'Rare') rarityColor = "#3498db";
     if (item.rarity === 'Epic') rarityColor = "#9b59b6";
     if (item.rarity === 'Gorilla' || item.rarity === 'Jackpot') rarityColor = "#f1c40f";
 
-    // 1. Build the Stat Block
+    // Fallback description just in case a database item is missing one
+    let itemDesc = item.desc || item.description || "A mysterious item.";
+
     let html = `
         <div style="border-bottom: 2px solid ${rarityColor}; margin-bottom: 8px; padding-bottom: 5px;">
             <strong style="color: ${rarityColor}; font-size: 16px;">${item.name}</strong>
-            <div style="font-size: 11px; color: #bbaaa0;">${item.type.toUpperCase()} | Value: ${item.value || 0}g</div>
+            <div style="font-size: 11px; color: #bbaaa0;">${(item.type || item.slot).toUpperCase()} | Value: ${item.value || 0}g</div>
         </div>
         <div style="font-size: 12px; margin-bottom: 10px; color: #ecf0f1;">
-            ${item.description || "A mysterious item."}
+            ${itemDesc}
         </div>
     `;
 
-    // 2. Build Contextual Actions based on Location AND Game State
     let actionsHtml = `<div style="display: flex; gap: 5px; flex-wrap: wrap;">`;
-    
-    // Check if we are actively in combat
     const isCombat = (typeof gameState !== 'undefined' && gameState === 'COMBAT');
 
+    // === NEW: Check against your valid database slots! ===
+    const equippableSlots = ['weapon', 'helmet', 'armor', 'gloves', 'boots'];
+
     if (location === 'backpack') {
-        if (item.type === 'gear' && !isCombat) {
-            actionsHtml += `<button onclick="emitInventoryAction('equip', ${index})" style="background: #27ae60;">Equip</button>`;
+        if (equippableSlots.includes(item.slot) && !isCombat) {
+            actionsHtml += `<button onclick="equipItem(${index})" style="background: #27ae60; padding: 5px;">Equip</button>`;
         }
         if (item.type === 'brew') {
-            actionsHtml += `<button onclick="emitInventoryAction('drinkBrew', ${index})" style="background: #3498db;">Consume</button>`;
+            actionsHtml += `<button onclick="drinkBrewFromInventory(${index})" style="background: #3498db; padding: 5px;">Consume</button>`;
         }
         if (item.id && item.id.includes('crate') && !isCombat) {
-            actionsHtml += `<button onclick="emitInventoryAction('openCrate', ${index}, '${item.id}')" style="background: #e67e22;">Unbox</button>`;
+            actionsHtml += `<button onclick="emitInventoryAction('openCrate', ${index}, '${item.id}')" style="background: #e67e22; padding: 5px;">Unbox</button>`;
         }
-        // ONLY allow selling/depositing if we are in Town and NOT in combat
-        if (!isCombat && gameState === 'TOWN') {
-            actionsHtml += `<button onclick="emitInventoryAction('deposit', ${index})" style="background: #8e44ad;">Vault</button>`;
-            actionsHtml += `<button onclick="emitInventoryAction('sell', ${index})" style="background: #c0392b;">Sell</button>`;
+        // Universally allow Vaulting and Selling outside of combat
+        if (!isCombat) {
+            actionsHtml += `<button onclick="depositToVault(${index})" style="background: #8e44ad; padding: 5px;">Vault</button>`;
+            actionsHtml += `<button onclick="sellItem(${index})" style="background: #c0392b; padding: 5px;">Sell</button>`;
         }
     } else if (location === 'vault' && !isCombat) {
-        actionsHtml += `<button onclick="emitInventoryAction('withdraw', ${index})" style="background: #2980b9;">Withdraw</button>`;
+        actionsHtml += `<button onclick="withdrawFromVault(${index})" style="background: #2980b9; padding: 5px;">Withdraw</button>`;
     } else if (location === 'equipment' && !isCombat) {
-        actionsHtml += `<button onclick="emitInventoryAction('unequip', null, '${index}')" style="background: #c0392b;">Unequip</button>`;
+        actionsHtml += `<button onclick="unequipItem('${index}')" style="background: #c0392b; padding: 5px;">Unequip</button>`;
     }
 
     if (isCombat) {
@@ -318,22 +329,27 @@ function showItemTooltip(event, item, index, location) {
     actionsHtml += `</div>`;
     html += actionsHtml;
 
-    // 3. Render and Position
     tooltip.innerHTML = html;
     tooltip.style.display = 'block';
-    
-    // Position tooltip near cursor but keep it on screen
+
     let x = event.pageX + 15;
     let y = event.pageY + 15;
-    
     if (x + 250 > window.innerWidth) x = window.innerWidth - 260;
     if (y + tooltip.offsetHeight > window.innerHeight) y = window.innerHeight - tooltip.offsetHeight - 10;
-    
     tooltip.style.left = x + 'px';
     tooltip.style.top = y + 'px';
 }
 
+// Ensure the old hideTooltip acts as an alias so we don't break existing game elements
+function hideTooltip() { hideItemTooltip(); }
+
 function hideItemTooltip() {
-    const tooltip = document.getElementById('game-tooltip');
-    if (tooltip) tooltip.style.display = 'none';
+    // === NEW: 250ms grace period so the mouse can physically reach the buttons ===
+    tooltipHideTimer = setTimeout(() => {
+        const tooltip = document.getElementById('game-tooltip');
+        if (tooltip) {
+            tooltip.style.display = 'none';
+            tooltip.style.pointerEvents = "none"; // Lock it back up so it doesn't block UI clicks
+        }
+    }, 250);
 }
