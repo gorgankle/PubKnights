@@ -362,7 +362,7 @@ CSS
     box-shadow: 0 0 40px #f1c40f !important;
 }
 
-/* --- INVENTORY GRID SYSTEM --- */
+/* --- INVENTORY GRID UPDATES --- */
 .inventory-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
@@ -371,6 +371,20 @@ CSS
     background: rgba(17, 13, 10, 0.8);
     border: 2px solid #4a3b2c;
     border-radius: 6px;
+    align-content: flex-start; /* Stops empty rows from stretching vertically! */
+}
+
+/* Force the Vault to cap at ~5 rows and scroll */
+#vault-screen-list {
+    max-height: 310px; 
+    overflow-y: auto;
+}
+
+/* Optional: Make the scrollbar look retro and match your UI */
+#vault-screen-list::-webkit-scrollbar { width: 8px; }
+#vault-screen-list::-webkit-scrollbar-track { background: #110d0a; border-left: 1px solid #4a3b2c; }
+#vault-screen-list::-webkit-scrollbar-thumb { background: #634e3d; border-radius: 4px; }
+#vault-screen-list::-webkit-scrollbar-thumb:hover { background: #8b5a2b; }der-radius: 6px;
 }
 
 .item-slot {

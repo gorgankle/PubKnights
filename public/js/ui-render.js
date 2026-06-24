@@ -500,24 +500,34 @@ if (hopsScreen) hopsScreen.style.display = "none";
             slots.forEach(slotKey => {
                 const el = document.getElementById(`slot-${slotKey}`);
                 if (el) {
+                    // === NEW: Allow the slot to receive drops from the backpack ===
+                    el.ondragover = handleItemDragOver;
+                    el.ondrop = (e) => handleItemDrop(e, slotKey, 'equipment');
+
                     const item = player.equipment[slotKey];
                     if (item) {
+                        // === NEW: Make the equipped item draggable ===
+                        el.draggable = true;
+                        el.ondragstart = (e) => handleItemDragStart(e, slotKey, 'equipment');
+
                         let rc = item.rarity === "Gorilla" ? "GorillaTier" : item.rarity;
                         let imgUrl = getItemSpriteURL(item);
-                        let imgHtml = imgUrl ? `<img src="${imgUrl}" style="width:36px;height:36px;image-rendering:pixelated;display:block;margin:6px auto;">` : ``;
+                        let imgHtml = imgUrl ? `<img src="${imgUrl}" style="width:36px;height:36px;image-rendering:pixelated;display:block;margin:6px auto;pointer-events:none;">` : ``;
                         
-                        // Removed the hardcoded button - the tooltip handles it now!
                         el.innerHTML = `
                             <div class="slot-title">${slotKey}</div>
                             ${imgHtml}
-                            <span class="${rc}">${item.name}</span>
+                            <span class="${rc}" style="pointer-events:none;">${item.name}</span>
                         `;
                         
-                        // === NEW: Pass the equipment item to the smart tooltip ===
                         el.onmouseenter = (e) => showItemTooltip(e, item, slotKey, 'equipment');
                         el.onmouseleave = hideItemTooltip;
                     } else {
-                        el.innerHTML = `<div class="slot-title">${slotKey}</div><div style="height:48px;"></div><span style="color:#55443a;">Empty</span>`;
+                        // Empty slots cannot be dragged
+                        el.draggable = false;
+                        el.ondragstart = null;
+                        
+                        el.innerHTML = `<div class="slot-title">${slotKey}</div><div style="height:48px;"></div><span style="color:#55443a;pointer-events:none;">Empty</span>`;
                         el.onmouseenter = null;
                         el.onmouseleave = null;
                     }

@@ -18,23 +18,32 @@ function handleItemDrop(event, toIndex, toType) {
         const fromIndex = dragData.index;
         const fromType = dragData.type;
 
-        // 1. Reordering items within the Backpack array
+        // 1. Reordering Backpack
         if (fromType === 'backpack' && toType === 'backpack') {
             if (fromIndex === toIndex) return;
             socket.emit('inventoryAction', { action: 'reorderBackpack', fromIndex: fromIndex, toIndex: toIndex });
         }
-        // 2. Reordering items within the Vault array
+        // 2. Reordering Vault
         else if (fromType === 'vault' && toType === 'vault') {
             if (fromIndex === toIndex) return;
             socket.emit('inventoryAction', { action: 'reorderVault', fromIndex: fromIndex, toIndex: toIndex });
         }
-        // 3. Dragging from Backpack directly into Vault rows (Deposit Shortcut!)
+        // 3. Backpack -> Vault (Deposit Shortcut)
         else if (fromType === 'backpack' && toType === 'vault') {
             depositToVault(fromIndex);
         }
-        // 4. Dragging from Vault directly into Backpack rows (Withdraw Shortcut!)
+        // 4. Vault -> Backpack (Withdraw Shortcut)
         else if (fromType === 'vault' && toType === 'backpack') {
             withdrawFromVault(fromIndex);
+        }
+        // 5. === NEW: Backpack -> Equipment (Equip Shortcut) ===
+        else if (fromType === 'backpack' && toType === 'equipment') {
+            equipItem(fromIndex);
+        }
+        // 6. === NEW: Equipment -> Backpack (Unequip Shortcut) ===
+        else if (fromType === 'equipment' && (toType === 'backpack' || toType === 'vault')) {
+            // Note: fromIndex holds the slotKey (e.g., 'weapon') when dragged from the Knight
+            unequipItem(fromIndex); 
         }
     } catch (err) {
         console.error("Data transfer stream failure:", err);
