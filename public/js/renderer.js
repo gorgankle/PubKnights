@@ -77,12 +77,15 @@ function spawnProjectile(startX, startY, targetX, targetY, spriteId, duration, o
     });
 }
 
-function spawnExplosion(gridX, gridY, radiusTiles) {
+function spawnExplosion(gridX, gridY, config) {
     activeExplosions.push({
-        x: gridX, y: gridY,
-        radius: radiusTiles,
+        x: gridX, 
+        y: gridY,
+        radius: config.radius || 1.5,
         frame: 0,
-        maxFrames: 25 // Lasts about half a second
+        maxFrames: config.frames || 25,
+        curve: config.curve || 1.0,
+        colors: config.colors || { outer: "#e74c3c", mid: "#e67e22", core: "#f1c40f" }
     });
 }
 
@@ -609,29 +612,39 @@ if (isValidPlayerMovePath(tx, ty)) {
     }
 });
 
-function spawnHitMarker(gridX, gridY, text, color) {
+function spawnHitMarker(gridX, gridY, text, config) {
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
     const marker = document.createElement("div");
+    
+    // Backwards compatibility for older calls that just passed a hex color string
+    let color = typeof config === 'string' ? config : (config?.color || "#e74c3c");
+    let size = typeof config === 'object' && config.fontSize ? config.fontSize : 22;
+    let rise = typeof config === 'object' && config.riseDist ? config.riseDist : 50;
+    let time = typeof config === 'object' && config.durationMs ? config.durationMs : 1000;
+
     marker.innerText = text;
     marker.style.position = "absolute";
     marker.style.left = (rect.left + window.scrollX + (gridX * currentTileSize) + (currentTileSize / 2)) + "px";
     marker.style.top = (rect.top + window.scrollY + (gridY * currentTileSize) + 10) + "px";
     marker.style.color = color;
     marker.style.fontWeight = "bold";
-    marker.style.fontSize = "22px";
+    marker.style.fontSize = size + "px";
     marker.style.textShadow = "2px 2px 0px #000, -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000";
     marker.style.pointerEvents = "none";
     marker.style.zIndex = "9999";
     marker.style.transform = "translate(-50%, -50%)";
-    marker.style.transition = "top 1s ease-out, opacity 1s ease-in";
-
+    
+    // CSS Transition using the new dynamic time
+    marker.style.transition = `top ${time}ms ease-out, opacity ${time}ms ease-out`;
     document.body.appendChild(marker);
-    setTimeout(() => {
-        marker.style.top = (rect.top + window.scrollY + (gridY * currentTileSize) - 30) + "px";
-        marker.style.opacity = "0";
-    }, 10);
-    setTimeout(() => marker.remove(), 1000);
+
+    setTimeout(() => { 
+        marker.style.top = (rect.top + window.scrollY + (gridY * currentTileSize) - rise) + "px"; 
+        marker.style.opacity = "0"; 
+    }, 50);
+
+    setTimeout(() => marker.remove(), time + 50);
 }
 
 // === BOOTSTRAP INITIALIZER: RUN THE LOOP PIPELINE ===

@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Pub Knights - Loot Simulator</title>
+    
+    <script src="js/items.js"></script>
+    <script src="js/lootTables.js"></script>
+
+    <style>
+        body {
+            background-color: #2c2520;
+            color: #f4ebd9;
+            font-family: 'Courier New', monospace;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            color: #ffcc66;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            margin-bottom: 5px;
+        }
+        p.subtitle {
+            color: #bbaaa0;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        .container {
+            background: rgba(34, 26, 20, 0.95);
+            padding: 20px;
+            border: 2px solid #634e3d;
+            border-radius: 6px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 100%;
+            max-width: 900px;
+        }
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+            background: #1a1512;
+            padding: 15px;
+            border: 1px solid #4a3b2c;
+            border-radius: 4px;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            flex: 1;
+        }
+        label {
+            color: #bbaaa0;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        select, input[type="number"], button {
+            background: #110d0a;
+            color: #f1c40f;
+            border: 2px solid #634e3d;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            border-radius: 4px;
+        }
+        select:focus, input[type="number"]:focus {
+            outline: none;
+            border-color: #ffcc66;
+        }
+        button {
+            background: #27ae60;
+            color: white;
+            border-color: #2ecc71;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+            padding: 10px 20px;
+        }
+        button:hover { background: #2ecc71; }
+        
+        .results-panel {
+            background: #110d0a;
+            border: 2px inset #634e3d;
+            border-radius: 4px;
+            min-height: 300px;
+            padding: 15px;
+        }
+        .stats-header {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px dashed #634e3d;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            color: #ffcc66;
+            font-weight: bold;
+        }
+        
+        /* Loot Row Styling */
+        .loot-row {
+            display: flex;
+            align-items: center;
+            background: #1a1512;
+            border: 1px solid #2a221f;
+            margin-bottom: 5px;
+            padding: 8px 10px;
+            border-radius: 3px;
+        }
+        .loot-row:hover { background: #221b16; border-color: #4a3b2c; }
+        
+        .loot-name { flex: 2; font-weight: bold; }
+        .loot-count { flex: 1; color: #bdc3c7; text-align: right; }
+        .loot-pct { flex: 1; color: #3498db; text-align: right; }
+        .loot-odds { flex: 1; color: #e67e22; text-align: right; }
+        
+        /* Rarity Colors */
+        .rarity-jackpot { color: #f1c40f; text-shadow: 0 0 5px rgba(241, 196, 15, 0.5); }
+        .rarity-high { color: #8e44ad; }
+        .rarity-mid { color: #3498db; }
+        .rarity-low { color: #bdc3c7; }
+        
+        /* Bar Graph */
+        .bar-container {
+            width: 100px;
+            height: 10px;
+            background: #000;
+            margin-left: 15px;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .bar-fill {
+            height: 100%;
+            background: #2ecc71;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>⚖️ Loot Simulator</h1>
+    <p class="subtitle">Mass Drop Table RNG Analyzer</p>
+
+    <div class="container">
+        <div class="controls">
+            <div class="control-group">
+                <label>SELECT LOOT TABLE:</label>
+                <select id="table-select"></select>
+            </div>
+            
+            <div class="control-group" style="flex: 0.5;">
+                <label>SIMULATED PULLS:</label>
+                <select id="pulls-select">
+                    <option value="100">100 (Casual)</option>
+                    <option value="1000">1,000 (Grinder)</option>
+                    <option value="10000" selected>10,000 (Economy Test)</option>
+                    <option value="100000">100,000 (Stress Test)</option>
+                </select>
+            </div>
+            
+            <button onclick="runSimulation()">🎲 RUN SIMULATION</button>
+        </div>
+
+        <div class="results-panel">
+            <div class="stats-header" id="stats-header">
+                <span>Awaiting Simulation...</span>
+            </div>
+            <div id="results-list">
+                </div>
+        </div>
+    </div>
+
+    <script>
+        // 1. DYNAMICALLY LOAD TABLES ON BOOT
+        window.onload = () => {
+            if (typeof LootTables === 'undefined') {
+                alert("CRITICAL ERROR: LootTables not found! Make sure lootTables.js is linked correctly.");
+                return;
+            }
+            
+            const select = document.getElementById('table-select');
+            for (let key in LootTables) {
+                let opt = document.createElement('option');
+                opt.value = key;
+                opt.innerText = key;
+                select.appendChild(opt);
+            }
+        };
+
+        // 2. THE SERVER-AUTHORITATIVE MATH ENGINE
+        // This is an exact 1:1 replica of your townRouter.js logic!
+        function rollSecureCrateLoot(crateId) {
+            const table = LootTables[crateId];
+            if (!table || !table.pools) return null;
+            
+            let totalWeight = table.pools.reduce((sum, entry) => sum + entry.weight, 0);
+            let roll = Math.random() * totalWeight;
+            let chosenEntry = null;
+
+            for (let entry of table.pools) {
+                if (roll < entry.weight) { chosenEntry = entry; break; }
+                roll -= entry.weight;
+            }
+            
+            return chosenEntry;
+        }
+
+        // 3. RUN THE MASS SIMULATION
+        function runSimulation() {
+            const tableKey = document.getElementById('table-select').value;
+            const pulls = parseInt(document.getElementById('pulls-select').value);
+            
+            if (!tableKey || !LootTables[tableKey]) return;
+
+            // Track results: { "itemId": { count: 0, entryData: {} } }
+            let results = {};
+            let emptyPulls = 0;
+
+            // Blast through the math
+            for (let i = 0; i < pulls; i++) {
+                let drop = rollSecureCrateLoot(tableKey);
+                if (drop) {
+                    if (!results[drop.itemId]) {
+                        results[drop.itemId] = { count: 0, data: drop };
+                    }
+                    results[drop.itemId].count++;
+                } else {
+                    emptyPulls++;
+                }
+            }
+
+            // Calculate total mathematical weight to show true theoretical odds
+            let table = LootTables[tableKey];
+            let totalWeight = table.pools.reduce((sum, entry) => sum + entry.weight, 0);
+
+            renderResults(pulls, results, emptyPulls, totalWeight);
+        }
+
+        // 4. DISPLAY THE DATA
+        function renderResults(totalPulls, results, emptyPulls, totalWeight) {
+            const header = document.getElementById('stats-header');
+            const list = document.getElementById('results-list');
+            
+            header.innerHTML = `
+                <span>Total Pulls: ${totalPulls.toLocaleString()}</span>
+                <span>Total Table Weight: ${totalWeight}</span>
+            `;
+            
+            list.innerHTML = ""; // Clear old data
+
+            // Convert results object to an array so we can sort it by drop count (highest to lowest)
+            let sortedResults = Object.values(results).sort((a, b) => b.count - a.count);
+
+            sortedResults.forEach(item => {
+                let count = item.count;
+                let pct = ((count / totalPulls) * 100).toFixed(2);
+                
+                // Calculate the "1 in X" odds
+                let odds = totalPulls / count;
+                let oddsString = odds >= 1000 ? `1 in ${(odds/1000).toFixed(1)}k` : `1 in ${Math.round(odds)}`;
+
+                // Attempt to grab the human-readable name from the ItemDatabase if available
+                let displayName = item.data.itemId;
+                if (typeof ItemDatabase !== 'undefined' && ItemDatabase[item.data.itemId]) {
+                    displayName = ItemDatabase[item.data.itemId].name;
+                }
+                
+                // Format Resource quantities (e.g., 150x Hops)
+                if (item.data.isResource && item.data.amt) {
+                    displayName = `${item.data.amt}x ${displayName}`;
+                }
+
+                // Determine Rarity Colors based on drop rate
+                let rarityClass = 'rarity-low';
+                if (item.data.isJackpot) rarityClass = 'rarity-jackpot';
+                else if (pct < 5) rarityClass = 'rarity-high';
+                else if (pct < 20) rarityClass = 'rarity-mid';
+
+                // Append the row
+                let row = document.createElement('div');
+                row.className = 'loot-row';
+                row.innerHTML = `
+                    <div class="loot-name ${rarityClass}">${item.data.isJackpot ? '🌟 ' : ''}${displayName}</div>
+                    <div class="loot-count">Dropped: ${count.toLocaleString()}</div>
+                    <div class="loot-pct">${pct}%</div>
+                    <div class="loot-odds">${oddsString}</div>
+                    <div class="bar-container">
+                        <div class="bar-fill" style="width: ${pct}%; background: ${item.data.isJackpot ? '#f1c40f' : '#2ecc71'};"></div>
+                    </div>
+                `;
+                list.appendChild(row);
+            });
+
+            if (emptyPulls > 0) {
+                let row = document.createElement('div');
+                row.className = 'loot-row';
+                row.innerHTML = `<div class="loot-name" style="color: #e74c3c;">Nothing / Empty Drop</div><div class="loot-count">${emptyPulls.toLocaleString()}</div><div class="loot-pct">${((emptyPulls / totalPulls) * 100).toFixed(2)}%</div><div class="loot-odds">-</div><div class="bar-container"></div>`;
+                list.appendChild(row);
+            }
+        }
+    </script>
+</body>
+</html>

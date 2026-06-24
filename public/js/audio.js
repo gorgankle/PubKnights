@@ -54,13 +54,12 @@ const musicTracks = [
         bass: [ 55.00, null, null, null, null, null, null, null, 55.00, null, null, null, null, null, null, null, 55.00, null, null, null, null, null, null, null, 55.00, null, null, null, null, null, null, null ],
         drums: [ 'k', null, null, null, 's', null, null, null, 'k', null, 'k', null, 's', null, null, null, 'k', null, null, null, 's', null, null, null, 'k', null, 'k', null, 's', null, 'h', 'h' ]
     },
-{
+    {
         name: "Midnight Grind", tempo: 50, 
         melody: [ 329.63, null, null, 329.63, 293.66, null, null, 293.66, 261.63, null, null, 261.63, 220.00, null, null, null, 392.00, null, null, 392.00, 329.63, null, null, 329.63, 261.63, null, null, 261.63, 220.00, null, null, null ],
         harmony: [ 164.81, 220.00, 164.81, 246.94, 164.81, 220.00, 164.81, 246.94, 130.81, 196.00, 130.81, 220.00, 130.81, 196.00, 130.81, 220.00, 196.00, 261.63, 196.00, 293.66, 196.00, 261.63, 196.00, 293.66, 130.81, 196.00, 130.81, 220.00, 130.81, 196.00, 130.81, 220.00 ],
         bass: [ 82.41, null, null, null, null, null, null, null, 65.41, null, null, null, null, null, null, null, 98.00, null, null, null, null, null, null, null, 65.41, null, null, null, null, null, null, null ],
         drums: [ 'k', 'h', 'h', 'h', 's', 'h', 'h', 'h', 'k', 'h', 'h', 'h', 's', 'h', 'h', 'h', 'k', 'h', 'h', 'h', 's', 'h', 'h', 'h', 'k', 'h', 'h', 'h', 's', 'h', 'h', 'h' ],
-        // === NEW: Long, sustained background drone notes ===
         ambience: [ 164.81, null, null, null, null, null, null, null, 130.81, null, null, null, null, null, null, null, 196.00, null, null, null, null, null, null, null, 130.81, null, null, null, null, null, null, null ]
     }
 ];
@@ -85,142 +84,184 @@ function nextMusicNote() {
     const secondsPerBeat = 60.0 / tempo;
     nextNoteTime += 0.25 * secondsPerBeat; 
     currentNote++;
-    if (currentNote >= musicTracks[activeTrackIndex].melody.length) currentNote = 0; 
+    if (currentNote >= 32) currentNote = 0; 
 }
 
-function scheduleNote(beatNumber, time) {
+function buildTrackRouting(vol, pan) {
+    let masterGain = audioCtx.createGain(); masterGain.gain.value = vol;
+    let panner = audioCtx.createStereoPanner ? audioCtx.createStereoPanner() : audioCtx.createPanner();
+    if (panner.pan) panner.pan.value = pan;
+    masterGain.connect(panner); panner.connect(audioCtx.destination);
+    return masterGain; 
+}
+
+function scheduleNote(stepNum, time) {
     if (musicVolume <= 0) return;
     
-    let track = musicTracks[activeTrackIndex];
+    let currentSong = musicTracks[activeTrackIndex];
+    const secondsPerStep = (60.0 / currentSong.tempo) / 4;
 
-    // --- MELODY ---
-    if (track.melody[beatNumber]) {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = 'square';
-        osc.frequency.value = track.melody[beatNumber];
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        
-        // True 0 start, ramp up, ramp down to 0, delayed stop
-        gain.gain.setValueAtTime(0, time); 
-        gain.gain.linearRampToValueAtTime(0.015 * musicVolume, time + 0.015); 
-        gain.gain.exponentialRampToValueAtTime(0.001, time + 0.15);
-        gain.gain.linearRampToValueAtTime(0, time + 0.17); // Hard zero
-        
-        osc.start(time);
-        osc.stop(time + 0.2); // Destroy node 30ms AFTER absolute zero
-    }
-    
-    // --- HARMONY ---
-    if (track.harmony[beatNumber]) {
-        const oscH = audioCtx.createOscillator();
-        const gainH = audioCtx.createGain();
-        oscH.type = 'square';
-        oscH.frequency.value = track.harmony[beatNumber];
-        oscH.connect(gainH);
-        gainH.connect(audioCtx.destination);
-        
-        gainH.gain.setValueAtTime(0, time); 
-        gainH.gain.linearRampToValueAtTime(0.005 * musicVolume, time + 0.01); 
-        gainH.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
-        gainH.gain.linearRampToValueAtTime(0, time + 0.07);
-        
-        oscH.start(time);
-        oscH.stop(time + 0.1);
-    }
-
-    // --- BASS ---
-    if (track.bass[beatNumber]) {
-        const oscB = audioCtx.createOscillator();
-        const gainB = audioCtx.createGain();
-        oscB.type = 'triangle';
-        oscB.frequency.value = track.bass[beatNumber];
-        oscB.connect(gainB);
-        gainB.connect(audioCtx.destination);
-        
-        gainB.gain.setValueAtTime(0, time);
-        gainB.gain.linearRampToValueAtTime(0.03 * musicVolume, time + 0.02);
-        gainB.gain.exponentialRampToValueAtTime(0.001, time + 0.25);
-        gainB.gain.linearRampToValueAtTime(0, time + 0.27);
-        
-        oscB.start(time);
-        oscB.stop(time + 0.3);
-    }
-
-    // --- AMBIENCE PAD ---
-    if (track.ambience && track.ambience[beatNumber]) {
-        const oscA = audioCtx.createOscillator();
-        const gainA = audioCtx.createGain();
-        oscA.type = 'sine'; 
-        oscA.frequency.value = track.ambience[beatNumber];
-        oscA.connect(gainA);
-        gainA.connect(audioCtx.destination);
-        
-        gainA.gain.setValueAtTime(0, time);
-        gainA.gain.linearRampToValueAtTime(0.03 * musicVolume, time + 0.5); 
-        gainA.gain.exponentialRampToValueAtTime(0.001, time + 2.5);
-        gainA.gain.linearRampToValueAtTime(0, time + 2.6);
-        
-        oscA.start(time);
-        oscA.stop(time + 2.7);
-    }
-
-    // --- DRUMS ---
-    if (track.drums[beatNumber]) {
-        const dType = track.drums[beatNumber];
-        const gainD = audioCtx.createGain();
-        gainD.connect(audioCtx.destination);
-
-        if (dType === 'k') { // KICK
-            const oscK = audioCtx.createOscillator();
-            oscK.type = 'sine';
-            oscK.connect(gainD);
-            oscK.frequency.setValueAtTime(150, time);
-            oscK.frequency.exponentialRampToValueAtTime(10, time + 0.1);
+    // --- NEW FORMAT: DYNAMIC TRACKS ---
+    if (currentSong.tracks) {
+        Object.keys(currentSong.tracks).forEach(instId => {
+            let track = currentSong.tracks[instId];
+            if (!track.sequence || track.sequence[stepNum] === 0 || track.sequence[stepNum] === '-') return;
             
-            gainD.gain.setValueAtTime(0, time);
-            gainD.gain.linearRampToValueAtTime(0.06 * musicVolume, time + 0.01);
-            gainD.gain.exponentialRampToValueAtTime(0.001, time + 0.1);
-            gainD.gain.linearRampToValueAtTime(0, time + 0.12);
-            
-            oscK.start(time);
-            oscK.stop(time + 0.15);
-        } 
-        else if ((dType === 's' || dType === 'h') && noiseBuffer) {
-            const noise = audioCtx.createBufferSource();
-            noise.buffer = noiseBuffer;
-            const filter = audioCtx.createBiquadFilter();
-            
-            if (dType === 's') { // SNARE
-                filter.type = 'bandpass';
-                filter.frequency.value = 1500;
-                
-                gainD.gain.setValueAtTime(0, time); 
-                gainD.gain.linearRampToValueAtTime(0.008 * musicVolume, time + 0.01); 
-                gainD.gain.exponentialRampToValueAtTime(0.001, time + 0.1);
-                gainD.gain.linearRampToValueAtTime(0, time + 0.12);
-                
-                noise.start(time);
-                noise.stop(time + 0.15);
-            } else { // HI-HAT
-                filter.type = 'highpass';
-                filter.frequency.value = 5000;
-                
-                gainD.gain.setValueAtTime(0, time);
-                gainD.gain.linearRampToValueAtTime(0.01 * musicVolume, time + 0.01);
-                gainD.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
-                gainD.gain.linearRampToValueAtTime(0, time + 0.07);
-                
-                noise.start(time);
-                noise.stop(time + 0.1);
+            let sustainBlocks = 1;
+            for (let k = stepNum + 1; k < track.sequence.length; k++) {
+                if (track.sequence[k] === '-') sustainBlocks++;
+                else break;
             }
-            noise.connect(filter);
-            filter.connect(gainD);
+            let totalDuration = sustainBlocks * secondsPerStep;
+            playSoundEvent(instId, track.sequence[stepNum], time, track.vol * musicVolume, track.pan, totalDuration);
+        });
+    } 
+    // --- LEGACY FORMAT BACKWARD COMPATIBILITY ---
+    else {
+        if (currentSong.melody && currentSong.melody[stepNum]) playSoundEvent('melody', currentSong.melody[stepNum], time, 1.0 * musicVolume, 0, secondsPerStep);
+        if (currentSong.harmony && currentSong.harmony[stepNum]) playSoundEvent('melody', currentSong.harmony[stepNum], time, 0.6 * musicVolume, 0, secondsPerStep);
+        if (currentSong.bass && currentSong.bass[stepNum]) playSoundEvent('bass', currentSong.bass[stepNum], time, 1.0 * musicVolume, 0, secondsPerStep);
+        if (currentSong.ambience && currentSong.ambience[stepNum]) playSoundEvent('pad', currentSong.ambience[stepNum], time, 1.0 * musicVolume, 0, secondsPerStep * 4);
+        
+        if (currentSong.drums && currentSong.drums[stepNum]) {
+            let d = currentSong.drums[stepNum];
+            if (d === 'k') playSoundEvent('kick', 'HIT', time, 1.0 * musicVolume, 0);
+            if (d === 's') playSoundEvent('snare', 'HIT', time, 1.0 * musicVolume, 0);
+            if (d === 'h') playSoundEvent('hihat', 'HIT', time, 1.0 * musicVolume, 0);
         }
     }
 }
 
+// Router for triggering the correct Web Audio API math
+function playSoundEvent(instId, note, time, vol, pan, duration) {
+    if (instId === 'kick') playKick(time, vol, pan);
+    else if (instId === 'snare') playSnare(time, vol, pan);
+    else if (instId === 'hihat') playHihat(time, duration || 0.1, vol, pan);
+    else if (instId === 'openhat') playHihat(time, duration || 0.3, vol, pan);
+    else if (instId === 'tom') playTom(time, vol, pan);
+    else if (instId === 'clap') playClap(time, vol, pan);
+    else if (instId === 'fx_sweep') playSweep(time, vol, pan, duration || 2.0);
+    else if (instId === 'fx_impact') playImpact(time, vol, pan);
+    else if (instId === 'amb_vinyl') playVinyl(time, vol, pan, duration || 2.0);
+    else {
+        // It's a Synth, use frequency mapping
+        let freq = typeof note === 'number' ? note : (NOTES[note] || 440);
+        if (instId === 'bass') playTone(freq, time, 'triangle', duration || 0.2, false, false, vol, pan);
+        else if (instId === 'saw') playTone(freq, time, 'sawtooth', duration || 0.2, false, false, vol, pan);
+        else if (instId === 'pad') playTone(freq, time, 'sine', duration || 0.5, true, false, vol, pan);
+        else if (instId === 'pluck') playTone(freq, time, 'triangle', duration || 0.1, false, true, vol, pan);
+        else if (instId === 'trumpet') playTone(freq, time, 'sawtooth', duration || 0.3, false, false, vol, pan);
+        else playTone(freq, time, 'square', duration || 0.15, false, false, vol, pan); 
+    }
+}
+
+function playKick(time, vol, pan) {
+    let osc = audioCtx.createOscillator(); let gain = audioCtx.createGain(); let trackOut = buildTrackRouting(vol, pan);
+    osc.connect(gain); gain.connect(trackOut);
+    osc.frequency.setValueAtTime(150, time); osc.frequency.exponentialRampToValueAtTime(0.01, time + 0.5);
+    gain.gain.setValueAtTime(1, time); gain.gain.exponentialRampToValueAtTime(0.01, time + 0.5);
+    osc.start(time); osc.stop(time + 0.5);
+}
+
+function playSnare(time, vol, pan) {
+    let trackOut = buildTrackRouting(vol, pan);
+    let noise = audioCtx.createBufferSource(); noise.buffer = noiseBuffer;
+    let filter = audioCtx.createBiquadFilter(); filter.type = 'highpass'; filter.frequency.value = 1000;
+    let gain = audioCtx.createGain(); gain.gain.setValueAtTime(1, time); gain.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
+    noise.connect(filter); filter.connect(gain); gain.connect(trackOut);
+    noise.start(time); noise.stop(time + 0.2);
+    
+    let osc = audioCtx.createOscillator(); let oscGain = audioCtx.createGain(); osc.type = 'triangle';
+    osc.connect(oscGain); oscGain.connect(trackOut);
+    osc.frequency.setValueAtTime(250, time); oscGain.gain.setValueAtTime(0.5, time); oscGain.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
+    osc.start(time); osc.stop(time + 0.2);
+}
+
+function playHihat(time, duration, vol, pan) {
+    let trackOut = buildTrackRouting(vol, pan);
+    let noise = audioCtx.createBufferSource(); noise.buffer = noiseBuffer;
+    let filter = audioCtx.createBiquadFilter(); filter.type = 'highpass'; filter.frequency.value = 7000;
+    let gain = audioCtx.createGain(); gain.gain.setValueAtTime(0.5, time); gain.gain.exponentialRampToValueAtTime(0.01, time + duration);
+    noise.connect(filter); filter.connect(gain); gain.connect(trackOut);
+    noise.start(time); noise.stop(time + duration);
+}
+
+function playTom(time, vol, pan) {
+    let trackOut = buildTrackRouting(vol, pan);
+    let osc = audioCtx.createOscillator(); let gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(trackOut);
+    osc.frequency.setValueAtTime(200, time); osc.frequency.exponentialRampToValueAtTime(50, time + 0.3);
+    gain.gain.setValueAtTime(0.8, time); gain.gain.exponentialRampToValueAtTime(0.01, time + 0.3);
+    osc.start(time); osc.stop(time + 0.3);
+}
+
+function playClap(time, vol, pan) {
+    let trackOut = buildTrackRouting(vol, pan);
+    let filter = audioCtx.createBiquadFilter(); filter.type = 'highpass'; filter.frequency.value = 1000;
+    let gain = audioCtx.createGain(); gain.gain.setValueAtTime(0.5, time); gain.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
+    filter.connect(gain); gain.connect(trackOut);
+    [0, 0.02, 0.04].forEach(offset => {
+        let noise = audioCtx.createBufferSource(); noise.buffer = noiseBuffer;
+        noise.connect(filter); noise.start(time + offset); noise.stop(time + offset + 0.1);
+    });
+}
+
+function playTone(freq, time, type, duration, slowAttack=false, fastDecay=false, vol, pan) {
+    if (!freq) return;
+    let trackOut = buildTrackRouting(vol, pan);
+    let osc = audioCtx.createOscillator(); let gain = audioCtx.createGain(); osc.type = type;
+    osc.connect(gain); gain.connect(trackOut);
+    osc.frequency.setValueAtTime(freq, time); 
+    
+    if (slowAttack) {
+        gain.gain.setValueAtTime(0.01, time); gain.gain.linearRampToValueAtTime(0.4, time + Math.min(0.2, duration/2)); gain.gain.linearRampToValueAtTime(0.01, time + duration);
+    } else if (fastDecay) {
+        gain.gain.setValueAtTime(0.4, time); gain.gain.exponentialRampToValueAtTime(0.01, time + Math.min(0.1, duration));
+    } else {
+        gain.gain.setValueAtTime(0.3, time); gain.gain.exponentialRampToValueAtTime(0.01, time + duration);
+    }
+    osc.start(time); osc.stop(time + duration);
+}
+
+function playSweep(time, vol, pan, duration) {
+    let trackOut = buildTrackRouting(vol, pan);
+    let noise = audioCtx.createBufferSource(); noise.buffer = noiseBuffer;
+    let filter = audioCtx.createBiquadFilter(); filter.type = 'bandpass'; filter.Q.value = 2.0;
+    filter.frequency.setValueAtTime(200, time);
+    filter.frequency.exponentialRampToValueAtTime(6000, time + duration);
+    let gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(0.01, time);
+    gain.gain.linearRampToValueAtTime(0.8, time + duration * 0.9); 
+    gain.gain.linearRampToValueAtTime(0.01, time + duration); 
+    noise.connect(filter); filter.connect(gain); gain.connect(trackOut);
+    noise.start(time); noise.stop(time + duration);
+}
+
+function playImpact(time, vol, pan) {
+    let trackOut = buildTrackRouting(vol, pan);
+    let osc = audioCtx.createOscillator(); osc.type = 'sine';
+    osc.frequency.setValueAtTime(100, time); osc.frequency.exponentialRampToValueAtTime(20, time + 1.5);
+    let gainOsc = audioCtx.createGain(); gainOsc.gain.setValueAtTime(1.0, time); gainOsc.gain.exponentialRampToValueAtTime(0.01, time + 1.5);
+    osc.connect(gainOsc); gainOsc.connect(trackOut); osc.start(time); osc.stop(time + 1.5);
+
+    let noise = audioCtx.createBufferSource(); noise.buffer = noiseBuffer;
+    let filter = audioCtx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 500;
+    let gainNoise = audioCtx.createGain(); gainNoise.gain.setValueAtTime(0.5, time); gainNoise.gain.exponentialRampToValueAtTime(0.01, time + 0.5);
+    noise.connect(filter); filter.connect(gainNoise); gainNoise.connect(trackOut);
+    noise.start(time); noise.stop(time + 0.5);
+}
+
+function playVinyl(time, vol, pan, duration) {
+    let trackOut = buildTrackRouting(vol, pan);
+    let noise = audioCtx.createBufferSource(); noise.buffer = noiseBuffer;
+    let filter = audioCtx.createBiquadFilter(); filter.type = 'highpass'; filter.frequency.value = 3000;
+    let gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(0.05, time); gain.gain.linearRampToValueAtTime(0.01, time + duration);
+    noise.connect(filter); filter.connect(gain); gain.connect(trackOut);
+    noise.start(time); noise.stop(time + duration);
+}
+
+// === MUSIC SCHEDULER & HEARTBEAT ===
 function musicScheduler() {
     while (nextNoteTime < audioCtx.currentTime + scheduleAheadTime) {
         scheduleNote(currentNote, nextNoteTime);
@@ -229,36 +270,10 @@ function musicScheduler() {
     timerID = setTimeout(musicScheduler, lookahead);
 }
 
-// Add a master gain node at the top of audio.js with your other globals
-let masterGain; 
-
-function initAudio() {
-    if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        
-        // Create a master gain that stays silent initially
-        masterGain = audioCtx.createGain();
-        masterGain.gain.setValueAtTime(0, audioCtx.currentTime);
-        masterGain.connect(audioCtx.destination);
-    }
-    if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-    }
-    // ... rest of your existing initAudio code ...
-}
-
-// Update your playRetroSound and scheduleNote to connect to masterGain instead of audioCtx.destination
-// Example for playRetroSound:
-// gainNode.connect(masterGain); 
-
 function startBackgroundMusic() {
     initAudio();
     if (!musicPlaying) {
         musicPlaying = true;
-        
-        // Master Fade-In: Ramp the entire game's master volume from 0 to 1 over 1 full second
-        masterGain.gain.linearRampToValueAtTime(1.0, audioCtx.currentTime + 1.0);
-        
         nextNoteTime = audioCtx.currentTime + 0.05;
         musicScheduler();
     }
@@ -273,7 +288,6 @@ function playRetroSound(type) {
     const gainNode = audioCtx.createGain();
     gainNode.connect(audioCtx.destination);
 
-    // DYNAMIC NOISE GENERATORS
     if (type === 'explosion' || type === 'splat') {
         const noise = audioCtx.createBufferSource();
         noise.buffer = noiseBuffer; 
@@ -310,14 +324,13 @@ function playRetroSound(type) {
     const osc = audioCtx.createOscillator();
     osc.connect(gainNode);
 
-    // SYNTHESIZED SOUNDS
     switch (type) {
         case 'xpTick':
             osc.type = 'triangle';
             osc.frequency.setValueAtTime(800 + (Math.random() * 200), now); 
             osc.frequency.exponentialRampToValueAtTime(1200, now + 0.05);
             gainNode.gain.setValueAtTime(0, now);
-            gainNode.gain.linearRampToValueAtTime(0.04 * sfxVolume, now + 0.005); // Faster attack for rapid sounds
+            gainNode.gain.linearRampToValueAtTime(0.04 * sfxVolume, now + 0.005);
             gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
             gainNode.gain.linearRampToValueAtTime(0, now + 0.06);
             osc.start(now); osc.stop(now + 0.08);
@@ -512,4 +525,3 @@ function playRetroSound(type) {
             return; 
     }
 }
-    

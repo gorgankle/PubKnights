@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Pub Knights - Particle Forge</title>
+    
+    <!-- 1. MOCK ENVIRONMENT -->
+    <script>
+        window.player = {
+            appearance: { gender: 'male', skin: 'S', hair: 'H', eyes: 'Z' },
+            equipment: {},
+            inventory: [],
+            pet: {}
+        };
+        window.SpriteMatrices = {};
+        window.buildSprite = function(arr) { return arr; };
+        window.currentTileSize = 60; 
+        window.activeExplosions = [];
+    </script>
+
+    <!-- 2. GAME ASSETS -->
+    <script src="js/character-creator.js"></script>
+    <script src="js/renderer.js"></script>
+    <script src="js/map-assets.js"></script>
+    <script src="js/item-assets.js"></script>
+    <script src="js/npc-assets.js"></script>
+    <script src="js/pet-assets.js"></script>
+    <script src="js/icon-assets.js"></script>
+
+    <style>
+        body {
+            background-color: #2c2520;
+            color: #f4ebd9;
+            font-family: 'Courier New', monospace;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 { color: #ffcc66; text-shadow: 0 2px 4px rgba(0,0,0,0.5); margin-bottom: 5px; }
+        p.subtitle { color: #bbaaa0; margin-bottom: 20px; font-size: 14px; }
+        .container {
+            display: flex; gap: 20px; background: rgba(34, 26, 20, 0.95);
+            padding: 20px; border: 2px solid #634e3d; border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        }
+        canvas { background-color: #1a1511; border: 2px solid #4a3b2c; cursor: crosshair; border-radius: 4px; }
+        .controls { width: 350px; display: flex; flex-direction: column; gap: 15px; }
+        .tabs { display: flex; flex-wrap: wrap; gap: 5px; border-bottom: 2px solid #634e3d; padding-bottom: 5px; margin-bottom: 5px; }
+        .tab-btn {
+            background: #3a2f26; color: #bbaaa0; border: 1px solid #634e3d; border-bottom: none;
+            padding: 6px 10px; cursor: pointer; font-family: inherit; font-weight: bold;
+            flex-grow: 1; border-radius: 4px 4px 0 0; font-size: 12px; transition: all 0.2s;
+        }
+        .tab-btn.active { background: #634e3d; color: #ffcc66; }
+        .tab-content { display: none; flex-direction: column; gap: 15px; }
+        .tab-content.active { display: flex; }
+        .control-group { border: 1px dashed #634e3d; padding: 15px; border-radius: 4px; background: rgba(0,0,0,0.2); }
+        .control-group h3 { margin: 0 0 15px 0; font-size: 14px; color: #ffcc66; border-bottom: 1px dashed #634e3d; padding-bottom: 5px; }
+        .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .row label { font-size: 12px; font-weight: bold; width: 120px; }
+        .row input[type="range"] { flex-grow: 1; margin: 0 10px; accent-color: #e67e22; }
+        .row span.val { font-size: 14px; color: #fff; width: 30px; text-align: right; font-weight: bold; }
+        select, input[type="text"] {
+            width: 100%; padding: 6px; background: #1a1511; color: #f4ebd9;
+            border: 1px solid #634e3d; font-family: 'Courier New', monospace; font-size: 12px;
+        }
+        .action-btns { display: flex; gap: 10px; }
+        button.action {
+            padding: 12px; font-family: inherit; font-weight: bold; color: white;
+            border: none; border-radius: 4px; cursor: pointer; flex-grow: 1; text-transform: uppercase;
+        }
+        button.detonate { background: #c0392b; }
+        button.detonate:hover { background: #e74c3c; }
+        button.clear { background: #7f8c8d; }
+        button.clear:hover { background: #95a5a6; }
+        button.export { background: #2980b9; margin-top: 5px; }
+        button.export:hover { background: #3498db; }
+        textarea {
+            width: 100%; height: 120px; background: #111; color: #2ecc71; border: 1px solid #4a3b2c;
+            padding: 10px; font-family: inherit; font-size: 11px; box-sizing: border-box; resize: none;
+        }
+        .hint { font-size: 11px; color: #7f8c8d; margin-top: 5px; margin-bottom: 15px; }
+        .swatch { width: 24px; height: 24px; border: 1px solid #634e3d; border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+    <h1>💥 Particle Forge</h1>
+    <p class="subtitle">Visual Effects Simulator & Asset Overlay</p>
+
+    <div class="container">
+        <!-- RENDER CANVAS -->
+        <div style="position: relative;">
+            <canvas id="forgeCanvas" width="600" height="600"></canvas>
+            <div class="hint" style="text-align: center;">Click anywhere on the grid to fire effect at that location.</div>
+        </div>
+
+        <!-- CONTROLS -->
+        <div class="controls">
+            
+            <!-- TABS -->
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab(event, 'tab-explosion', 'EXPLOSION')">Explosions</button>
+                <button class="tab-btn" onclick="switchTab(event, 'tab-projectile', 'PROJECTILE')">Projectiles</button>
+                <button class="tab-btn" onclick="switchTab(event, 'tab-text', 'TEXT')">Combat Text</button>
+                <button class="tab-btn" onclick="switchTab(event, 'tab-aura', 'AURA')">Auras</button>
+                <button class="tab-btn" onclick="switchTab(event, 'tab-weather', 'WEATHER')">Weather</button>
+                <button class="tab-btn" onclick="switchTab(event, 'tab-assets', 'ASSETS')" style="width: 100%;">Asset Overlay</button>
+            </div>
+
+            <!-- TAB: EXPLOSIONS -->
+            <div id="tab-explosion" class="tab-content active">
+                <div class="control-group">
+                    <h3>Physics & Timing</h3>
+                    <div class="row">
+                        <label>Grid Radius</label>
+                        <input type="range" id="param-radius" min="0.5" max="4.0" step="0.1" value="1.5" oninput="updateVal('param-radius', 'val-radius')">
+                        <span class="val" id="val-radius">1.5</span>
+                    </div>
+                    <div class="row">
+                        <label>Max Frames</label>
+                        <input type="range" id="param-frames" min="5" max="60" step="1" value="25" oninput="updateVal('param-frames', 'val-frames')">
+                        <span class="val" id="val-frames">25</span>
+                    </div>
+                    <div class="row">
+                        <label>Expand Curve</label>
+                        <input type="range" id="param-curve" min="0.5" max="3.0" step="0.1" value="1.0" oninput="updateVal('param-curve', 'val-curve')">
+                        <span class="val" id="val-curve">1.0</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <h3>Color Composition</h3>
+                    <div class="row">
+                        <label>Outer Ring:</label>
+                        <div style="display:flex; gap:10px; flex-grow:1; align-items:center;">
+                            <div id="swatch-outer" class="swatch" style="background:#e74c3c;"></div>
+                            <select id="color-outer" onchange="document.getElementById('swatch-outer').style.backgroundColor = this.value;"></select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <label>Mid Ring:</label>
+                        <div style="display:flex; gap:10px; flex-grow:1; align-items:center;">
+                            <div id="swatch-mid" class="swatch" style="background:#e67e22;"></div>
+                            <select id="color-mid" onchange="document.getElementById('swatch-mid').style.backgroundColor = this.value;"></select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <label>Core Color:</label>
+                        <div style="display:flex; gap:10px; flex-grow:1; align-items:center;">
+                            <div id="swatch-core" class="swatch" style="background:#f1c40f;"></div>
+                            <select id="color-core" onchange="document.getElementById('swatch-core').style.backgroundColor = this.value;"></select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: PROJECTILES -->
+            <div id="tab-projectile" class="tab-content">
+                <div class="control-group">
+                    <h3>Flight Dynamics</h3>
+                    <p class="hint" style="margin-top:0;">Ensure you have selected an asset in the "Asset Overlay" tab to throw!</p>
+                    <div class="row">
+                        <label>Duration (Frames)</label>
+                        <input type="range" id="param-proj-frames" min="10" max="60" step="1" value="30" oninput="updateVal('param-proj-frames', 'val-proj-frames')">
+                        <span class="val" id="val-proj-frames">30</span>
+                    </div>
+                    <div class="row">
+                        <label>Arc Height</label>
+                        <input type="range" id="param-proj-arc" min="0" max="4.0" step="0.1" value="1.5" oninput="updateVal('param-proj-arc', 'val-proj-arc')">
+                        <span class="val" id="val-proj-arc">1.5</span>
+                    </div>
+                    <div class="row">
+                        <label>Behavior</label>
+                        <select id="param-proj-type">
+                            <option value="spin">Spinning (Axes / Bombs)</option>
+                            <option value="arrow">Point at Target (Arrows / Spears)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: TEXT -->
+            <div id="tab-text" class="tab-content">
+                <div class="control-group">
+                    <h3>Hit Marker Config</h3>
+                    <div class="row" style="margin-bottom: 15px;">
+                        <label>Sample Text</label>
+                        <input type="text" id="param-text-val" value="-45 Crit!" style="box-sizing: border-box;">
+                    </div>
+                    <div class="row">
+                        <label>Font Size (px)</label>
+                        <input type="range" id="param-text-size" min="12" max="48" step="1" value="22" oninput="updateVal('param-text-size', 'val-text-size')">
+                        <span class="val" id="val-text-size">22</span>
+                    </div>
+                    <div class="row">
+                        <label>Rise Dist (px)</label>
+                        <input type="range" id="param-text-rise" min="10" max="150" step="1" value="50" oninput="updateVal('param-text-rise', 'val-text-rise')">
+                        <span class="val" id="val-text-rise">50</span>
+                    </div>
+                    <div class="row">
+                        <label>Duration (ms)</label>
+                        <input type="range" id="param-text-time" min="300" max="2500" step="100" value="1000" oninput="updateVal('param-text-time', 'val-text-time')">
+                        <span class="val" id="val-text-time">1000</span>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <h3>Text Color</h3>
+                    <div class="row">
+                        <label>Primary Color:</label>
+                        <div style="display:flex; gap:10px; flex-grow:1; align-items:center;">
+                            <div id="swatch-text" class="swatch" style="background:#e74c3c;"></div>
+                            <select id="color-text" onchange="document.getElementById('swatch-text').style.backgroundColor = this.value;"></select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: AURAS -->
+            <div id="tab-aura" class="tab-content">
+                <div class="control-group">
+                    <h3>Aura Dynamics</h3>
+                    <p class="hint" style="margin-top:0;">Click the grid to set the Aura's focal point.</p>
+                    <div class="row">
+                        <label>Style</label>
+                        <select id="param-aura-style">
+                            <option value="rise">Rising Energy (Buffs/Poison)</option>
+                            <option value="orbit">Orbiting Orbs (Shields/Magic)</option>
+                        </select>
+                    </div>
+                    <div class="row">
+                        <label>Radius (Tiles)</label>
+                        <input type="range" id="param-aura-radius" min="0.2" max="2.0" step="0.1" value="0.8" oninput="updateVal('param-aura-radius', 'val-aura-radius')">
+                        <span class="val" id="val-aura-radius">0.8</span>
+                    </div>
+                    <div class="row">
+                        <label>Intensity</label>
+                        <input type="range" id="param-aura-intensity" min="1" max="10" step="1" value="3" oninput="updateVal('param-aura-intensity', 'val-aura-intensity')">
+                        <span class="val" id="val-aura-intensity">3</span>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <h3>Aura Colors</h3>
+                    <div class="row">
+                        <label>Primary Color:</label>
+                        <div style="display:flex; gap:10px; flex-grow:1; align-items:center;">
+                            <div id="swatch-aura-1" class="swatch" style="background:#2ecc71;"></div>
+                            <select id="color-aura-1" onchange="document.getElementById('swatch-aura-1').style.backgroundColor = this.value;"></select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <label>Secondary Color:</label>
+                        <div style="display:flex; gap:10px; flex-grow:1; align-items:center;">
+                            <div id="swatch-aura-2" class="swatch" style="background:#9b59b6;"></div>
+                            <select id="color-aura-2" onchange="document.getElementById('swatch-aura-2').style.backgroundColor = this.value;"></select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: WEATHER -->
+            <div id="tab-weather" class="tab-content">
+                <div class="control-group">
+                    <h3>Ambient Conditions</h3>
+                    <p class="hint" style="margin-top:0;">Weather plays automatically while this tab is active.</p>
+                    <div class="row">
+                        <label>Precipitation</label>
+                        <select id="param-weather-style">
+                            <option value="rain">Heavy Rain</option>
+                            <option value="snow">Gentle Snow</option>
+                            <option value="ash">Rising Ash/Embers</option>
+                            <option value="wind">Blowing Wind/Dust</option>
+                            <option value="fire">Raging Firestorm</option>
+                        </select>
+                    </div>
+                    <div class="row">
+                        <label>Density</label>
+                        <input type="range" id="param-weather-density" min="50" max="500" step="50" value="150" oninput="updateVal('param-weather-density', 'val-weather-density')">
+                        <span class="val" id="val-weather-density">150</span>
+                    </div>
+                    <div class="row">
+                        <label>Wind Speed</label>
+                        <input type="range" id="param-weather-wind" min="-5" max="10" step="0.1" value="1.0" oninput="updateVal('param-weather-wind', 'val-weather-wind')">
+                        <span class="val" id="val-weather-wind">1.0</span>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <h3>Weather Colors</h3>
+                    <div class="row">
+                        <label>Primary Color:</label>
+                        <div style="display:flex; gap:10px; flex-grow:1; align-items:center;">
+                            <div id="swatch-weather-1" class="swatch" style="background:#bdc3c7;"></div>
+                            <select id="color-weather-1" onchange="document.getElementById('swatch-weather-1').style.backgroundColor = this.value;"></select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <label>Secondary Color:</label>
+                        <div style="display:flex; gap:10px; flex-grow:1; align-items:center;">
+                            <div id="swatch-weather-2" class="swatch" style="background:#7f8c8d;"></div>
+                            <select id="color-weather-2" onchange="document.getElementById('swatch-weather-2').style.backgroundColor = this.value;"></select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: ASSETS -->
+            <div id="tab-assets" class="tab-content">
+                <div class="control-group">
+                    <h3>Sprite Matrices Library</h3>
+                    <p class="hint" style="margin-top: 0;">
+                        Select an asset from your game files. It will be drawn in the center of the grid so you can test overlapping visual effects.
+                    </p>
+                    <label>Target Overlay:</label>
+                    <select id="asset-select" style="margin-top:5px;">
+                        <option value="">-- No Overlay (Empty Grid) --</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- ACTION BUTTONS -->
+            <div class="action-btns">
+                <button class="action detonate" onclick="triggerEffect(5, 5)">Execute Effect</button>
+                <button class="action clear" onclick="clearEffects()">Clear</button>
+            </div>
+
+            <button class="action export" id="export-btn" onclick="exportEffect()">💾 Export Config to Clipboard</button>
+            <textarea id="export-output" readonly placeholder="JSON Configuration will appear here..."></textarea>
+        </div>
+    </div>
+
+    <script>
+        // --- FORGE GLOBALS ---
+        const canvas = document.getElementById('forgeCanvas');
+        const ctx = canvas.getContext('2d');
+        const GRID_SIZE = 10;
+        const TILE_SIZE = 60;
+        
+        let animFrameId;
+        let currentMode = 'EXPLOSION';
+        let forgeExplosions = [];
+        let forgeProjectiles = [];
+        let forgeAuraParticles = [];
+        let activeAuraTarget = null;
+        let forgeWeatherParticles = [];
+
+        const forgeFallbackPalette = {
+            'R': '#e74c3c', 'O': '#e67e22', 'Y': '#f1c40f', 'W': '#ffffff', 
+            'B': '#3498db', 'P': '#9b59b6', 'G': '#2ecc71', 'D': '#34495e', 'S': '#bdc3c7'
+        };
+
+        // --- UI BINDINGS ---
+        function updateVal(sliderId, displayId) {
+            document.getElementById(displayId).innerText = document.getElementById(sliderId).value;
+        }
+
+        function switchTab(e, tabId, modeName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            e.currentTarget.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+            
+            if (modeName !== 'ASSETS') {
+                currentMode = modeName;
+                clearEffects();
+            }
+        }
+
+        function clearEffects() {
+            forgeExplosions = [];
+            forgeProjectiles = [];
+            forgeAuraParticles = [];
+            activeAuraTarget = null;
+            forgeWeatherParticles = [];
+        }
+
+        // --- DYNAMIC POPULATORS ---
+        function populateColorDropdowns() {
+            const activePalette = (typeof PALETTE !== 'undefined') ? PALETTE : forgeFallbackPalette;
+            const selects = [
+                { id: 'color-outer', swatch: 'swatch-outer', default: '#e74c3c' },
+                { id: 'color-mid', swatch: 'swatch-mid', default: '#e67e22' },
+                { id: 'color-core', swatch: 'swatch-core', default: '#f1c40f' },
+                { id: 'color-text', swatch: 'swatch-text', default: '#e74c3c' },
+                { id: 'color-aura-1', swatch: 'swatch-aura-1', default: '#2ecc71' },
+                { id: 'color-aura-2', swatch: 'swatch-aura-2', default: '#9b59b6' },
+                { id: 'color-weather-1', swatch: 'swatch-weather-1', default: '#bdc3c7' },
+                { id: 'color-weather-2', swatch: 'swatch-weather-2', default: '#34495e' }
+            ];
+
+            selects.forEach(sel => {
+                let dropdown = document.getElementById(sel.id);
+                let swatch = document.getElementById(sel.swatch);
+                if (!dropdown || !swatch) return;
+                dropdown.innerHTML = ''; 
+                
+                for (let char in activePalette) {
+                    if (char === '.' || char === '_') continue; 
+                    let hex = activePalette[char];
+                    let opt = document.createElement('option');
+                    opt.value = hex;
+                    opt.innerText = `[${char}] ${hex}`;
+                    
+                    if (hex === sel.default) {
+                        opt.selected = true;
+                        swatch.style.backgroundColor = hex; 
+                    }
+                    dropdown.appendChild(opt);
+                }
+            });
+        }
+
+        function populateAssetDropdown() {
+            const select = document.getElementById('asset-select');
+            if (typeof SpriteMatrices !== 'undefined') {
+                const keys = Object.keys(SpriteMatrices).sort();
+                keys.forEach(key => {
+                    let opt = document.createElement('option');
+                    opt.value = key;
+                    opt.innerText = key;
+                    select.appendChild(opt);
+                });
+            } else {
+                select.innerHTML = '<option value="">-- Asset Link Failed --</option>';
+            }
+        }
+
+        // --- DOM TEXT SIMULATOR ---
+        function forgeSpawnHitMarker(gridX, gridY, text, color, size, rise, time) {
+            const rect = canvas.getBoundingClientRect();
+            const marker = document.createElement("div");
+            
+            marker.innerText = text;
+            marker.style.position = "absolute";
+            marker.style.left = (rect.left + window.scrollX + (gridX * TILE_SIZE) + (TILE_SIZE / 2)) + "px";
+            marker.style.top = (rect.top + window.scrollY + (gridY * TILE_SIZE) + 10) + "px";
+            marker.style.color = color;
+            marker.style.fontWeight = "bold";
+            marker.style.fontSize = size + "px";
+            marker.style.textShadow = "2px 2px 0px #000, -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000";
+            marker.style.pointerEvents = "none";
+            marker.style.zIndex = "9999";
+            marker.style.transform = "translate(-50%, -50%)";
+            
+            // CSS Transition
+            marker.style.transition = `top ${time}ms ease-out, opacity ${time}ms ease-out`;
+            document.body.appendChild(marker);
+
+            setTimeout(() => { 
+                marker.style.top = (rect.top + window.scrollY + (gridY * TILE_SIZE) - parseInt(rise)) + "px"; 
+                marker.style.opacity = "0"; 
+            }, 50);
+
+            setTimeout(() => marker.remove(), parseInt(time) + 50);
+        }
+
+        // --- INTERACTION ---
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            triggerEffect(mouseX / TILE_SIZE, mouseY / TILE_SIZE);
+        });
+
+        function triggerEffect(targetX, targetY) {
+            if (currentMode === 'EXPLOSION') {
+                const r = parseFloat(document.getElementById('param-radius').value);
+                const f = parseInt(document.getElementById('param-frames').value);
+                const c = parseFloat(document.getElementById('param-curve').value);
+                const cOut = document.getElementById('color-outer').value;
+                const cMid = document.getElementById('color-mid').value;
+                const cCore = document.getElementById('color-core').value;
+
+                forgeExplosions.push({
+                    x: targetX + ((Math.random() * 0.2) - 0.1), 
+                    y: targetY + ((Math.random() * 0.2) - 0.1),
+                    radius: r, frame: 0, maxFrames: f, curve: c,
+                    colors: { outer: cOut, mid: cMid, core: cCore }
+                });
+            } 
+            else if (currentMode === 'PROJECTILE') {
+                const f = parseInt(document.getElementById('param-proj-frames').value);
+                const arc = parseFloat(document.getElementById('param-proj-arc').value);
+                const type = document.getElementById('param-proj-type').value;
+                const spriteId = document.getElementById('asset-select').value || 'icon_arrow';
+
+                forgeProjectiles.push({
+                    sx: 1, sy: 8, // Start bottom left
+                    tx: targetX, ty: targetY,
+                    frame: 0, maxFrames: f, arc: arc, type: type, spriteId: spriteId
+                });
+            }
+            else if (currentMode === 'TEXT') {
+                const text = document.getElementById('param-text-val').value;
+                const size = document.getElementById('param-text-size').value;
+                const rise = document.getElementById('param-text-rise').value;
+                const time = document.getElementById('param-text-time').value;
+                const color = document.getElementById('color-text').value;
+
+                // Center the text popup accurately over the click
+                forgeSpawnHitMarker(targetX, targetY, text, color, size, rise, time);
+            }
+            else if (currentMode === 'AURA') {
+                activeAuraTarget = { x: targetX, y: targetY };
+            }
+        }
+
+        // --- RENDER LOOP ---
+        function renderSandbox() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 1. Draw Floor Grid
+            for (let x = 0; x < GRID_SIZE; x++) {
+                for (let y = 0; y < GRID_SIZE; y++) {
+                    if (typeof SpriteMatrices !== 'undefined' && typeof drawProceduralSprite === 'function' && SpriteMatrices['ground_cellars']) {
+                        drawProceduralSprite(ctx, SpriteMatrices['ground_cellars'], x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE);
+                    }
+                    ctx.strokeStyle = "rgba(58, 47, 38, 0.5)";
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                }
+            }
+
+            // 2. Asset Overlay
+            const selectedAsset = document.getElementById('asset-select').value;
+            if (selectedAsset && typeof SpriteMatrices !== 'undefined' && typeof drawProceduralSprite === 'function') {
+                if (SpriteMatrices[selectedAsset]) {
+                    drawProceduralSprite(ctx, SpriteMatrices[selectedAsset], 4.5 * TILE_SIZE, 4.5 * TILE_SIZE, TILE_SIZE);
+                }
+            }
+
+            // 3. Mode: Explosions
+            if (currentMode === 'EXPLOSION') {
+                for (let i = forgeExplosions.length - 1; i >= 0; i--) {
+                    let exp = forgeExplosions[i];
+                    exp.frame++;
+                    let progress = exp.frame / exp.maxFrames;
+                    if (progress >= 1.0) { forgeExplosions.splice(i, 1); continue; }
+
+                    let easeProgress = Math.pow(Math.sin(progress * Math.PI / 2), exp.curve);
+                    let currentRadius = (exp.radius * TILE_SIZE) * easeProgress;
+                    let centerX = (exp.x * TILE_SIZE);
+                    let centerY = (exp.y * TILE_SIZE);
+                    let globalAlpha = 1.0 - Math.pow(progress, 2);
+
+                    ctx.beginPath(); ctx.arc(centerX, centerY, currentRadius * 0.3, 0, Math.PI * 2);
+                    ctx.fillStyle = exp.colors.core; ctx.globalAlpha = globalAlpha; ctx.fill();
+
+                    ctx.beginPath(); ctx.arc(centerX, centerY, currentRadius * 0.6, 0, Math.PI * 2);
+                    ctx.fillStyle = exp.colors.mid; ctx.globalAlpha = globalAlpha * 0.7; ctx.fill();
+
+                    ctx.beginPath(); ctx.arc(centerX, centerY, currentRadius, 0, Math.PI * 2);
+                    ctx.fillStyle = exp.colors.outer; ctx.globalAlpha = globalAlpha * 0.4; ctx.fill();
+
+                    ctx.lineWidth = 2; ctx.strokeStyle = exp.colors.core; ctx.globalAlpha = globalAlpha * 0.8; ctx.stroke();
+                    ctx.globalAlpha = 1.0; 
+                }
+            }
+            // 4. Mode: Projectiles
+            else if (currentMode === 'PROJECTILE') {
+                for (let i = forgeProjectiles.length - 1; i >= 0; i--) {
+                    let p = forgeProjectiles[i];
+                    p.frame++;
+                    let progress = p.frame / p.maxFrames;
+                    if (progress >= 1.0) { forgeProjectiles.splice(i, 1); continue; }
+
+                    let curX = p.sx + (p.tx - p.sx) * progress;
+                    let curY = p.sy + (p.ty - p.sy) * progress - (Math.sin(progress * Math.PI) * p.arc);
+
+                    let angle = (p.type === 'arrow') ? Math.atan2(p.ty - p.sy, p.tx - p.sx) : progress * Math.PI * 6;
+
+                    let px = curX * TILE_SIZE;
+                    let py = curY * TILE_SIZE;
+
+                    ctx.save();
+                    ctx.translate(px + (TILE_SIZE/2), py + (TILE_SIZE/2));
+                    ctx.rotate(angle);
+                    
+                    if (typeof SpriteMatrices !== 'undefined' && SpriteMatrices[p.spriteId] && typeof drawProceduralSprite === 'function') {
+                        drawProceduralSprite(ctx, SpriteMatrices[p.spriteId], -TILE_SIZE/2, -TILE_SIZE/2, TILE_SIZE);
+                    } else {
+                        ctx.fillStyle = '#e74c3c'; ctx.fillRect(-10, -10, 20, 20);
+                    }
+                    ctx.restore();
+                }
+            }
+            // 5. Mode: Auras
+            else if (currentMode === 'AURA') {
+                if (activeAuraTarget) {
+                    const style = document.getElementById('param-aura-style').value;
+                    const radius = parseFloat(document.getElementById('param-aura-radius').value);
+                    const intensity = parseInt(document.getElementById('param-aura-intensity').value);
+                    const c1 = document.getElementById('color-aura-1').value;
+                    const c2 = document.getElementById('color-aura-2').value;
+
+                    // Spawn new particles continuously while aura is active
+                    for (let i = 0; i < intensity; i++) {
+                        if (Math.random() > 0.5) { 
+                            if (style === 'rise') {
+                                let offsetAngle = Math.random() * Math.PI * 2;
+                                let offsetDist = Math.random() * radius * TILE_SIZE;
+                                forgeAuraParticles.push({
+                                    x: (activeAuraTarget.x * TILE_SIZE) + Math.cos(offsetAngle) * offsetDist,
+                                    y: (activeAuraTarget.y * TILE_SIZE) + Math.sin(offsetAngle) * offsetDist + (TILE_SIZE/2),
+                                    vx: (Math.random() - 0.5) * 1.5,
+                                    vy: -(Math.random() * 2 + 1), // Drift upward
+                                    life: 0,
+                                    maxLife: Math.floor(Math.random() * 20 + 30),
+                                    color: Math.random() > 0.5 ? c1 : c2,
+                                    size: Math.random() * 4 + 2,
+                                    style: 'rise'
+                                });
+                            } else if (style === 'orbit') {
+                                forgeAuraParticles.push({
+                                    centerX: activeAuraTarget.x * TILE_SIZE,
+                                    centerY: activeAuraTarget.y * TILE_SIZE,
+                                    angle: Math.random() * Math.PI * 2,
+                                    speed: (Math.random() * 0.1) + 0.05,
+                                    radius: radius * TILE_SIZE,
+                                    life: 0,
+                                    maxLife: Math.floor(Math.random() * 20 + 20),
+                                    color: Math.random() > 0.5 ? c1 : c2,
+                                    size: Math.random() * 5 + 3,
+                                    style: 'orbit'
+                                });
+                            }
+                        }
+                    }
+                }
+
+                // Update & Draw Aura Particles
+                for (let i = forgeAuraParticles.length - 1; i >= 0; i--) {
+                    let p = forgeAuraParticles[i];
+                    p.life++;
+                    if (p.life >= p.maxLife) {
+                        forgeAuraParticles.splice(i, 1);
+                        continue;
+                    }
+
+                    let progress = p.life / p.maxLife;
+                    let globalAlpha = 1.0 - progress;
+
+                    ctx.globalAlpha = globalAlpha;
+                    ctx.fillStyle = p.color;
+
+                    if (p.style === 'rise') {
+                        p.x += p.vx;
+                        p.y += p.vy;
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.size * (1 - progress * 0.5), 0, Math.PI * 2);
+                        ctx.fill();
+                    } else if (p.style === 'orbit') {
+                        p.angle += p.speed;
+                        let currentRadius = p.radius + Math.sin(p.life * 0.2) * 5; // Slight wobble
+                        // Pseudo-3D elliptical orbit: squash the Y axis
+                        let px = p.centerX + Math.cos(p.angle) * currentRadius;
+                        let py = p.centerY + Math.sin(p.angle) * currentRadius * 0.5; 
+                        
+                        ctx.beginPath();
+                        ctx.arc(px, py, p.size * (1 - progress * 0.5), 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+                ctx.globalAlpha = 1.0;
+            }
+            // 6. Mode: Weather
+            else if (currentMode === 'WEATHER') {
+                const style = document.getElementById('param-weather-style').value;
+                const density = parseInt(document.getElementById('param-weather-density').value);
+                const wind = parseFloat(document.getElementById('param-weather-wind').value);
+                const c1 = document.getElementById('color-weather-1').value;
+                const c2 = document.getElementById('color-weather-2').value;
+
+                // Dynamically maintain the particle count based on the slider
+                while (forgeWeatherParticles.length < density) {
+                    let isWind = style === 'wind';
+                    let isFire = style === 'fire';
+                    forgeWeatherParticles.push({
+                        x: Math.random() * canvas.width,
+                        y: Math.random() * canvas.height, // Pre-scatter across the screen
+                        speedY: style === 'ash' ? -(Math.random() * 2 + 1) : 
+                                isFire ? -(Math.random() * 4 + 2) :
+                                (style === 'rain' ? Math.random() * 10 + 15 : 
+                                isWind ? (Math.random() - 0.5) * 2 :
+                                Math.random() * 2 + 1),
+                        speedX: isWind ? (wind * 5) + (Math.sign(wind || 1) * (Math.random() * 3 + 2)) : wind + (Math.random() - 0.5),
+                        size: style === 'rain' ? Math.random() * 1.5 + 0.5 : 
+                              isWind ? Math.random() * 2 + 1 :
+                              isFire ? Math.random() * 4 + 2 :
+                              Math.random() * 3 + 1,
+                        wobble: Math.random() * Math.PI * 2, // Used for snow/ash/fire flutter
+                        isPrimaryColor: Math.random() > 0.5 // Assign random dual-color identity
+                    });
+                }
+                if (forgeWeatherParticles.length > density) forgeWeatherParticles.length = density;
+
+                for (let i = 0; i < forgeWeatherParticles.length; i++) {
+                    let p = forgeWeatherParticles[i];
+                    
+                    ctx.fillStyle = p.isPrimaryColor ? c1 : c2;
+                    ctx.strokeStyle = p.isPrimaryColor ? c1 : c2;
+                    
+                    p.x += p.speedX;
+                    p.y += p.speedY;
+
+                    // Add organic flutter to snow, ash, and fire
+                    if (style === 'snow' || style === 'ash' || style === 'fire') {
+                        p.x += Math.sin(p.wobble) * (style === 'fire' ? 1.0 : 0.5);
+                        p.wobble += (style === 'fire' ? 0.1 : 0.05);
+                    }
+
+                    // Screen wrap (Ash/Fire floats UP, rain/snow falls DOWN)
+                    if ((style === 'ash' || style === 'fire') && p.y < -10) { p.y = canvas.height + 10; p.x = Math.random() * canvas.width; }
+                    else if ((style === 'rain' || style === 'snow') && p.y > canvas.height + 10) { p.y = -10; p.x = Math.random() * canvas.width; }
+                    else if (style === 'wind') {
+                        // Wind can drift up or down depending on the Y speed variance
+                        if (p.y > canvas.height + 10) { p.y = -10; p.x = Math.random() * canvas.width; }
+                        else if (p.y < -10) { p.y = canvas.height + 10; p.x = Math.random() * canvas.width; }
+                    }
+                    
+                    // Wrap X axis for wind
+                    if (p.x > canvas.width + 10) p.x = -10;
+                    if (p.x < -10) p.x = canvas.width + 10;
+
+                    // Draw the particle
+                    if (style === 'rain' || style === 'wind') {
+                        ctx.globalAlpha = style === 'wind' ? 0.4 : 0.6;
+                        ctx.lineWidth = p.size;
+                        ctx.beginPath();
+                        ctx.moveTo(p.x, p.y);
+                        let tailMult = style === 'wind' ? 3 : 1.5;
+                        ctx.lineTo(p.x - p.speedX * tailMult, p.y - p.speedY * tailMult); // Tail effect
+                        ctx.stroke();
+                    } else if (style === 'fire') {
+                        // Flickering core effect for fire
+                        ctx.globalAlpha = Math.random() * 0.4 + 0.4;
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.size * (Math.random() * 0.3 + 0.8), 0, Math.PI * 2);
+                        ctx.fill();
+                    } else {
+                        // Twinkling effect for ash
+                        ctx.globalAlpha = style === 'ash' ? Math.random() * 0.5 + 0.5 : 0.8;
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+                ctx.globalAlpha = 1.0;
+            }
+            // (Note: TEXT Mode does not use the Canvas renderer, it uses HTML DOM elements)
+
+            animFrameId = requestAnimationFrame(renderSandbox);
+        }
+
+        // --- EXPORT CONFIGURATION ---
+        function exportEffect() {
+            let output = "";
+
+            if (currentMode === 'EXPLOSION') {
+                const r = document.getElementById('param-radius').value;
+                const f = document.getElementById('param-frames').value;
+                const c = document.getElementById('param-curve').value;
+                const cOut = document.getElementById('color-outer').value;
+                const cMid = document.getElementById('color-mid').value;
+                const cCore = document.getElementById('color-core').value;
+
+                output = `
+const customExplosion = {
+    radius: ${r},
+    frames: ${f},
+    curve: ${c},
+    colors: { outer: "${cOut}", mid: "${cMid}", core: "${cCore}" }
+};
+// Trigger it: spawnExplosion(gridX, gridY, customExplosion);
+                `.trim();
+            } 
+            else if (currentMode === 'PROJECTILE') {
+                const f = document.getElementById('param-proj-frames').value;
+                const arc = document.getElementById('param-proj-arc').value;
+                const type = document.getElementById('param-proj-type').value;
+                const spriteId = document.getElementById('asset-select').value || 'icon_arrow';
+
+                output = `
+const customProjectile = {
+    spriteId: "${spriteId}",
+    frames: ${f},
+    arc: ${arc},
+    spin: ${type === 'spin' ? 'true' : 'false'}
+};
+// Trigger it: spawnProjectile(startX, startY, targetX, targetY, customProjectile);
+                `.trim();
+            }
+            else if (currentMode === 'TEXT') {
+                const size = document.getElementById('param-text-size').value;
+                const rise = document.getElementById('param-text-rise').value;
+                const time = document.getElementById('param-text-time').value;
+                const color = document.getElementById('color-text').value;
+
+                output = `
+const customTextConfig = {
+    color: "${color}",
+    fontSize: ${size},
+    riseDist: ${rise},
+    durationMs: ${time}
+};
+// Requires the upgraded spawnHitMarker in renderer.js
+// Trigger it: spawnHitMarker(gridX, gridY, "-45", customTextConfig);
+                `.trim();
+            }
+            else if (currentMode === 'AURA') {
+                const style = document.getElementById('param-aura-style').value;
+                const radius = document.getElementById('param-aura-radius').value;
+                const intensity = document.getElementById('param-aura-intensity').value;
+                const c1 = document.getElementById('color-aura-1').value;
+                const c2 = document.getElementById('color-aura-2').value;
+
+                output = `
+const customAuraConfig = {
+    style: "${style}",
+    radius: ${radius},
+    intensity: ${intensity},
+    colors: ["${c1}", "${c2}"]
+};
+// Attach this to an activeBuff or selectedEnemy, then parse it in your renderer!
+                `.trim();
+            }
+            else if (currentMode === 'WEATHER') {
+                const style = document.getElementById('param-weather-style').value;
+                const density = document.getElementById('param-weather-density').value;
+                const wind = document.getElementById('param-weather-wind').value;
+                const c1 = document.getElementById('color-weather-1').value;
+                const c2 = document.getElementById('color-weather-2').value;
+
+                output = `
+const customWeatherConfig = {
+    style: "${style}",
+    density: ${density},
+    wind: ${wind},
+    colors: ["${c1}", "${c2}"]
+};
+// Add this to your map configuration and trigger it inside your main rendering loop!
+                `.trim();
+            }
+            else {
+                output = `// Math logic for ${currentMode} will go here.`;
+            }
+
+            const outArea = document.getElementById('export-output');
+            outArea.value = output;
+            outArea.select();
+            document.execCommand('copy');
+            
+            let btn = document.getElementById('export-btn');
+            let oldText = btn.innerText;
+            btn.innerText = "📋 COPIED TO CLIPBOARD!";
+            setTimeout(() => btn.innerText = oldText, 1500);
+        }
+
+        // --- BOOT ---
+        window.onload = () => {
+            populateColorDropdowns();
+            populateAssetDropdown();
+            renderSandbox();
+        };
+    </script>
+</body>
+</html>
