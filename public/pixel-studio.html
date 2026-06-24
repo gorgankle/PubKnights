@@ -159,7 +159,18 @@
     <div class="container">
         <div class="canvas-container">
             <canvas id="paint-canvas" width="480" height="480"></canvas>
-        </div>
+            
+            <div style="margin-top: 15px; background: #1a1512; padding: 15px; border: 2px solid #4a3b2c; border-radius: 4px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);">
+                <label style="color: #ffcc66; font-size: 11px; font-weight: bold; display: block; margin-bottom: 8px;">💉 INJECT EXISTING GAME SPRITE:</label>
+                <div style="display: flex; gap: 10px;">
+                    <select id="inject-select" style="flex: 1;">
+                        <option value="">-- Select a Sprite to Load --</option>
+                    </select>
+                    <button onclick="injectSprite()" style="background: #8e44ad; border-color: #9b59b6;">Load to Matrix</button>
+                </div>
+                <div style="font-size: 10px; color: #bbaaa0; margin-top: 6px;">* Warning: This will overwrite your current canvas.</div>
+            </div>
+            </div>
 
         <div class="controls">
             <div style="display: flex; gap: 10px;">
@@ -420,6 +431,60 @@
                 exportOutput.value = "";
             }
         }
+		
+		// --- THE INJECTOR ---
+        function populateInjector() {
+            const injectSelect = document.getElementById('inject-select');
+            if (typeof SpriteMatrices === 'undefined') return;
+            
+            // Grab all keys, sort them alphabetically for easy hunting
+            const keys = Object.keys(SpriteMatrices).sort();
+            
+            keys.forEach(key => {
+                let opt = document.createElement('option');
+                opt.value = key;
+                opt.innerText = key;
+                injectSelect.appendChild(opt);
+            });
+        }
+
+        function injectSprite() {
+            const injectSelect = document.getElementById('inject-select');
+            const spriteKey = injectSelect.value;
+            
+            if (!spriteKey) {
+                alert("Please select a sprite from the dropdown first.");
+                return;
+            }
+
+            if (typeof SpriteMatrices === 'undefined' || !SpriteMatrices[spriteKey]) {
+                alert("CRITICAL ERROR: Sprite matrix data not found.");
+                return;
+            }
+
+            // Confirm before wiping their current work
+            if (confirm(`Are you sure you want to overwrite the canvas with '${spriteKey}'?`)) {
+                const matrix = SpriteMatrices[spriteKey];
+                
+                // Deep copy the matrix data into the live grid state
+                for (let y = 0; y < GRID_SIZE; y++) {
+                    for (let x = 0; x < GRID_SIZE; x++) {
+                        // Ensure we don't crash if a matrix is malformed or shorter than 24x24
+                        if (matrix[y] && matrix[y][x]) {
+                            grid[y][x] = matrix[y][x];
+                        } else {
+                            grid[y][x] = '.'; // Default to transparent/eraser
+                        }
+                    }
+                }
+                
+                drawGrid();
+                
+                // Optional: Wipe the export output box so they don't accidentally copy old code
+                exportOutput.value = ""; 
+            }
+        }
+		
 
         // --- THE EXPORTER ---
         function exportSprite() {
@@ -449,6 +514,7 @@
 
         window.onload = () => {
             initPalette();
+			populateInjector();
             drawGrid();
         };
     </script>
