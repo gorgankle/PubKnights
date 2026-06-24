@@ -361,3 +361,49 @@ CSS
     background-color: #2c3e50 !important;
     box-shadow: 0 0 40px #f1c40f !important;
 }
+
+/* --- INVENTORY GRID SYSTEM --- */
+.inventory-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+    gap: 8px;
+    padding: 10px;
+    background: rgba(17, 13, 10, 0.8);
+    border: 2px solid #4a3b2c;
+    border-radius: 6px;
+}
+
+.item-slot {
+    width: 50px;
+    height: 50px;
+    background: #221a14;
+    border: 2px solid #634e3d;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: all 0.1s ease-in-out;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+}
+
+.item-slot:hover {
+    border-color: #f1c40f;
+    background: #3a2f26;
+    transform: scale(1.05);
+}
+
+/* Rarity Borders */
+.slot-common { border-color: #7f8c8d; }
+.slot-uncommon { border-color: #2ecc71; }
+.slot-rare { border-color: #3498db; }
+.slot-epic { border-color: #9b59b6; }
+.slot-jackpot { border-color: #f1c40f; box-shadow: 0 0 8px #f1c40f; }
+
+/* Mini canvas for 24x24 sprites */
+.item-slot canvas {
+    max-width: 40px;
+    max-height: 40px;
+    image-rendering: pixelated;
+}

@@ -195,10 +195,10 @@ function refreshSystemUI() {
 
         wallet.innerHTML = `
             <div style="display: flex; justify-content: space-around; font-family: monospace; font-size: 12px; padding: 4px;">
-                <span class="${animG}">💰 <b>Gold:</b> ${player.gold}g</span>
-                <span class="${animW}">🌲 <b>Timber:</b> ${player.wood}</span>
-                <span class="${animF}">🐟 <b>Fish:</b> ${player.fish}</span>
-                <span class="${animH}">🌿 <b>Hops:</b> ${player.hops}</span>
+                <span class="${animG}">💰 <b>Gold:</b> ${(player.gold || 0).toLocaleString()}g</span>
+                <span class="${animW}">🌲 <b>Timber:</b> ${(player.wood || 0).toLocaleString()}</span>
+                <span class="${animF}">🐟 <b>Fish:</b> ${(player.fish || 0).toLocaleString()}</span>
+                <span class="${animH}">🌿 <b>Hops:</b> ${(player.hops || 0).toLocaleString()}</span>
             </div>`;
 
         if (gameState === 'COMBAT' && currentTurn === 'PLAYER') {
@@ -206,14 +206,14 @@ function refreshSystemUI() {
         }
 
 // === QUARTERMASTER POINTS UI UPDATE ===
-    let timberUi = document.getElementById('ui-timber-pts');
-    if (timberUi) timberUi.innerText = player.lumberPoints || 0;
-    
-    let fishUi = document.getElementById('ui-fish-pts');
-    if (fishUi) fishUi.innerText = player.fishingPoints || 0;
-    
-    let hopsUi = document.getElementById('ui-hops-pts');
-    if (hopsUi) hopsUi.innerText = player.hopsPoints || 0;
+        let timberUi = document.getElementById('ui-timber-pts');
+        if (timberUi) timberUi.innerText = (player.lumberPoints || 0).toLocaleString();
+        
+        let fishUi = document.getElementById('ui-fish-pts');
+        if (fishUi) fishUi.innerText = (player.fishingPoints || 0).toLocaleString();
+        
+        let hopsUi = document.getElementById('ui-hops-pts');
+        if (hopsUi) hopsUi.innerText = (player.hopsPoints || 0).toLocaleString();
 
 
 // === FULL SCREEN EXCLUSIVE VIEWS ===
@@ -805,71 +805,94 @@ if (hopsScreen) hopsScreen.style.display = "none";
 }
 
 function renderBackpackList(domContainer, showVaultOption) {
-    if (!domContainer) return; domContainer.innerHTML = "";
-    if (player.inventory.length === 0) { domContainer.innerHTML = "<p style='font-size:11px;color:#876;'>No gear stowed.</p>"; return; }
-    player.inventory.forEach((item, idx) => {
-        let rc = item.rarity === "Gorilla" ? "GorillaTier" : item.rarity;
-        let actionsHtml = ``;
-        
-// === NEW: GAMBLE CRATE OPEN BUTTON ===
-        if (item.type === "crate") {
-            actionsHtml += `<button onclick="triggerUnboxing(${idx}, player.inventory[${idx}])" style="padding: 1px 4px; font-size: 9px; background: #d35400; border: 1px solid #e67e22;">📦 Open</button>`;
-        } else if (item.type !== "bomb" && item.type !== "brew") {
-            actionsHtml += `<button onclick="equipItem(${idx})" style="padding: 1px 4px; font-size: 9px; background: #27ae60;">Equip</button>`;
-        }
-        if (item.type === "brew" && !showVaultOption) { 
-            if (item.id === 'stout') {
-                actionsHtml += `<button onclick="drinkBrewFromInventory(${idx})" style="padding: 1px 4px; font-size: 9px; background: #2980b9;">Chug</button>`;
-            } else {
-                // Prevents consuming tactical buffs in town so they aren't wasted
-                actionsHtml += `<span style="font-size: 8px; color: #776c62; margin-right: 4px;">[Combat Only]</span>`;
-            }
-        }
-        
-        if (showVaultOption) actionsHtml += `<button onclick="depositToVault(${idx})" style="padding: 1px 4px; font-size: 9px; background: #e67e22;">Stash ➔</button>`;
-        actionsHtml += `<button onclick="sellItem(${idx})" style="padding: 1px 4px; font-size: 9px; background: #c0392b;">Sell</button>`;
-        
-        let imgUrl = getItemSpriteURL(item);
-        let imgHtml = imgUrl ? `<img src="${imgUrl}" style="width:28px;height:28px;image-rendering:pixelated;margin-right:8px;vertical-align:middle;">` : ``;
+    if (!domContainer) return; 
+    
+    domContainer.innerHTML = "";
+    domContainer.className = "inventory-grid"; // Apply the new grid CSS
 
-        // === ENHANCED WITH DRAG AND DROP CAPABILITIES ===
-        domContainer.innerHTML += `
-            <div draggable="true"
-                 ondragstart="handleItemDragStart(event, ${idx}, 'backpack')"
-                 ondragover="handleItemDragOver(event)"
-                 ondrop="handleItemDrop(event, ${idx}, 'backpack')"
-                 class="draggable-item-row"
-                 style="margin-bottom:4px; font-size:11px; display:flex; justify-content:space-between; align-items:center; background:#1e1712; padding:3px; border-radius:3px; cursor: grab;">
-                <div>${imgHtml}<span class="${rc}" style="cursor:help; text-decoration: underline dashed;" onmouseenter="showInventoryTooltip(${idx}, event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">[${item.slot.toUpperCase()}] ${item.name}</span></div>
-                <div>${actionsHtml}</div>
-            </div>`;
-    });
+    let maxSlots = player.maxInventorySlots || 5;
+
+    for (let idx = 0; idx < maxSlots; idx++) {
+        let item = player.inventory[idx];
+        let slotDiv = document.createElement('div');
+
+        if (item) {
+            let rc = item.rarity === "Gorilla" ? "slot-jackpot" : (item.rarity ? `slot-${item.rarity.toLowerCase()}` : 'slot-common');
+            slotDiv.className = `item-slot ${rc}`;
+            
+            // Drag and Drop Hooks
+            slotDiv.draggable = true;
+            slotDiv.ondragstart = (e) => handleItemDragStart(e, idx, 'backpack');
+            slotDiv.ondragover = handleItemDragOver;
+            slotDiv.ondrop = (e) => handleItemDrop(e, idx, 'backpack');
+            
+            // The New Tooltip Hook
+            slotDiv.onmouseenter = (e) => showItemTooltip(e, item, idx, 'backpack');
+            slotDiv.onmouseleave = hideTooltip;
+
+            // Render the 24x24 Sprite Matrix!
+            let imgUrl = getItemSpriteURL(item);
+            if (imgUrl) {
+                // pointer-events: none ensures the drag/drop fires on the slot, not the image!
+                slotDiv.innerHTML = `<img src="${imgUrl}" style="width:36px;height:36px;image-rendering:pixelated;pointer-events:none;">`;
+            } else {
+                slotDiv.innerHTML = `<span style="font-size:20px;pointer-events:none;">${item.type === 'crate' ? '📦' : '🛡️'}</span>`;
+            }
+        } else {
+            // Render Empty Slots for structure
+            slotDiv.className = 'item-slot';
+            slotDiv.ondragover = handleItemDragOver;
+            slotDiv.ondrop = (e) => handleItemDrop(e, idx, 'backpack'); // Allow dropping into empty slots!
+        }
+        
+        domContainer.appendChild(slotDiv);
+    }
 }
 
 function renderVaultStorageList() {
     const vaultPanel = document.getElementById("vault-screen-list");
-    if (!vaultPanel) return; vaultPanel.innerHTML = "";
-    if (player.stash.length === 0) { vaultPanel.innerHTML = "<p style='font-size:11px;color:#654;'>Vault deep storage arrays clear.</p>"; return; }
-    player.stash.forEach((item, idx) => {
-        let rc = item.rarity === "Gorilla" ? "GorillaTier" : item.rarity;
+    if (!vaultPanel) return; 
+    
+    vaultPanel.innerHTML = "";
+    vaultPanel.className = "inventory-grid"; // Apply the new grid CSS
+    
+    let maxSlots = player.vaultSlots || 10;
+
+    for (let idx = 0; idx < maxSlots; idx++) {
+        let item = player.stash[idx];
+        let slotDiv = document.createElement('div');
+
+        if (item) {
+            let rc = item.rarity === "Gorilla" ? "slot-jackpot" : (item.rarity ? `slot-${item.rarity.toLowerCase()}` : 'slot-common');
+            slotDiv.className = `item-slot ${rc}`;
+            
+            // Drag and Drop Hooks
+            slotDiv.draggable = true;
+            slotDiv.ondragstart = (e) => handleItemDragStart(e, idx, 'vault');
+            slotDiv.ondragover = handleItemDragOver;
+            slotDiv.ondrop = (e) => handleItemDrop(e, idx, 'vault');
+            
+            // The New Tooltip Hook
+            slotDiv.onmouseenter = (e) => showItemTooltip(e, item, idx, 'vault');
+            slotDiv.onmouseleave = hideTooltip;
+
+            // Render the 24x24 Sprite Matrix!
+            let imgUrl = getItemSpriteURL(item);
+            if (imgUrl) {
+                slotDiv.innerHTML = `<img src="${imgUrl}" style="width:36px;height:36px;image-rendering:pixelated;pointer-events:none;">`;
+            } else {
+                slotDiv.innerHTML = `<span style="font-size:20px;pointer-events:none;">${item.type === 'crate' ? '📦' : '🛡️'}</span>`;
+            }
+        } else {
+            // Render Empty Slots for structure
+            slotDiv.className = 'item-slot';
+            slotDiv.ondragover = handleItemDragOver;
+            slotDiv.ondrop = (e) => handleItemDrop(e, idx, 'vault');
+        }
         
-        let imgUrl = getItemSpriteURL(item);
-        let imgHtml = imgUrl ? `<img src="${imgUrl}" style="width:28px;height:28px;image-rendering:pixelated;margin-right:8px;vertical-align:middle;">` : ``;
-
-        // === ENHANCED WITH DRAG AND DROP CAPABILITIES ===
-        vaultPanel.innerHTML += `
-            <div draggable="true"
-                 ondragstart="handleItemDragStart(event, ${idx}, 'vault')"
-                 ondragover="handleItemDragOver(event)"
-                 ondrop="handleItemDrop(event, ${idx}, 'vault')"
-                 class="draggable-item-row"
-                 style="margin-bottom:4px; padding:3px; border:1px solid #4a3b2c; background:#1b1410; font-size:11px; display:flex; justify-content:space-between; align-items:center; cursor: grab;">
-                <div>${imgHtml}<span class="${rc}" style="cursor:help;" onmouseenter="showVaultTooltip(${idx}, event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">${item.name}</span></div>
-                <button onclick="withdrawFromVault(${idx})" style="background: #2980b9; padding:1px 6px; font-size:10px;">📥 Take</button>
-            </div>`;
-    });
+        vaultPanel.appendChild(slotDiv);
+    }
 }
-
 // === NEW: COLLAPSIBLE STATS & SPRITE RENDERER ===
 let statsExpanded = false;
 

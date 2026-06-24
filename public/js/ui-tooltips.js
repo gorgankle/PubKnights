@@ -259,3 +259,81 @@ function hideTooltip() {
 
 function showInventoryTooltip(idx, e) { showTooltip(getItemTooltip(player.inventory[idx]), e); }
 function showVaultTooltip(idx, e) { showTooltip(getItemTooltip(player.stash[idx]), e); }
+
+
+			//The Tooltip Logic & Combat Safety
+
+function showItemTooltip(event, item, index, location) {
+    const tooltip = document.getElementById('game-tooltip');
+    if (!tooltip || !item) return;
+
+    let rarityColor = "#7f8c8d"; // Default Common
+    if (item.rarity === 'Uncommon') rarityColor = "#2ecc71";
+    if (item.rarity === 'Rare') rarityColor = "#3498db";
+    if (item.rarity === 'Epic') rarityColor = "#9b59b6";
+    if (item.rarity === 'Gorilla' || item.rarity === 'Jackpot') rarityColor = "#f1c40f";
+
+    // 1. Build the Stat Block
+    let html = `
+        <div style="border-bottom: 2px solid ${rarityColor}; margin-bottom: 8px; padding-bottom: 5px;">
+            <strong style="color: ${rarityColor}; font-size: 16px;">${item.name}</strong>
+            <div style="font-size: 11px; color: #bbaaa0;">${item.type.toUpperCase()} | Value: ${item.value || 0}g</div>
+        </div>
+        <div style="font-size: 12px; margin-bottom: 10px; color: #ecf0f1;">
+            ${item.description || "A mysterious item."}
+        </div>
+    `;
+
+    // 2. Build Contextual Actions based on Location AND Game State
+    let actionsHtml = `<div style="display: flex; gap: 5px; flex-wrap: wrap;">`;
+    
+    // Check if we are actively in combat
+    const isCombat = (typeof gameState !== 'undefined' && gameState === 'COMBAT');
+
+    if (location === 'backpack') {
+        if (item.type === 'gear' && !isCombat) {
+            actionsHtml += `<button onclick="emitInventoryAction('equip', ${index})" style="background: #27ae60;">Equip</button>`;
+        }
+        if (item.type === 'brew') {
+            actionsHtml += `<button onclick="emitInventoryAction('drinkBrew', ${index})" style="background: #3498db;">Consume</button>`;
+        }
+        if (item.id && item.id.includes('crate') && !isCombat) {
+            actionsHtml += `<button onclick="emitInventoryAction('openCrate', ${index}, '${item.id}')" style="background: #e67e22;">Unbox</button>`;
+        }
+        // ONLY allow selling/depositing if we are in Town and NOT in combat
+        if (!isCombat && gameState === 'TOWN') {
+            actionsHtml += `<button onclick="emitInventoryAction('deposit', ${index})" style="background: #8e44ad;">Vault</button>`;
+            actionsHtml += `<button onclick="emitInventoryAction('sell', ${index})" style="background: #c0392b;">Sell</button>`;
+        }
+    } else if (location === 'vault' && !isCombat) {
+        actionsHtml += `<button onclick="emitInventoryAction('withdraw', ${index})" style="background: #2980b9;">Withdraw</button>`;
+    } else if (location === 'equipment' && !isCombat) {
+        actionsHtml += `<button onclick="emitInventoryAction('unequip', null, '${index}')" style="background: #c0392b;">Unequip</button>`;
+    }
+
+    if (isCombat) {
+        actionsHtml += `<div style="color: #e74c3c; font-size: 10px; font-weight: bold; width: 100%;">Actions locked during combat!</div>`;
+    }
+
+    actionsHtml += `</div>`;
+    html += actionsHtml;
+
+    // 3. Render and Position
+    tooltip.innerHTML = html;
+    tooltip.style.display = 'block';
+    
+    // Position tooltip near cursor but keep it on screen
+    let x = event.pageX + 15;
+    let y = event.pageY + 15;
+    
+    if (x + 250 > window.innerWidth) x = window.innerWidth - 260;
+    if (y + tooltip.offsetHeight > window.innerHeight) y = window.innerHeight - tooltip.offsetHeight - 10;
+    
+    tooltip.style.left = x + 'px';
+    tooltip.style.top = y + 'px';
+}
+
+function hideItemTooltip() {
+    const tooltip = document.getElementById('game-tooltip');
+    if (tooltip) tooltip.style.display = 'none';
+}
