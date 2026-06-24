@@ -313,24 +313,38 @@
             const bgModel = bgSelect.value;
             if (bgModel !== 'none' && typeof SpriteMatrices !== 'undefined' && SpriteMatrices[bgModel]) {
                 ctx.globalAlpha = 0.35; 
-                let matrix = SpriteMatrices[bgModel];
                 
-                for (let y = 0; y < GRID_SIZE; y++) {
-                    if (!matrix[y]) continue;
-                    for (let x = 0; x < GRID_SIZE; x++) {
-                        let char = matrix[y][x];
-                        if (char && char !== '.') {
-                            let color = PALETTE[char] || '#ff00ff';
-                            if (char === 'S') color = '#f1c27d'; 
-                            if (char === 'P') color = '#2c3e50'; 
-                            if (char === 'U') color = '#2980b9'; 
-                            if (char === 'D') color = '#3e2723'; 
-                            
-                            ctx.fillStyle = color;
-                            ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                // Helper to paint a specific matrix layer for the ghost
+                const drawGhostLayer = (matrixKey) => {
+                    let matrix = SpriteMatrices[matrixKey];
+                    if (!matrix) return;
+                    for (let y = 0; y < GRID_SIZE; y++) {
+                        if (!matrix[y]) continue;
+                        for (let x = 0; x < GRID_SIZE; x++) {
+                            let char = matrix[y][x];
+                            if (char && char !== '.') {
+                                let color = PALETTE[char] || '#ff00ff';
+                                if (char === 'S') color = '#f1c27d'; 
+                                if (char === 'P') color = '#2c3e50'; 
+                                if (char === 'U') color = '#2980b9'; 
+                                if (char === 'D') color = '#3e2723'; 
+                                if (char === 'Z') color = '#ffffff'; // MAP THE EYE PIXEL!
+                                
+                                ctx.fillStyle = color;
+                                ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                            }
                         }
                     }
+                };
+
+                // Draw the main body
+                drawGhostLayer(bgModel);
+                
+                // If it's a character base, overlay the eyes for reference
+                if (bgModel === 'body_male' || bgModel === 'body_female') {
+                    drawGhostLayer('eyes_blue');
                 }
+                
                 ctx.globalAlpha = 1.0; 
             }
 
