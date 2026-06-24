@@ -2,6 +2,65 @@
 // Handles all Community Square logic: Zone instancing, chat, and movement.
 
 module.exports = function(socket, io, activePlayers) {
+	
+	// --- RENAISSANCE CORNER: UGC HANDLING ---
+
+    // 1. Save Art/Music
+    socket.on('saveUGC', async (data) => {
+        let p = activePlayers[socket.id];
+        if (!p) return;
+
+        try {
+            // STRICT VALIDATION
+            if (!data.type || !['ART', 'MUSIC'].includes(data.type)) {
+                return socket.emit('zoneNotification', { message: '❌ Invalid creation type.' });
+            }
+
+            if (data.type === 'ART') {
+                // Validate 24x24 matrix payload bounds to prevent memory bloat
+                if (!Array.isArray(data.contentData) || data.contentData.length > 576) { // 24 * 24 = 576
+                    return socket.emit('zoneNotification', { message: '❌ Art matrix is corrupted or exceeds 24x24 limits.' });
+                }
+            }
+
+            if (data.type === 'MUSIC') {
+                // Validate sequence bounds (e.g., 32 steps max)
+                if (!Array.isArray(data.contentData) || data.contentData.length > 32) {
+                    return socket.emit('zoneNotification', { message: '❌ Composition exceeds 32 steps.' });
+                }
+            }
+
+            // Save to MongoDB
+            const newCreation = new UGC({
+                authorUsername: p.username,
+                type: data.type,
+                title: data.title ? data.title.substring(0, 30) : 'Untitled', // Cap title length
+                contentData: data.contentData
+            });
+
+            await newCreation.save();
+            socket.emit('zoneNotification', { message: `🎨 Successfully archived your ${data.type.toLowerCase()}!` });
+            
+        } catch (err) {
+            console.error("UGC Save Error:", err);
+            socket.emit('zoneNotification', { message: '❌ The canvas tore! Failed to save creation.' });
+        }
+    });
+
+    // 2. Fetch Player's Personal Gallery
+    socket.on('fetchMyUGC', async () => {
+        let p = activePlayers[socket.id];
+        if (!p) return;
+
+        try {
+            // Retrieve only the requesting Knight's creations
+            const myCreations = await UGC.find({ authorUsername: p.username }).sort({ createdAt: -1 });
+            socket.emit('ugcGalleryLoaded', myCreations);
+        } catch (err) {
+            console.error("UGC Fetch Error:", err);
+        }
+    });
+	
 
     // Helper to cleanly remove a player from their current multiplayer instance
     function leaveCurrentZone() {

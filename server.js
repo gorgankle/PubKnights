@@ -39,6 +39,18 @@ const playerSchema = new mongoose.Schema({
 
 const Player = mongoose.model('Player', playerSchema);
 
+// === USER GENERATED CONTENT (UGC) SCHEMA ===
+const ugcSchema = new mongoose.Schema({
+    authorUsername: { type: String, required: true },
+    type: { type: String, enum: ['ART', 'MUSIC'], required: true },
+    title: { type: String, default: 'Untitled Masterpiece' },
+    // data payload: For ART, this will be your 24x24 matrix. For MUSIC, the 32-step track sequence.
+    contentData: { type: mongoose.Schema.Types.Mixed, required: true },
+    likes: { type: Number, default: 0 }, // Future-proofing for social sharing
+}, { timestamps: true });
+
+const UGC = mongoose.model('UGC', ugcSchema);
+
 // Serve the index.html file from the root directory
 app.get('/', (req, res) => {
     res.sendFile(__dirname + '/index.html');

@@ -421,6 +421,11 @@ if (combatPhase === 'TARGET_BOMB') {
             vaultScreen.style.display = "none";
             if (upgradesScreen) upgradesScreen.style.display = "none";
             
+			// === NEW: Hide Studio ===
+            const studioScreen = document.getElementById("studio-screen");
+            if (studioScreen) studioScreen.style.display = "none";
+			
+			
             // ADD THIS TO HIDE THE MINIGAME
 // Hide Minigames
 let lumberScreen = document.getElementById("minigame-lumber-screen");
@@ -432,6 +437,7 @@ if (hopsScreen) hopsScreen.style.display = "none";
 			
             document.querySelectorAll('.nav-bar button').forEach(btn => btn.classList.remove('active-tab'));
 
+            // === UPDATED STATE ROUTER ===
             if (gameState === 'KNIGHT') {
                 if (knightScreen) knightScreen.style.display = "block";
                 document.getElementById('nav-knight').classList.add('active-tab');
@@ -444,7 +450,7 @@ if (hopsScreen) hopsScreen.style.display = "none";
             } else if (gameState === 'ADVENTURES') {
                 if (adventuresScreen) adventuresScreen.style.display = "flex";
                 document.getElementById('nav-adventures').classList.add('active-tab');
-			} else if (gameState === 'VAULT') {
+            } else if (gameState === 'VAULT') {
                 vaultScreen.style.display = "block";
                 document.getElementById('nav-vault').classList.add('active-tab');
 
@@ -464,7 +470,11 @@ if (hopsScreen) hopsScreen.style.display = "none";
 			} else if (gameState === 'UPGRADES') {
                 if (upgradesScreen) upgradesScreen.style.display = "flex";
                 document.getElementById('nav-town').classList.add('active-tab');
-            } 
+            } else if (gameState === 'STUDIO') {
+                // === NEW: Show the Studio iframe ===
+                if (studioScreen) studioScreen.style.display = "block";
+                document.getElementById('nav-town').classList.add('active-tab'); // Keep Town tab highlighted
+            }
 
             // --- NEW: DYNAMIC KNIGHT HEADER & STATS ---
             const knightHeader = document.getElementById("knight-header-name");

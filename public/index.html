@@ -376,6 +376,10 @@
                     </div>
 
 <div class="dashboard-panel" style="margin-bottom: 0;">
+	<div class="dashboard-panel" style="margin-bottom: 0; text-align: center; background: #231912; border: 1px dashed #f1c40f;">
+    <button onclick="setGameState('UPGRADES')" style="background: #f1c40f; color: #000; font-size: 13px; width: 100%; margin:0; padding: 10px;" onmouseenter="showSystemTooltip('tavern_upgrades', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">👑 View Town Upgrades</button>
+	</div>
+
                         <h3>🧺 Town Production</h3>
                         
                         <!-- Condensed Cart Status -->
@@ -410,8 +414,15 @@
                         </div>
                     </div>
                     
-<div class="dashboard-panel" style="margin-bottom: 0; text-align: center; background: #231912; border: 1px dashed #f1c40f;">
-    <button onclick="setGameState('UPGRADES')" style="background: #f1c40f; color: #000; font-size: 13px; width: 100%; margin:0; padding: 10px;" onmouseenter="showSystemTooltip('tavern_upgrades', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">👑 View Town Upgrades</button>
+
+
+<div class="dashboard-panel" style="border: 2px dashed #8e44ad; background: #23192d; margin-top: 15px; text-align: center;">
+    <h3 style="color: #9b59b6; border-bottom-color: #5b2c6f;">🎨 The Renaissance Corner 🎵</h3>
+    <p style="font-size: 10px; color: #d7bde2; margin-top: 0;">Access your standalone creator tools.</p>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <button onclick="openStudioTool('pixel-studio.html')" style="background: #e67e22; border-color: #d35400; padding: 10px; font-size: 14px;">🎨 Art Studio</button>
+        <button onclick="openStudioTool('beat-studio.html')" style="background: #2980b9; border-color: #3498db; padding: 10px; font-size: 14px;">🎵 Music Studio</button>
+    </div>
 </div>
 			
 					
@@ -484,7 +495,7 @@
 					<!-- ========================================== -->
 
                 <!-- === NEW: DEDICATED MERCHANT SCREEN === -->
-				<div id="merchant-screen" class="panel" style="display: none; width: 100%; margin-bottom: 0; min-height: 486px; flex-direction: column; gap: 10px;">
+<div id="merchant-screen" class="panel" style="display: none; width: 100%; margin-bottom: 0; min-height: 486px; flex-direction: column; gap: 10px;">
                     <div class="dashboard-panel" style="background: #1a1512; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; margin-bottom: 5px; border: 1px solid #4a3b2c;">
                         <span style="color: #ffcc66; font-weight: bold; font-size:15px;">🤝 The Exchange</span>
                         <button onclick="setGameState('TOWN')" style="background: #c0392b; margin:0; padding:6px 14px;">↩ Return to Town</button>
@@ -543,7 +554,11 @@
         </div>
     </div>
 				</div>
-                </div>
+</div>
+				
+	<div id="studio-screen" class="panel" style="display: none; width: 100%; margin-bottom: 0; height: 80vh; padding: 0; overflow: hidden; border: 2px solid #8e44ad;">
+    <iframe id="studio-iframe" src="" style="width: 100%; height: 100%; border: none; background: #1e1915;"></iframe>
+	</div>
 
 <div id="social-view" class="game-screen" style="display:none; max-width: 1000px; margin: 0 auto; gap: 15px; grid-template-columns: 2fr 1fr; padding-top: 20px;">
     

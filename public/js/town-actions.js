@@ -287,3 +287,23 @@ function exchangePoints(type, tier) {
         tier: tier 
     });
 }
+
+// --- RENAISSANCE CORNER BRIDGE ---
+
+function openStudioTool(toolUrl) {
+    // Load the tool into the iframe
+    document.getElementById('studio-iframe').src = toolUrl;
+    // Tell the game to switch to the studio view
+    setGameState('STUDIO'); 
+}
+
+// Listen for messages from the tools inside the iframe
+window.addEventListener('message', (event) => {
+    // When a tool says "RETURN_TO_TOWN"
+    if (event.data === 'RETURN_TO_TOWN') {
+        // Clear the iframe source so audio stops playing and canvas stops rendering
+        document.getElementById('studio-iframe').src = ""; 
+        // Send the player back to the Town menu
+        setGameState('TOWN');
+    }
+});
