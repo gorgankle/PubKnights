@@ -1,44 +1,34 @@
 // --- UI: RENDER & REFRESH MANAGER ---
-
-// --- UI: RENDER & REFRESH MANAGER ---
 let uiMemory = { gold: -1, wood: -1, fish: -1, hops: -1, cWood: -1, cFish: -1, cHops: -1 }
 
 // === UI NAVIGATION ENGINE ===
 function switchTab(tabId) {
-    // 1. GHOSTING: Auto-leave the multiplayer zone if we navigate away to any other tab!
     if (tabId !== 'social-view' && typeof currentSocialZone !== 'undefined' && currentSocialZone) {
-        if (typeof leaveMultiplayerZone === 'function') {
-            leaveMultiplayerZone(true); // True prevents an infinite loop!
-        }
+        if (typeof leaveMultiplayerZone === 'function') leaveMultiplayerZone(true); 
     }
 
-    // 2. DOM ESCAPE HATCH: If social-view is trapped inside the Knight panel wrapper, break it out!
     const socialView = document.getElementById('social-view');
     if (socialView && socialView.parentElement !== document.body) {
-        document.body.appendChild(socialView); // Moves it safely to the top level!
+        document.body.appendChild(socialView); 
     }
 
-    // 3. Hide all individual game screens
     document.querySelectorAll('.game-screen').forEach(screen => {
         screen.style.display = 'none';
     });
 
-    // 4. Hide the entire master Town/Knight layout when in Social or Combat
     const mainContainer = document.getElementById('main-game-container');
     if (mainContainer) {
         if (tabId === 'social-view' || tabId === 'combat-screen') {
             mainContainer.style.display = 'none';
         } else {
-            mainContainer.style.display = 'flex'; // Restore the Knight & Town panels
+            mainContainer.style.display = 'flex'; 
         }
     }
 
-    // 5. Remove active highlight from all nav buttons
     document.querySelectorAll('.nav-bar button').forEach(btn => {
         btn.classList.remove('active-tab');
     });
 
-    // 6. Show the requested screen
     let targetScreen = document.getElementById(tabId);
     if (targetScreen) {
         if (tabId === 'social-view') {
@@ -48,7 +38,6 @@ function switchTab(tabId) {
         }
     }
 
-    // 7. Light up the clicked button
     let btnId = '';
     if (tabId === 'town-vault-view') btnId = 'tab-town';
     else if (tabId === 'combat-screen') btnId = 'tab-combat';
@@ -113,7 +102,6 @@ function refreshCombatSidebar() {
     let gloveDesc = player.equipment.gloves ? `<img src="${gImg}" style="width:24px;height:24px;image-rendering:pixelated;vertical-align:middle;margin-right:4px;"> <span class="${player.equipment.gloves.rarity === 'Gorilla' ? 'GorillaTier' : player.equipment.gloves.rarity}">${player.equipment.gloves.name}</span>` : "<span style='color:#55443a;'>Bare Hands</span>";
     let bootDesc = player.equipment.boots ? `<img src="${bImg}" style="width:24px;height:24px;image-rendering:pixelated;vertical-align:middle;margin-right:4px;"> <span class="${player.equipment.boots.rarity === 'Gorilla' ? 'GorillaTier' : player.equipment.boots.rarity}">${player.equipment.boots.name}</span>` : "<span style='color:#55443a;'>Bare Feet</span>";
 
-    // === NEW: MULTI-BUFF TOOLTIP GENERATOR ===
     let buffHTML = '';
     if (player.activeBuffs && player.activeBuffs.length > 0) {
         buffHTML += `<div style="margin-top: 6px; border-top:1px dashed #443a32; padding-top:4px; display: flex; flex-direction: column; gap: 4px;">`;
@@ -123,7 +111,6 @@ function refreshCombatSidebar() {
         });
         buffHTML += `</div>`;
     } else if (player.activeCombatBuff) {
-        // Fallback catch for legacy save files
         buffHTML = `<div style="margin-top: 6px; font-size: 10px; color:#2ecc71; border-top:1px dashed #443a32; padding-top:4px;">🌿 <b>ACTIVE BREW PERK:</b> ${player.activeCombatBuff}</div>`;
     }
 
@@ -175,7 +162,6 @@ function refreshSystemUI() {
         const vaultScreen = document.getElementById("vault-screen");
         const wallet = document.getElementById("wallet-display");
 
-        // Tab Panels
         const knightScreen = document.getElementById("knight-screen");
         const townScreen = document.getElementById("town-screen");
         const merchantScreen = document.getElementById("merchant-screen");
@@ -184,7 +170,6 @@ function refreshSystemUI() {
 
         if (!townVaultView || !combatScreen || !vaultScreen || !wallet || !townScreen || !merchantScreen) return;
 
-        // === CLEANED UP WALLET - ECONOMY ONLY ===
         let animG = (uiMemory.gold !== -1 && player.gold > uiMemory.gold) ? 'resource-pop' : '';
         let animW = (uiMemory.wood !== -1 && player.wood > uiMemory.wood) ? 'resource-pop' : '';
         let animF = (uiMemory.fish !== -1 && player.fish > uiMemory.fish) ? 'resource-pop' : '';
@@ -205,7 +190,6 @@ function refreshSystemUI() {
             if (combatPhase === 'MOVE' || combatPhase === 'ACTION') combatPhase = 'PHASE_1';
         }
 
-// === QUARTERMASTER POINTS UI UPDATE ===
         let timberUi = document.getElementById('ui-timber-pts');
         if (timberUi) timberUi.innerText = (player.lumberPoints || 0).toLocaleString();
         
@@ -216,245 +200,238 @@ function refreshSystemUI() {
         if (hopsUi) hopsUi.innerText = (player.hopsPoints || 0).toLocaleString();
 
 
-// === FULL SCREEN EXCLUSIVE VIEWS ===
-const lumberScreen = document.getElementById("minigame-lumber-screen");
-const fishingScreen = document.getElementById("minigame-fishing-screen");
-const hopsScreen = document.getElementById("minigame-hops-screen"); // NEW
+        // === FULL SCREEN EXCLUSIVE VIEWS ===
+        const lumberScreen = document.getElementById("minigame-lumber-screen");
+        const fishingScreen = document.getElementById("minigame-fishing-screen");
+        const hopsScreen = document.getElementById("minigame-hops-screen"); 
 
-if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === 'MINIGAME_FISHING' || gameState === 'MINIGAME_HOPS') {
-    if (topNavBar) topNavBar.style.display = "none"; 
-    townVaultView.style.display = "none"; 
-    vaultScreen.style.display = "none"; 
+        if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === 'MINIGAME_FISHING' || gameState === 'MINIGAME_HOPS') {
+            if (topNavBar) topNavBar.style.display = "none"; 
+            townVaultView.style.display = "none"; 
+            vaultScreen.style.display = "none"; 
 
-    if (gameState === 'MINIGAME_LUMBER') {
-        if (combatScreen) combatScreen.style.display = "none";
-        if (fishingScreen) fishingScreen.style.display = "none";
-        if (hopsScreen) hopsScreen.style.display = "none";
-        if (lumberScreen) lumberScreen.style.display = "flex";
-    }
-    else if (gameState === 'MINIGAME_FISHING') {
-        if (combatScreen) combatScreen.style.display = "none";
-        if (lumberScreen) lumberScreen.style.display = "none";
-        if (hopsScreen) hopsScreen.style.display = "none";
-        if (fishingScreen) fishingScreen.style.display = "flex";
-    }
-    else if (gameState === 'MINIGAME_HOPS') {
-        if (combatScreen) combatScreen.style.display = "none";
-        if (lumberScreen) lumberScreen.style.display = "none";
-        if (fishingScreen) fishingScreen.style.display = "none";
-        if (hopsScreen) hopsScreen.style.display = "flex";
-    }
-    else if (gameState === 'COMBAT') {
-        if (lumberScreen) lumberScreen.style.display = "none";
-        if (fishingScreen) fishingScreen.style.display = "none";
-        if (hopsScreen) hopsScreen.style.display = "none";
-        combatScreen.style.display = "block";
-            
-            let dynamicBg = "none";
-            if (activeCombatZone === 'WILDERNESS') dynamicBg = "url('assets/images/wilds-bg.png')";
-            else if (activeCombatZone === 'CELLARS') dynamicBg = "url('assets/images/cellars-bg.png')";
-            else if (activeCombatZone === 'GORILLA_ARENA') dynamicBg = "url('assets/images/arena-bg.png')";
-            combatScreen.style.setProperty('--active-combat-bg', dynamicBg);
-
-            
-// === COMBAT GUI SUBMENU ENGINE ===
-            const uiHeader = document.getElementById("target-ui-header");
-            const controlPanel = document.getElementById("combat-control-panel");
-            
-            // Ensure submenu state exists in memory
-            if (typeof window.combatSubmenuState === 'undefined') window.combatSubmenuState = 'MAIN';
-            
-            if (currentTurn === 'PLAYER') {
-                if (combatPhase === 'TARGET_BOMB') {
-                    if (uiHeader) {
-                        uiHeader.innerHTML = `💣 TARGETING BOMB<br><span style="font-size:12px; color:#f4ebd9; font-weight:normal;">Click anywhere to detonate 3x3 blast!</span>`;
-                        uiHeader.style.color = "#e74c3c";
-                    }
-                    if (controlPanel) {
-                        controlPanel.innerHTML = `<button onclick="cancelBomb()" style="background: #c0392b; border: 2px solid #e74c3c; width: 100%; padding: 12px; font-size: 14px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">✖ Cancel Bomb Targeting</button>`;
-                    }
-                } else {
-                    // --- AUTO TARGETING ---
-                    let range = (player.equipment.weapon && player.equipment.weapon.attackRange) || 1;
-                    let hasTarget = selectedEnemy && selectedEnemy.alive;
-                    let withinRange = false; let losClear = false;
-                    let isAttackPhase = (combatPhase === 'PHASE_2');
-                    
-                    if (hasTarget) {
-                        let dist = getGridDistance(player.x, player.y, selectedEnemy.x, selectedEnemy.y, selectedEnemy.size || 1);
-                        withinRange = (dist <= range);
-                        let sSize = selectedEnemy.size || 1;
-                        for (let bx = selectedEnemy.x; bx < selectedEnemy.x + sSize; bx++) {
-                            for (let by = selectedEnemy.y; by < selectedEnemy.y + sSize; by++) if (hasLineOfSight(player.x, player.y, bx, by)) losClear = true;
-                        }
-                    }
-                    
-                    if (isAttackPhase && (!hasTarget || !withinRange || !losClear)) {
-                        let autoEnemy = enemies.find(e => {
-                            if (!e.alive) return false;
-                            let d = getGridDistance(player.x, player.y, e.x, e.y, e.size || 1);
-                            if (d > range) return false;
-                            let lClear = false;
-                            let cSize = e.size || 1;
-                            for (let bx = e.x; bx < e.x + cSize; bx++) {
-                                for (let by = e.y; by < e.y + cSize; by++) if (hasLineOfSight(player.x, player.y, bx, by)) lClear = true;
-                            }
-                            return lClear;
-                        });
-                        if (autoEnemy) { selectedEnemy = autoEnemy; hasTarget = true; withinRange = true; losClear = true; }
-                    }
-
-                    // --- HEADER TEXT ---
-                    let phaseLabel = combatPhase.replace('_', ' '); 
-                    let instructions = (combatPhase === 'PHASE_2') ? "Select Target or Action" : "Select Tile to Stride";
-                    
-                    if (uiHeader) {
-                        if (pendingMove) {
-                            uiHeader.innerHTML = `🏃 CONFIRM MOVE<br><span style="font-size:12px; color:#f4ebd9; font-weight:normal;">Click highlighted tile to jump</span>`;
-                            uiHeader.style.color = "#2ecc71";
-                        } else if (selectedEnemy && selectedEnemy.alive && combatPhase === 'PHASE_2') {
-                            uiHeader.innerHTML = `🎯 FOCUS: ${selectedEnemy.name} (${selectedEnemy.hp}/${selectedEnemy.maxHp} HP)<br><span style="font-size:12px; color:#f4ebd9; font-weight:normal;">[${phaseLabel}]</span>`;
-                            uiHeader.style.color = "#2ecc71";
-                        } else {
-                            uiHeader.innerHTML = `⚔️ ${phaseLabel}<br><span style="font-size:12px; color:#f4ebd9; font-weight:normal;">${instructions}</span>`;
-                            uiHeader.style.color = "#3498db";
-                        }
-                    }
-                    
-                    // --- DYNAMIC CONTROL PANEL ---
-                    if (controlPanel) {
-                        let btnDisabled = !(hasTarget && withinRange && losClear && isAttackPhase) ? "disabled" : "";
-                        let passOpacity = (hasTarget && withinRange && losClear && isAttackPhase) ? "0.6" : "1.0";
-                        
-                        if (window.combatSubmenuState === 'MAIN') {
-                            controlPanel.innerHTML = `
-                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                                <button onclick="executeCombatAction('slash')" ${btnDisabled} style="padding: 12px; font-size: 14px; background:#c0392b; border: 2px solid #e74c3c;" onmouseenter="showSystemTooltip('combat_slash', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">⚔️ Attack</button>
-                                <button onclick="window.combatSubmenuState='SPECIAL'; refreshSystemUI();" style="padding: 12px; font-size: 14px; background:#8e44ad; border: 2px solid #9b59b6;">💫 Special Attack</button>
-                                <button onclick="window.combatSubmenuState='ITEMS'; refreshSystemUI();" style="padding: 12px; font-size: 14px; background:#2980b9; border: 2px solid #3498db;">🎒 Items</button>
-                                <button onclick="executeCombatAction('end')" style="padding: 12px; font-size: 14px; background:#7f8c8d; border: 2px solid #95a5a6; opacity: ${passOpacity};" onmouseenter="showSystemTooltip('combat_pass', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">⏳ Pass Turn</button>
-                            </div>`;
-                        }
-                        else if (window.combatSubmenuState === 'SPECIAL') {
-                            controlPanel.innerHTML = `
-                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
-                                <button onclick="executeCombatAction('special')" ${btnDisabled} style="padding: 12px; background:#8e44ad; border: 2px solid #9b59b6; font-size: 13px;" onmouseenter="showSpecialSkillTooltip(event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">⚔️ Weapon Attack</button>
-                                <button disabled style="padding: 12px; background:#2c3e50; border: 2px solid #34495e; color:#7f8c8d; font-size: 13px;">🔮 Magic (Locked)</button>
-                            </div>
-                            <button onclick="window.combatSubmenuState='MAIN'; refreshSystemUI();" style="width: 100%; background: #4a3b2c; border: 1px solid #634e3d; padding: 8px; font-size: 12px;">↩ Back to Main Menu</button>
-                            `;
-                        }
-                        else if (window.combatSubmenuState === 'ITEMS') {
-                            controlPanel.innerHTML = `
-                            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 8px;">
-                                <button onclick="window.combatSubmenuState='ITEMS_CONSUME'; refreshSystemUI();" style="padding: 10px 4px; font-size: 11px; background:#27ae60; border: 1px solid #2ecc71;">🍺 Consumables</button>
-                                <button onclick="window.combatSubmenuState='ITEMS_THROW'; refreshSystemUI();" style="padding: 10px 4px; font-size: 11px; background:#d35400; border: 1px solid #e67e22;">💣 Throwables</button>
-                                <button onclick="window.combatSubmenuState='ITEMS_EQUIP'; refreshSystemUI();" style="padding: 10px 4px; font-size: 11px; background:#34495e; border: 1px solid #7f8c8d;">⚙️ Equipment</button>
-                            </div>
-                            <button onclick="window.combatSubmenuState='MAIN'; refreshSystemUI();" style="width: 100%; background: #4a3b2c; border: 1px solid #634e3d; padding: 8px; font-size: 12px;">↩ Back to Main Menu</button>
-                            `;
-                        }
-                        else if (window.combatSubmenuState === 'ITEMS_CONSUME' || window.combatSubmenuState === 'ITEMS_THROW' || window.combatSubmenuState === 'ITEMS_EQUIP') {
-                            let filterType = '';
-                            if (window.combatSubmenuState === 'ITEMS_CONSUME') filterType = 'brew';
-                            if (window.combatSubmenuState === 'ITEMS_THROW') filterType = 'bomb';
-                            
-                            let validItems = [];
-                            player.inventory.forEach((item, idx) => {
-                                if (window.combatSubmenuState === 'ITEMS_EQUIP') {
-                                    if (['weapon', 'helmet', 'armor', 'gloves', 'boots'].includes(item.slot)) validItems.push({item, idx});
-                                } else if (item.type === filterType) validItems.push({item, idx});
-                            });
-
-                            let cpHTML = `<div style="display:flex; flex-direction:column; gap:6px; margin-bottom: 8px; max-height: 140px; overflow-y: auto; background: #110d0a; border: 1px solid #3a2f26; padding: 6px; border-radius: 4px;">`;
-                            
-                            if (validItems.length === 0) {
-                                cpHTML += `<div style="text-align:center; padding: 15px; font-size: 12px; color:#776c62; font-style: italic;">No items of this category in your backpack.</div>`;
-                            } else {
-                                validItems.forEach(obj => {
-                                    let btnAction = ''; let btnText = ''; let bgColor = ''; let itemDisabled = '';
-                                    if (filterType === 'brew') {
-                                        btnAction = `consumeBrew(${obj.idx})`; btnText = (obj.item.id==='ipa'||obj.item.id==='lager') ? 'Drink' : 'Chug'; bgColor = "#27ae60";
-                                    } else if (filterType === 'bomb') {
-                                        btnAction = `prepBomb(${obj.idx})`; btnText = `Target`; bgColor = "#d35400";
-                                        if (combatPhase !== 'PHASE_2') itemDisabled = "disabled";
-                                    } else {
-                                        btnAction = `handleCombatEquip(${obj.idx})`; btnText = `Equip`; bgColor = "#2980b9";
-                                    }
-                                    
-                                    let rc = obj.item.rarity === "Gorilla" ? "GorillaTier" : obj.item.rarity;
-                                    let imgUrl = getItemSpriteURL(obj.item);
-                                    let imgHtml = imgUrl ? `<img src="${imgUrl}" style="width:24px;height:24px;image-rendering:pixelated;margin-right:8px;vertical-align:middle;">` : ``;
-                                    
-                                    cpHTML += `
-                                        <div style="display:flex; justify-content:space-between; align-items:center; background:#1e1712; padding:6px; border-radius:4px; border: 1px solid #3a2f26;">
-                                            <div style="display:flex; align-items:center;">${imgHtml}<span class="${rc}" style="font-size:12px;">[${obj.item.slot.toUpperCase()}] ${obj.item.name}</span></div>
-                                            <button onclick="${btnAction}" ${itemDisabled} style="padding:6px 12px; font-size:11px; background:${bgColor}; font-weight:bold;">${btnText}</button>
-                                        </div>
-                                    `;
-                                });
-                            }
-                            cpHTML += `</div><button onclick="window.combatSubmenuState='ITEMS'; refreshSystemUI();" style="width: 100%; background: #4a3b2c; border: 1px solid #634e3d; padding: 8px; font-size: 12px;">↩ Back to Item Categories</button>`;
-                            controlPanel.innerHTML = cpHTML;
-                        }
-                    }
-                }
-            } else {
-                if (uiHeader) { uiHeader.innerHTML = "🤖 MONSTERS EXECUTING TACTICAL ENGINE"; uiHeader.style.color = "#e74c3c"; }
-                if (controlPanel) {
-                    controlPanel.innerHTML = `
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                        <button disabled style="padding: 12px; font-size: 14px;">⚔️ Attack</button>
-                        <button disabled style="padding: 12px; font-size: 14px;">💫 Special Attack</button>
-                        <button disabled style="padding: 12px; font-size: 14px;">🎒 Items</button>
-                        <button disabled style="padding: 12px; font-size: 14px; opacity: 1.0;">⏳ Pass Turn</button>
-                    </div>`;
-                }
+            if (gameState === 'MINIGAME_LUMBER') {
+                if (combatScreen) combatScreen.style.display = "none";
+                if (fishingScreen) fishingScreen.style.display = "none";
+                if (hopsScreen) hopsScreen.style.display = "none";
+                if (lumberScreen) lumberScreen.style.display = "flex";
             }
-            
-            refreshCombatSidebar();
-
-            // --- THE NEW VIEW-ONLY BACKPACK PANEL ---
-            const combatInvList = document.getElementById("combat-inventory-list");
-            if (combatInvList) {
-                combatInvList.innerHTML = "";
-                if (player.inventory.length === 0) {
-                    combatInvList.innerHTML = "<div style='width: 100%; text-align: center; padding: 15px; font-size:11px; color:#776c62; font-style: italic;'>Your backpack is empty.</div>";
-                } else {
-                    player.inventory.forEach((item, idx) => {
-                        let rc = item.rarity === "Gorilla" ? "GorillaTier" : item.rarity;
-                        let imgUrl = getItemSpriteURL(item);
-                        let imgHtml = imgUrl ? `<img src="${imgUrl}" style="width:24px;height:24px;image-rendering:pixelated;margin-right:6px;vertical-align:middle;">` : ``;
-                        
-                        combatInvList.innerHTML += `
-                            <div style="font-size:11px; display:flex; align-items:center; background:#110d0a; padding:6px; border-radius:4px; border: 1px solid #3a2f26; width: calc(50% - 3px); box-sizing: border-box;">
-                                ${imgHtml}<span class="${rc}" style="cursor:help; text-decoration: underline dashed;" onmouseenter="showInventoryTooltip(${idx}, event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">[${item.slot.toUpperCase()}] ${item.name}</span>
-                            </div>`;
-                    });
-                }
+            else if (gameState === 'MINIGAME_FISHING') {
+                if (combatScreen) combatScreen.style.display = "none";
+                if (lumberScreen) lumberScreen.style.display = "none";
+                if (hopsScreen) hopsScreen.style.display = "none";
+                if (fishingScreen) fishingScreen.style.display = "flex";
             }
-            
+            else if (gameState === 'MINIGAME_HOPS') {
+                if (combatScreen) combatScreen.style.display = "none";
+                if (lumberScreen) lumberScreen.style.display = "none";
+                if (fishingScreen) fishingScreen.style.display = "none";
+                if (hopsScreen) hopsScreen.style.display = "flex";
+            }
+            else if (gameState === 'COMBAT') {
+                if (lumberScreen) lumberScreen.style.display = "none";
+                if (fishingScreen) fishingScreen.style.display = "none";
+                if (hopsScreen) hopsScreen.style.display = "none";
+                combatScreen.style.display = "block";
+                    
+                let dynamicBg = "none";
+                if (activeCombatZone === 'WILDERNESS') dynamicBg = "url('assets/images/wilds-bg.png')";
+                else if (activeCombatZone === 'CELLARS') dynamicBg = "url('assets/images/cellars-bg.png')";
+                else if (activeCombatZone === 'GORILLA_ARENA') dynamicBg = "url('assets/images/arena-bg.png')";
+                combatScreen.style.setProperty('--active-combat-bg', dynamicBg);
 
+                // === COMBAT GUI SUBMENU ENGINE ===
+                const uiHeader = document.getElementById("target-ui-header");
+                const controlPanel = document.getElementById("combat-control-panel");
                 
-if (combatPhase === 'TARGET_BOMB') {
-                    let cancelBtn = document.createElement("button");
-                    cancelBtn.innerText = "✖ Cancel Throw";
-                    cancelBtn.style.background = "#443a32"; cancelBtn.style.width = "100%"; cancelBtn.style.marginTop = "4px";
-                    cancelBtn.onclick = () => cancelBomb();
-                    combatInvList.appendChild(cancelBtn);
+                if (typeof window.combatSubmenuState === 'undefined') window.combatSubmenuState = 'MAIN';
+                
+                if (currentTurn === 'PLAYER') {
+                    if (combatPhase === 'TARGET_BOMB') {
+                        if (uiHeader) {
+                            uiHeader.innerHTML = `💣 TARGETING BOMB<br><span style="font-size:12px; color:#f4ebd9; font-weight:normal;">Click anywhere to detonate 3x3 blast!</span>`;
+                            uiHeader.style.color = "#e74c3c";
+                        }
+                        if (controlPanel) {
+                            controlPanel.innerHTML = `<button onclick="cancelBomb()" style="background: #c0392b; border: 2px solid #e74c3c; width: 100%; padding: 12px; font-size: 14px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">✖ Cancel Bomb Targeting</button>`;
+                        }
+                    } else {
+                        // --- AUTO TARGETING ---
+                        let range = (player.equipment.weapon && player.equipment.weapon.attackRange) || 1;
+                        let hasTarget = selectedEnemy && selectedEnemy.alive;
+                        let withinRange = false; let losClear = false;
+                        let isAttackPhase = (combatPhase === 'PHASE_2');
+                        
+                        if (hasTarget) {
+                            let dist = getGridDistance(player.x, player.y, selectedEnemy.x, selectedEnemy.y, selectedEnemy.size || 1);
+                            withinRange = (dist <= range);
+                            let sSize = selectedEnemy.size || 1;
+                            for (let bx = selectedEnemy.x; bx < selectedEnemy.x + sSize; bx++) {
+                                for (let by = selectedEnemy.y; by < selectedEnemy.y + sSize; by++) if (hasLineOfSight(player.x, player.y, bx, by)) losClear = true;
+                            }
+                        }
+                        
+                        if (isAttackPhase && (!hasTarget || !withinRange || !losClear)) {
+                            let autoEnemy = enemies.find(e => {
+                                if (!e.alive) return false;
+                                let d = getGridDistance(player.x, player.y, e.x, e.y, e.size || 1);
+                                if (d > range) return false;
+                                let lClear = false;
+                                let cSize = e.size || 1;
+                                for (let bx = e.x; bx < e.x + cSize; bx++) {
+                                    for (let by = e.y; by < e.y + cSize; by++) if (hasLineOfSight(player.x, player.y, bx, by)) lClear = true;
+                                }
+                                return lClear;
+                            });
+                            if (autoEnemy) { selectedEnemy = autoEnemy; hasTarget = true; withinRange = true; losClear = true; }
+                        }
+
+                        // --- HEADER TEXT ---
+                        let phaseLabel = combatPhase.replace('_', ' '); 
+                        let instructions = (combatPhase === 'PHASE_2') ? "Select Target or Action" : "Select Tile to Stride";
+                        
+                        if (uiHeader) {
+                            if (pendingMove) {
+                                uiHeader.innerHTML = `🏃 CONFIRM MOVE<br><span style="font-size:12px; color:#f4ebd9; font-weight:normal;">Click highlighted tile to jump</span>`;
+                                uiHeader.style.color = "#2ecc71";
+                            } else if (selectedEnemy && selectedEnemy.alive && combatPhase === 'PHASE_2') {
+                                uiHeader.innerHTML = `🎯 FOCUS: ${selectedEnemy.name} (${selectedEnemy.hp}/${selectedEnemy.maxHp} HP)<br><span style="font-size:12px; color:#f4ebd9; font-weight:normal;">[${phaseLabel}]</span>`;
+                                uiHeader.style.color = "#2ecc71";
+                            } else {
+                                uiHeader.innerHTML = `⚔️ ${phaseLabel}<br><span style="font-size:12px; color:#f4ebd9; font-weight:normal;">${instructions}</span>`;
+                                uiHeader.style.color = "#3498db";
+                            }
+                        }
+                        
+                        // --- DYNAMIC CONTROL PANEL ---
+                        if (controlPanel) {
+                            let btnDisabled = !(hasTarget && withinRange && losClear && isAttackPhase) ? "disabled" : "";
+                            let passOpacity = (hasTarget && withinRange && losClear && isAttackPhase) ? "0.6" : "1.0";
+                            
+                            if (window.combatSubmenuState === 'MAIN') {
+                                controlPanel.innerHTML = `
+                                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                    <button onclick="executeCombatAction('slash')" ${btnDisabled} style="padding: 12px; font-size: 14px; background:#c0392b; border: 2px solid #e74c3c;" onmouseenter="showSystemTooltip('combat_slash', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">⚔️ Attack</button>
+                                    <button onclick="window.combatSubmenuState='SPECIAL'; refreshSystemUI();" style="padding: 12px; font-size: 14px; background:#8e44ad; border: 2px solid #9b59b6;">💫 Special Attack</button>
+                                    <button onclick="window.combatSubmenuState='ITEMS'; refreshSystemUI();" style="padding: 12px; font-size: 14px; background:#2980b9; border: 2px solid #3498db;">🎒 Items</button>
+                                    <button onclick="executeCombatAction('end')" style="padding: 12px; font-size: 14px; background:#7f8c8d; border: 2px solid #95a5a6; opacity: ${passOpacity};" onmouseenter="showSystemTooltip('combat_pass', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">⏳ Pass Turn</button>
+                                </div>`;
+                            }
+                            else if (window.combatSubmenuState === 'SPECIAL') {
+                                controlPanel.innerHTML = `
+                                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+                                    <button onclick="executeCombatAction('special')" ${btnDisabled} style="padding: 12px; background:#8e44ad; border: 2px solid #9b59b6; font-size: 13px;" onmouseenter="showSpecialSkillTooltip(event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">⚔️ Weapon Attack</button>
+                                    <button disabled style="padding: 12px; background:#2c3e50; border: 2px solid #34495e; color:#7f8c8d; font-size: 13px;">🔮 Magic (Locked)</button>
+                                </div>
+                                <button onclick="window.combatSubmenuState='MAIN'; refreshSystemUI();" style="width: 100%; background: #4a3b2c; border: 1px solid #634e3d; padding: 8px; font-size: 12px;">↩ Back to Main Menu</button>
+                                `;
+                            }
+                            else if (window.combatSubmenuState === 'ITEMS') {
+                                controlPanel.innerHTML = `
+                                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 8px;">
+                                    <button onclick="window.combatSubmenuState='ITEMS_CONSUME'; refreshSystemUI();" style="padding: 10px 4px; font-size: 11px; background:#27ae60; border: 1px solid #2ecc71;">🍺 Consumables</button>
+                                    <button onclick="window.combatSubmenuState='ITEMS_THROW'; refreshSystemUI();" style="padding: 10px 4px; font-size: 11px; background:#d35400; border: 1px solid #e67e22;">💣 Throwables</button>
+                                    <button onclick="window.combatSubmenuState='ITEMS_EQUIP'; refreshSystemUI();" style="padding: 10px 4px; font-size: 11px; background:#34495e; border: 1px solid #7f8c8d;">⚙️ Equipment</button>
+                                </div>
+                                <button onclick="window.combatSubmenuState='MAIN'; refreshSystemUI();" style="width: 100%; background: #4a3b2c; border: 1px solid #634e3d; padding: 8px; font-size: 12px;">↩ Back to Main Menu</button>
+                                `;
+                            }
+                            else if (window.combatSubmenuState === 'ITEMS_CONSUME' || window.combatSubmenuState === 'ITEMS_THROW' || window.combatSubmenuState === 'ITEMS_EQUIP') {
+                                let filterType = '';
+                                if (window.combatSubmenuState === 'ITEMS_CONSUME') filterType = 'brew';
+                                if (window.combatSubmenuState === 'ITEMS_THROW') filterType = 'bomb';
+                                
+                                let validItems = [];
+                                player.inventory.forEach((item, idx) => {
+                                    if (window.combatSubmenuState === 'ITEMS_EQUIP') {
+                                        if (['weapon', 'helmet', 'armor', 'gloves', 'boots'].includes(item.slot)) validItems.push({item, idx});
+                                    } else if (item.type === filterType) validItems.push({item, idx});
+                                });
+
+                                let cpHTML = `<div style="display:flex; flex-direction:column; gap:6px; margin-bottom: 8px; max-height: 140px; overflow-y: auto; background: #110d0a; border: 1px solid #3a2f26; padding: 6px; border-radius: 4px;">`;
+                                
+                                if (validItems.length === 0) {
+                                    cpHTML += `<div style="text-align:center; padding: 15px; font-size: 12px; color:#776c62; font-style: italic;">No items of this category in your backpack.</div>`;
+                                } else {
+                                    validItems.forEach(obj => {
+                                        let btnAction = ''; let btnText = ''; let bgColor = ''; let itemDisabled = '';
+                                        if (filterType === 'brew') {
+                                            btnAction = `consumeBrew(${obj.idx})`; btnText = (obj.item.id==='ipa'||obj.item.id==='lager') ? 'Drink' : 'Chug'; bgColor = "#27ae60";
+                                        } else if (filterType === 'bomb') {
+                                            btnAction = `prepBomb(${obj.idx})`; btnText = `Target`; bgColor = "#d35400";
+                                            if (combatPhase !== 'PHASE_2') itemDisabled = "disabled";
+                                        } else {
+                                            btnAction = `handleCombatEquip(${obj.idx})`; btnText = `Equip`; bgColor = "#2980b9";
+                                        }
+                                        
+                                        let rc = obj.item.rarity === "Gorilla" ? "GorillaTier" : obj.item.rarity;
+                                        let imgUrl = getItemSpriteURL(obj.item);
+                                        let imgHtml = imgUrl ? `<img src="${imgUrl}" style="width:24px;height:24px;image-rendering:pixelated;margin-right:8px;vertical-align:middle;">` : ``;
+                                        
+                                        cpHTML += `
+                                            <div style="display:flex; justify-content:space-between; align-items:center; background:#1e1712; padding:6px; border-radius:4px; border: 1px solid #3a2f26;">
+                                                <div style="display:flex; align-items:center;">${imgHtml}<span class="${rc}" style="font-size:12px;">[${obj.item.slot.toUpperCase()}] ${obj.item.name}</span></div>
+                                                <button onclick="${btnAction}" ${itemDisabled} style="padding:6px 12px; font-size:11px; background:${bgColor}; font-weight:bold;">${btnText}</button>
+                                            </div>
+                                        `;
+                                    });
+                                }
+                                cpHTML += `</div><button onclick="window.combatSubmenuState='ITEMS'; refreshSystemUI();" style="width: 100%; background: #4a3b2c; border: 1px solid #634e3d; padding: 8px; font-size: 12px;">↩ Back to Item Categories</button>`;
+                                controlPanel.innerHTML = cpHTML;
+                            }
+                        }
+                    }
+                } else {
+                    if (uiHeader) { uiHeader.innerHTML = "🤖 MONSTERS EXECUTING TACTICAL ENGINE"; uiHeader.style.color = "#e74c3c"; }
+                    if (controlPanel) {
+                        controlPanel.innerHTML = `
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                            <button disabled style="padding: 12px; font-size: 14px;">⚔️ Attack</button>
+                            <button disabled style="padding: 12px; font-size: 14px;">💫 Special Attack</button>
+                            <button disabled style="padding: 12px; font-size: 14px;">🎒 Items</button>
+                            <button disabled style="padding: 12px; font-size: 14px; opacity: 1.0;">⏳ Pass Turn</button>
+                        </div>`;
+                    }
+                }
+                
+                refreshCombatSidebar();
+
+                // --- THE NEW VIEW-ONLY BACKPACK PANEL ---
+                const combatInvList = document.getElementById("combat-inventory-list");
+                if (combatInvList) {
+                    combatInvList.innerHTML = "";
+                    if (player.inventory.length === 0) {
+                        combatInvList.innerHTML = "<div style='width: 100%; text-align: center; padding: 15px; font-size:11px; color:#776c62; font-style: italic;'>Your backpack is empty.</div>";
+                    } else {
+                        player.inventory.forEach((item, idx) => {
+                            let rc = item.rarity === "Gorilla" ? "GorillaTier" : item.rarity;
+                            let imgUrl = getItemSpriteURL(item);
+                            let imgHtml = imgUrl ? `<img src="${imgUrl}" style="width:24px;height:24px;image-rendering:pixelated;margin-right:6px;vertical-align:middle;">` : ``;
+                            
+                            combatInvList.innerHTML += `
+                                <div style="font-size:11px; display:flex; align-items:center; background:#110d0a; padding:6px; border-radius:4px; border: 1px solid #3a2f26; width: calc(50% - 3px); box-sizing: border-box;">
+                                    ${imgHtml}<span class="${rc}" style="cursor:help; text-decoration: underline dashed;" onmouseenter="showInventoryTooltip(${idx}, event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">[${item.slot.toUpperCase()}] ${item.name}</span>
+                                </div>`;
+                        });
+                    }
+                    
+                    if (combatPhase === 'TARGET_BOMB') {
+                        let cancelBtn = document.createElement("button");
+                        cancelBtn.innerText = "✖ Cancel Throw";
+                        cancelBtn.style.background = "#443a32"; cancelBtn.style.width = "100%"; cancelBtn.style.marginTop = "4px";
+                        cancelBtn.onclick = () => cancelBomb();
+                        combatInvList.appendChild(cancelBtn);
+                    }
                 }
             }
-        }
         } 
         else { 
             // --- CONSOLIDATED TABBED VIEWS ---
-            // We are out of combat, show the Nav Bar
             if (topNavBar) topNavBar.style.display = "flex";
             combatScreen.style.display = "none";
 
-            // Only show the column container if we are NOT in the Vault
             if (townVaultView) townVaultView.style.display = (gameState === 'VAULT') ? "none" : "flex"; 
-// Hide ALL tabs first to ensure a clean slate
+            
             if (knightScreen) knightScreen.style.display = "none";
             townScreen.style.display = "none";
             merchantScreen.style.display = "none";
@@ -462,23 +439,15 @@ if (combatPhase === 'TARGET_BOMB') {
             vaultScreen.style.display = "none";
             if (upgradesScreen) upgradesScreen.style.display = "none";
             
-			// === NEW: Hide Studio ===
             const studioScreen = document.getElementById("studio-screen");
             if (studioScreen) studioScreen.style.display = "none";
-			
-			
-            // ADD THIS TO HIDE THE MINIGAME
-// Hide Minigames
-let lumberScreen = document.getElementById("minigame-lumber-screen");
-if (lumberScreen) lumberScreen.style.display = "none"; 
-let fishingScreen = document.getElementById("minigame-fishing-screen");
-if (fishingScreen) fishingScreen.style.display = "none";
-let hopsScreen = document.getElementById("minigame-hops-screen");
-if (hopsScreen) hopsScreen.style.display = "none";
-			
+            
+            if (lumberScreen) lumberScreen.style.display = "none"; 
+            if (fishingScreen) fishingScreen.style.display = "none";
+            if (hopsScreen) hopsScreen.style.display = "none";
+            
             document.querySelectorAll('.nav-bar button').forEach(btn => btn.classList.remove('active-tab'));
 
-            // === UPDATED STATE ROUTER ===
             if (gameState === 'KNIGHT') {
                 if (knightScreen) knightScreen.style.display = "block";
                 document.getElementById('nav-knight').classList.add('active-tab');
@@ -499,7 +468,7 @@ if (hopsScreen) hopsScreen.style.display = "none";
                 document.getElementById("vault-screen-max").innerText = player.vaultSlots;
                 document.getElementById("vault-inv-count").innerText = player.inventory.length;
 
-				let vaultCost = getVaultUpgradeCost();
+                let vaultCost = getVaultUpgradeCost();
                 let vaultBtn = document.getElementById("upgrade-vault-btn");
                 if (vaultBtn) {
                     vaultBtn.innerText = `Expand Vault Slots (+5 Slots) (Costs ${vaultCost.gold}g, ${vaultCost.wood}W)`;
@@ -508,16 +477,14 @@ if (hopsScreen) hopsScreen.style.display = "none";
 
                 renderVaultStorageList();
                 renderBackpackList(document.getElementById("vault-inventory-list"), true);
-			} else if (gameState === 'UPGRADES') {
+            } else if (gameState === 'UPGRADES') {
                 if (upgradesScreen) upgradesScreen.style.display = "flex";
                 document.getElementById('nav-town').classList.add('active-tab');
             } else if (gameState === 'STUDIO') {
-                // === NEW: Show the Studio iframe ===
                 if (studioScreen) studioScreen.style.display = "block";
-                document.getElementById('nav-town').classList.add('active-tab'); // Keep Town tab highlighted
+                document.getElementById('nav-town').classList.add('active-tab'); 
             }
 
-            // --- NEW: DYNAMIC KNIGHT HEADER & STATS ---
             const knightHeader = document.getElementById("knight-header-name");
             if (knightHeader) {
                 const nameInput = document.getElementById("char-name-input");
@@ -539,7 +506,6 @@ if (hopsScreen) hopsScreen.style.display = "none";
 
             const slots = ['helmet', 'armor', 'weapon', 'gloves', 'boots'];
             
-            // Dictionary mapping slots to their designated placeholder letters
             const slotPlaceholders = {
                 'helmet': 'H',
                 'armor': 'A',
@@ -551,43 +517,34 @@ if (hopsScreen) hopsScreen.style.display = "none";
             slots.forEach(slotKey => {
                 const el = document.getElementById(`slot-${slotKey}`);
                 if (el) {
-                    // Universal drop hooks for empty or full slots
                     el.ondragover = handleItemDragOver;
                     el.ondrop = (e) => handleItemDrop(e, slotKey, 'equipment');
 
                     const item = player.equipment[slotKey];
                     if (item) {
-                        // Activate drag-away for equipped items
                         el.draggable = true;
                         el.ondragstart = (e) => handleItemDragStart(e, slotKey, 'equipment');
 
-                        // Apply standard or Gorilla rarity borders
                         let rc = item.rarity === "Gorilla" ? "slot-jackpot" : (item.rarity ? `slot-${item.rarity.toLowerCase()}` : 'slot-common');
                         el.className = `equip-slot ${rc}`;
 
-                        // Extract and render the 24x24 procedural sprite
                         let imgUrl = getItemSpriteURL(item);
                         let imgHtml = imgUrl ? `<img src="${imgUrl}" style="width:32px;height:32px;image-rendering:pixelated;pointer-events:none;">` : ``;
                         
-                        // Clear the placeholder letter and inject the image
                         el.innerHTML = imgHtml;
                         
-                        // Re-hook the tooltip logic
                         el.onmouseenter = (e) => showItemTooltip(e, item, slotKey, 'equipment');
                         el.onmouseleave = hideTooltip;
                     } else {
-                        // Slot is empty - restore the vanilla placeholder state
                         el.draggable = false;
                         el.ondragstart = null;
                         el.className = 'equip-slot'; 
-                        el.innerHTML = slotPlaceholders[slotKey]; // Injects H, A, W, G, or B
+                        el.innerHTML = slotPlaceholders[slotKey]; 
                         el.onmouseenter = null;
                         el.onmouseleave = null;
                     }
                 }
             });
-
-
 
             const gateBtn = document.getElementById("gate-btn");
             if (gateBtn) {
@@ -699,7 +656,6 @@ if (hopsScreen) hopsScreen.style.display = "none";
             let cartMaxEl = document.getElementById("cart-max");
             if(cartMaxEl) cartMaxEl.innerText = player.supplyCart.max;
             
-            // --- NEW: DYNAMIC CART ANIMATIONS ---
             function updateAndFlash(id, newValue, memKey) {
                 let el = document.getElementById(id);
                 if (el) {
@@ -765,13 +721,16 @@ if (hopsScreen) hopsScreen.style.display = "none";
             if (lvlPanel) {
                 lvlPanel.style.display = "block";
                 
+                const safeMaxLevel = typeof MAX_PLAYER_LEVEL !== 'undefined' ? MAX_PLAYER_LEVEL : 50;
+                const safeSpPerLevel = typeof SP_PER_LEVEL !== 'undefined' ? SP_PER_LEVEL : 5;
+                
                 let sp = player.skillPoints || 0;
                 let btnDisabled = sp > 0 ? "" : "disabled";
                 
                 let xpString = "";
                 let xpPct = 0;
                 
-                if (player.level >= MAX_PLAYER_LEVEL) {
+                if (player.level >= safeMaxLevel) {
                     xpString = `MAX LEVEL`;
                     xpPct = 100;
                 } else {
@@ -779,8 +738,7 @@ if (hopsScreen) hopsScreen.style.display = "none";
                     xpString = `${player.xp}/${player.xpToNext} XP - ${xpPct}%`;
                 }
                 
-                // === UPDATED: Calculate total SP correctly based on the new 5 SP limit ===
-                let totalSP = (player.level - 1) * SP_PER_LEVEL;
+                let totalSP = (player.level - 1) * safeSpPerLevel;
                 let canReset = player.gold >= 1000 && sp < totalSP;
                 let resetDisabledStr = canReset ? "" : "disabled";
                 
@@ -885,13 +843,11 @@ function renderBackpackList(domContainer, showVaultOption) {
     if (!domContainer) return; 
     
     domContainer.innerHTML = "";
-    domContainer.className = "inventory-grid"; // Apply the new grid CSS
+    domContainer.className = "inventory-grid"; 
     
-    // NEW: Fallback drop zone on the container background itself!
     domContainer.ondragover = handleItemDragOver;
     domContainer.ondrop = (e) => {
         if (e.target === domContainer) {
-            // If dropped in the dead space between slots, toss it in the first empty slot
             let nextSlot = player.inventory.length; 
             if (nextSlot < (player.maxInventorySlots || 5)) handleItemDrop(e, nextSlot, 'backpack');
         }
@@ -907,29 +863,24 @@ function renderBackpackList(domContainer, showVaultOption) {
             let rc = item.rarity === "Gorilla" ? "slot-jackpot" : (item.rarity ? `slot-${item.rarity.toLowerCase()}` : 'slot-common');
             slotDiv.className = `item-slot ${rc}`;
             
-            // Drag and Drop Hooks
             slotDiv.draggable = true;
             slotDiv.ondragstart = (e) => handleItemDragStart(e, idx, 'backpack');
             slotDiv.ondragover = handleItemDragOver;
             slotDiv.ondrop = (e) => handleItemDrop(e, idx, 'backpack');
             
-            // The New Tooltip Hook
             slotDiv.onmouseenter = (e) => showItemTooltip(e, item, idx, 'backpack');
             slotDiv.onmouseleave = hideTooltip;
 
-            // Render the 24x24 Sprite Matrix!
             let imgUrl = getItemSpriteURL(item);
             if (imgUrl) {
-                // pointer-events: none ensures the drag/drop fires on the slot, not the image!
                 slotDiv.innerHTML = `<img src="${imgUrl}" style="width:36px;height:36px;image-rendering:pixelated;pointer-events:none;">`;
             } else {
                 slotDiv.innerHTML = `<span style="font-size:20px;pointer-events:none;">${item.type === 'crate' ? '📦' : '🛡️'}</span>`;
             }
         } else {
-            // Render Empty Slots for structure
             slotDiv.className = 'item-slot';
             slotDiv.ondragover = handleItemDragOver;
-            slotDiv.ondrop = (e) => handleItemDrop(e, idx, 'backpack'); // Allow dropping into empty slots!
+            slotDiv.ondrop = (e) => handleItemDrop(e, idx, 'backpack'); 
         }
         
         domContainer.appendChild(slotDiv);
@@ -941,7 +892,7 @@ function renderVaultStorageList() {
     if (!vaultPanel) return; 
     
     vaultPanel.innerHTML = "";
-    vaultPanel.className = "inventory-grid"; // Apply the new grid CSS
+    vaultPanel.className = "inventory-grid"; 
     
     let maxSlots = player.vaultSlots || 10;
 
@@ -953,17 +904,14 @@ function renderVaultStorageList() {
             let rc = item.rarity === "Gorilla" ? "slot-jackpot" : (item.rarity ? `slot-${item.rarity.toLowerCase()}` : 'slot-common');
             slotDiv.className = `item-slot ${rc}`;
             
-            // Drag and Drop Hooks
             slotDiv.draggable = true;
             slotDiv.ondragstart = (e) => handleItemDragStart(e, idx, 'vault');
             slotDiv.ondragover = handleItemDragOver;
             slotDiv.ondrop = (e) => handleItemDrop(e, idx, 'vault');
             
-            // The New Tooltip Hook
             slotDiv.onmouseenter = (e) => showItemTooltip(e, item, idx, 'vault');
             slotDiv.onmouseleave = hideTooltip;
 
-            // Render the 24x24 Sprite Matrix!
             let imgUrl = getItemSpriteURL(item);
             if (imgUrl) {
                 slotDiv.innerHTML = `<img src="${imgUrl}" style="width:36px;height:36px;image-rendering:pixelated;pointer-events:none;">`;
@@ -971,7 +919,6 @@ function renderVaultStorageList() {
                 slotDiv.innerHTML = `<span style="font-size:20px;pointer-events:none;">${item.type === 'crate' ? '📦' : '🛡️'}</span>`;
             }
         } else {
-            // Render Empty Slots for structure
             slotDiv.className = 'item-slot';
             slotDiv.ondragover = handleItemDragOver;
             slotDiv.ondrop = (e) => handleItemDrop(e, idx, 'vault');
@@ -980,7 +927,7 @@ function renderVaultStorageList() {
         vaultPanel.appendChild(slotDiv);
     }
 }
-// === NEW: COLLAPSIBLE STATS & SPRITE RENDERER ===
+
 let statsExpanded = false;
 
 function toggleStatsPanel() {
@@ -990,7 +937,6 @@ function toggleStatsPanel() {
 }
 
 function renderMainScreenSprites() {
-    // 1. Render Player onto the new Dashboard Canvas
     const pCanvas = document.getElementById('main-player-canvas');
     if (pCanvas && typeof drawProceduralSprite === 'function') {
         const pCtx = pCanvas.getContext('2d');
@@ -1020,7 +966,6 @@ function renderMainScreenSprites() {
         if (eq.weapon && eq.weapon.spriteId && SpriteMatrices[eq.weapon.spriteId]) drawProceduralSprite(pCtx, SpriteMatrices[eq.weapon.spriteId], 0, 0, pCanvas.width);
     }
 
-    // 2. Render Pet onto Canvas
     const petCanvas = document.getElementById('main-pet-canvas');
     const petAdoptionUI = document.getElementById('pet-adoption-ui');
     const petHeader = document.getElementById('pet-header-name');
@@ -1029,11 +974,9 @@ function renderMainScreenSprites() {
     if (petCanvas && typeof renderPetCanvas === 'function') {
         renderPetCanvas(petCanvas);
         
-        // THIS IS THE LINE THAT WAS MISSING!
         if (player.pet && player.pet.adopted) {
             if (openAdoptionBtn) openAdoptionBtn.style.display = "none";
             
-            // Show the Edit & Train buttons ONLY if the adoption UI is currently closed
             let editBtn = document.getElementById('edit-pet-btn');
             let trainBtn = document.getElementById('train-pet-btn');
             
@@ -1053,7 +996,6 @@ function renderMainScreenSprites() {
                 petHeader.style.color = "#ffcc66";
             }
         } else {
-            // Keeps the "Companion" default state until the player clicks the button
             if (petHeader && petHeader.innerText !== "Adopt Pet") {
                 petHeader.innerText = "Companion";
                 petHeader.style.color = "#bbaaa0";
@@ -1062,14 +1004,11 @@ function renderMainScreenSprites() {
     }
 }
 
-// === WARDROBE & PET EDITING LOGIC ===
-
 window.openAdoptionMenu = function() {
     document.getElementById('open-adoption-btn').style.display = "none";
     document.getElementById('pet-adoption-ui').style.display = "block";
     document.getElementById('main-pet-canvas').style.display = "block";
     
-    // Ensure the button says Adopt if they haven't adopted yet
     let confirmBtn = document.getElementById('confirm-pet-btn');
     if (confirmBtn) {
         confirmBtn.innerText = "Adopt (10g)";
@@ -1098,7 +1037,7 @@ function toggleWardrobe() {
 
 function cycleTownAppearance(part) {
     if (typeof cycleAppearance === 'function') {
-        cycleAppearance(part); // This automatically edits player.appearance
+        cycleAppearance(part); 
     }
     if (typeof renderMainScreenSprites === 'function') renderMainScreenSprites();
     saveGame();
@@ -1109,10 +1048,8 @@ function editPetMenu() {
     document.getElementById('edit-pet-btn').style.display = "none";
     document.getElementById('pet-adoption-ui').style.display = "block";
     
-    // Pre-fill their current name into the box so they can edit it
     document.getElementById('pet-name-input').value = player.pet.name;
     
-    // Change the Adopt button into a Save button!
     let confirmBtn = document.getElementById('confirm-pet-btn');
     if (confirmBtn) {
         confirmBtn.innerText = "Save Changes";
@@ -1130,48 +1067,35 @@ function savePetEdits() {
     document.getElementById('edit-pet-btn').style.display = "block";
     
     saveGame();
-    refreshSystemUI(); // Restores the UI state and updates the headers
+    refreshSystemUI(); 
     if (typeof playRetroSound === 'function') playRetroSound('coin');
 }
 
-
-
-
-
-// === MISSING: PET CYCLING ENGINE ===
 window.cyclePetAppearance = function(part) {
-    // 1. Safety check: ensure the pet object exists
     if (!player.pet) player.pet = { adopted: false, name: "Companion" };
     
-    // 2. Define the visual options (We can add more of these in pet-assets.js later!)
     const petOptions = {
-    type: ['dog', 'cat'],
-    furColor: ['brown', 'gray', 'orange', 'white', 'black', 'golden', 'cream'], 
-    collarColor: ['red', 'blue', 'green', 'yellow', 'purple', 'pink']
+        type: ['dog', 'cat'],
+        furColor: ['brown', 'gray', 'orange', 'white', 'black', 'golden', 'cream'], 
+        collarColor: ['red', 'blue', 'green', 'yellow', 'purple', 'pink']
     };
 
     if (!petOptions[part]) return;
 
-    // 3. Find the current style and cycle to the next one
     let currentVal = player.pet[part];
     
-    // If the pet doesn't have a value yet, default to the first one
     if (!currentVal) currentVal = petOptions[part][0];
     
     let currentIndex = petOptions[part].indexOf(currentVal);
     let nextIndex = (currentIndex + 1) % petOptions[part].length;
     
-    // 4. Apply the new visual and save
     player.pet[part] = petOptions[part][nextIndex];
     saveGame();
 
-    // 5. REDRAW THE CANVAS! (This is what makes the UI actually update)
     if (typeof renderMainScreenSprites === 'function') renderMainScreenSprites();
     if (typeof playRetroSound === 'function') playRetroSound('menu');
 };
 
 function updateTownUI(data) {
-    // The core UI refresh now handles cart math directly via getCartUpgradeCost().
-    // This function remains available to catch future server-only Town data payloads.
+    // The core UI refresh now handles cart math directly.
 }
-
