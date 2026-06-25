@@ -286,25 +286,28 @@
     <div style="width: 50%; display: flex; flex-direction: column; align-items: center; border-right: 1px dashed #4a3b2c; padding-right: 10px;">
         <h4 id="knight-header-name" style="margin: 0 0 5px 0; font-size: 11px; color: #ffcc66; border-bottom: 1px solid #3a2f26; padding-bottom: 4px; text-transform: uppercase; width: 100%; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">Your Knight</h4>
         
-        <div style="display: flex; justify-content: center; align-items: center; gap: 15px; width: 100%; margin-top: 5px;">
+        <div style="display: flex; justify-content: center; align-items: flex-start; gap: 15px; width: 100%; margin-top: 5px;">
             
             <div style="display: flex; flex-direction: column; align-items: center;">
-				<canvas id="main-player-canvas" width="96" height="96" style="background: #221a14; border: 1px solid #4a3b2c; border-radius: 4px; image-rendering: pixelated; width: 128px; height: 128px; box-shadow: inset 0 0 10px rgba(0,0,0,0.8);"></canvas>
-				<button id="knight-wardrobe-btn" onclick="toggleWardrobe()" style="width: 100%; background: #2c3e50; border-color: #34495e; margin-top: 5px; font-size: 10px; padding: 4px;">🪞 Wardrobe</button>
-			</div>
+                <canvas id="main-player-canvas" width="96" height="96" style="background: #221a14; border: 1px solid #4a3b2c; border-radius: 4px; image-rendering: pixelated; width: 144px; height: 144px; box-shadow: inset 0 0 10px rgba(0,0,0,0.8);"></canvas>
+            </div>
 
-            <div class="paper-doll-grid">
-                <div class="equip-slot empty-cell"></div>
-                <div class="equip-slot" id="slot-helmet">H</div>
-                <div class="equip-slot empty-cell"></div>
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                <button id="knight-wardrobe-btn" onclick="toggleWardrobe()" style="width: 100%; background: #2c3e50; border-color: #34495e; font-size: 10px; padding: 4px; margin: 0;">🪞 Wardrobe</button>
+                
+                <div class="paper-doll-grid">
+                    <div class="equip-slot empty-cell"></div>
+                    <div class="equip-slot" id="slot-helmet">H</div>
+                    <div class="equip-slot empty-cell"></div>
 
-                <div class="equip-slot" id="slot-gloves">G</div>
-                <div class="equip-slot" id="slot-armor">A</div>
-                <div class="equip-slot" id="slot-weapon">W</div>
+                    <div class="equip-slot" id="slot-gloves">G</div>
+                    <div class="equip-slot" id="slot-armor">A</div>
+                    <div class="equip-slot" id="slot-weapon">W</div>
 
-                <div class="equip-slot empty-cell"></div>
-                <div class="equip-slot" id="slot-boots">B</div>
-                <div class="equip-slot empty-cell"></div>
+                    <div class="equip-slot empty-cell"></div>
+                    <div class="equip-slot" id="slot-boots">B</div>
+                    <div class="equip-slot empty-cell"></div>
+                </div>
             </div>
             
         </div>

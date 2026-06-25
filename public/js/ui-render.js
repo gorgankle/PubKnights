@@ -194,11 +194,11 @@ function refreshSystemUI() {
         uiMemory.fish = player.fish; uiMemory.hops = player.hops;
 
         wallet.innerHTML = `
-            <div style="display: flex; justify-content: space-around; font-family: monospace; font-size: 12px; padding: 4px;">
-                <span class="${animG}">💰 <b>Gold:</b> ${(player.gold || 0).toLocaleString()}g</span>
-                <span class="${animW}">🌲 <b>Timber:</b> ${(player.wood || 0).toLocaleString()}</span>
-                <span class="${animF}">🐟 <b>Fish:</b> ${(player.fish || 0).toLocaleString()}</span>
-                <span class="${animH}">🌿 <b>Hops:</b> ${(player.hops || 0).toLocaleString()}</span>
+            <div style="display: flex; justify-content: space-around; font-family: monospace; font-size: 12px; padding: 4px; color: #bbaaa0;">
+                <span class="${animG}">💰 Gold: <b style="font-size: 14px; color: #fff;">${(player.gold || 0).toLocaleString()}g</b></span>
+                <span class="${animW}">🌲 Timber: <b style="font-size: 14px; color: #fff;">${(player.wood || 0).toLocaleString()}</b></span>
+                <span class="${animF}">🐟 Fish: <b style="font-size: 14px; color: #fff;">${(player.fish || 0).toLocaleString()}</b></span>
+                <span class="${animH}">🌿 Hops: <b style="font-size: 14px; color: #fff;">${(player.hops || 0).toLocaleString()}</b></span>
             </div>`;
 
         if (gameState === 'COMBAT' && currentTurn === 'PLAYER') {
@@ -834,6 +834,16 @@ function renderBackpackList(domContainer, showVaultOption) {
     
     domContainer.innerHTML = "";
     domContainer.className = "inventory-grid"; // Apply the new grid CSS
+    
+    // NEW: Fallback drop zone on the container background itself!
+    domContainer.ondragover = handleItemDragOver;
+    domContainer.ondrop = (e) => {
+        if (e.target === domContainer) {
+            // If dropped in the dead space between slots, toss it in the first empty slot
+            let nextSlot = player.inventory.length; 
+            if (nextSlot < (player.maxInventorySlots || 5)) handleItemDrop(e, nextSlot, 'backpack');
+        }
+    };
 
     let maxSlots = player.maxInventorySlots || 5;
 

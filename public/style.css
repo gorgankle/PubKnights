@@ -371,7 +371,14 @@ CSS
     background: rgba(17, 13, 10, 0.8);
     border: 2px solid #4a3b2c;
     border-radius: 6px;
-    align-content: flex-start; /* Stops empty rows from stretching vertically! */
+    align-content: flex-start;
+    min-height: 74px; /* Guarantees space for at least 1 row of empty slots to render */
+}
+
+/* Make completely empty slots look like distinct drop zones */
+.inventory-grid .item-slot:empty {
+    background: rgba(34, 26, 20, 0.4);
+    border: 1px dashed #634e3d;
 }
 
 /* Force the Vault to cap at ~5 rows and scroll */
