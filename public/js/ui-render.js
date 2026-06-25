@@ -726,9 +726,20 @@ if (hopsScreen) hopsScreen.style.display = "none";
                 
                 let sp = player.skillPoints || 0;
                 let btnDisabled = sp > 0 ? "" : "disabled";
-                let xpPct = Math.floor((player.xp / player.xpToNext) * 100);
                 
-                let totalSP = (player.level - 1) * 3;
+                let xpString = "";
+                let xpPct = 0;
+                
+                if (player.level >= MAX_PLAYER_LEVEL) {
+                    xpString = `MAX LEVEL`;
+                    xpPct = 100;
+                } else {
+                    xpPct = Math.floor((player.xp / player.xpToNext) * 100);
+                    xpString = `${player.xp}/${player.xpToNext} XP - ${xpPct}%`;
+                }
+                
+                // === UPDATED: Calculate total SP correctly based on the new 5 SP limit ===
+                let totalSP = (player.level - 1) * SP_PER_LEVEL;
                 let canReset = player.gold >= 1000 && sp < totalSP;
                 let resetDisabledStr = canReset ? "" : "disabled";
                 
@@ -737,7 +748,7 @@ if (hopsScreen) hopsScreen.style.display = "none";
                 
                 lvlPanel.innerHTML = `
                     <button class="${pulseClass}" onclick="toggleStatsPanel()" style="width: 100%; background: #2c1e16; border: 1px solid #d35400; padding: 10px; text-align: left; display: flex; justify-content: space-between; align-items: center; border-radius: 4px; margin-bottom: ${statsExpanded ? '0' : '10px'}; cursor: pointer;" onmouseenter="showSystemTooltip('stats_panel', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">
-                        <span style="color: #ff9f43; font-weight: bold; font-family: 'Courier New', monospace; font-size: 13px;">🌟 Lvl ${player.level} Knight (${player.xp}/${player.xpToNext} XP - ${xpPct}%)</span>
+                        <span style="color: #ff9f43; font-weight: bold; font-family: 'Courier New', monospace; font-size: 13px;">🌟 Lvl ${player.level} Knight (${xpString})</span>
                         <span style="font-size: 11px; color: #f1c40f;"><span id="unspent-sp">${sp}</span> SP Available ${chevron}</span>
                     </button>
                     
