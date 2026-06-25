@@ -542,8 +542,16 @@ canvas.addEventListener("click", function(e) {
     if (tx < 0 || tx >= currentGridSize || ty < 0 || ty >= currentGridSize) return;
 
     if (combatPhase === 'TARGET_BOMB') {
-        if (typeof executeBombThrow === 'function') executeBombThrow(tx, ty);
-        hoverTile = {x: -1, y: -1}; return;
+        if (typeof dispatchCombatAction === 'function') {
+            // Send the payload including the activeBombIndex stored by prepBomb()
+            dispatchCombatAction('throw_bomb', { 
+                invIndex: activeBombIndex, 
+                tx: tx, 
+                ty: ty 
+            });
+        }
+        hoverTile = {x: -1, y: -1}; 
+        return;
     }
 
     let clickedMonster = enemies.find(em => { let s = em.size || 1; return em.alive && tx >= em.x && tx < em.x + s && ty >= em.y && ty < em.y + s; });

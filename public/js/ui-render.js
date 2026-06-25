@@ -311,16 +311,16 @@ function refreshSystemUI() {
                             if (window.combatSubmenuState === 'MAIN') {
                                 controlPanel.innerHTML = `
                                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                                    <button onclick="executeCombatAction('slash')" ${btnDisabled} style="padding: 12px; font-size: 14px; background:#c0392b; border: 2px solid #e74c3c;" onmouseenter="showSystemTooltip('combat_slash', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">⚔️ Attack</button>
+                                    <button onclick="dispatchCombatAction('attack', { subType: 'slash' })" ${btnDisabled} style="padding: 12px; font-size: 14px; background:#c0392b; border: 2px solid #e74c3c;" onmouseenter="showSystemTooltip('combat_slash', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">⚔️ Attack</button>
                                     <button onclick="window.combatSubmenuState='SPECIAL'; refreshSystemUI();" style="padding: 12px; font-size: 14px; background:#8e44ad; border: 2px solid #9b59b6;">💫 Special Attack</button>
                                     <button onclick="window.combatSubmenuState='ITEMS'; refreshSystemUI();" style="padding: 12px; font-size: 14px; background:#2980b9; border: 2px solid #3498db;">🎒 Items</button>
-                                    <button onclick="executeCombatAction('end')" style="padding: 12px; font-size: 14px; background:#7f8c8d; border: 2px solid #95a5a6; opacity: ${passOpacity};" onmouseenter="showSystemTooltip('combat_pass', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">⏳ Pass Turn</button>
+                                    <button onclick="dispatchCombatAction('end_turn')" style="padding: 12px; font-size: 14px; background:#7f8c8d; border: 2px solid #95a5a6; opacity: ${passOpacity};" onmouseenter="showSystemTooltip('combat_pass', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">⏳ Pass Turn</button>
                                 </div>`;
                             }
                             else if (window.combatSubmenuState === 'SPECIAL') {
                                 controlPanel.innerHTML = `
                                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
-                                    <button onclick="executeCombatAction('special')" ${btnDisabled} style="padding: 12px; background:#8e44ad; border: 2px solid #9b59b6; font-size: 13px;" onmouseenter="showSpecialSkillTooltip(event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">⚔️ Weapon Attack</button>
+                                    <button onclick="dispatchCombatAction('attack', { subType: 'special' })" ${btnDisabled} style="padding: 12px; background:#8e44ad; border: 2px solid #9b59b6; font-size: 13px;" onmouseenter="showSpecialSkillTooltip(event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">⚔️ Weapon Attack</button>
                                     <button disabled style="padding: 12px; background:#2c3e50; border: 2px solid #34495e; color:#7f8c8d; font-size: 13px;">🔮 Magic (Locked)</button>
                                 </div>
                                 <button onclick="window.combatSubmenuState='MAIN'; refreshSystemUI();" style="width: 100%; background: #4a3b2c; border: 1px solid #634e3d; padding: 8px; font-size: 12px;">↩ Back to Main Menu</button>
@@ -356,12 +356,15 @@ function refreshSystemUI() {
                                     validItems.forEach(obj => {
                                         let btnAction = ''; let btnText = ''; let bgColor = ''; let itemDisabled = '';
                                         if (filterType === 'brew') {
-                                            btnAction = `consumeBrew(${obj.idx})`; btnText = (obj.item.id==='ipa'||obj.item.id==='lager') ? 'Drink' : 'Chug'; bgColor = "#27ae60";
+                                            btnAction = `dispatchCombatAction('item', { action: 'brew', index: ${obj.idx} })`; 
+                                            btnText = (obj.item.id==='ipa'||obj.item.id==='lager') ? 'Drink' : 'Chug'; bgColor = "#27ae60";
                                         } else if (filterType === 'bomb') {
-                                            btnAction = `prepBomb(${obj.idx})`; btnText = `Target`; bgColor = "#d35400";
+                                            btnAction = `prepBomb(${obj.idx})`; 
+                                            btnText = `Target`; bgColor = "#d35400";
                                             if (combatPhase !== 'PHASE_2') itemDisabled = "disabled";
                                         } else {
-                                            btnAction = `handleCombatEquip(${obj.idx})`; btnText = `Equip`; bgColor = "#2980b9";
+                                            btnAction = `dispatchCombatAction('item', { action: 'equip', index: ${obj.idx} })`; 
+                                            btnText = `Equip`; bgColor = "#2980b9";
                                         }
                                         
                                         let rc = obj.item.rarity === "Gorilla" ? "GorillaTier" : obj.item.rarity;

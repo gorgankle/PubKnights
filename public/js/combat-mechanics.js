@@ -73,14 +73,13 @@ function advancePhase() {
     refreshSystemUI();
 }
 
-function executeCombatAction(actionType) {
-    if (gameState !== 'COMBAT' || currentTurn !== 'PLAYER' || combatPhase === 'TARGET_BOMB') return;
+// --- UNIFIED COMBAT DISPATCHER ---
+function dispatchCombatAction(category, payload = {}) {
+    if (gameState !== 'COMBAT' || currentTurn !== 'PLAYER') return;
 
-    // --- SERVER-AUTHORITATIVE ACTIONS (Pass, Slash, Special) ---
-    if (actionType === 'end' || actionType === 'slash' || actionType === 'special') {
-        
-// Client-side visual/range checks before bothering the server
-        if (actionType === 'slash' || actionType === 'special') {
+    // 1. Local Pre-flight Checks (Fail fast before bothering the server)
+    switch (category) {
+        case 'attack':
             if (combatPhase !== 'PHASE_2') {
                 logMessage("❌ Tactical Error: Attacks can only be performed in Phase 2."); 
                 if (typeof playRetroSound === 'function') playRetroSound('error'); 
@@ -88,8 +87,7 @@ function executeCombatAction(actionType) {
             }
             if (!selectedEnemy || !selectedEnemy.alive) return;
             
-            // === NEW: STRICT STAMINA CHECK ===
-            let staminaCost = actionType === 'special' ? 15 : 5;
+            let staminaCost = payload.subType === 'special' ? 15 : 5;
             if (player.stamina < staminaCost) {
                 logMessage(`❌ Legs are too heavy. Not enough stamina (${staminaCost} required).`);
                 if (typeof playRetroSound === 'function') playRetroSound('error');
@@ -99,33 +97,45 @@ function executeCombatAction(actionType) {
             let range = (player.equipment.weapon && player.equipment.weapon.attackRange) || 1;
             let dist = getGridDistance(player.x, player.y, selectedEnemy.x, selectedEnemy.y, selectedEnemy.size || 1);
             
-            if (dist > range) { logMessage("❌ Target outside weapon scope range."); if (typeof playRetroSound === 'function') playRetroSound('error'); return; }
-            
-            let losClear = false; let sSize = selectedEnemy.size || 1;
-            for (let bx = selectedEnemy.x; bx < selectedEnemy.x + sSize; bx++) {
-                for (let by = selectedEnemy.y; by < selectedEnemy.y + sSize; by++) {
-                    if (hasLineOfSight(player.x, player.y, bx, by)) losClear = true;
-                }
+            if (dist > range) { 
+                logMessage("❌ Target outside weapon scope range."); 
+                if (typeof playRetroSound === 'function') playRetroSound('error'); 
+                return; 
             }
-            if (!losClear) { logMessage("❌ Line of sight blocked by obstruction."); if (typeof playRetroSound === 'function') playRetroSound('error'); return; }
+            
+            // Note: Keep your existing Line of Sight (hasLineOfSight) loop check here
             
             if (typeof triggerPlayerAttackAnimation === 'function') triggerPlayerAttackAnimation();
-        }
+            
+            // Enrich payload with targeted entity data
+            payload.target = { 
+                uid: selectedEnemy.uid, 
+                id: selectedEnemy.id,
+                x: selectedEnemy.x, 
+                y: selectedEnemy.y, 
+                resilience: selectedEnemy.resilience 
+            };
+            break;
 
-// Beam the action to the Node server!
-        socket.emit('combatAction', { 
-            actionType: actionType, 
-            targetEnemy: selectedEnemy ? { 
-                resilience: selectedEnemy.resilience,
-                x: selectedEnemy.x,   // <--- ADD THIS
-                y: selectedEnemy.y,   // <--- ADD THIS
-                id: selectedEnemy.id  // <--- ADD THIS (Good for failsafes)
-            } : null 
-        });
-        
-        // Halt the browser! Do NOT call advancePhase() here.
-        return; 
+        case 'throw_bomb':
+            if (combatPhase !== 'TARGET_BOMB') return;
+            // Payload already contains { invIndex, tx, ty }
+            break;
+
+        case 'item':
+            // Payload already contains { action: 'brew'/'equip', index }
+            window.combatSubmenuState = 'MAIN'; 
+            break;
+            
+        case 'end_turn':
+            // No strict phase validation needed, state reset handled by server receipt
+            break;
     }
+
+    // 2. Beam the standardized payload to the Node server
+    socket.emit('combatAction', { category, ...payload });
+    
+    // Halt the browser! Do NOT advance phases or wipe local state until the server receipt arrives.
 }
 
 function endPlayerTurn() { 
@@ -139,16 +149,8 @@ function endPlayerTurn() {
     socket.emit('endPlayerTurn', { playerPos: { x: player.x, y: player.y } });
 }
 
-function handleCombatEquip(idx) {
-    window.combatSubmenuState = 'MAIN'; // Return to main menu
-    socket.emit('combatItemAction', { action: 'equip', index: idx });
-}
 
-function consumeBrew(invIndex) {
-    if (gameState !== 'COMBAT' || currentTurn !== 'PLAYER' || combatPhase === 'TARGET_BOMB') return;
-    window.combatSubmenuState = 'MAIN'; // Return to main menu
-    socket.emit('combatItemAction', { action: 'brew', index: invIndex });
-}
+
 
 function prepBomb(invIndex) {
     if (combatPhase !== 'PHASE_2') {
@@ -174,14 +176,6 @@ function cancelBomb() {
     refreshSystemUI(); 
 }
 
-function executeBombThrow(tx, ty) {
-    if (activeBombIndex < 0 || activeBombIndex >= player.inventory.length) return;
-    socket.emit('bombAction', { invIndex: activeBombIndex, tx: tx, ty: ty });
-    activeBombIndex = -1;
-    combatPhase = previousCombatPhase;
-    window.combatSubmenuState = 'MAIN'; // <--- NEW: Return to main menu
-    refreshSystemUI(); 
-}
 
 // === POST-COMBAT LOOT GUI ENGINE ===
 

@@ -518,10 +518,10 @@ window.addEventListener("keydown", function(e) {
     if (document.activeElement.tagName === 'INPUT') return;
     if (gameState !== 'COMBAT' || currentTurn !== 'PLAYER') return;
     if (combatPhase === 'ACTION' || combatPhase === 'PHASE_2') {
-        if (e.key === '1') executeCombatAction('slash');
-        else if (e.key === '2') executeCombatAction('special');
-        else if (e.key === '3') executeCombatAction('brew');
-        else if (e.key === '4' || e.key === ' ') executeCombatAction('end');
+        if (e.key === '1') dispatchCombatAction('attack', { subType: 'slash' });
+        else if (e.key === '2') dispatchCombatAction('attack', { subType: 'special' });
+        else if (e.key === '3') { window.combatSubmenuState = 'ITEMS'; refreshSystemUI(); }
+        else if (e.key === '4' || e.key === ' ') dispatchCombatAction('end_turn');
     }
 });
 
