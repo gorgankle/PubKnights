@@ -378,7 +378,6 @@ CSS
 /* Make completely empty slots look like distinct drop zones */
 .inventory-grid .item-slot:empty {
     background: rgba(34, 26, 20, 0.4);
-    border: 1px dashed #634e3d;
 }
 
 /* Force the Vault to cap at ~5 rows and scroll */

@@ -271,7 +271,7 @@ function showItemTooltip(event, item, index, location) {
     const tooltip = document.getElementById('game-tooltip');
     if (!tooltip || !item) return;
 
-    // === NEW: Allow the user to hover inside the tooltip without it closing ===
+    // Allow the user to hover inside the tooltip without it closing
     tooltip.style.pointerEvents = "auto";
     tooltip.onmouseenter = () => clearTimeout(tooltipHideTimer);
     tooltip.onmouseleave = () => hideItemTooltip();
@@ -280,50 +280,87 @@ function showItemTooltip(event, item, index, location) {
     if (item.rarity === 'Uncommon') rarityColor = "#2ecc71";
     if (item.rarity === 'Rare') rarityColor = "#3498db";
     if (item.rarity === 'Epic') rarityColor = "#9b59b6";
-    if (item.rarity === 'Gorilla' || item.rarity === 'Jackpot') rarityColor = "#f1c40f";
+    if (item.rarity === 'Gorilla' || item.rarity === 'Jackpot' || item.rarity === 'Relic') rarityColor = "#f1c40f";
 
-    // Fallback description just in case a database item is missing one
-    let itemDesc = item.desc || item.description || "A mysterious item.";
+    // Build the dynamic stat block
+    let statsHtml = "";
+    if (item.slot !== "consumable") {
+        if (item.atkBonus) {
+            statsHtml += `💥 <b>Attack Modifier:</b> +${item.atkBonus} ATK<br>`;
+        }
+        if (item.deflectChance) {
+            statsHtml += `🛡️ <b>Deflection:</b> +${item.deflectChance}% Rate<br>`;
+            if (item.rarity === "Gorilla") {
+                statsHtml += `<span style="color: #ff3333; font-size: 9px;">⚠️ Deflection capped at 75%</span><br>`; 
+            }
+        }
+        if (item.moveBonus) {
+            statsHtml += `👟 <b>Action Field Extension:</b> ${item.moveBonus > 0 ? '+' : ''}${item.moveBonus} Tile(s)<br>`;
+        }
+        if (item.attackRange) {
+            statsHtml += `📏 <b>Weapon Strike Radius:</b> ${item.attackRange} Tile(s)<br>`;
+        }
+        
+        // Append weapon skill descriptions if it is a weapon
+        if (item.slot === "weapon" && typeof getWeaponSpecialDesc === 'function') {
+            statsHtml += `<div style='margin-top:6px; padding:6px; background:#1e1712; border-radius: 3px; font-size:10px; border-left:2px solid ${rarityColor}; color:#e0caad; line-height: 1.4;'>` + 
+                         `${getWeaponSpecialDesc(item)}</div>`;
+        }
+    } else if (item.slot === "consumable") {
+        if (item.type === "bomb") {
+            statsHtml += `🧨 <b>Explosive Yield:</b> ${item.damage} DMG<br>` +
+                         `📏 <b>Blast Radius:</b> 3x3 Grid Area<br>`;
+        } else if (item.type === "brew") {
+            if (item.id === 'ipa') statsHtml += `🍺 <b>Combat Effect:</b> +10% Damage Output for the duration of the battle.<br>`;
+            else if (item.id === 'lager') statsHtml += `🍺 <b>Combat Effect:</b> +1 Tactical Stride movement for the duration of the battle.<br>`;
+            else if (item.id === 'reserve') statsHtml += `🍷 <b>Combat Effect:</b> Instantly restores 25% of Maximum Vitality.<br>`;
+            else statsHtml += `🍺 <b>Combat Effect:</b> Instantly restores 10% of Maximum Vitality.<br>`;
+        }
+    }
+
+    let itemDesc = item.desc || item.description || "";
+    let descHtml = itemDesc ? `<div style="margin-bottom: 8px; font-style: italic; color: #bbaaa0; line-height: 1.3;">${itemDesc}</div>` : "";
 
     let html = `
         <div style="border-bottom: 2px solid ${rarityColor}; margin-bottom: 8px; padding-bottom: 5px;">
-            <strong style="color: ${rarityColor}; font-size: 16px;">${item.name}</strong>
-            <div style="font-size: 11px; color: #bbaaa0;">${(item.type || item.slot).toUpperCase()} | Value: ${item.value || 0}g</div>
+            <strong style="color: ${rarityColor}; font-size: 16px; text-shadow: 0 1px 2px rgba(0,0,0,0.8);">${item.name}</strong>
+            <div style="font-size: 11px; color: #bbaaa0; margin-top: 2px; text-transform: uppercase;">${(item.type || item.slot)} | Value: ${item.value || 0}g</div>
         </div>
-        <div style="font-size: 12px; margin-bottom: 10px; color: #ecf0f1;">
-            ${itemDesc}
+        <div style="font-size: 11px; margin-bottom: 12px; color: #ecf0f1; line-height: 1.5;">
+            ${descHtml}
+            ${statsHtml}
         </div>
     `;
 
-    let actionsHtml = `<div style="display: flex; gap: 5px; flex-wrap: wrap;">`;
+    let actionsHtml = `<div style="display: flex; gap: 5px; flex-wrap: wrap; border-top: 1px dashed #634e3d; padding-top: 8px;">`;
     const isCombat = (typeof gameState !== 'undefined' && gameState === 'COMBAT');
 
-    // === NEW: Check against your valid database slots! ===
+    // Check against valid equippable database slots
     const equippableSlots = ['weapon', 'helmet', 'armor', 'gloves', 'boots'];
 
     if (location === 'backpack') {
         if (equippableSlots.includes(item.slot) && !isCombat) {
-            actionsHtml += `<button onclick="equipItem(${index})" style="background: #27ae60; padding: 5px;">Equip</button>`;
+            actionsHtml += `<button onclick="equipItem(${index})" style="background: #27ae60; border-color: #2ecc71; padding: 6px; flex-grow: 1;">Equip</button>`;
         }
         if (item.type === 'brew') {
-            actionsHtml += `<button onclick="drinkBrewFromInventory(${index})" style="background: #3498db; padding: 5px;">Consume</button>`;
+            actionsHtml += `<button onclick="drinkBrewFromInventory(${index})" style="background: #3498db; border-color: #2980b9; padding: 6px; flex-grow: 1;">Consume</button>`;
         }
         if (item.id && item.id.includes('crate') && !isCombat) {
-            actionsHtml += `<button onclick="openCrate(${index}, '${item.id}')" style="background: #e67e22; padding: 5px;">Unbox</button>`;
+            actionsHtml += `<button onclick="openCrate(${index}, '${item.id}')" style="background: #e67e22; border-color: #d35400; padding: 6px; flex-grow: 1;">Unbox</button>`;
         }
         // Universally allow Vaulting and Selling outside of combat
         if (!isCombat) {
-            actionsHtml += `<button onclick="depositToVault(${index})" style="background: #8e44ad; padding: 5px;">Vault</button>`;
-            actionsHtml += `<button onclick="sellItem(${index})" style="background: #c0392b; padding: 5px;">Sell</button>`;
+            actionsHtml += `<button onclick="depositToVault(${index})" style="background: #8e44ad; border-color: #9b59b6; padding: 6px; flex-grow: 1;">Vault</button>`;
+            actionsHtml += `<button onclick="sellItem(${index})" style="background: #c0392b; border-color: #e74c3c; padding: 6px; flex-grow: 1;">Sell</button>`;
         }
     } else if (location === 'vault' && !isCombat) {
-        actionsHtml += `<button onclick="withdrawFromVault(${index})" style="background: #2980b9; padding: 5px;">Withdraw</button>`;
+        actionsHtml += `<button onclick="withdrawFromVault(${index})" style="background: #2980b9; border-color: #3498db; padding: 6px; flex-grow: 1;">Withdraw to Bag</button>`;
     } else if (location === 'equipment' && !isCombat) {
-        actionsHtml += `<button onclick="unequipItem('${index}')" style="background: #c0392b; padding: 5px;">Unequip</button>`;
+        actionsHtml += `<button onclick="unequipItem('${index}')" style="background: #c0392b; border-color: #e74c3c; padding: 6px; flex-grow: 1;">Unequip</button>`;
     }
 
     if (isCombat) {
-        actionsHtml += `<div style="color: #e74c3c; font-size: 10px; font-weight: bold; width: 100%;">Actions locked during combat!</div>`;
+        actionsHtml += `<div style="color: #e74c3c; font-size: 10px; font-weight: bold; width: 100%; text-align: center;">Actions locked during combat!</div>`;
     }
 
     actionsHtml += `</div>`;
