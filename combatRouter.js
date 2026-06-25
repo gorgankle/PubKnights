@@ -580,6 +580,45 @@ socket.on('combatAction', (data) => {
             p.stamina = Math.min(p.maxStamina || 50, (p.stamina || 0) + recover);
             socket.emit('combatResult', { type: 'pass', newStamina: p.stamina, recovered: recover });
             break;
+			
+			case 'item':
+            let itemIdx = data.index;
+            let itemObj = p.inventory[itemIdx];
+            
+            if (!itemObj) return socket.emit('combatResult', { type: 'error', message: '❌ Item not found.' });
+
+            if (data.action === 'brew') {
+                if (itemObj.type !== 'brew') return socket.emit('combatResult', { type: 'error', message: '❌ You cannot drink this.' });
+                
+                // 1. Consume the Brew
+                p.inventory.splice(itemIdx, 1);
+                
+                // 2. Apply the Buff tracker (IPA/Lager/etc.)
+                p.activeBuffs = p.activeBuffs || [];
+                let buffName = itemObj.id.toUpperCase();
+                if (!p.activeBuffs.includes(buffName)) p.activeBuffs.push(buffName);
+                
+                // 3. Apply Health or Stamina recovery
+                let amount = 0;
+                if (itemObj.id === 'stout') { amount = 25; p.hp = Math.min(p.vitality || 70, (p.hp || 0) + 25); }
+                else if (itemObj.id === 'ipa') { amount = 40; p.hp = Math.min(p.vitality || 70, (p.hp || 0) + 40); }
+                else if (itemObj.id === 'lager') { amount = 30; p.stamina = Math.min(p.maxStamina || 50, (p.stamina || 0) + 30); }
+                else if (itemObj.id === 'reserve') { amount = 100; p.hp = Math.min(p.vitality || 70, (p.hp || 0) + 100); }
+
+                socket.emit('combatResult', { type: 'heal', amount: amount, newStamina: p.stamina });
+            } 
+            else if (data.action === 'equip') {
+                // 1. Swap the gear
+                let currentEquip = p.equipment[itemObj.slot];
+                p.equipment[itemObj.slot] = itemObj;
+                p.inventory.splice(itemIdx, 1);
+                if (currentEquip) p.inventory.push(currentEquip);
+                
+                // 2. Swapping gear consumes your turn!
+                socket.emit('combatResult', { type: 'pass', newStamina: p.stamina }); 
+            }
+            break;
+			
             
         case 'item':
              // Keep your existing 'brew' and 'equip' logic here
