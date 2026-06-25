@@ -256,7 +256,6 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
             else if (activeCombatZone === 'GORILLA_ARENA') dynamicBg = "url('assets/images/arena-bg.png')";
             combatScreen.style.setProperty('--active-combat-bg', dynamicBg);
 
-            const uiHeader = document.getElementById("target-ui-header");
             
 // === COMBAT GUI SUBMENU ENGINE ===
             const uiHeader = document.getElementById("target-ui-header");
