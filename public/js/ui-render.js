@@ -434,57 +434,7 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
                 }
             }
             
-            refreshCombatSidebar();
 
-            const combatInvList = document.getElementById("combat-inventory-list");
-            if (combatInvList) {
-                combatInvList.innerHTML = "";
-                
-                if (player.inventory.length === 0) {
-                    combatInvList.innerHTML = "<span style='font-size:10px;color:#776c62;'>Backpack is empty.</span>";
-                } else {
-                    player.inventory.forEach((item, idx) => {
-                        let rc = item.rarity === "Gorilla" ? "GorillaTier" : item.rarity;
-                        let btnText = ""; let onclickStr = ""; let bgColor = "";
-                        
-                        let imgUrl = getItemSpriteURL(item);
-                        let imgHtml = imgUrl ? `<img src="${imgUrl}" style="width:28px;height:28px;image-rendering:pixelated;margin-right:6px;vertical-align:middle;">` : ``;
-                        
-                        if (item.type === "bomb") {
-                            btnText = `Throw (${item.damage} DMG)`;
-                            onclickStr = `prepBomb(${idx})`;
-                            bgColor = "#c0392b";
-						} else if (item.type === "brew") {
-                            if (item.id === 'ipa') btnText = `Drink (+10% ATK)`;
-                            else if (item.id === 'lager') btnText = `Drink (+1 Stride)`;
-                            else btnText = `Chug (+10% HP)`; 
-                            
-                            onclickStr = `consumeBrew(${idx})`;
-                            bgColor = "#2980b9";
-                        } else if (item.type === "crate") {
-                            btnText = `Sealed`;
-                            onclickStr = ``;
-                            bgColor = "#55443a";
-                        } else {
-                            btnText = `Equip`;
-                            onclickStr = `handleCombatEquip(${idx})`;
-                            bgColor = "#27ae60";
-                        }
-                        
-                        let disabledStr = "";
-                        if (currentTurn !== 'PLAYER' || combatPhase === 'TARGET_BOMB') {
-                            disabledStr = "disabled";
-                        } else if (item.type === "bomb" && combatPhase !== 'PHASE_2') {
-                            disabledStr = "disabled";
-                        }
-
-                        combatInvList.innerHTML += `
-                            <div style="margin-bottom:4px; font-size:11px; display:flex; justify-content:space-between; align-items:center; background:#1e1712; padding:3px; border-radius:3px; width: 100%;">
-                                <div>${imgHtml}<span class="${rc}" style="cursor:help; text-decoration: underline dashed;" onmouseenter="showInventoryTooltip(${idx}, event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">[${item.slot.toUpperCase()}] ${item.name}</span></div>
-                                <button onclick="${onclickStr}" style="padding: 2px 6px; font-size: 9px; background: ${bgColor};" ${disabledStr}>${btnText}</button>
-                            </div>`;
-                    });
-                }
                 
 if (combatPhase === 'TARGET_BOMB') {
                     let cancelBtn = document.createElement("button");
