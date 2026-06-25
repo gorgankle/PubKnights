@@ -438,6 +438,8 @@ CSS
 .paper-doll-grid .equip-slot {
     width: 40px;
     height: 40px;
+    box-sizing: border-box; /* NEW: Forces border/padding to fit inside the 40px */
+    padding: 0;             /* NEW: Removes the global 4px padding causing the squish */
     background: #221a14;
     border: 2px solid #634e3d;
     border-radius: 4px;
@@ -451,8 +453,8 @@ CSS
     font-family: 'Courier New', monospace;
     font-size: 18px;
     font-weight: bold;
-    color: #4a3b2c; /* Faded placeholder color */
-    min-height: unset; /* Overrides old flex-column height */
+    color: #4a3b2c; 
+    min-height: unset; 
 }
 
 .paper-doll-grid .equip-slot:hover:not(.empty-cell) {
