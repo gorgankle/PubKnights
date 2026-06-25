@@ -61,7 +61,8 @@ function transitionToTown() {
 }
 
 function advancePhase() {
-	reachableTiles = null;
+    reachableTiles = null;
+    window.combatSubmenuState = 'MAIN'; // <--- NEW: Reset UI Menu
     if (combatPhase === 'PHASE_1') combatPhase = 'PHASE_2';
     else if (combatPhase === 'PHASE_2') combatPhase = 'PHASE_3';
     else if (combatPhase === 'PHASE_3') {
@@ -132,20 +133,20 @@ function endPlayerTurn() {
     combatPhase = 'PHASE_1'; 
     selectedEnemy = null; 
     pendingMove = null; 
+    window.combatSubmenuState = 'MAIN'; // <--- NEW: Reset UI Menu
     refreshSystemUI(); 
     
-    // Pass control securely to the Server AI, and sync our final X/Y position!
     socket.emit('endPlayerTurn', { playerPos: { x: player.x, y: player.y } });
 }
 
 function handleCombatEquip(idx) {
+    window.combatSubmenuState = 'MAIN'; // Return to main menu
     socket.emit('combatItemAction', { action: 'equip', index: idx });
 }
 
 function consumeBrew(invIndex) {
     if (gameState !== 'COMBAT' || currentTurn !== 'PLAYER' || combatPhase === 'TARGET_BOMB') return;
-    
-    // We do NO math here. We just ask the server to handle the potion!
+    window.combatSubmenuState = 'MAIN'; // Return to main menu
     socket.emit('combatItemAction', { action: 'brew', index: invIndex });
 }
 
@@ -169,18 +170,16 @@ function prepBomb(invIndex) {
 function cancelBomb() {
     combatPhase = previousCombatPhase;
     activeBombIndex = -1;
+    window.combatSubmenuState = 'ITEMS_THROW'; // <--- NEW: Return to throwables menu
     refreshSystemUI(); 
 }
 
 function executeBombThrow(tx, ty) {
     if (activeBombIndex < 0 || activeBombIndex >= player.inventory.length) return;
-    
-    // Ask server to authorize the throw and calculate the damage
     socket.emit('bombAction', { invIndex: activeBombIndex, tx: tx, ty: ty });
-    
-    // Clear the targeting phase immediately so they can't spam clicks
     activeBombIndex = -1;
     combatPhase = previousCombatPhase;
+    window.combatSubmenuState = 'MAIN'; // <--- NEW: Return to main menu
     refreshSystemUI(); 
 }
 
