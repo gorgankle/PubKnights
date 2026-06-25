@@ -116,18 +116,21 @@
             <div style="display: flex; gap: 15px; align-items: flex-start;">
                 <div style="width: 480px; flex-shrink: 0;">
                     <canvas id="gameCanvas" width="480" height="480"></canvas>
-				<div id="action-interface" style="background: #1a1512; border: 2px solid #4a3b2c; border-radius: 6px; padding: 12px; margin-top: 10px;">
-                        
-                        <div style="text-align: center; border-bottom: 2px dashed #4a3b2c; padding-bottom: 10px; margin-bottom: 12px;">
-                            <h3 id="target-ui-header" style="margin: 0; font-size: 16px; color: #ffcc66; letter-spacing: 1px; text-transform: uppercase; text-shadow: 0px 2px 4px rgba(0,0,0,0.8);">INITIALIZING TACTICAL GRID</h3>
+				<div id="action-interface">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                            <span id="target-ui-header" style="font-size: 11px; font-weight: bold; color:#ffcc66;">INITIALIZING MATRIX</span>
+                        </div>
+						<div style="display:grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+                            <button id="slash-btn" onclick="executeCombatAction('slash')" onmouseenter="showSystemTooltip('combat_slash', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Standard Attack</button>
+                            <button id="heavy-btn" onclick="executeCombatAction('special')" onmouseenter="showSpecialSkillTooltip(event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Weapon Skill</button>
+                            <button id="combat-brew-btn" onclick="executeCombatAction('brew')" onmouseenter="showSystemTooltip('combat_brew', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Chug Brew</button>
+                            <button id="end-btn" onclick="executeCombatAction('end')" onmouseenter="showSystemTooltip('combat_pass', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Pass Turn</button>
                         </div>
                         
-                        <div id="combat-control-panel">
-                            </div>
-
-                        <div style="margin-top: 15px; border-top: 1px dashed #4a3b2c; padding-top: 10px;">
-                            <h4 style="margin: 0 0 8px 0; font-size: 11px; color: #bbaaa0; text-transform: uppercase;">🎒 Tactical Backpack (View Only)</h4>
-                            <div id="combat-inventory-list" style="display: flex; gap: 6px; flex-wrap: wrap;"></div>
+                        <!-- NEW: Combat Backpack -->
+                        <div style="margin-top: 8px; border-top: 1px dashed #4a3b2c; padding-top: 8px;">
+                            <h4 style="margin: 0 0 4px 0; font-size: 11px; color: #ffcc66;">🎒 Combat Backpack (Consumables)</h4>
+                            <div id="combat-inventory-list" style="display: flex; gap: 4px; flex-wrap: wrap;"></div>
                         </div>
                     </div>
                 </div>
