@@ -80,41 +80,51 @@ function dispatchCombatAction(category, payload = {}) {
     // 1. Local Pre-flight Checks (Fail fast before bothering the server)
     switch (category) {
         case 'attack':
-            if (combatPhase !== 'PHASE_2') {
-                logMessage("❌ Tactical Error: Attacks can only be performed in Phase 2."); 
-                if (typeof playRetroSound === 'function') playRetroSound('error'); 
-                return;
+            let staminaCost = data.subType === 'special' ? 15 : 5;
+            if (p.stamina < staminaCost) return socket.emit('combatResult', { type: 'error', message: `❌ Insufficient stamina.` });
+            
+            p.stamina -= staminaCost; 
+            
+            // Retrieve target securely
+            let serverEnemy = combat.enemies.find(e => e.uid === data.target.uid && e.alive);
+            if (!serverEnemy) return socket.emit('combatResult', { type: 'error', message: '❌ Target lost or already dead.' });
+
+            // === REAL COMBAT MATH ===
+            let wpn = p.equipment.weapon;
+            let basePower = (p.power || 12) + (wpn ? (wpn.atkBonus || 0) : 0);
+            
+            // Apply Brew Buffs
+            let dmgMult = 1.0;
+            if (p.activeBuffs && p.activeBuffs.includes('IPA')) dmgMult += 0.10;
+
+            // Apply Special Attack Multipliers (Legacy Fallback until we update items.js)
+            let ignoresRes = false;
+            if (data.subType === 'special') {
+                if (wpn && wpn.rarity === 'Gorilla') { dmgMult *= 4.0; ignoresRes = true; }
+                else if (wpn && (wpn.type === 'Axe' || wpn.type === 'Mace' || wpn.type === 'Club')) dmgMult *= 1.5;
+                else dmgMult *= 1.2;
             }
-            if (!selectedEnemy || !selectedEnemy.alive) return;
-            
-            let staminaCost = payload.subType === 'special' ? 15 : 5;
-            if (player.stamina < staminaCost) {
-                logMessage(`❌ Legs are too heavy. Not enough stamina (${staminaCost} required).`);
-                if (typeof playRetroSound === 'function') playRetroSound('error');
-                return;
+
+            let finalDmg = Math.floor(basePower * dmgMult);
+
+            // Apply Critical Hits (15% chance for 1.5x damage)
+            let isCrit = Math.random() < 0.15; 
+            if (isCrit) finalDmg = Math.floor(finalDmg * 1.5);
+
+            // Apply Enemy Resilience
+            if (!ignoresRes && serverEnemy.resilience) {
+                finalDmg -= serverEnemy.resilience;
             }
             
-            let range = (player.equipment.weapon && player.equipment.weapon.attackRange) || 1;
-            let dist = getGridDistance(player.x, player.y, selectedEnemy.x, selectedEnemy.y, selectedEnemy.size || 1);
+            finalDmg = Math.max(1, finalDmg); // Minimum 1 damage
+
+            serverEnemy.hp -= finalDmg;
             
-            if (dist > range) { 
-                logMessage("❌ Target outside weapon scope range."); 
-                if (typeof playRetroSound === 'function') playRetroSound('error'); 
-                return; 
+            if (serverEnemy.hp <= 0) {
+                processEntityDeath(socket.id, serverEnemy, p, combat);
             }
             
-            // Note: Keep your existing Line of Sight (hasLineOfSight) loop check here
-            
-            if (typeof triggerPlayerAttackAnimation === 'function') triggerPlayerAttackAnimation();
-            
-            // Enrich payload with targeted entity data
-            payload.target = { 
-                uid: selectedEnemy.uid, 
-                id: selectedEnemy.id,
-                x: selectedEnemy.x, 
-                y: selectedEnemy.y, 
-                resilience: selectedEnemy.resilience 
-            };
+            socket.emit('combatResult', { type: 'hit', actionType: data.subType, damage: finalDmg, isCrit: isCrit, newStamina: p.stamina });
             break;
 
         case 'throw_bomb':

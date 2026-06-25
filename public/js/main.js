@@ -34,19 +34,19 @@ socket.on('serverTick', (serverData) => {
 socket.on('combatResult', (result) => {
     if (gameState !== 'COMBAT') return;
 
-    // Sync the server's authoritative stamina deduction/recovery
-    player.stamina = result.newStamina;
+    // === CRITICAL FIX: The Undefined Stamina Glitch ===
+    // Only overwrite local stamina if the server actually sent a valid number!
+    if (result.newStamina !== undefined && result.newStamina !== null) {
+        player.stamina = result.newStamina;
+    }
 
-// 1. Catch Server Rejections & Aggressively Unlock the UI
+    // 1. Catch Server Rejections & Aggressively Unlock the UI
     if (result.type === 'error') {
         logMessage(result.message);
         if (typeof playRetroSound === 'function') playRetroSound('error');
 
-        // CRITICAL FIX: Drop the 'window.' prefix to correctly target the 'let' variable!
-        // We wrap it in a try/catch just in case the variable scope is completely isolated.
-        try { isAnimating = false; } catch (e) {}
-        try { pendingAction = null; } catch (e) {}
-
+        try { window.isAnimating = false; } catch (e) {}
+        
         refreshSystemUI();
         return; 
     }
