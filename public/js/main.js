@@ -232,6 +232,8 @@ socket.on('moveReceipt', (receipt) => {
     }
 });
 
+
+
 // === SERVER-AUTHORITATIVE ECONOMY RECEIPT ===
 socket.on('townReceipt', (receipt) => {
     // If the server rejected the action

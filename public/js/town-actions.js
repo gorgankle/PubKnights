@@ -34,8 +34,15 @@ function openCrate(index, crateId) {
     // 1. Hide the tooltip so it doesn't get stuck on screen
     if (typeof hideTooltip === 'function') hideTooltip();
     
-    // 2. Send the unbox request to the secure Node.js router
-    socket.emit('townAction', { action: 'openCrate', index: index, crateId: crateId });
+    // 2. Grab the crate data directly from the player's backpack
+    let crateItem = player.inventory[index];
+    
+    if (crateItem && crateItem.id === crateId) {
+        // 3. Route it directly into your awesome CS:GO Roulette sequence!
+        triggerUnboxing(index, crateItem);
+    } else {
+        logMessage("❌ You can only unbox crates from your active backpack.");
+    }
 }
 
 function hireBrewmasterServices() { socket.emit('townAction', { action: 'craftBrew', brewType: 'STOUT' }); }
