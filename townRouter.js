@@ -214,8 +214,11 @@ if (data.action === 'equip') {
         }
         // 11. RESET STATS
         else if (data.action === 'resetStats') {
-            let totalExpectedSP = ((p.level || 1) - 1) * 3;
+            const SP_PER_LEVEL = 5;
+            let totalExpectedSP = ((p.level || 1) - 1) * SP_PER_LEVEL;
+            
             if (p.skillPoints >= totalExpectedSP) return socket.emit('townReceipt', { success: false, message: "❌ Your Knight's memory is already a blank slate." });
+            
             if (p.gold >= 1000) {
                 p.gold -= 1000;
                 p.vitality = 70; p.hp = Math.min(p.hp, 70);

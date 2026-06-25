@@ -458,24 +458,36 @@ else { // WILDERNESS
             
             p.stamina -= staminaCost; 
             
+            // === NEW: SECURE STAT CALCULATION (Never trust client data!) ===
             let enemyResilience = data.targetEnemy ? (data.targetEnemy.resilience || 0) : 0;
-            let equipmentBonus = 0;
+            let equipmentBonusPwr = 0;
+            let equipmentBonusAcc = 0;
+            
             for (let slot in p.equipment) {
                 let item = p.equipment[slot];
-                if (item && item.atkBonus) equipmentBonus += item.atkBonus;
+                if (item && item.atkBonus) equipmentBonusPwr += item.atkBonus;
+                if (item && item.accBonus) equipmentBonusAcc += item.accBonus;
             }
-            let baseDmg = (p.power || 12) + equipmentBonus;
-            if (p.activeBuffs && p.activeBuffs.includes('IPA')) baseDmg = Math.floor(baseDmg * 1.10);
+            
+            let serverPower = (p.power || 12) + equipmentBonusPwr;
+            if (p.activeBuffs && p.activeBuffs.includes('IPA')) serverPower = Math.floor(serverPower * 1.10);
+            
+            let serverAccuracy = Math.max(10, Math.min(100, (p.accuracy || 85) + equipmentBonusAcc));
 
-            let hitChance = (data.actionType === 'special' && p.equipment.weapon?.rarity === "Gorilla") ? 100 : Math.max(5, ((p.accuracy || 85) - enemyResilience));
+            // === NEW: CONTESTED HIT MATH ===
+            let totalStatPool = serverAccuracy + enemyResilience;
+            let hitChanceFloat = serverAccuracy / totalStatPool; 
+            let hitChancePct = hitChanceFloat * 100;
+            
+            // Gorilla weapons still bypass resilience checks
+            if (data.actionType === 'special' && p.equipment.weapon?.rarity === "Gorilla") hitChancePct = 100;
 
-            if (Math.random() * 100 > hitChance) {
-                socket.emit('combatResult', { type: 'miss', hitChance: hitChance, newStamina: p.stamina });
+            if (Math.random() * 100 > hitChancePct) {
+                socket.emit('combatResult', { type: 'miss', hitChance: hitChancePct, newStamina: p.stamina });
             } else {
                 let combat = activeCombats[socket.id];
                 let serverEnemy = null;
                 
-                // CRITICAL CRASH FIX: Verify targetEnemy actually exists before checking UID!
                 if (combat && data.targetEnemy) {
                     if (data.targetEnemy.uid) {
                         serverEnemy = combat.enemies.find(e => e.uid === data.targetEnemy.uid && e.alive);
@@ -484,18 +496,17 @@ else { // WILDERNESS
                     }
                 }
 
-                // DESYNC FIX: If the server cannot find the enemy, cleanly reject the hit!
                 if (!serverEnemy) {
-                    p.stamina += staminaCost; // Refund the stamina
+                    p.stamina += staminaCost; 
                     return socket.emit('combatResult', { type: 'error', message: '❌ Target lost! You must select an enemy, or the enemy has moved.', newStamina: p.stamina });
                 }
 
-                // Only calculate damage if we confirmed the enemy exists!
-                let minDmg = Math.floor(baseDmg * 0.85);
-                let maxDmg = Math.ceil(baseDmg * 1.10);
+                // === NEW: DAMAGE VARIANCE MATH ===
+                let minDmg = Math.ceil(serverPower * 0.2);
+                let maxDmg = serverPower;
                 let variedDmg = Math.floor(Math.random() * (maxDmg - minDmg + 1)) + minDmg;
                 
-                let isCrit = variedDmg >= Math.floor(baseDmg * 1.06);
+                let isCrit = variedDmg >= Math.floor(serverPower * 0.95); // Crits are now top 5% of variance roll
                 let finalDmg = data.actionType === 'special' ? Math.floor(variedDmg * (p.equipment.weapon?.rarity === "Gorilla" ? 4.0 : 1.5)) : variedDmg;
 
                 serverEnemy.hp -= finalDmg;
@@ -505,7 +516,6 @@ else { // WILDERNESS
                     processSecureKill(socket.id, serverEnemy);
                 }
                 
-                // Only emit the hit AFTER the server actually applied the damage!
                 socket.emit('combatResult', { type: 'hit', actionType: data.actionType, damage: finalDmg, isCrit: isCrit, newStamina: p.stamina });
             }
         }
@@ -621,18 +631,34 @@ else if (data.action === 'equip') {
         let p = activePlayers[socket.id];
         if (!p) return;
 
+        const MAX_PLAYER_LEVEL = 50;
+        const SP_PER_LEVEL = 5;
+
         p.gold = p.gold || 0; p.xp = p.xp || 0; p.level = p.level || 1; p.xpToNext = p.xpToNext || 100;
 
         if (p.pendingGold > 0) p.gold += p.pendingGold;
+        
         if (p.pendingXp > 0) {
             p.xp += p.pendingXp;
-            while (p.xp >= p.xpToNext) {
-                p.xp -= p.xpToNext; p.level += 1; p.skillPoints = (p.skillPoints || 0) + 3;
+            
+            // Cap leveling at 50 securely on the backend
+            while (p.xp >= p.xpToNext && p.level < MAX_PLAYER_LEVEL) {
+                p.xp -= p.xpToNext; 
+                p.level += 1; 
+                p.skillPoints = (p.skillPoints || 0) + SP_PER_LEVEL;
+                
                 let base = 100; let multiplier = Math.pow(1.15, p.level - 1); let flatBump = p.level * 50;
                 p.xpToNext = Math.floor((base * multiplier) + flatBump);
                 p.hp = p.vitality; p.stamina = p.maxStamina;
             }
+            
+            // Hard cap the XP pool once they hit 50
+            if (p.level >= MAX_PLAYER_LEVEL) {
+                p.xp = 0;
+                p.xpToNext = "MAX";
+            }
         }
+        
         p.pendingGold = 0; p.pendingXp = 0; p.pendingLoot = [];
         socket.emit('combatRewardsReceipt', { updatedPlayer: p });
     });

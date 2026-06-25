@@ -1,5 +1,10 @@
 // --- CHARACTER & SAVE ENGINES ---
 
+// --- CHARACTER & SAVE ENGINES ---
+
+const MAX_PLAYER_LEVEL = 50;
+const SP_PER_LEVEL = 5;
+
 let player = { 
     x: 1, y: 1, 
     level: 1, xp: 0, xpToNext: 100, skillPoints: 0,
@@ -35,6 +40,7 @@ maxInventorySlots: 5, sharpeningStoneBought: 0, ironPlatingBought: 0, backpackUp
 };
 
 function calculateNextLevelXp(currentLevel) {
+    if (currentLevel >= MAX_PLAYER_LEVEL) return "MAX"; // Cap out the UI
     let base = 100;
     let multiplier = Math.pow(1.15, currentLevel - 1);
     let flatBump = currentLevel * 50;
@@ -42,62 +48,56 @@ function calculateNextLevelXp(currentLevel) {
 }
 
 
-
-// === UNIVERSAL STAT PARSER ===
+// === UNIVERSAL STAT PARSERS ===
 
 function getPlayerSwiftness() {
     let equipmentBonus = 0;
-    
-    // Loop through every equipped item, regardless of slot
     for (let slot in player.equipment) {
         let item = player.equipment[slot];
-        if (item && item.moveBonus) {
-            equipmentBonus += item.moveBonus;
-        }
+        if (item && item.moveBonus) equipmentBonus += item.moveBonus;
     }
     
     let totalRange = (player.swiftness || 3) + equipmentBonus; 
-    
-    // === MULTI-BUFF ARRAY CHECK ===
     if (player.activeBuffs && player.activeBuffs.includes('LAGER')) totalRange += 1; 
     
-    // Hard floor of 1 (can't have 0 movement), hard ceiling of 12
+    // Grid bounds: minimum 1 tile stride, maximum 12 tiles
     return Math.max(1, Math.min(12, totalRange));
 }
 
 function getPlayerTotalPower() {
     let equipmentBonus = 0;
-    
-    // Loop through every equipped item, regardless of slot
     for (let slot in player.equipment) {
         let item = player.equipment[slot];
-        if (item && item.atkBonus) {
-            equipmentBonus += item.atkBonus;
-        }
+        if (item && item.atkBonus) equipmentBonus += item.atkBonus;
     }
     
     let baseTotal = (player.power || 12) + equipmentBonus; 
-    
-    // === MULTI-BUFF ARRAY CHECK ===
     if (player.activeBuffs && player.activeBuffs.includes('IPA')) baseTotal = Math.floor(baseTotal * 1.10); 
     
-    // Ensure power never drops below 1 due to curses/heavy gear
     return Math.max(1, baseTotal);
+}
+
+function getPlayerAccuracy() {
+    let equipmentBonus = 0;
+    for (let slot in player.equipment) {
+        let item = player.equipment[slot];
+        if (item && item.accBonus) equipmentBonus += item.accBonus;
+    }
+    
+    let baseAcc = (player.accuracy || 85) + equipmentBonus;
+    return Math.max(10, Math.min(100, baseAcc)); // Hard cap at 100%
 }
 
 function getPlayerDeflectChance() {
     let baseResilience = player.resilience || 5;
     let equipmentBonus = 0;
     
-    // Loop through every equipped item, regardless of slot
     for (let slot in player.equipment) {
         let item = player.equipment[slot];
-        if (item && item.deflectChance) {
-            equipmentBonus += item.deflectChance;
-        }
+        if (item && item.deflectChance) equipmentBonus += item.deflectChance;
     }
     
-    // Multiply the total by 0.75 so resilience scales slower
+    // Scale curve: Every point of resilience only grants 0.75% deflect chance
     let rawDeflect = Math.floor((baseResilience + equipmentBonus) * 0.75);
     
     // Hard ceiling: max dodge is 75%, hard floor is 0%

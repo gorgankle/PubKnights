@@ -4,6 +4,30 @@ let activeBombIndex = -1;
 let previousCombatPhase = 'PHASE_1';
 let pendingLoot = []; // <--- NEW: Temporary array for post-combat loot
 
+// === NEW: CONTESTED PVP/PVE HIT CALCULATOR ===
+function calculateHitResult(attackerAcc, defenderRes, attackerPower) {
+    // 1. Calculate the contested hit chance
+    let totalStatPool = attackerAcc + defenderRes;
+    let hitChance = attackerAcc / totalStatPool; // Yields a float between 0.0 and 1.0
+
+    // 2. Roll the dice against the hit chance
+    let isHit = Math.random() < hitChance;
+
+    if (!isHit) {
+        return { hit: false, damage: 0 };
+    }
+
+    // 3. If it hits, calculate Damage Variance (20% to 100% of Power)
+    let minDamage = Math.ceil(attackerPower * 0.2);
+    let maxDamage = attackerPower;
+    
+    let varianceDamage = Math.floor(Math.random() * (maxDamage - minDamage + 1)) + minDamage;
+
+    return { hit: true, damage: varianceDamage };
+}
+
+
+
 function getWeaponSpecialDesc(item) {
     if (!item || item.slot !== "weapon") return "";
     let wType = item.type || "Mace";
@@ -181,38 +205,64 @@ function animateCombatRewards() {
     if (goldDisplay) goldDisplay.innerText = `+${targetGold}g`;
     if (xpDisplay) xpDisplay.innerText = `+${targetXp} XP`;
 
-if (!xpBar || !xpText) return;
+    if (!xpBar || !xpText) return;
 
-        // === NEW: SAFE INITIALIZATION FOR THE UI ANIMATOR ===
-        let currentXp = player.xp || 0;
-        let currentLevel = player.level || 1;
-        let xpToNext = player.xpToNext || 100;
+    let currentXp = player.xp || 0;
+    let currentLevel = player.level || 1;
+    let xpToNext = calculateNextLevelXp(currentLevel);
 
-        xpText.innerText = `Lvl ${currentLevel}: ${Math.floor(currentXp)}/${xpToNext}`;
-        xpBar.style.width = `${(currentXp / xpToNext) * 100}%`;
+    // If max level, freeze the bar
+    if (currentLevel >= MAX_PLAYER_LEVEL) {
+        xpText.innerText = `Lvl ${MAX_PLAYER_LEVEL} (MAX)`;
+        xpBar.style.width = `100%`;
+        xpBar.style.background = `linear-gradient(90deg, #f1c40f, #e67e22)`; // Gold max level bar
+        return;
+    }
 
-        if (targetXp > 0) {
-        let ticks = 45; // Smooth 45-frame animation
+    xpText.innerText = `Lvl ${currentLevel}: ${Math.floor(currentXp)}/${xpToNext}`;
+    xpBar.style.width = `${(currentXp / xpToNext) * 100}%`;
+
+    if (targetXp > 0) {
+        let ticks = 45; 
         let xpPerTick = targetXp / ticks;
         let tickCount = 0;
 
         let animInterval = setInterval(() => {
+            if (currentLevel >= MAX_PLAYER_LEVEL) {
+                clearInterval(animInterval);
+                return;
+            }
+
             currentXp += xpPerTick;
 
-            // Handle visual level up mid-animation!
             if (currentXp >= xpToNext) {
                 currentXp -= xpToNext;
                 currentLevel++;
-                let base = 100; let multiplier = Math.pow(1.15, currentLevel - 1); let flatBump = currentLevel * 50;
-                xpToNext = Math.floor((base * multiplier) + flatBump);
-                if (typeof playRetroSound === 'function') playRetroSound('statUp'); // Play the "Ding!"
+                
+                // === GRANT NEW SKILL POINTS ===
+                player.skillPoints = (player.skillPoints || 0) + SP_PER_LEVEL;
+                
+                if (currentLevel >= MAX_PLAYER_LEVEL) {
+                    currentXp = 0;
+                    xpToNext = "MAX";
+                    xpText.innerText = `Lvl ${MAX_PLAYER_LEVEL} (MAX)`;
+                    xpBar.style.width = `100%`;
+                    xpBar.style.background = `linear-gradient(90deg, #f1c40f, #e67e22)`;
+                    if (typeof playRetroSound === 'function') playRetroSound('statUp');
+                    clearInterval(animInterval);
+                    return;
+                }
+
+                xpToNext = calculateNextLevelXp(currentLevel);
+                if (typeof playRetroSound === 'function') playRetroSound('statUp'); 
             } else if (tickCount % 3 === 0) {
-                // Play rapid ticking sound
                 if (typeof playRetroSound === 'function') playRetroSound('xpTick');
             }
 
-            xpText.innerText = `Lvl ${currentLevel}: ${Math.floor(currentXp)}/${xpToNext}`;
-            xpBar.style.width = `${(currentXp / xpToNext) * 100}%`;
+            if (currentLevel < MAX_PLAYER_LEVEL) {
+                xpText.innerText = `Lvl ${currentLevel}: ${Math.floor(currentXp)}/${xpToNext}`;
+                xpBar.style.width = `${(currentXp / xpToNext) * 100}%`;
+            }
 
             tickCount++;
             if (tickCount >= ticks) clearInterval(animInterval);
