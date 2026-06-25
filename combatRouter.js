@@ -441,57 +441,6 @@ else { // WILDERNESS
         }
     });
 
-// --- SECURE ENTITY LIFECYCLE & GARBAGE COLLECTION ---
-function processEntityDeath(socketId, serverEnemy, player, combatState) {
-    serverEnemy.hp = 0;
-    serverEnemy.alive = false; // Flag for garbage collection
-    
-    let multiplier = player.monumentBuilt ? 2 : 1;
-    let isGorilla = (combatState.zone === 'GORILLA_ARENA'); 
-    let isBaited = (combatState.zone === 'WILDERNESS' && player.mapBaited);
-
-    // 1. Calculate and Escrow Loot
-    let goldReward = ((isGorilla ? 500 : (isBaited ? 60 : 25)) * multiplier);
-    let xpReward = 0;
-    let droppedItemObj = null;
-    let table = LootTables[serverEnemy.id];
-    
-    if (table) {
-        xpReward = (table.xpDrop || 0) * multiplier;
-        if (Math.random() <= table.dropChance) {
-            let totalWeight = table.pools.reduce((sum, entry) => sum + entry.weight, 0);
-            let roll = Math.random() * totalWeight;
-            let droppedItemId = null;
-            for (let entry of table.pools) {
-                if (roll < entry.weight) { droppedItemId = entry.itemId; break; }
-                roll -= entry.weight;
-            }
-            if (droppedItemId && ItemDatabase[droppedItemId]) {
-                droppedItemObj = JSON.parse(JSON.stringify(ItemDatabase[droppedItemId]));
-            }
-        }
-    }
-
-    player.pendingGold = (player.pendingGold || 0) + goldReward;
-    player.pendingXp = (player.pendingXp || 0) + xpReward;
-    player.pendingLoot = player.pendingLoot || [];
-    if (droppedItemObj) player.pendingLoot.push(droppedItemObj);
-
-    // 2. Broadcast single kill confirmation
-    io.to(socketId).emit('killConfirmed', { 
-        uid: serverEnemy.uid, // Client uses this to purge target arrays
-        gold: goldReward, 
-        xp: xpReward, 
-        item: droppedItemObj, 
-        enemyName: serverEnemy.name 
-    });
-
-    // 3. Victory Evaluation
-    let allDead = combatState.enemies.every(e => !e.alive);
-    if (allDead) {
-        processCombatVictory(socketId, player, combatState);
-    }
-}
 
 // --- UNIFIED SERVER-AUTHORITATIVE COMBAT ENGINE ---
 socket.on('combatAction', (data) => {
@@ -619,10 +568,6 @@ socket.on('combatAction', (data) => {
             }
             break;
 			
-            
-        case 'item':
-             // Keep your existing 'brew' and 'equip' logic here
-             break;
     }
 });
     // --- SERVER-AUTHORITATIVE COMBAT INVENTORY ---
