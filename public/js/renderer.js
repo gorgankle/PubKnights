@@ -94,7 +94,16 @@ function drawGrid() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
     let moveRange = getPlayerSwiftness(); 
-	let weaponRange = (player.equipment.weapon && player.equipment.weapon.combat && player.equipment.weapon.combat.standard.range) || 1;
+// === DYNAMIC TARGETING ENGINE ===
+    let currentTargetRange = (player.equipment.weapon && player.equipment.weapon.combat && player.equipment.weapon.combat.standard.range) || 1;
+    
+    // If we are holding a bomb, override the yellow grid to show the bomb's range!
+    if (combatPhase === 'TARGETING' && typeof activeTargetIndex  !== 'undefined' && activeTargetIndex  !== -1) {
+        let activeBomb = player.inventory[activeBombIndex];
+        if (activeBomb && activeBomb.combat && activeBomb.combat.range) {
+            currentTargetRange = activeBomb.combat.range;
+        }
+    }
 
     // --- INTERPOLATION ENGINE: PLAYER ---
     if (player.visualX === undefined) {
@@ -135,7 +144,7 @@ if (SpriteMatrices[groundSprite]) {
             ctx.strokeStyle = activeCombatZone==='GORILLA_ARENA' ? "#443425" : "#3a2f26";
             ctx.lineWidth = 1; ctx.strokeRect(x * currentTileSize, y * currentTileSize, currentTileSize, currentTileSize);
             
-            if (currentTurn === 'PLAYER' && combatPhase !== 'TARGET_BOMB') {
+            if (currentTurn === 'PLAYER' && combatPhase !== 'TARGETING') {
                 if (combatPhase === 'PHASE_1' || combatPhase === 'PHASE_3') {
                     
                     // === THE FIX: DIRECT SMART CACHE HOOK ===
@@ -164,10 +173,14 @@ if (SpriteMatrices[groundSprite]) {
                         ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
                     }
                 }
-                else if (combatPhase === 'PHASE_2') {
-                    if (Math.max(Math.abs(x - player.x), Math.abs(y - player.y)) <= weaponRange) {
-                        if (hasLineOfSight(player.x, player.y, x, y)) ctx.fillStyle = "rgba(241, 196, 15, 0.15)";
-                        else ctx.fillStyle = "rgba(200, 0, 0, 0.15)";
+                // === UNIFIED ACTION RENDERING (MELEE, MAGIC, & BOMBS) ===
+                else if (combatPhase === 'PHASE_2' || combatPhase === 'TARGETING') {
+                    if (Math.max(Math.abs(x - player.x), Math.abs(y - player.y)) <= currentTargetRange) {
+                        if (hasLineOfSight(player.x, player.y, x, y)) {
+                            ctx.fillStyle = "rgba(241, 196, 15, 0.15)"; // Valid Yellow
+                        } else {
+                            ctx.fillStyle = "rgba(200, 0, 0, 0.15)"; // Blocked Red
+                        }
                         ctx.fillRect(x * currentTileSize, y * currentTileSize, currentTileSize, currentTileSize);
                     }
                 }
@@ -380,7 +393,7 @@ if (SpriteMatrices[e.id]) {
         }
     });
 
-    if (combatPhase === 'TARGET_BOMB' && hoverTile && hoverTile.x >= 0) {
+    if (combatPhase === 'TARGETING' && hoverTile && hoverTile.x >= 0) {
         ctx.fillStyle = "rgba(231, 76, 60, 0.4)"; 
         let startX = hoverTile.x - 1; let startY = hoverTile.y - 1;
         for(let bx = startX; bx <= startX + 2; bx++) {
@@ -499,7 +512,7 @@ canvas.addEventListener("mousemove", function(e) {
 
     if (tx < 0 || tx >= currentGridSize || ty < 0 || ty >= currentGridSize) return;
 
-    if (combatPhase === 'TARGET_BOMB') { hoverTile = {x: tx, y: ty}; }
+    if (combatPhase === 'TARGETING') { hoverTile = {x: tx, y: ty}; }
 
     let mob = enemies.find(em => { let s = em.size || 1; return em.alive && tx >= em.x && tx < em.x + s && ty >= em.y && ty < em.y + s; });
     
@@ -531,7 +544,7 @@ canvas.addEventListener("click", function(e) {
 
     if (tx < 0 || tx >= currentGridSize || ty < 0 || ty >= currentGridSize) return;
 
-    if (combatPhase === 'TARGET_BOMB') {
+    if (combatPhase === 'TARGETING') {
         if (typeof executeBombThrow === 'function') executeBombThrow(tx, ty);
         hoverTile = {x: -1, y: -1}; return;
     }

@@ -11,6 +11,25 @@ function getGridDistance(x1, y1, x2, y2, size2 = 1) {
     return Math.max(Math.abs(x1 - closeX), Math.abs(y1 - closeY));
 }
 
+// === UNIVERSAL LINE OF SIGHT ENGINE (Bresenham's Line Algorithm) ===
+    function checkLineOfSight(x1, y1, x2, y2, combatState) {
+        let dx = Math.abs(x2 - x1); let dy = Math.abs(y2 - y1);
+        let sx = (x1 < x2) ? 1 : -1; let sy = (y1 < y2) ? 1 : -1;
+        let err = dx - dy; let cx = x1; let cy = y1;
+        
+        while (true) {
+            if (cx === x2 && cy === y2) return true;
+            if (cx !== x1 || cy !== y1) {
+                // Check if the current tile contains a solid obstacle
+                if (combatState.obstacles.some(o => o.x === cx && o.y === cy)) return false;
+            }
+            let e2 = 2 * err;
+            if (e2 > -dy) { err -= dy; cx += sx; }
+            if (e2 < dx) { err += dx; cy += sy; }
+        }
+    }
+
+
 module.exports = function(socket, io, activePlayers, activeCombats) {
 	
 	// === UNIVERSAL STAT ENGINE ===
@@ -235,6 +254,19 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             if (rules.actionType === 'throwable') {
                 if (data.tx === undefined || data.ty === undefined) return;
                 
+                // === NEW: SERVER-SIDE THROW VALIDATION ===
+                let throwDist = getGridDistance(p.x, p.y, data.tx, data.ty, 1);
+                let maxRange = rules.range || 4; // Fallback to 4 if missing
+                
+                if (throwDist > maxRange) {
+                    return socket.emit('combatItemReceipt', { success: false, message: '❌ Server: Target out of throwing range.' });
+                }
+                
+                if (!checkLineOfSight(p.x, p.y, data.tx, data.ty, combat)) {
+                    return socket.emit('combatItemReceipt', { success: false, message: '❌ Server: No line of sight to target area.' });
+                }
+                // =========================================
+
                 p.inventory.splice(invIndex, 1);
                 p.stamina -= rules.staminaCost || 0;
 
@@ -242,24 +274,14 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                     combat.enemies.forEach(e => {
                         if (!e.alive) return;
                         let dist = getGridDistance(data.tx, data.ty, e.x, e.y, e.size || 1);
-                        // Read blast radius strictly from the Server's item DB
                         if (dist <= rules.aoeRadius) {
                             e.hp -= rules.damageFlat;
-                            if (e.hp <= 0) {
-                                e.hp = 0; e.alive = false;
-                                processSecureKill(socket.id, e);
-                            }
+                            if (e.hp <= 0) { e.hp = 0; e.alive = false; processSecureKill(socket.id, e); }
                         }
                     });
                 }
-
-                return socket.emit('bombResult', {
-                    bombId: item.id, bombName: item.name, damage: rules.damageFlat, aoe: rules.aoeRadius,
-                    tx: data.tx, ty: data.ty, updatedPlayer: p
-                });
+                return socket.emit('bombResult', { bombId: item.id, bombName: item.name, damage: rules.damageFlat, aoe: rules.aoeRadius, tx: data.tx, ty: data.ty, updatedPlayer: p });
             }
-        }
-
         // === 4. EQUIP LOGIC ===
         if (data.actionCategory === 'equip') {
             let invIndex = data.invIndex;

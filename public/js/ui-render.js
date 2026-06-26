@@ -259,9 +259,9 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
             const uiHeader = document.getElementById("target-ui-header");
             
             if (currentTurn === 'PLAYER') {
-                if (combatPhase === 'TARGET_BOMB') {
+                if (combatPhase === 'TARGETING') {
                     if (uiHeader) {
-                        uiHeader.innerHTML = `💣 TARGETING BOMB: Click anywhere to detonate 3x3 blast!`;
+                        uiHeader.innerHTML = `🎯 TARGETING: Click anywhere in range to execute!`;
                         uiHeader.style.color = "#e74c3c";
                     }
                     document.getElementById("slash-btn").disabled = true;
@@ -380,7 +380,7 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
                         if (item.combat) {
                             if (item.combat.actionType === "throwable") {
                                 btnText = `Throw (${item.combat.damageFlat} DMG)`;
-                                onclickStr = `prepBomb(${idx})`;
+                                onclickStr = `prepTargetAction(${idx})`; // <--- UPDATED
                                 bgColor = "#c0392b";
                             } else if (item.combat.actionType === "heal") {
                                 btnText = `Drink (+${item.combat.healPercent * 100}% HP)`;
@@ -403,7 +403,7 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
                         }
                         
                         let disabledStr = "";
-                        if (currentTurn !== 'PLAYER' || combatPhase === 'TARGET_BOMB') {
+                        if (currentTurn !== 'PLAYER' || combatPhase === 'TARGETING') {
                             disabledStr = "disabled";
                         } else if (item.combat && item.combat.actionType === "throwable" && combatPhase !== 'PHASE_2') {
                             disabledStr = "disabled";
@@ -417,11 +417,11 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
                     });
                 }
                 
-if (combatPhase === 'TARGET_BOMB') {
+if (combatPhase === 'TARGETING') {
                     let cancelBtn = document.createElement("button");
                     cancelBtn.innerText = "✖ Cancel Throw";
                     cancelBtn.style.background = "#443a32"; cancelBtn.style.width = "100%"; cancelBtn.style.marginTop = "4px";
-                    cancelBtn.onclick = () => cancelBomb();
+                    cancelBtn.onclick = () => cancelTarget();
                     combatInvList.appendChild(cancelBtn);
                 }
             }

@@ -1,6 +1,6 @@
 // --- COMBAT CORE MECHANICS & ACTIONS ---
 
-let activeBombIndex = -1;
+let activeTargetIndex   = -1;
 let previousCombatPhase = 'PHASE_1';
 let pendingLoot = []; 
 
@@ -26,7 +26,7 @@ function getWeaponSpecialDesc(item) {
 
 // The Unified Client Dispatcher
 function executeCombatAction(actionType) {
-    if (gameState !== 'COMBAT' || currentTurn !== 'PLAYER' || combatPhase === 'TARGET_BOMB') return;
+    if (gameState !== 'COMBAT' || currentTurn !== 'PLAYER' || combatPhase === 'TARGETING') return;
 
     if (actionType === 'end' || actionType === 'slash' || actionType === 'special') {
         
@@ -111,49 +111,47 @@ function handleCombatEquip(idx) {
 }
 
 function consumeBrew(invIndex) {
-    if (gameState !== 'COMBAT' || currentTurn !== 'PLAYER' || combatPhase === 'TARGET_BOMB') return;
+    if (gameState !== 'COMBAT' || currentTurn !== 'PLAYER' || combatPhase === 'TARGETING') return;
     socket.emit('dispatchCombatAction', { actionCategory: 'consumable', invIndex: invIndex });
 }
 
 function executeBombThrow(tx, ty) {
-    if (activeBombIndex < 0 || activeBombIndex >= player.inventory.length) return;
+    if (activeTargetIndex   < 0 || activeTargetIndex   >= player.inventory.length) return;
     
     socket.emit('dispatchCombatAction', { 
         actionCategory: 'consumable', 
-        invIndex: activeBombIndex, 
+        invIndex: activeTargetIndex  , 
         tx: tx, 
         ty: ty 
     });
     
-    activeBombIndex = -1;
+    activeTargetIndex   = -1;
     combatPhase = previousCombatPhase;
     refreshSystemUI(); 
 }
 
 
-function prepBomb(invIndex) {
-    if (combatPhase !== 'PHASE_2') {
-        logMessage("❌ Tactical Error: Bombs can only be thrown during Phase 2.");
-        if (typeof playRetroSound === 'function') playRetroSound('error');
-        return;
-    }
-
-    if (gameState !== 'COMBAT' || currentTurn !== 'PLAYER') return;
-    let bomb = player.inventory[invIndex];
-    if (!bomb || bomb.type !== 'bomb') return;
-    previousCombatPhase = combatPhase;
-    combatPhase = 'TARGET_BOMB';
-    activeBombIndex = invIndex;
-    logMessage(`🎯 Targeting ${bomb.name}. Click a tile to detonate a 3x3 blast area.`);
+// === TARGETING STATE CONTROLLERS ===
+window.prepTargetAction = function(idx) {
+    if (gameState !== 'COMBAT') return;
+    activeTargetIndex   = idx;
+    combatPhase = 'TARGETING';
+    
     refreshSystemUI(); 
-}
+    
+    // Force the canvas to instantly redraw the new yellow targeting grid!
+    if (typeof drawGrid === 'function') drawGrid(); 
+};
 
-function cancelBomb() {
-    combatPhase = previousCombatPhase;
-    activeBombIndex = -1;
-    refreshSystemUI(); 
-}
-
+window.cancelTarget = function() {
+    activeTargetIndex   = -1;
+    combatPhase = 'PHASE_2'; // Revert back to weapon targeting
+    
+    refreshSystemUI();
+    
+    // Redraw the canvas back to standard melee range
+    if (typeof drawGrid === 'function') drawGrid(); 
+};
 
 
 // === POST-COMBAT LOOT GUI ENGINE ===
