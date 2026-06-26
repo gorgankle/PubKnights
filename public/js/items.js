@@ -142,19 +142,29 @@ const ItemDatabase = {
     // === CONSUMABLES ===
     "stout": { 
         id: "stout", name: "Combat Stout", slot: "consumable", type: "brew", rarity: "Common", value: 5, spriteId: "stout",
-        combat: { actionType: "heal", targetType: "self", healPercent: 0.10, staminaCost: 0, desc: "Restores 10% of maximum Vitality." }
+        combat: { actionType: "heal", targetType: "self", healPercent: 0.25, staminaCost: 0, desc: "Restores 25% of maximum Vitality." }
     },
     "reserve": { 
         id: "reserve", name: "Grandmaster Reserve", slot: "consumable", type: "brew", rarity: "Epic", value: 45, spriteId: "icon_reserve",
-        combat: { actionType: "heal", targetType: "self", healPercent: 0.25, staminaCost: 0, desc: "Restores 25% of maximum Vitality." }
+        combat: { actionType: "heal", targetType: "self", healPercent: 0.5, staminaCost: 0, desc: "Restores 50% of maximum Vitality." }
     },
-    "ipa": { 
-        id: "ipa", name: "Furious IPA", slot: "consumable", type: "brew", rarity: "Rare", value: 15, spriteId: "ipa",
-        combat: { actionType: "buff", targetType: "self", buffTarget: "power", buffMultiplier: 1.10, duration: "deployment", staminaCost: 0, desc: "Amplifies damage multipliers (+10% ATK)." }
+    "ipa": {
+        id: "ipa", name: "Furious IPA", slot: "consumable", type: "brew", rarity: "Uncommon", value: 45, spriteId: "icon_brew_ipa",
+        desc: "A strong, oak-aged specialty ale. Grants a 10% multiplier to all outgoing physical damage.",
+        combat: { 
+            actionType: "buff", staminaCost: 0, buffType: "IPA", 
+            effectCategory: "power", effectType: "multiplier", effectValue: 1.10, // <--- TARGETS 'power' WITH MULTIPLIER
+            msg: "🍺 Drank a Furious IPA! Damage multipliers amplified." 
+        }
     },
-    "lager": { 
-        id: "lager", name: "Swift Lager", slot: "consumable", type: "brew", rarity: "Rare", value: 15, spriteId: "lager",
-        combat: { actionType: "buff", targetType: "self", buffTarget: "swiftness", buffFlat: 1, duration: "deployment", staminaCost: 0, desc: "Expands stride movement capabilities (+1 Stride)." }
+    "lager": {
+        id: "lager", name: "Swift Lager", slot: "consumable", type: "brew", rarity: "Uncommon", value: 45, spriteId: "icon_brew_lager",
+        desc: "A light, crisp lager brewed for agility. Grants +1 Tactical Stride range for the duration of the combat.",
+        combat: { 
+            actionType: "buff", staminaCost: 0, buffType: "LAGER", 
+            effectCategory: "swiftness", effectType: "flat", effectValue: 1, // <--- TARGETS 'swiftness' WITH FLAT BONUS
+            msg: "🍺 Drank a Swift Lager! Stride movement capabilities expanded." 
+        }
     },
 
     // === THE BLACKED-OUT SET (Abyssal Relic Tier) ===

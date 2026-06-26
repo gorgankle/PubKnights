@@ -12,6 +12,42 @@ function getGridDistance(x1, y1, x2, y2, size2 = 1) {
 }
 
 module.exports = function(socket, io, activePlayers, activeCombats) {
+	
+	// === UNIVERSAL STAT ENGINE ===
+    // Calculates the true value of any stat by combining Base + Gear + Buffs
+    function getEffectiveStat(player, statKey) {
+        let base = player[statKey] || 0;
+        let flatBonus = 0;
+        let multiplier = 1.0;
+
+        // 1. Apply Equipment Modifiers dynamically
+        for (let slot in player.equipment) {
+            let item = player.equipment[slot];
+            if (item) {
+                if (statKey === 'power' && item.atkBonus) flatBonus += item.atkBonus;
+                if (statKey === 'accuracy' && item.accBonus) flatBonus += item.accBonus;
+                if (statKey === 'resilience' && item.deflectChance) flatBonus += item.deflectChance;
+                if (statKey === 'swiftness' && item.moveBonus) flatBonus += item.moveBonus;
+            }
+        }
+
+        // 2. Apply Active Buffs (Potions, Magic, etc.) from the Database
+        if (player.activeBuffs && player.activeBuffs.length > 0) {
+            player.activeBuffs.forEach(buffId => {
+                let buffData = ItemDatabase[buffId.toLowerCase()];
+                if (buffData && buffData.combat && buffData.combat.effectCategory === statKey) {
+                    if (buffData.combat.effectType === 'flat') {
+                        flatBonus += buffData.combat.effectValue;
+                    } else if (buffData.combat.effectType === 'multiplier') {
+                        multiplier *= buffData.combat.effectValue;
+                    }
+                }
+            });
+        }
+
+        return Math.floor((base + flatBonus) * multiplier);
+    }
+	
 
     // --- SECURE KILL PROCESSOR ---
     function processSecureKill(socketId, serverEnemy) {
@@ -126,19 +162,9 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             // Execute resource burn
             p.stamina -= staminaCost; 
 
-            // Dynamic Stat Calculation
-            let equipmentBonusPwr = 0;
-            let equipmentBonusAcc = 0;
-            
-            for (let slot in p.equipment) {
-                let item = p.equipment[slot];
-                if (item && item.atkBonus) equipmentBonusPwr += item.atkBonus;
-                if (item && item.accBonus) equipmentBonusAcc += item.accBonus;
-            }
-            
-            let serverPower = (p.power || 12) + equipmentBonusPwr;
-            if (p.activeBuffs && p.activeBuffs.includes('IPA')) serverPower = Math.floor(serverPower * 1.10);
-            let serverAccuracy = Math.max(10, Math.min(100, (p.accuracy || 85) + equipmentBonusAcc));
+            // === THE BEAUTY OF THE UNIVERSAL STAT ENGINE ===
+            let serverPower = getEffectiveStat(p, 'power');
+            let serverAccuracy = Math.max(10, Math.min(100, getEffectiveStat(p, 'accuracy')));
 
             // Contested Hit Math (With Data-Driven Gorilla Bypass)
             let enemyResilience = combatRules.ignoresResilience ? 0 : (serverEnemy.resilience || 0);
@@ -189,22 +215,22 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 return socket.emit('combatItemReceipt', { success: true, updatedPlayer: p, message: `🍺 Chugged ${item.name}. Restored ${healAmount} HP.` });
             }
 
-            // Buff Parsing
+            // === NEW DYNAMIC BUFF PARSING ===
             if (rules.actionType === 'buff') {
                 p.activeBuffs = p.activeBuffs || [];
-                let buffName = item.id === 'ipa' ? 'IPA' : 'LAGER'; 
+                let buffName = rules.buffType; 
                 
                 if (!p.activeBuffs.includes(buffName)) {
                     p.activeBuffs.push(buffName);
                     p.inventory.splice(invIndex, 1);
                     p.stamina -= rules.staminaCost || 0;
-                    let msg = buffName === 'IPA' ? "🍺 Drank a Furious IPA! Damage multipliers amplified." : "🍺 Drank a Swift Lager! Stride movement capabilities expanded.";
-                    return socket.emit('combatItemReceipt', { success: true, updatedPlayer: p, message: msg });
+                    
+                    // The server now reads the message directly from the Item Database!
+                    return socket.emit('combatItemReceipt', { success: true, updatedPlayer: p, message: rules.msg });
                 } else {
                     return socket.emit('combatItemReceipt', { success: false, message: "❌ Buff already active." });
                 }
             }
-
             // Throwable Parsing (Bombs)
             if (rules.actionType === 'throwable') {
                 if (data.tx === undefined || data.ty === undefined) return;
@@ -605,15 +631,10 @@ else { // WILDERNESS
         // FIX 1: Prevent Silent Ghost Sockets
         if (!p || !combat) return socket.emit('moveReceipt', { success: false, message: '❌ Server connection lost. Please refresh the page.' });
 
-        // FIX 2: Proper Swiftness Calculation (Matches Client!)
-        let equipmentBonus = 0;
-        for (let slot in p.equipment) {
-            let item = p.equipment[slot];
-            if (item && item.moveBonus) equipmentBonus += item.moveBonus;
-        }
-        let swiftness = (p.swiftness || 3) + equipmentBonus;
-        if (p.activeBuffs && p.activeBuffs.includes('LAGER')) swiftness += 1;
+        // === NEW: THE BEAUTY OF THE UNIVERSAL STAT ENGINE ===
+        let swiftness = getEffectiveStat(p, 'swiftness');
         swiftness = Math.max(1, Math.min(12, swiftness));
+        // ====================================================
 
         let dist = getGridDistance(combat.player.x, combat.player.y, data.tx, data.ty, 1);
         let moveStaminaCost = Math.floor((dist / swiftness) * 10);
@@ -626,7 +647,7 @@ else { // WILDERNESS
         } else {
             socket.emit('moveReceipt', { success: false, message: `❌ Server: Not enough stamina to move (${p.stamina}/${moveStaminaCost}).`, x: combat.player.x, y: combat.player.y });
         }
-    });    
+    });
      
 
     // --- SERVER-AUTHORITATIVE COMBAT ESCROW ---

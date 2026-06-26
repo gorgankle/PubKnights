@@ -48,62 +48,47 @@ function calculateNextLevelXp(currentLevel) {
 }
 
 
-// === UNIVERSAL STAT PARSERS ===
+// === UNIVERSAL STAT PARSERS (CLIENT-SIDE ENGINE) ===
 
-function getPlayerSwiftness() {
-    let equipmentBonus = 0;
-    for (let slot in player.equipment) {
-        let item = player.equipment[slot];
-        if (item && item.moveBonus) equipmentBonus += item.moveBonus;
+function getEffectiveStat(targetPlayer, statKey) {
+    let base = targetPlayer[statKey] || 0;
+    let flatBonus = 0;
+    let multiplier = 1.0;
+
+    for (let slot in targetPlayer.equipment) {
+        let item = targetPlayer.equipment[slot];
+        if (item) {
+            if (statKey === 'power' && item.atkBonus) flatBonus += item.atkBonus;
+            if (statKey === 'accuracy' && item.accBonus) flatBonus += item.accBonus;
+            if (statKey === 'resilience' && item.deflectChance) flatBonus += item.deflectChance;
+            if (statKey === 'swiftness' && item.moveBonus) flatBonus += item.moveBonus;
+        }
     }
-    
-    let totalRange = (player.swiftness || 3) + equipmentBonus; 
-    if (player.activeBuffs && player.activeBuffs.includes('LAGER')) totalRange += 1; 
-    
-    // Grid bounds: minimum 1 tile stride, maximum 12 tiles
-    return Math.max(1, Math.min(12, totalRange));
+
+    if (targetPlayer.activeBuffs && targetPlayer.activeBuffs.length > 0) {
+        targetPlayer.activeBuffs.forEach(buffId => {
+            // Safely fetch from the global database
+            let buffData = typeof ItemDatabase !== 'undefined' ? ItemDatabase[buffId.toLowerCase()] : null;
+            if (buffData && buffData.combat && buffData.combat.effectCategory === statKey) {
+                if (buffData.combat.effectType === 'flat') flatBonus += buffData.combat.effectValue;
+                else if (buffData.combat.effectType === 'multiplier') multiplier *= buffData.combat.effectValue;
+            }
+        });
+    }
+    return Math.floor((base + flatBonus) * multiplier);
 }
 
-function getPlayerTotalPower() {
-    let equipmentBonus = 0;
-    for (let slot in player.equipment) {
-        let item = player.equipment[slot];
-        if (item && item.atkBonus) equipmentBonus += item.atkBonus;
-    }
-    
-    let baseTotal = (player.power || 12) + equipmentBonus; 
-    if (player.activeBuffs && player.activeBuffs.includes('IPA')) baseTotal = Math.floor(baseTotal * 1.10); 
-    
-    return Math.max(1, baseTotal);
-}
-
-function getPlayerAccuracy() {
-    let equipmentBonus = 0;
-    for (let slot in player.equipment) {
-        let item = player.equipment[slot];
-        if (item && item.accBonus) equipmentBonus += item.accBonus;
-    }
-    
-    let baseAcc = (player.accuracy || 85) + equipmentBonus;
-    return Math.max(10, Math.min(100, baseAcc)); // Hard cap at 100%
-}
-
+// Ultra-clean 1-line getter functions for the UI!
+function getPlayerSwiftness() { return Math.max(1, Math.min(12, getEffectiveStat(player, 'swiftness'))); }
+function getPlayerTotalPower() { return Math.max(1, getEffectiveStat(player, 'power')); }
+function getPlayerAccuracy() { return Math.max(10, Math.min(100, getEffectiveStat(player, 'accuracy'))); }
 function getPlayerDeflectChance() {
-    let baseResilience = player.resilience || 5;
-    let equipmentBonus = 0;
-    
-    for (let slot in player.equipment) {
-        let item = player.equipment[slot];
-        if (item && item.deflectChance) equipmentBonus += item.deflectChance;
-    }
-    
     // Scale curve: Every point of resilience only grants 0.75% deflect chance
-    let rawDeflect = Math.floor((baseResilience + equipmentBonus) * 0.75);
-    
-    // Hard ceiling: max dodge is 75%, hard floor is 0%
+    let rawDeflect = Math.floor(getEffectiveStat(player, 'resilience') * 0.75);
     return Math.max(0, Math.min(75, rawDeflect));
 }
 
+// Aliases used by other scripts
 function getPlayerMoveRange() { return getPlayerSwiftness(); }
 function getPlayerTotalAttack() { return getPlayerTotalPower(); }
 
