@@ -306,7 +306,9 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                     fx: { tx: data.tx, ty: data.ty, spriteId: item.spriteId || "icon_bomb_small", isAoE: true, radius: rules.aoeRadius },
                     updatedPlayer: p 
                 });
-		}
+            }
+        } 
+
         // === 4. EQUIP LOGIC ===
         if (data.actionCategory === 'equip') {
             let invIndex = data.invIndex;
