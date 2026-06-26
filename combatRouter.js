@@ -659,7 +659,7 @@ else if (data.action === 'equip') {
             
             socket.emit('combatItemReceipt', { success: true, updatedPlayer: p, message: "⚙️ Swapped gear mid-combat." });
         }
-    });
+    };
 
     // --- SERVER-AUTHORITATIVE COMBAT ESCROW ---
     socket.on('takePendingLoot', (idx) => {
