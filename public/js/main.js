@@ -32,40 +32,7 @@ socket.on('serverTick', (serverData) => {
 });
 
 socket.on('combatResult', (result) => {
-    if (gameState !== 'COMBAT') return;
-
-    // Sync the server's authoritative stamina deduction/recovery
-    player.stamina = result.newStamina;
-
-// 1. Catch Server Rejections & Aggressively Unlock the UI
-    if (result.type === 'error') {
-        logMessage(result.message);
-        if (typeof playRetroSound === 'function') playRetroSound('error');
-
-        // CRITICAL FIX: Drop the 'window.' prefix to correctly target the 'let' variable!
-        // We wrap it in a try/catch just in case the variable scope is completely isolated.
-        try { isAnimating = false; } catch (e) {}
-        try { pendingAction = null; } catch (e) {}
-
-        refreshSystemUI();
-        return; 
-    }
-
-// 2. Catch the "Pass Turn" response & Progress the Phase!
-    if (result.type === 'pass') {
-        logMessage(`Rested. Recovered ${result.recovered} stamina.`);
-        if (typeof playRetroSound === 'function') playRetroSound('heal');
-        
-        // Ensure the UI isn't stuck waiting for an animation
-        if (typeof isAnimating !== 'undefined') window.isAnimating = false;
-        
-        // Pass the turn through our restored engine logic
-        advancePhase();
-        return;
-    }
-
-    // Failsafe: Ignore hit/miss logs if target was cleared
-    if (!selectedEnemy) return; 
+    if (!result || gameState !== 'COMBAT') return;
 
     if (result.type === 'miss') {
         logMessage(`💨 Strike MISSED! Target evaded (${result.hitChance}% Hit Chance).`); 
@@ -76,7 +43,6 @@ socket.on('combatResult', (result) => {
     else if (result.type === 'hit') {
         selectedEnemy.hp -= result.damage;
         
-        // Tell the browser the monster is officially dead so the UI updates
         if (selectedEnemy.hp <= 0) {
             selectedEnemy.hp = 0;
             selectedEnemy.alive = false;
@@ -92,14 +58,12 @@ socket.on('combatResult', (result) => {
             FXEngine.spawnText(selectedEnemy.x, selectedEnemy.y, `-${result.damage}`, { color: "#e74c3c" });
         }
 
-        // Fire a hyper-fast weapon slash effect using the engine
         if (player.equipment.weapon && player.equipment.weapon.spriteId) {
             FXEngine.spawnProjectile(player.x, player.y, selectedEnemy.x, selectedEnemy.y, player.equipment.weapon.spriteId, { arc: 0, spin: true, frames: 10 });
         }
 
         if (selectedEnemy && !selectedEnemy.alive) selectedEnemy = null;
         
-        // --- SECURE VICTORY HANDLER ---
         if (enemies.every(e => !e.alive)) {
             logMessage("🏆 VICTORY Conditions verified.");
             if (typeof playRetroSound === 'function') playRetroSound('victory');
@@ -107,23 +71,14 @@ socket.on('combatResult', (result) => {
             return; 
         }
     }
-    
-    // Server successfully applied damage, now we can advance the turn
-    advancePhase();
+    refreshSystemUI();
 });
 
 // === SERVER-AUTHORITATIVE BOMB RESULT ===
 socket.on('bombResult', (result) => {
-    if (gameState !== 'COMBAT') return;
-
-    // NEW: Sync the inventory securely with the server's master copy!
-    if (result.updatedPlayer) {
-        Object.assign(player, result.updatedPlayer);
-        if (typeof saveGame === 'function') saveGame();
-        refreshSystemUI();
-    }
-
-    logMessage(`💥 Threw ${result.bombName} at coordinates [${result.tx}, ${result.ty}]!`);
+    if (!result || gameState !== 'COMBAT') return;
+    
+    let spriteToThrow = result.bombId === "bomb_heavy" ? "icon_bomb_heavy" : "icon_bomb_small";
     
     FXEngine.spawnProjectile(player.x, player.y, result.tx, result.ty, spriteToThrow, {
         arc: 1.5, 
@@ -132,7 +87,6 @@ socket.on('bombResult', (result) => {
         onComplete: () => {
             if (typeof playRetroSound === 'function') playRetroSound('explosion'); 
             
-            // Trigger the AoE visual
             FXEngine.spawnExplosion(result.tx, result.ty, { radius: result.aoe + 1.25 });
 
             let hitCount = 0;
@@ -171,6 +125,7 @@ socket.on('bombResult', (result) => {
             advancePhase();
         }
     });
+});
 
 // === SERVER-AUTHORITATIVE COMBAT ITEM RECEIPT ===
 socket.on('combatItemReceipt', (receipt) => {

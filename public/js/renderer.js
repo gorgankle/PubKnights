@@ -178,25 +178,22 @@ mapObstacles.forEach(o => {
         }
     });
 
-    // --- RENDERING PIPELINE: DYNAMIC TRANSFORMS KNIGHT ---
+// --- RENDERING PIPELINE: DYNAMIC TRANSFORMS KNIGHT ---
     ctx.save();
     
-   // --- RENDERING PIPELINE: DYNAMIC TRANSFORMS KNIGHT ---
-    ctx.save();
-    
-    // Retain only the idle breathing animation math
     let pScaleY = 1.0 + Math.sin(globalAnimClock * 0.08) * 0.02;
     let pScaleX = 1.0 - Math.sin(globalAnimClock * 0.08) * 0.01;
 
-    // Base positional variables completely stripped of lunge, bomb, and chug mechanics
     const pX = player.visualX * currentTileSize;
     const pY = (player.visualY * currentTileSize) - playerHopY;
 
-    let pPivotX = pX + currentTileSize / 2; let pPivotY = pY + currentTileSize;
-    ctx.translate(pPivotX, pPivotY); ctx.scale(pScaleX, pScaleY); ctx.translate(-pPivotX, -pPivotY);
-
-    let pPivotX = pX + currentTileSize / 2; let pPivotY = pY + currentTileSize;
-    ctx.translate(pPivotX, pPivotY); ctx.scale(pScaleX, pScaleY); ctx.translate(-pPivotX, -pPivotY);
+    // Notice we removed 'let' here so it simply updates your existing variables
+    pPivotX = pX + currentTileSize / 2; 
+    pPivotY = pY + currentTileSize;
+    
+    ctx.translate(pPivotX, pPivotY); 
+    ctx.scale(pScaleX, pScaleY); 
+    ctx.translate(-pPivotX, -pPivotY);
 
     // === NEW: RENDER BODY TO BUFFER FIRST FOR MASKING ===
     playerBufferCanvas.width = currentTileSize;
