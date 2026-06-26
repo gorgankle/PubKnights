@@ -632,8 +632,31 @@ else { // WILDERNESS
         if (!p || !combat) return socket.emit('moveReceipt', { success: false, message: '❌ Server connection lost. Please refresh the page.' });
 
         // === NEW: THE BEAUTY OF THE UNIVERSAL STAT ENGINE ===
-        let swiftness = getEffectiveStat(p, 'swiftness');
+let swiftness = getEffectiveStat(p, 'swiftness');
         swiftness = Math.max(1, Math.min(12, swiftness));
+        let dist = getGridDistance(combat.player.x, combat.player.y, data.tx, data.ty, 1);
+        
+        // === NEW: SERVER-SIDE PHYSICAL REALITY CHECK (ANTI-CHEAT) ===
+        // 1. Prevent teleporting off the edge of the map
+        if (data.tx < 0 || data.tx >= combat.gridSize || data.ty < 0 || data.ty >= combat.gridSize) {
+            return socket.emit('moveReceipt', { success: false, message: '❌ Server: Coordinates out of bounds.', x: combat.player.x, y: combat.player.y });
+        }
+        // 2. Prevent teleporting inside a rock/wall
+        let hitWall = combat.obstacles.some(o => o.x === data.tx && o.y === data.ty);
+        if (hitWall) {
+            return socket.emit('moveReceipt', { success: false, message: '❌ Server: Obstacle collision detected.', x: combat.player.x, y: combat.player.y });
+        }
+        // 3. Prevent stepping on an enemy's toes
+        let hitEnemy = combat.enemies.some(e => {
+            let s = e.size || 1;
+            return e.alive && data.tx >= e.x && data.tx < e.x + s && data.ty >= e.y && data.ty < e.y + s;
+        });
+        if (hitEnemy) {
+            return socket.emit('moveReceipt', { success: false, message: '❌ Server: Entity collision detected.', x: combat.player.x, y: combat.player.y });
+        }
+        // ============================================================
+
+        let moveStaminaCost = Math.floor((dist / swiftness) * 10);
         // ====================================================
 
         let dist = getGridDistance(combat.player.x, combat.player.y, data.tx, data.ty, 1);

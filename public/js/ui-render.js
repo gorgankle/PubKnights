@@ -973,17 +973,17 @@ function toggleStatsPanel() {
 function renderMainScreenSprites() {
     // 1. Render Player onto the new Dashboard Canvas
     const pCanvas = document.getElementById('main-player-canvas');
-    if (pCanvas && typeof drawProceduralSprite === 'function') {
+    if (pCanvas && typeof drawOptimizedSprite === 'function') {
         const pCtx = pCanvas.getContext('2d');
         pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
         
         let bodySprite = player.appearance.gender === 'female' ? 'body_female' : 'body_male';
-        if (SpriteMatrices[bodySprite]) drawProceduralSprite(pCtx, SpriteMatrices[bodySprite], 0, 0, pCanvas.width);
-        if (SpriteMatrices[player.appearance.eyes]) drawProceduralSprite(pCtx, SpriteMatrices[player.appearance.eyes], 0, 0, pCanvas.width);
+        if (SpriteMatrices[bodySprite]) drawOptimizedSprite(pCtx, bodySprite, SpriteMatrices[bodySprite], 0, 0, pCanvas.width);
+        if (SpriteMatrices[player.appearance.eyes]) drawOptimizedSprite(pCtx, player.appearance.eyes, SpriteMatrices[player.appearance.eyes], 0, 0, pCanvas.width);
         
         const hidesHair = player.equipment.helmet && player.equipment.helmet.hidesHair;
         if (!hidesHair && SpriteMatrices[player.appearance.hair]) {
-            drawProceduralSprite(pCtx, SpriteMatrices[player.appearance.hair], 0, 0, pCanvas.width);
+            drawOptimizedSprite(pCtx, player.appearance.hair, SpriteMatrices[player.appearance.hair], 0, 0, pCanvas.width);
         }
 
         const eq = player.equipment;
@@ -991,14 +991,14 @@ function renderMainScreenSprites() {
         
         if (eq.armor && eq.armor.spriteId) {
             let sId = eq.armor.spriteId + gSuffix;
-            if (SpriteMatrices[sId]) drawProceduralSprite(pCtx, SpriteMatrices[sId], 0, 0, pCanvas.width);
-            else if (SpriteMatrices[eq.armor.spriteId]) drawProceduralSprite(pCtx, SpriteMatrices[eq.armor.spriteId], 0, 0, pCanvas.width);
+            if (SpriteMatrices[sId]) drawOptimizedSprite(pCtx, sId, SpriteMatrices[sId], 0, 0, pCanvas.width);
+            else if (SpriteMatrices[eq.armor.spriteId]) drawOptimizedSprite(pCtx, eq.armor.spriteId, SpriteMatrices[eq.armor.spriteId], 0, 0, pCanvas.width);
         }
         
-        if (eq.boots && eq.boots.spriteId && SpriteMatrices[eq.boots.spriteId]) drawProceduralSprite(pCtx, SpriteMatrices[eq.boots.spriteId], 0, 0, pCanvas.width);
-        if (eq.gloves && eq.gloves.spriteId && SpriteMatrices[eq.gloves.spriteId]) drawProceduralSprite(pCtx, SpriteMatrices[eq.gloves.spriteId], 0, 0, pCanvas.width);
-        if (eq.helmet && eq.helmet.spriteId && SpriteMatrices[eq.helmet.spriteId]) drawProceduralSprite(pCtx, SpriteMatrices[eq.helmet.spriteId], 0, 0, pCanvas.width);
-        if (eq.weapon && eq.weapon.spriteId && SpriteMatrices[eq.weapon.spriteId]) drawProceduralSprite(pCtx, SpriteMatrices[eq.weapon.spriteId], 0, 0, pCanvas.width);
+        if (eq.boots && eq.boots.spriteId && SpriteMatrices[eq.boots.spriteId]) drawOptimizedSprite(pCtx, eq.boots.spriteId, SpriteMatrices[eq.boots.spriteId], 0, 0, pCanvas.width);
+        if (eq.gloves && eq.gloves.spriteId && SpriteMatrices[eq.gloves.spriteId]) drawOptimizedSprite(pCtx, eq.gloves.spriteId, SpriteMatrices[eq.gloves.spriteId], 0, 0, pCanvas.width);
+        if (eq.helmet && eq.helmet.spriteId && SpriteMatrices[eq.helmet.spriteId]) drawOptimizedSprite(pCtx, eq.helmet.spriteId, SpriteMatrices[eq.helmet.spriteId], 0, 0, pCanvas.width);
+        if (eq.weapon && eq.weapon.spriteId && SpriteMatrices[eq.weapon.spriteId]) drawOptimizedSprite(pCtx, eq.weapon.spriteId, SpriteMatrices[eq.weapon.spriteId], 0, 0, pCanvas.width);
     }
 
     // 2. Render Pet onto Canvas
