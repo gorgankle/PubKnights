@@ -146,41 +146,33 @@ if (data.saveData) {
                 const playerDoc = await Player.findOne({ username: data.username, password: data.password });
                 if (!playerDoc) return socket.emit('loginError', 'Invalid Knight Name or Password.');
 
-                // === SAVE REPAIR SYSTEM ===
-                // If the player's save was corrupted by the old missing-payload bug, restore their body!
                 if (!playerDoc.saveData.appearance) {
                     playerDoc.saveData.appearance = { gender: 'male', skin: 'light', hair: 'hair_messy', hairColor: 'brown', eyes: 'eyes_blue', shirtColor: 'blue', pantsColor: 'dark', bootsColor: 'leather' };
                 }
 
-                // === NEW: THE GREAT REWIRING REPAIR PATCH ===
-                // This auto-updates old save files to the new Data-Driven items!
+                // ============================================
+                // === AUTOMATED LONGEVITY: SANITIZE LOADOUT ===
+                // ============================================
                 let pd = playerDoc.saveData;
                 
-                // 1. Repair Equipment
+                // Sanitize Equipped Gear
                 if (pd.equipment) {
                     for (let slot in pd.equipment) {
-                        let item = pd.equipment[slot];
-                        if (item && item.id && ItemDatabase[item.id]) pd.equipment[slot] = ItemDatabase[item.id];
+                        pd.equipment[slot] = sanitizeItemSchema(pd.equipment[slot]);
                     }
                 }
-                // 2. Repair Backpack
+                // Sanitize Backpack
                 if (pd.inventory) {
-                    for (let i = 0; i < pd.inventory.length; i++) {
-                        let item = pd.inventory[i];
-                        if (item && item.id && ItemDatabase[item.id]) pd.inventory[i] = ItemDatabase[item.id];
-                    }
+                    pd.inventory = pd.inventory.map(item => sanitizeItemSchema(item));
                 }
-                // 3. Repair Vault
+                // Sanitize Stash/Vault
                 if (pd.stash) {
-                    for (let i = 0; i < pd.stash.length; i++) {
-                        let item = pd.stash[i];
-                        if (item && item.id && ItemDatabase[item.id]) pd.stash[i] = ItemDatabase[item.id];
-                    }
+                    pd.stash = pd.stash.map(item => sanitizeItemSchema(item));
                 }
                 // ============================================
 
-                activePlayers[socket.id] = playerDoc.saveData;
-                socket.emit('loginSuccess', playerDoc.saveData);
+                activePlayers[socket.id] = pd;
+                socket.emit('loginSuccess', pd);
             } catch (err) {
                 console.error(err);
                 socket.emit('loginError', 'Server error during login.');
@@ -244,8 +236,34 @@ setInterval(() => {
     }
 }, 3000);
 
+// === THE AUTOMATED ITEM LONGEVITY SANITIZER ===
+function sanitizeItemSchema(savedItem) {
+    if (!savedItem || !savedItem.id) return savedItem;
+    
+    // Grab the fresh, 100% up-to-date template from items.js
+    let masterTemplate = ItemDatabase[savedItem.id];
+    if (!masterTemplate) return savedItem;
+
+    // Create a pristine base object
+    let upToDateItem = { ...masterTemplate };
+
+    // Preserve the dynamically rolled Lvl/Stats (like specific Attack Bonus arrays from crates)
+    // if they differ from the baseline, while injecting the strict .combat ruleset
+    if (savedItem.atkBonus) upToDateItem.atkBonus = savedItem.atkBonus;
+    if (savedItem.deflectChance) upToDateItem.deflectChance = savedItem.deflectChance;
+    if (savedItem.moveBonus) upToDateItem.moveBonus = savedItem.moveBonus;
+    
+    // Guarantee the combat payload exists
+    if (masterTemplate.combat) {
+        upToDateItem.combat = JSON.parse(JSON.stringify(masterTemplate.combat));
+    }
+
+    return upToDateItem;
+}
+
 // === SERVER BOOT ===
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`🍻 Pub Knights Server running on http://localhost:${PORT}`);
 });
+
