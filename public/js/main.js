@@ -196,7 +196,15 @@ socket.on('combatItemReceipt', (receipt) => {
     }
     
     if (typeof saveGame === 'function') saveGame();
-    advancePhase(); // Advance the turn securely
+    
+    advancePhase(); // Updates HTML buttons & phases securely
+    
+    // === THE MISSING CANVAS REPAINT ===
+    // Forces the physical game board to instantly redraw the new movement/range tiles!
+    if (typeof drawGrid === 'function') {
+        drawGrid(); 
+    }
+    // ==================================
 });
 
 // === SERVER-AUTHORITATIVE MOVEMENT RECEIPT ===
