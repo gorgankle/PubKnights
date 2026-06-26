@@ -53,41 +53,8 @@ function updateAnimationEngine() {
     }
 }
 
-// === GLOBAL ANIMATION ANIM-STATE TRIGGERS ===
-function triggerPlayerAttackAnimation() { player.attackTimer = 20; }
-function triggerEnemyAttackAnimation(enemy) { enemy.attackTimer = 20; }
-function triggerBombAnimation() { player.bombTimer = 20; }
 
-// === UPDATED: CHUG TRIGGER ACCEPTS BREW ID ===
-function triggerChugAnimation(brewId = 'stout') { 
-    player.chugTimer = 25; 
-    player.activeChugSprite = 'icon_' + brewId;
-}
 
-// === NEW: SPAWN VISUAL EFFECTS ===
-function spawnProjectile(startX, startY, targetX, targetY, spriteId, duration, onComplete, isArrow = false) {
-    activeProjectiles.push({
-        startX: startX, startY: startY,
-        targetX: targetX, targetY: targetY,
-        spriteId: spriteId,
-        frame: 0,
-        maxFrames: duration,
-        onComplete: onComplete,
-        isArrow: isArrow // Tells the engine this is a dart, not a bomb
-    });
-}
-
-function spawnExplosion(gridX, gridY, config) {
-    activeExplosions.push({
-        x: gridX, 
-        y: gridY,
-        radius: config.radius || 1.5,
-        frame: 0,
-        maxFrames: config.frames || 25,
-        curve: config.curve || 1.0,
-        colors: config.colors || { outer: "#e74c3c", mid: "#e67e22", core: "#f1c40f" }
-    });
-}
 
 function drawGrid() {
     if (gameState !== 'COMBAT') return;
@@ -108,8 +75,7 @@ function drawGrid() {
     // --- INTERPOLATION ENGINE: PLAYER ---
     if (player.visualX === undefined) {
         player.visualX = player.x; player.visualY = player.y;
-        player.moveAnimTimer = 0; player.attackTimer = 0;
-        player.chugTimer = 0; player.bombTimer = 0;
+        player.moveAnimTimer = 0; 
     }
     
     let pDeltaX = player.x - player.visualX;
@@ -370,23 +336,14 @@ mapObstacles.forEach(o => {
             let enemyHopY = Math.abs(Math.sin(e.moveAnimTimer)) * 14;
 
             ctx.save();
-            let eLungeX = 0; let eLungeY = 0; let eScaleX = 1.0; let eScaleY = 1.0;
+            
+            // Retain only the idle breathing animation math
+            let eScaleY = 1.0 + Math.sin((globalAnimClock + (e.x * 15)) * 0.07) * 0.02;
+            let eScaleX = 1.0 - Math.sin((globalAnimClock + (e.x * 15)) * 0.07) * 0.01;
 
-            if (e.attackTimer > 0) {
-                e.attackTimer--;
-                let eProgress = (20 - e.attackTimer) / 20;
-                let eLungeFactor = Math.sin(eProgress * Math.PI);
-                let edx = player.x - e.x; let edy = player.y - e.y;
-                let elen = Math.sqrt(edx*edx + edy*edy) || 1;
-                eLungeX = (edx / elen) * currentTileSize * 0.35 * eLungeFactor;
-                eLungeY = (edy / elen) * currentTileSize * 0.35 * eLungeFactor;
-            } else {
-                eScaleY = 1.0 + Math.sin((globalAnimClock + (e.x * 15)) * 0.07) * 0.02;
-                eScaleX = 1.0 - Math.sin((globalAnimClock + (e.x * 15)) * 0.07) * 0.01;
-            }
-
-            let exPosition = e.visualX * currentTileSize + eLungeX;
-            let eyPosition = (e.visualY * currentTileSize) - enemyHopY + eLungeY;
+            // Base positional variables completely stripped of lunge mechanics
+            let exPosition = e.visualX * currentTileSize;
+            let eyPosition = (e.visualY * currentTileSize) - enemyHopY;
 
             let ePivotX = exPosition + (currentTileSize * sSize) / 2;
             let ePivotY = eyPosition + (currentTileSize * sSize);
@@ -417,76 +374,6 @@ if (SpriteMatrices[e.id]) {
         }
     }
 
-    // === RENDER FLYING PROJECTILES OVER EVERYTHING ===
-    for (let i = activeProjectiles.length - 1; i >= 0; i--) {
-        let p = activeProjectiles[i];
-        p.frame++;
-        let progress = p.frame / p.maxFrames;
-        
-        let currentX = p.startX + (p.targetX - p.startX) * progress;
-        let currentY = p.startY + (p.targetY - p.startY) * progress;
-        
-        // Arc math: Arrows fly flatter than heavy bombs
-        let arcOffset = p.isArrow ? (Math.sin(progress * Math.PI) * 0.5) : (Math.sin(progress * Math.PI) * 1.5); 
-        
-        let px = currentX * currentTileSize;
-        let py = (currentY - arcOffset) * currentTileSize;
-        
-        ctx.save();
-        ctx.translate(px + currentTileSize/2, py + currentTileSize/2);
-        
-        if (p.isArrow) {
-            let dx = p.targetX - p.startX;
-            let dy = p.targetY - p.startY;
-            let angle = Math.atan2(dy, dx);
-            ctx.rotate(angle + (Math.PI / 4)); 
-        } else {
-            ctx.rotate(progress * Math.PI * 4); 
-        }
-        
-        ctx.translate(-(px + currentTileSize/2), -(py + currentTileSize/2));
-        
-if (SpriteMatrices[p.spriteId]) {
-            // === GPU RASTER SWAP ===
-            drawOptimizedSprite(ctx, p.spriteId, SpriteMatrices[p.spriteId], px, py, currentTileSize);
-        }
-        ctx.restore();
-        
-        if (p.frame >= p.maxFrames) {
-            let callback = p.onComplete;
-            activeProjectiles.splice(i, 1);
-            if (typeof callback === 'function') callback(); 
-        }
-    }
-
-    // === RENDER EXPANDING EXPLOSIONS ===
-    for (let i = activeExplosions.length - 1; i >= 0; i--) {
-        let exp = activeExplosions[i];
-        exp.frame++;
-        let progress = exp.frame / exp.maxFrames;
-        let alpha = 1.0 - progress; 
-        
-        let cx = (exp.x * currentTileSize) + (currentTileSize / 2);
-        let cy = (exp.y * currentTileSize) + (currentTileSize / 2);
-        let currentRadius = (exp.radius * currentTileSize) * Math.sin(progress * Math.PI / 2); 
-        
-        ctx.save();
-        ctx.globalAlpha = alpha;
-        
-        ctx.beginPath(); ctx.arc(cx, cy, currentRadius, 0, Math.PI * 2);
-        ctx.fillStyle = "#e74c3c"; ctx.fill();
-        
-        ctx.beginPath(); ctx.arc(cx, cy, currentRadius * 0.7, 0, Math.PI * 2);
-        ctx.fillStyle = "#e67e22"; ctx.fill();
-        
-        ctx.beginPath(); ctx.arc(cx, cy, currentRadius * 0.4, 0, Math.PI * 2);
-        ctx.fillStyle = "#f1c40f"; ctx.fill();
-        
-        ctx.restore();
-        
-        if (exp.frame >= exp.maxFrames) activeExplosions.splice(i, 1);
-    }
-}
 
 function renderGridHealthBar(gridX, gridY, currentHp, maximumHp, size = 1, currentStamina = null, maxStamina = null) {
     let barWidth = (currentTileSize * size) - 6; 
@@ -629,40 +516,6 @@ if (isValidPlayerMovePath(tx, ty)) {
     }
 });
 
-function spawnHitMarker(gridX, gridY, text, config) {
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const marker = document.createElement("div");
-    
-    // Backwards compatibility for older calls that just passed a hex color string
-    let color = typeof config === 'string' ? config : (config?.color || "#e74c3c");
-    let size = typeof config === 'object' && config.fontSize ? config.fontSize : 22;
-    let rise = typeof config === 'object' && config.riseDist ? config.riseDist : 50;
-    let time = typeof config === 'object' && config.durationMs ? config.durationMs : 1000;
-
-    marker.innerText = text;
-    marker.style.position = "absolute";
-    marker.style.left = (rect.left + window.scrollX + (gridX * currentTileSize) + (currentTileSize / 2)) + "px";
-    marker.style.top = (rect.top + window.scrollY + (gridY * currentTileSize) + 10) + "px";
-    marker.style.color = color;
-    marker.style.fontWeight = "bold";
-    marker.style.fontSize = size + "px";
-    marker.style.textShadow = "2px 2px 0px #000, -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000";
-    marker.style.pointerEvents = "none";
-    marker.style.zIndex = "9999";
-    marker.style.transform = "translate(-50%, -50%)";
-    
-    // CSS Transition using the new dynamic time
-    marker.style.transition = `top ${time}ms ease-out, opacity ${time}ms ease-out`;
-    document.body.appendChild(marker);
-
-    setTimeout(() => { 
-        marker.style.top = (rect.top + window.scrollY + (gridY * currentTileSize) - rise) + "px"; 
-        marker.style.opacity = "0"; 
-    }, 50);
-
-    setTimeout(() => marker.remove(), time + 50);
-}
 
 // === BOOTSTRAP INITIALIZER: RUN THE LOOP PIPELINE ===
 requestAnimationFrame(updateAnimationEngine);

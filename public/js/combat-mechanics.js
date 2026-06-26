@@ -76,7 +76,6 @@ function executeCombatAction(actionType) {
                 return; 
             }
             
-            if (typeof triggerPlayerAttackAnimation === 'function') triggerPlayerAttackAnimation();
         }
 
         // ONE unified payload to rule them all
@@ -132,15 +131,23 @@ function executeBombThrow(tx, ty) {
 
 
 // === TARGETING STATE CONTROLLERS ===
-window.prepTargetAction = function(idx) {
-    if (gameState !== 'COMBAT') return;
-    activeTargetIndex   = idx;
-    combatPhase = 'TARGETING';
+window.executeTargetAction = function(tx, ty) {
+    if (activeTargetIndex === -1) return;
     
-    refreshSystemUI(); 
+    // 1. THE FIX: Lock the phase so the click event doesn't fall through!
+    combatPhase = 'WAITING_FOR_SERVER'; 
     
-    // Force the canvas to instantly redraw the new yellow targeting grid!
-    if (typeof drawGrid === 'function') drawGrid(); 
+    // 2. Dispatch to the server
+    socket.emit('dispatchCombatAction', { 
+        actionCategory: 'consumable', 
+        invIndex: activeTargetIndex, 
+        tx: tx, 
+        ty: ty 
+    });
+    
+    activeTargetIndex = -1;
+    refreshSystemUI();
+    if (typeof drawGrid === 'function') drawGrid();
 };
 
 window.cancelTarget = function() {
