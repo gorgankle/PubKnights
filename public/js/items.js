@@ -7,8 +7,8 @@ const ItemDatabase = {
         id: "bone_fetch_club", name: "Ancient Fetching Bone", slot: "weapon", type: "Club", rarity: "Unique", 
         atkBonus: 60, attackRange: 1, value: 500, spriteId: "weap_bone",
         combat: {
-            standard: { range: 1, staminaCost: 5, multiplier: 1.0 },
-            special: { name: "Heavy Smash", range: 1, staminaCost: 15, multiplier: 1.5, ignoresResilience: false, desc: "Converts weight momentum into a heavy attack producing 1.5x standard power." }
+            standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
+            special: { name: "Heavy Smash", range: 1, staminaCost: 15, multiplier: 1.5, ignoresResilience: false, animType: "jump_smash", desc: "Converts weight momentum into a heavy attack producing 1.5x standard power." }
         }
     },
     "scavengers_mitts": { id: "scavengers_mitts", name: "Scavenger's Muddy Mitts", slot: "gloves", rarity: "Unique", atkBonus: 25, deflectChance: 5, value: 350, spriteId: "gloves_scavenger" },

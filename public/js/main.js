@@ -129,14 +129,24 @@ socket.on('combatResult', (result) => {
             refreshSystemUI();
         };
 
-        // === THE FIX: ONLY THROW PROJECTILES FOR RANGED ATTACKS ===
+        // === THE MASTER ANIMATION TRIGGER ===
         if (result.source === 'throwable' && fx && fx.spriteId) {
             FXEngine.spawnProjectile(player.x, player.y, fx.tx, fx.ty, fx.spriteId, animOptions);
         } else {
-            // Melee weapons strike instantly! No projectile needed.
-            animOptions.onComplete(); 
+            // 1. Determine if they used 'standard' or 'special'
+            let profileKey = result.actionName === 'special' ? 'special' : 'standard';
+            
+            // 2. Fetch the exact animation profile you wrote in items.js!
+            let weaponProfile = player.equipment.weapon.combat[profileKey];
+            let animType = weaponProfile && weaponProfile.animType ? weaponProfile.animType : 'lunge_slash';
+            
+            // 3. Trigger the lunge, and ONLY execute the damage math when the strike physically connects!
+            FXEngine.spawnMeleeStrike(player, fx.tx, fx.ty, animType, { 
+                frames: 15, 
+                onComplete: animOptions.onComplete 
+            });
         }
-        // ==========================================================
+        // ====================================
     }
 });
 
