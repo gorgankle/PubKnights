@@ -386,7 +386,6 @@ function advancePhase() {
     if (typeof drawGrid === 'function') {
         drawGrid();
     }
-}ystemUI();
 }
 
 // === RESTORED TRANSITION FUNCTION ===
