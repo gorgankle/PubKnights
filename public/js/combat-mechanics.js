@@ -358,3 +358,15 @@ function isValidPlayerMovePath(targetX, targetY) {
     // Instantly return the cached answer!
     return moveCache.tiles.has(`${targetX},${targetY}`);
 }
+
+// === THE PHASE CONTROLLER ===
+function advancePhase() {
+    if (combatPhase === 'PHASE_1' || combatPhase === 'MOVE') {
+        combatPhase = 'PHASE_2';
+    } else if (combatPhase === 'PHASE_2' || combatPhase === 'ACTION') {
+        combatPhase = 'PHASE_3';
+    } else if (combatPhase === 'PHASE_3' || combatPhase === 'MOVE_2') {
+        endPlayerTurn();
+    }
+    refreshSystemUI();
+}
