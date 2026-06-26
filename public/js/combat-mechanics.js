@@ -370,3 +370,23 @@ function advancePhase() {
     }
     refreshSystemUI();
 }
+
+// === RESTORED TRANSITION FUNCTION ===
+window.transitionToTown = function() {
+    if (typeof setGameState === 'function') {
+        setGameState('TOWN');
+    }
+    
+    // Failsafe cleanup of combat states
+    if (typeof hideTooltip === 'function') hideTooltip();
+    
+    // Reset combat screen visibility elements
+    const combatScreen = document.getElementById('combat-screen');
+    if (combatScreen) combatScreen.style.display = 'none';
+    
+    const mainGameContainer = document.getElementById('main-game-container');
+    if (mainGameContainer) mainGameContainer.style.display = 'flex';
+    
+    logMessage("🏕️ Returned safely to Town.");
+    if (typeof playRetroSound === 'function') playRetroSound('door');
+}

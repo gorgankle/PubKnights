@@ -19,8 +19,8 @@ let player = {
     equipment: {
         helmet: null,
         armor: null, 
-        weapon: { name: "Rusty Mace", slot: "weapon", type: "Mace", atkBonus: 8, rarity: "Common", attackRange: 1, value: 15, spriteId: "weap_rusty_mace" },
-        gloves: null,
+        weapon: typeof ItemDatabase !== 'undefined' ? JSON.parse(JSON.stringify(ItemDatabase["rusty_mace"])) : null,
+        gloves: null, 
         boots: null
     },
     inventory: [], stash: [], workers: { woodcutters: 0, fishermen: 0, farmers: 0 },

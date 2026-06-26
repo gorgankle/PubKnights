@@ -51,6 +51,27 @@ const ugcSchema = new mongoose.Schema({
 
 const UGC = mongoose.model('UGC', ugcSchema);
 
+// === THE AUTOMATED ITEM LONGEVITY SANITIZER ===
+function sanitizeItemSchema(savedItem) {
+    if (!savedItem || !savedItem.id) return savedItem;
+    
+    // Grab the fresh, 100% up-to-date template from items.js
+    let masterTemplate = ItemDatabase[savedItem.id];
+    if (!masterTemplate) return savedItem;
+
+    // Create a pristine base object using the master template
+    let upToDateItem = JSON.parse(JSON.stringify(masterTemplate));
+
+    // Preserve the dynamically rolled Lvl/Stats from the player's save file!
+    if (savedItem.atkBonus !== undefined) upToDateItem.atkBonus = savedItem.atkBonus;
+    if (savedItem.deflectChance !== undefined) upToDateItem.deflectChance = savedItem.deflectChance;
+    if (savedItem.moveBonus !== undefined) upToDateItem.moveBonus = savedItem.moveBonus;
+    if (savedItem.value !== undefined) upToDateItem.value = savedItem.value;
+    if (savedItem.rarity !== undefined) upToDateItem.rarity = savedItem.rarity;
+
+    return upToDateItem;
+}
+
 // Serve the index.html file from the root directory
 app.get('/', (req, res) => {
     res.sendFile(__dirname + '/index.html');
@@ -155,17 +176,17 @@ if (data.saveData) {
                 // ============================================
                 let pd = playerDoc.saveData;
                 
-                // Sanitize Equipped Gear
+                // 1. Sanitize Equipped Gear
                 if (pd.equipment) {
                     for (let slot in pd.equipment) {
                         pd.equipment[slot] = sanitizeItemSchema(pd.equipment[slot]);
                     }
                 }
-                // Sanitize Backpack
+                // 2. Sanitize Backpack
                 if (pd.inventory) {
                     pd.inventory = pd.inventory.map(item => sanitizeItemSchema(item));
                 }
-                // Sanitize Stash/Vault
+                // 3. Sanitize Stash/Vault
                 if (pd.stash) {
                     pd.stash = pd.stash.map(item => sanitizeItemSchema(item));
                 }
@@ -236,30 +257,7 @@ setInterval(() => {
     }
 }, 3000);
 
-// === THE AUTOMATED ITEM LONGEVITY SANITIZER ===
-function sanitizeItemSchema(savedItem) {
-    if (!savedItem || !savedItem.id) return savedItem;
-    
-    // Grab the fresh, 100% up-to-date template from items.js
-    let masterTemplate = ItemDatabase[savedItem.id];
-    if (!masterTemplate) return savedItem;
 
-    // Create a pristine base object
-    let upToDateItem = { ...masterTemplate };
-
-    // Preserve the dynamically rolled Lvl/Stats (like specific Attack Bonus arrays from crates)
-    // if they differ from the baseline, while injecting the strict .combat ruleset
-    if (savedItem.atkBonus) upToDateItem.atkBonus = savedItem.atkBonus;
-    if (savedItem.deflectChance) upToDateItem.deflectChance = savedItem.deflectChance;
-    if (savedItem.moveBonus) upToDateItem.moveBonus = savedItem.moveBonus;
-    
-    // Guarantee the combat payload exists
-    if (masterTemplate.combat) {
-        upToDateItem.combat = JSON.parse(JSON.stringify(masterTemplate.combat));
-    }
-
-    return upToDateItem;
-}
 
 // === SERVER BOOT ===
 const PORT = process.env.PORT || 3000;
