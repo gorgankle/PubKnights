@@ -115,26 +115,22 @@ function consumeBrew(invIndex) {
 }
 
 
-// === TARGETING STATE CONTROLLERS ===/ === TARGETING STATE CONTROLLERS ===
-let activeTargetItemIndex = -1; // Replacing activeBombIndex
-
+// === TARGETING STATE CONTROLLERS ===
 window.prepTargetAction = function(idx) {
     if (gameState !== 'COMBAT') return;
-    activeTargetItemIndex = idx;
-    combatPhase = 'TARGET_RANGED';
+    activeTargetIndex = idx;         // THE FIX: Unified Variable!
+    combatPhase = 'TARGETING';       // THE FIX: Unified State!
     refreshSystemUI(); 
     if (typeof drawGrid === 'function') drawGrid(); 
 };
 
-
-// === TARGETING STATE CONTROLLERS ===
 window.executeTargetAction = function(tx, ty) {
     if (activeTargetIndex === -1) return;
     
-    // 1. THE FIX: Lock the phase so the click event doesn't fall through!
+    // Lock the phase so the click event doesn't fall through!
     combatPhase = 'WAITING_FOR_SERVER'; 
     
-    // 2. Dispatch to the server
+    // Dispatch the payload securely to the server
     socket.emit('dispatchCombatAction', { 
         actionCategory: 'consumable', 
         invIndex: activeTargetIndex, 
@@ -148,15 +144,11 @@ window.executeTargetAction = function(tx, ty) {
 };
 
 window.cancelTarget = function() {
-    activeTargetIndex   = -1;
-    combatPhase = 'PHASE_2'; // Revert back to weapon targeting
-    
+    activeTargetIndex = -1;
+    combatPhase = 'PHASE_2'; 
     refreshSystemUI();
-    
-    // Redraw the canvas back to standard melee range
     if (typeof drawGrid === 'function') drawGrid(); 
 };
-
 
 // === POST-COMBAT LOOT GUI ENGINE ===
 

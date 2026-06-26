@@ -37,6 +37,28 @@ socket.on('combatResult', (result) => {
 
     if (result.updatedPlayer) Object.assign(player, result.updatedPlayer); // Instantly sync stamina
 
+    // === THE FIX: HANDLE ERRORS & PASS TURN ===
+    if (result.type === 'error') {
+        logMessage(result.message);
+        if (typeof playRetroSound === 'function') playRetroSound('error');
+        
+        // Failsafe: If the server rejected a throw, unlock the client back to Phase 2!
+        if (combatPhase === 'WAITING_FOR_SERVER') combatPhase = 'PHASE_2'; 
+        
+        refreshSystemUI();
+        if (typeof drawGrid === 'function') drawGrid();
+        return;
+    }
+    
+    if (result.type === 'pass') {
+        logMessage(`⌛ Phase passed. Recovered ${result.recovered} stamina.`);
+        advancePhase(); // Safely advances the turn!
+        refreshSystemUI();
+        if (typeof drawGrid === 'function') drawGrid();
+        return;
+    }
+    // ==========================================
+
     // --- 1. HANDLE EVASION ---
     if (result.type === 'miss') {
         logMessage(`💨 Strike MISSED! Target evaded (${result.hitChance}% Hit Chance).`); 
