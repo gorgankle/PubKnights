@@ -266,7 +266,6 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
                     }
                     document.getElementById("slash-btn").disabled = true;
                     document.getElementById("heavy-btn").disabled = true;
-                    document.getElementById("combat-brew-btn").disabled = true;
                     document.getElementById("end-btn").disabled = true;
                 } else {
                     // === INSTANT AUTO-TARGETING LOGIC ===
@@ -357,7 +356,6 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
                 }
                 document.getElementById("slash-btn").disabled = true;
                 document.getElementById("heavy-btn").disabled = true;
-                document.getElementById("combat-brew-btn").disabled = true;
                 document.getElementById("end-btn").disabled = true;
                 document.getElementById("end-btn").style.opacity = "1.0";
             }
