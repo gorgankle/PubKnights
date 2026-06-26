@@ -51,25 +51,24 @@ const ugcSchema = new mongoose.Schema({
 
 const UGC = mongoose.model('UGC', ugcSchema);
 
-// === THE AUTOMATED ITEM LONGEVITY SANITIZER ===
+// === THE AUTOMATED ITEM LONGEVITY SANITIZER (STRICT HYDRATION) ===
 function sanitizeItemSchema(savedItem) {
     if (!savedItem || !savedItem.id) return savedItem;
     
-    // Grab the fresh, 100% up-to-date template from items.js
+    // 1. Grab the fresh, 100% up-to-date template from items.js
     let masterTemplate = ItemDatabase[savedItem.id];
+    
+    // Failsafe: If you deleted the item from the game entirely, keep the old ghost item
     if (!masterTemplate) return savedItem;
 
-    // Create a pristine base object using the master template
-    let upToDateItem = JSON.parse(JSON.stringify(masterTemplate));
+    // 2. THE OVERWRITE: We ignore EVERYTHING in the player's save file except the ID.
+    // We return a 100% perfect, pristine clone directly from the live database.
+    let hydratedItem = JSON.parse(JSON.stringify(masterTemplate));
+    
+    // (Optional) If you ever add item quantities/stacks later, you would preserve ONLY the amount here:
+    // if (savedItem.quantity) hydratedItem.quantity = savedItem.quantity;
 
-    // Preserve the dynamically rolled Lvl/Stats from the player's save file!
-    if (savedItem.atkBonus !== undefined) upToDateItem.atkBonus = savedItem.atkBonus;
-    if (savedItem.deflectChance !== undefined) upToDateItem.deflectChance = savedItem.deflectChance;
-    if (savedItem.moveBonus !== undefined) upToDateItem.moveBonus = savedItem.moveBonus;
-    if (savedItem.value !== undefined) upToDateItem.value = savedItem.value;
-    if (savedItem.rarity !== undefined) upToDateItem.rarity = savedItem.rarity;
-
-    return upToDateItem;
+    return hydratedItem;
 }
 
 // Serve the index.html file from the root directory
