@@ -24,7 +24,7 @@ function rollSecureCrateLoot(crateId) {
 
 // 3. Export the setup function that server.js will call
 // We "inject" the live socket and the master activePlayers memory object here.
-module.exports = function(socket, activePlayers) {
+module.exports = function(socket, io, activePlayers, activeCombats) {
 
     // --- SERVER-AUTHORITATIVE INVENTORY & VAULT ---
     socket.on('inventoryAction', (data) => {
@@ -60,7 +60,7 @@ if (data.action === 'equip') {
             p.maxInventorySlots = p.maxInventorySlots || 5;
             if (p.inventory.length < p.maxInventorySlots) {
                 p.inventory.push(worn);
-                delete p.equipment[slotKey];
+                p.equipment[slotKey] = null; // <--- FORCES CLIENT TO UPDATE
                 socket.emit('inventoryReceipt', { success: true, action: 'unequip', updatedPlayer: p, message: "⚙️ Gear unequipped." });
             } else {
                 socket.emit('inventoryReceipt', { success: false, message: "🎒 Backpack is full. Make space first." });
