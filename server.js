@@ -187,20 +187,21 @@ if (data.saveData) {
             }
         });
 
-        // === : MODULAR ROUTER INJECTIONS ===
+        // === RESTORED: MODULAR ROUTER INJECTIONS ===
         // This plugs your other files into the main server connection!
         injectTownRouter(socket, io, activePlayers, activeCombats);
         injectCombatRouter(socket, io, activePlayers, activeCombats);
         injectSocialRouter(socket, io, activePlayers, activeCombats);
 
-        // === : DISCONNECT HANDLER ===
+        // === RESTORED: DISCONNECT HANDLER ===
         socket.on('disconnect', () => {
             console.log(`❌ A Knight disconnected: ${socket.id}`);
             delete activePlayers[socket.id];
             delete activeCombats[socket.id];
         });
 
-    }); 
+    }); // <--- This is the TRUE end of the master connection hub!
+
 // === THE SERVER TICK (Runs every 3 seconds) ===
 setInterval(() => {
     for (let socketId in activePlayers) {
