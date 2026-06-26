@@ -531,10 +531,19 @@ const FXEngine = {
 
             // Remove dead effects
             if (progress >= 1.0) {
+                let callback = null;
+                
+                // 1. Save the callback securely
                 if (fx.type === 'PROJECTILE' && typeof fx.onComplete === 'function') {
-                    fx.onComplete();
+                    callback = fx.onComplete;
                 }
+                
+                // 2. DELETE THE EFFECT FIRST to prevent infinite loops!
                 this.queue.splice(i, 1);
+                
+                // 3. EXECUTE THE CALLBACK SECOND!
+                if (callback) callback();
+                
                 continue;
             }
 

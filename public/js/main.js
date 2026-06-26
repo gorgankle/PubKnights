@@ -129,12 +129,14 @@ socket.on('combatResult', (result) => {
             refreshSystemUI();
         };
 
-        // Fire the projectile! (The engine automatically handles the math, then triggers onComplete)
-        if (fx && fx.spriteId) {
+        // === THE FIX: ONLY THROW PROJECTILES FOR RANGED ATTACKS ===
+        if (result.source === 'throwable' && fx && fx.spriteId) {
             FXEngine.spawnProjectile(player.x, player.y, fx.tx, fx.ty, fx.spriteId, animOptions);
         } else {
-            animOptions.onComplete(); // Fallback if no sprite is assigned
+            // Melee weapons strike instantly! No projectile needed.
+            animOptions.onComplete(); 
         }
+        // ==========================================================
     }
 });
 
