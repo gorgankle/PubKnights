@@ -368,7 +368,6 @@ function isValidPlayerMovePath(targetX, targetY) {
     // Instantly return the cached answer!
     return moveCache.tiles.has(`${targetX},${targetY}`);
 }
-
 // === THE PHASE CONTROLLER ===
 function advancePhase() {
     if (combatPhase === 'PHASE_1' || combatPhase === 'MOVE') {
@@ -378,7 +377,16 @@ function advancePhase() {
     } else if (combatPhase === 'PHASE_3' || combatPhase === 'MOVE_2') {
         endPlayerTurn();
     }
-    refreshSystemUI();
+    
+    refreshSystemUI(); // Updates the HTML buttons & health bars
+    
+    // === NEW: THE MASTER CANVAS REDRAW ===
+    // This guarantees the physical game board updates instantly 
+    // whenever a phase shifts, catching all new buffs, states, and ranges!
+    if (typeof drawGrid === 'function') {
+        drawGrid();
+    }
+}ystemUI();
 }
 
 // === RESTORED TRANSITION FUNCTION ===
