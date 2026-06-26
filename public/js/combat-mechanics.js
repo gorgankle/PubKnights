@@ -116,6 +116,25 @@ function consumeBrew(invIndex) {
 
 
 // === TARGETING STATE CONTROLLERS ===
+// === TARGETING STATE CONTROLLERS ===
+let activeTargetItemIndex = -1; // Replacing activeBombIndex
+
+window.prepTargetAction = function(idx) {
+    if (gameState !== 'COMBAT') return;
+    activeTargetItemIndex = idx;
+    combatPhase = 'TARGET_RANGED';
+    refreshSystemUI(); 
+    if (typeof drawGrid === 'function') drawGrid(); 
+};
+
+window.cancelTargetAction = function() {
+    activeTargetItemIndex = -1;
+    combatPhase = 'PHASE_2'; 
+    refreshSystemUI();
+    if (typeof drawGrid === 'function') drawGrid(); 
+};
+
+// === TARGETING STATE CONTROLLERS ===
 window.executeTargetAction = function(tx, ty) {
     if (activeTargetIndex === -1) return;
     
