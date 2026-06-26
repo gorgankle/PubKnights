@@ -70,10 +70,11 @@ socket.on('combatResult', (result) => {
     if (result.type === 'miss') {
         logMessage(`💨 Strike MISSED! Target evaded (${result.hitChance}% Hit Chance).`); 
         if (typeof playRetroSound === 'function') playRetroSound('error'); 
-        if (typeof spawnHitMarker === 'function') spawnHitMarker(selectedEnemy.x, selectedEnemy.y, "-0", "#3498db"); 
+        
+        FXEngine.spawnText(selectedEnemy.x, selectedEnemy.y, "MISS", { color: "#3498db" }); 
     } 
     else if (result.type === 'hit') {
-selectedEnemy.hp -= result.damage;
+        selectedEnemy.hp -= result.damage;
         
         // Tell the browser the monster is officially dead so the UI updates
         if (selectedEnemy.hp <= 0) {
@@ -84,17 +85,21 @@ selectedEnemy.hp -= result.damage;
         if (result.isCrit) {
             if (typeof playRetroSound === 'function') playRetroSound('playerCrit');
             logMessage(`💥 CRITICAL STRIKE! Executed ${result.actionType.toUpperCase()} onto ${selectedEnemy.name} for ${result.damage} DMG!`);
-            if (typeof spawnHitMarker === 'function') spawnHitMarker(selectedEnemy.x, selectedEnemy.y, `-${result.damage}!`, "#f1c40f");
+            FXEngine.spawnText(selectedEnemy.x, selectedEnemy.y, `-${result.damage}!`, { color: "#f1c40f", isCrit: true });
         } else {
             if (typeof playRetroSound === 'function') playRetroSound(result.actionType === 'special' ? 'heavyAttack' : 'attack');
             logMessage(`⚔️ Executed ${result.actionType.toUpperCase()} strike onto ${selectedEnemy.name} for ${result.damage} DMG!`);
-            if (typeof spawnHitMarker === 'function') spawnHitMarker(selectedEnemy.x, selectedEnemy.y, `-${result.damage}`, "#e74c3c");
+            FXEngine.spawnText(selectedEnemy.x, selectedEnemy.y, `-${result.damage}`, { color: "#e74c3c" });
         }
 
+        // Fire a hyper-fast weapon slash effect using the engine
+        if (player.equipment.weapon && player.equipment.weapon.spriteId) {
+            FXEngine.spawnProjectile(player.x, player.y, selectedEnemy.x, selectedEnemy.y, player.equipment.weapon.spriteId, { arc: 0, spin: true, frames: 10 });
+        }
 
         if (selectedEnemy && !selectedEnemy.alive) selectedEnemy = null;
         
-// --- SECURE VICTORY HANDLER ---
+        // --- SECURE VICTORY HANDLER ---
         if (enemies.every(e => !e.alive)) {
             logMessage("🏆 VICTORY Conditions verified.");
             if (typeof playRetroSound === 'function') playRetroSound('victory');
@@ -120,16 +125,15 @@ socket.on('bombResult', (result) => {
 
     logMessage(`💥 Threw ${result.bombName} at coordinates [${result.tx}, ${result.ty}]!`);
     
-    if (typeof triggerBombAnimation === 'function') triggerBombAnimation();
-
-    let spriteToThrow = result.bombId === "bomb_heavy" ? "icon_bomb_heavy" : "icon_bomb_small";
-
-    if (typeof spawnProjectile === 'function') {
-        // FIX: Changed visualX/visualY to player.x/player.y to prevent the silent crash!
-        spawnProjectile(player.x, player.y, result.tx, result.ty, spriteToThrow, 30, () => {
-            
+    FXEngine.spawnProjectile(player.x, player.y, result.tx, result.ty, spriteToThrow, {
+        arc: 1.5, 
+        spin: true, 
+        frames: 30,
+        onComplete: () => {
             if (typeof playRetroSound === 'function') playRetroSound('explosion'); 
-            if (typeof spawnExplosion === 'function') spawnExplosion(result.tx, result.ty, result.aoe + 1.25);
+            
+            // Trigger the AoE visual
+            FXEngine.spawnExplosion(result.tx, result.ty, { radius: result.aoe + 1.25 });
 
             let hitCount = 0;
             enemies.forEach(e => {
@@ -144,28 +148,19 @@ socket.on('bombResult', (result) => {
                 let overlaps = !(blastRight < enemyLeft || blastLeft > enemyRight || blastBottom < enemyTop || blastTop > enemyBottom);
                 
                 if (overlaps) {
-					e.hp -= result.damage; 
-                    
-                    // Tell the browser the monster caught in the blast is dead
-                    if (e.hp <= 0) {
-                        e.hp = 0;
-                        e.alive = false;
-                    }
+                    e.hp -= result.damage; 
+                    if (e.hp <= 0) { e.hp = 0; e.alive = false; }
                     hitCount++;
                     
                     logMessage(`🔥 ${e.name} caught in blast for ${result.damage} DMG!`);
-                    if (typeof spawnHitMarker === 'function') spawnHitMarker(e.x, e.y, `-${result.damage}`, "#e74c3c");
+                    FXEngine.spawnText(e.x, e.y, `-${result.damage}`, { color: "#e74c3c" });
                 }
             });
 
             if (hitCount === 0) logMessage("💨 Blast hit nothing.");
             
-
-
-            // Keep this to clear the UI target!
             if (selectedEnemy && !selectedEnemy.alive) selectedEnemy = null;
             
-// --- SECURE VICTORY HANDLER ---
             if (enemies.every(e => !e.alive)) {
                 logMessage("🏆 VICTORY Conditions verified.");
                 if (typeof playRetroSound === 'function') playRetroSound('victory');
@@ -174,9 +169,8 @@ socket.on('bombResult', (result) => {
             }
             
             advancePhase();
-        });
-    }
-});
+        }
+    });
 
 // === SERVER-AUTHORITATIVE COMBAT ITEM RECEIPT ===
 socket.on('combatItemReceipt', (receipt) => {
@@ -404,27 +398,26 @@ socket.on('enemyTurnReceipt', (receipt) => {
             }
             else if (ev.type === 'deflect') {
                 logMessage(`🛡️ Deflected attack from ${ev.enemyName}!`);
-                if (typeof spawnHitMarker === 'function') spawnHitMarker(player.x, player.y, "-0", "#3498db");
+                FXEngine.spawnText(player.x, player.y, "DEFLECT", { color: "#3498db" });
                 if (typeof playRetroSound === 'function') playRetroSound('deflect');
             }
             else if (ev.type === 'hit') {
                 let executeHit = () => {
                     if (ev.isCrit) {
                         logMessage(`💥 CRITICAL STRIKE! ${ev.enemyName} hits you for ${ev.damage} DMG!${ev.isPoacher ? " (Deflected)" : ""}`);
-                        if (typeof spawnHitMarker === 'function') spawnHitMarker(player.x, player.y, `-${ev.damage}!`, "#9b59b6");
+                        FXEngine.spawnText(player.x, player.y, `-${ev.damage}!`, { color: "#9b59b6", isCrit: true });
                         if (typeof playRetroSound === 'function') playRetroSound('enemyCrit');
                     } else {
                         logMessage(`⚔️ ${ev.enemyName} hits you for ${ev.damage} DMG.${ev.isPoacher ? " (Deflected)" : ""}`);
-                        if (typeof spawnHitMarker === 'function') spawnHitMarker(player.x, player.y, `-${ev.damage}`, "#e74c3c");
+                        FXEngine.spawnText(player.x, player.y, `-${ev.damage}`, { color: "#e74c3c" });
                         if (typeof playRetroSound === 'function') playRetroSound('playerHit');
                     }
                 };
 
-                if (ev.isPoacher && typeof spawnProjectile === 'function') {
-                    spawnProjectile(ev.ex, ev.ey, player.x, player.y, 'icon_arrow', 20, executeHit, true);
+                if (ev.isPoacher) {
+                    FXEngine.spawnProjectile(ev.ex, ev.ey, player.x, player.y, 'icon_arrow', { arc: 0, spin: false, frames: 20, onComplete: executeHit });
                 } else {
-                    let visualEnemy = ev.uid ? enemies.find(en => en.uid === ev.uid) : enemies.find(en => en.name === ev.enemyName);
-                    if (visualEnemy && typeof triggerEnemyAttackAnimation === 'function') triggerEnemyAttackAnimation(visualEnemy);
+                    // Instantly execute melee hits
                     executeHit(); 
                 }
             }

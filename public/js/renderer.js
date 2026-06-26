@@ -181,44 +181,19 @@ mapObstacles.forEach(o => {
     // --- RENDERING PIPELINE: DYNAMIC TRANSFORMS KNIGHT ---
     ctx.save();
     
-    let pLungeX = 0; let pLungeY = 0; let pWeaponRot = 0;
-    let pScaleX = 1.0; let pScaleY = 1.0;
+   // --- RENDERING PIPELINE: DYNAMIC TRANSFORMS KNIGHT ---
+    ctx.save();
+    
+    // Retain only the idle breathing animation math
+    let pScaleY = 1.0 + Math.sin(globalAnimClock * 0.08) * 0.02;
+    let pScaleX = 1.0 - Math.sin(globalAnimClock * 0.08) * 0.01;
 
-    if (player.attackTimer > 0) {
-        player.attackTimer--;
-        let progress = (20 - player.attackTimer) / 20;
-        let lungeFactor = Math.sin(progress * Math.PI); 
-        
-        let dirX = 1, dirY = 0;
-        if (selectedEnemy) {
-            let dx = selectedEnemy.x - player.x; let dy = selectedEnemy.y - player.y;
-            let len = Math.sqrt(dx*dx + dy*dy) || 1;
-            dirX = dx / len; dirY = dy / len;
-        }
-        
-        pLungeX = dirX * currentTileSize * 0.45 * lungeFactor;
-        pLungeY = dirY * currentTileSize * 0.45 * lungeFactor;
-        pWeaponRot = Math.sin(progress * Math.PI) * 0.75; 
-    } 
-    else if (player.bombTimer > 0) {
-        player.bombTimer--;
-        let progress = (20 - player.bombTimer) / 20;
-        pScaleX = 1.0 + Math.sin(progress * Math.PI) * 0.15;
-        pScaleY = 1.0 - Math.sin(progress * Math.PI) * 0.15;
-    }
-    else if (player.chugTimer > 0) {
-        player.chugTimer--;
-        let progress = (25 - player.chugTimer) / 25;
-        pScaleY = 1.0 - Math.sin(progress * Math.PI) * 0.05;
-        pLungeY = -Math.sin(progress * Math.PI) * 4; 
-    }
-    else {
-        pScaleY = 1.0 + Math.sin(globalAnimClock * 0.08) * 0.02;
-        pScaleX = 1.0 - Math.sin(globalAnimClock * 0.08) * 0.01;
-    }
+    // Base positional variables completely stripped of lunge, bomb, and chug mechanics
+    const pX = player.visualX * currentTileSize;
+    const pY = (player.visualY * currentTileSize) - playerHopY;
 
-    const pX = player.visualX * currentTileSize + pLungeX;
-    const pY = (player.visualY * currentTileSize) - playerHopY + pLungeY;
+    let pPivotX = pX + currentTileSize / 2; let pPivotY = pY + currentTileSize;
+    ctx.translate(pPivotX, pPivotY); ctx.scale(pScaleX, pScaleY); ctx.translate(-pPivotX, -pPivotY);
 
     let pPivotX = pX + currentTileSize / 2; let pPivotY = pY + currentTileSize;
     ctx.translate(pPivotX, pPivotY); ctx.scale(pScaleX, pScaleY); ctx.translate(-pPivotX, -pPivotY);
@@ -263,9 +238,8 @@ mapObstacles.forEach(o => {
         // 2. Move the canvas origin to the hand
         ctx.translate(wPivotX, wPivotY);
         
-        // 3. Apply standard rotation (attacking or chugging)
-        ctx.rotate(pWeaponRot);
-        if (player.chugTimer > 0) ctx.rotate(Math.PI / 4); // Tuck weapon slightly when drinking
+        // 3. Clear hardcoded rotations
+        ctx.rotate(0); 
         
         // === 4. THE ENGINE TRICK: SCALE THE CANVAS ===
         let scaleMult = eq.weapon.oversizeScale || 1.0;
@@ -280,30 +254,6 @@ mapObstacles.forEach(o => {
         ctx.restore();
     }
     
-// === NEW: RENDER THE BREW MUG WHEN DRINKING ===
-    if (player.chugTimer > 0) {
-        ctx.save();
-        let brewSpriteId = player.activeChugSprite || 'icon_stout';
-        
-        // --- SCALED DOWN AND REPOSITIONED MUG ---
-        let mugSize = currentTileSize * 0.45; // 45% of normal size!
-        
-        // Offset Pivot to the right (X * 0.6) so it aligns with the character's face
-        let mPivotX = pX + (currentTileSize * 0.6); 
-        let mPivotY = pY + (currentTileSize * 0.35);
-        
-        ctx.translate(mPivotX, mPivotY);
-        
-        // Tilt the mug progressively backwards as the timer counts down
-        let chugProgress = (25 - player.chugTimer) / 25;
-        ctx.rotate(-Math.PI * 0.5 * chugProgress); 
-        
-        // Draw the sprite offset so the "lip" of the mug is held at the mouth pivot
-        if (SpriteMatrices[brewSpriteId]) {
-            drawProceduralSprite(ctx, SpriteMatrices[brewSpriteId], -mugSize * 0.2, -mugSize * 0.8, mugSize);
-        }
-        ctx.restore();
-    }
 
     ctx.restore(); 
 
@@ -365,13 +315,15 @@ if (SpriteMatrices[e.id]) {
     });
 
     if (combatPhase === 'TARGETING' && hoverTile && hoverTile.x >= 0) {
-        ctx.fillStyle = "rgba(231, 76, 60, 0.4)"; 
-        let startX = hoverTile.x - 1; let startY = hoverTile.y - 1;
-        for(let bx = startX; bx <= startX + 2; bx++) {
-            for(let by = startY; by <= startY + 2; by++) {
-                if (bx >= 0 && bx < currentGridSize && by >= 0 && by < currentGridSize) ctx.fillRect(bx * currentTileSize, by * currentTileSize, currentTileSize, currentTileSize);
+            ctx.fillStyle = "rgba(231, 76, 60, 0.4)"; 
+            let startX = hoverTile.x - 1; let startY = hoverTile.y - 1;
+            for(let bx = startX; bx <= startX + 2; bx++) {
+                for(let by = startY; by <= startY + 2; by++) {
+                    if (bx >= 0 && bx < currentGridSize && by >= 0 && by < currentGridSize) ctx.fillRect(bx * currentTileSize, by * currentTileSize, currentTileSize, currentTileSize);
+                }
             }
         }
+		FXEngine.render(ctx, currentTileSize);
     }
 
 
@@ -519,3 +471,131 @@ if (isValidPlayerMovePath(tx, ty)) {
 
 // === BOOTSTRAP INITIALIZER: RUN THE LOOP PIPELINE ===
 requestAnimationFrame(updateAnimationEngine);
+
+// ==========================================================
+// === UNIFIED VISUAL FX ENGINE (DATA-DRIVEN) ===
+// ==========================================================
+
+const FXEngine = {
+    queue: [],
+
+    // 1. Text Floaters (Damage, Healing, Misses)
+    spawnText: function(gridX, gridY, text, config = {}) {
+        let color = config.color || "#e74c3c";
+        let isCrit = config.isCrit || false;
+        
+        this.queue.push({
+            type: 'TEXT',
+            x: gridX,
+            y: gridY,
+            text: text,
+            color: color,
+            size: isCrit ? 28 : 20,
+            life: 0,
+            maxLife: 45, // Frames before fading out
+            offsetY: 0
+        });
+    },
+
+    // 2. Data-Driven Projectiles
+    spawnProjectile: function(startX, startY, targetX, targetY, spriteId, config = {}) {
+        this.queue.push({
+            type: 'PROJECTILE',
+            sx: startX, sy: startY,
+            tx: targetX, ty: targetY,
+            spriteId: spriteId,
+            arc: config.arc || 0.5, // 0 = flat trajectory (arrows), > 1 = high lob (bombs)
+            spin: config.spin || false,
+            life: 0,
+            maxLife: config.frames || 20,
+            onComplete: config.onComplete || null
+        });
+    },
+
+    // 3. Grid-Based AoE Explosions
+    spawnExplosion: function(gridX, gridY, config = {}) {
+        this.queue.push({
+            type: 'EXPLOSION',
+            x: gridX, y: gridY,
+            radius: config.radius || 1.5,
+            colors: config.colors || ["#e74c3c", "#e67e22", "#f1c40f"],
+            life: 0,
+            maxLife: config.frames || 25
+        });
+    },
+
+    // --- MASTER FX RENDER LOOP ---
+    // This MUST be called at the very end of drawGrid() to overlay the FX!
+    render: function(ctx, tileSize) {
+        for (let i = this.queue.length - 1; i >= 0; i--) {
+            let fx = this.queue[i];
+            fx.life++;
+            let progress = fx.life / fx.maxLife;
+
+            // Remove dead effects
+            if (progress >= 1.0) {
+                if (fx.type === 'PROJECTILE' && typeof fx.onComplete === 'function') {
+                    fx.onComplete();
+                }
+                this.queue.splice(i, 1);
+                continue;
+            }
+
+            ctx.save();
+            let globalAlpha = 1.0 - Math.pow(progress, 3); // Fast fade at the very end
+
+            if (fx.type === 'TEXT') {
+                fx.offsetY -= 1.5; // Float upwards
+                let px = (fx.x * tileSize) + (tileSize / 2);
+                let py = (fx.y * tileSize) + fx.offsetY;
+
+                ctx.globalAlpha = globalAlpha;
+                ctx.fillStyle = fx.color;
+                ctx.font = `bold ${fx.size}px Courier New`;
+                ctx.textAlign = "center";
+                ctx.shadowColor = "#000"; ctx.shadowBlur = 4;
+                ctx.fillText(fx.text, px, py);
+            } 
+            else if (fx.type === 'PROJECTILE') {
+                let curX = fx.sx + (fx.tx - fx.sx) * progress;
+                let curY = fx.sy + (fx.ty - fx.sy) * progress;
+                
+                // Add arc height
+                let arcOffset = Math.sin(progress * Math.PI) * fx.arc;
+                
+                let px = (curX * tileSize) + (tileSize / 2);
+                let py = ((curY - arcOffset) * tileSize) + (tileSize / 2);
+
+                ctx.translate(px, py);
+                if (fx.spin) {
+                    ctx.rotate(progress * Math.PI * 8); // Spin rapidly
+                } else {
+                    let angle = Math.atan2(fx.ty - fx.sy, fx.tx - fx.sx);
+                    ctx.rotate(angle + (Math.PI / 4)); // Point at target
+                }
+
+                if (SpriteMatrices[fx.spriteId]) {
+                    drawOptimizedSprite(ctx, fx.spriteId, SpriteMatrices[fx.spriteId], -tileSize/2, -tileSize/2, tileSize);
+                }
+            }
+            else if (fx.type === 'EXPLOSION') {
+                ctx.globalAlpha = globalAlpha;
+                let currentRadius = (fx.radius * tileSize) * Math.sin(progress * Math.PI / 2);
+                let cx = (fx.x * tileSize) + (tileSize / 2);
+                let cy = (fx.y * tileSize) + (tileSize / 2);
+
+                // Draw 3 layers of explosion
+                ctx.beginPath(); ctx.arc(cx, cy, currentRadius, 0, Math.PI * 2);
+                ctx.fillStyle = fx.colors[0]; ctx.fill();
+                
+                ctx.beginPath(); ctx.arc(cx, cy, currentRadius * 0.7, 0, Math.PI * 2);
+                ctx.fillStyle = fx.colors[1]; ctx.fill();
+                
+                ctx.beginPath(); ctx.arc(cx, cy, currentRadius * 0.4, 0, Math.PI * 2);
+                ctx.fillStyle = fx.colors[2]; ctx.fill();
+            }
+
+            ctx.restore();
+        }
+    }
+};
