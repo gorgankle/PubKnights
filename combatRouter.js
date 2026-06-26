@@ -436,30 +436,57 @@ else { // WILDERNESS
         }
     });
 
-// --- SERVER-AUTHORITATIVE COMBAT ENGINE ---
-    socket.on('combatAction', (data) => {
+// --- SERVER-AUTHORITATIVE COMBAT ENGINE (UNIFIED DISPATCHER) ---
+    socket.on('dispatchCombatAction', (data) => {
         let p = activePlayers[socket.id];
+        let combat = activeCombats[socket.id];
         
         // FIX: Prevent Silent Ghost Sockets
-        if (!p) return socket.emit('combatResult', { type: 'error', message: '❌ Server connection lost or rebooted. Please refresh the page.' });
+        if (!p) return socket.emit('combatResult', { type: 'error', message: '❌ Server connection lost. Please refresh the page.' });
 
-        if (data.actionType === 'end') {
+        // === 1. PASS TURN LOGIC ===
+        if (data.actionCategory === 'pass') {
             let recover = Math.floor((p.maxStamina || 50) * 0.15); 
             p.stamina = Math.min(p.maxStamina || 50, (p.stamina || 0) + recover);
             return socket.emit('combatResult', { type: 'pass', newStamina: p.stamina, recovered: recover });
         }
 
-        if (data.actionType === 'slash' || data.actionType === 'special') {
-            let staminaCost = data.actionType === 'special' ? 15 : 5;
+        // === 2. WEAPON ATTACK LOGIC ===
+        if (data.actionCategory === 'weapon') {
+            let weapon = p.equipment.weapon;
             
-            if (p.stamina < staminaCost) {
-                return socket.emit('combatResult', { type: 'error', message: `❌ Server: Insufficient stamina (${Math.floor(p.stamina)}/${staminaCost} required).`, newStamina: p.stamina });
+            if (!weapon || !weapon.combat) {
+                return socket.emit('combatResult', { type: 'error', message: '❌ Server: Invalid weapon profile.', newStamina: p.stamina });
             }
-            
+
+            let combatRules = data.subType === 'special' ? weapon.combat.special : weapon.combat.standard;
+            if (!combatRules) return socket.emit('combatResult', { type: 'error', message: '❌ Server: Action not supported by weapon.', newStamina: p.stamina });
+
+            let staminaCost = combatRules.staminaCost;
+            if (p.stamina < staminaCost) {
+                return socket.emit('combatResult', { type: 'error', message: `❌ Server: Insufficient stamina (${Math.floor(p.stamina)}/${staminaCost}).`, newStamina: p.stamina });
+            }
+
+            // Secure Target Verification
+            let serverEnemy = null;
+            if (combat && data.targetEnemy) {
+                serverEnemy = combat.enemies.find(e => e.uid === data.targetEnemy.uid && e.alive);
+            }
+
+            if (!serverEnemy) {
+                return socket.emit('combatResult', { type: 'error', message: '❌ Server: Target lost or already deceased.', newStamina: p.stamina });
+            }
+
+            // Secure Range Verification
+            let dist = getGridDistance(p.x, p.y, serverEnemy.x, serverEnemy.y, serverEnemy.size || 1);
+            if (dist > combatRules.range) {
+                return socket.emit('combatResult', { type: 'error', message: '❌ Server: Target out of confirmed range.', newStamina: p.stamina });
+            }
+
+            // Execute resource burn
             p.stamina -= staminaCost; 
-            
-            // === NEW: SECURE STAT CALCULATION (Never trust client data!) ===
-            let enemyResilience = data.targetEnemy ? (data.targetEnemy.resilience || 0) : 0;
+
+            // Dynamic Stat Calculation
             let equipmentBonusPwr = 0;
             let equipmentBonusAcc = 0;
             
@@ -471,43 +498,22 @@ else { // WILDERNESS
             
             let serverPower = (p.power || 12) + equipmentBonusPwr;
             if (p.activeBuffs && p.activeBuffs.includes('IPA')) serverPower = Math.floor(serverPower * 1.10);
-            
             let serverAccuracy = Math.max(10, Math.min(100, (p.accuracy || 85) + equipmentBonusAcc));
 
-            // === NEW: CONTESTED HIT MATH ===
+            // Contested Hit Math (With Data-Driven Gorilla Bypass)
+            let enemyResilience = combatRules.ignoresResilience ? 0 : (serverEnemy.resilience || 0);
             let totalStatPool = serverAccuracy + enemyResilience;
-            let hitChanceFloat = serverAccuracy / totalStatPool; 
-            let hitChancePct = hitChanceFloat * 100;
-            
-            // Gorilla weapons still bypass resilience checks
-            if (data.actionType === 'special' && p.equipment.weapon?.rarity === "Gorilla") hitChancePct = 100;
+            let hitChancePct = (serverAccuracy / totalStatPool) * 100;
 
             if (Math.random() * 100 > hitChancePct) {
-                socket.emit('combatResult', { type: 'miss', hitChance: hitChancePct, newStamina: p.stamina });
+                socket.emit('combatResult', { type: 'miss', hitChance: Math.floor(hitChancePct), newStamina: p.stamina });
             } else {
-                let combat = activeCombats[socket.id];
-                let serverEnemy = null;
-                
-                if (combat && data.targetEnemy) {
-                    if (data.targetEnemy.uid) {
-                        serverEnemy = combat.enemies.find(e => e.uid === data.targetEnemy.uid && e.alive);
-                    } else {
-                        serverEnemy = combat.enemies.find(e => e.x === data.targetEnemy.x && e.y === data.targetEnemy.y && e.alive);
-                    }
-                }
-
-                if (!serverEnemy) {
-                    p.stamina += staminaCost; 
-                    return socket.emit('combatResult', { type: 'error', message: '❌ Target lost! You must select an enemy, or the enemy has moved.', newStamina: p.stamina });
-                }
-
-                // === NEW: DAMAGE VARIANCE MATH ===
                 let minDmg = Math.ceil(serverPower * 0.2);
                 let maxDmg = serverPower;
                 let variedDmg = Math.floor(Math.random() * (maxDmg - minDmg + 1)) + minDmg;
                 
-                let isCrit = variedDmg >= Math.floor(serverPower * 0.95); // Crits are now top 5% of variance roll
-                let finalDmg = data.actionType === 'special' ? Math.floor(variedDmg * (p.equipment.weapon?.rarity === "Gorilla" ? 4.0 : 1.5)) : variedDmg;
+                let isCrit = variedDmg >= Math.floor(serverPower * 0.95);
+                let finalDmg = Math.floor(variedDmg * combatRules.multiplier);
 
                 serverEnemy.hp -= finalDmg;
                 if (serverEnemy.hp <= 0) {
@@ -516,46 +522,100 @@ else { // WILDERNESS
                     processSecureKill(socket.id, serverEnemy);
                 }
                 
-                socket.emit('combatResult', { type: 'hit', actionType: data.actionType, damage: finalDmg, isCrit: isCrit, newStamina: p.stamina });
+                socket.emit('combatResult', { type: 'hit', actionType: data.subType, damage: finalDmg, isCrit: isCrit, newStamina: p.stamina });
+            }
+            return;
+        }
+
+        // === 3. CONSUMABLE LOGIC (Brews & Bombs) ===
+        if (data.actionCategory === 'consumable') {
+            let invIndex = data.invIndex;
+            let item = p.inventory[invIndex];
+            
+            if (!item || !item.combat) return socket.emit('combatItemReceipt', { success: false, message: "❌ Invalid item data." });
+
+            let rules = item.combat;
+
+            if (rules.staminaCost > 0 && p.stamina < rules.staminaCost) {
+                return socket.emit('combatItemReceipt', { success: false, message: `❌ Server: Insufficient stamina.` });
+            }
+
+            // Heal Parsing
+            if (rules.actionType === 'heal') {
+                let healAmount = Math.floor(p.vitality * rules.healPercent);
+                p.hp = Math.min(p.vitality, p.hp + healAmount);
+                p.inventory.splice(invIndex, 1);
+                p.stamina -= rules.staminaCost || 0;
+                return socket.emit('combatItemReceipt', { success: true, updatedPlayer: p, message: `🍺 Chugged ${item.name}. Restored ${healAmount} HP.` });
+            }
+
+            // Buff Parsing
+            if (rules.actionType === 'buff') {
+                p.activeBuffs = p.activeBuffs || [];
+                let buffName = item.id === 'ipa' ? 'IPA' : 'LAGER'; 
+                
+                if (!p.activeBuffs.includes(buffName)) {
+                    p.activeBuffs.push(buffName);
+                    p.inventory.splice(invIndex, 1);
+                    p.stamina -= rules.staminaCost || 0;
+                    let msg = buffName === 'IPA' ? "🍺 Drank a Furious IPA! Damage multipliers amplified." : "🍺 Drank a Swift Lager! Stride movement capabilities expanded.";
+                    return socket.emit('combatItemReceipt', { success: true, updatedPlayer: p, message: msg });
+                } else {
+                    return socket.emit('combatItemReceipt', { success: false, message: "❌ Buff already active." });
+                }
+            }
+
+            // Throwable Parsing (Bombs)
+            if (rules.actionType === 'throwable') {
+                if (data.tx === undefined || data.ty === undefined) return;
+                
+                p.inventory.splice(invIndex, 1);
+                p.stamina -= rules.staminaCost || 0;
+
+                if (combat) {
+                    combat.enemies.forEach(e => {
+                        if (!e.alive) return;
+                        let dist = getGridDistance(data.tx, data.ty, e.x, e.y, e.size || 1);
+                        // Read blast radius strictly from the Server's item DB
+                        if (dist <= rules.aoeRadius) {
+                            e.hp -= rules.damageFlat;
+                            if (e.hp <= 0) {
+                                e.hp = 0; e.alive = false;
+                                processSecureKill(socket.id, e);
+                            }
+                        }
+                    });
+                }
+
+                return socket.emit('bombResult', {
+                    bombId: item.id, bombName: item.name, damage: rules.damageFlat, aoe: rules.aoeRadius,
+                    tx: data.tx, ty: data.ty, updatedPlayer: p
+                });
             }
         }
-    });
 
-    // --- SERVER-AUTHORITATIVE BOMB ENGINE ---
-    socket.on('bombAction', (data) => {
-        let p = activePlayers[socket.id];
-        if (!p) return;
+        // === 4. EQUIP LOGIC ===
+        if (data.actionCategory === 'equip') {
+            let invIndex = data.invIndex;
+            let item = p.inventory[invIndex];
+            if (!item) return;
 
-        let invIndex = data.invIndex;
-        let bomb = p.inventory[invIndex];
+            const validSlots = ["weapon", "helmet", "armor", "gloves", "boots"];
+            if (!validSlots.includes(item.slot)) {
+                return socket.emit('combatItemReceipt', { success: false, message: "❌ This item cannot be equipped." });
+            }
 
-        if (!bomb || bomb.type !== 'bomb') return;
-
-        p.inventory.splice(invIndex, 1);
-
-        let combat = activeCombats[socket.id];
-        if (combat) {
-            combat.enemies.forEach(e => {
-                if (!e.alive) return;
-                let dist = getGridDistance(data.tx, data.ty, e.x, e.y, e.size || 1);
-                if (dist <= bomb.aoe) {
-                    e.hp -= bomb.damage;
-                    if (e.hp <= 0) {
-                        e.hp = 0; e.alive = false;
-                        processSecureKill(socket.id, e);
-                    }
-                }
-            });
+            let slotKey = item.slot;
+            let worn = p.equipment[slotKey];
+            
+            p.equipment[slotKey] = item;
+            if (worn) p.inventory[invIndex] = worn; 
+            else p.inventory.splice(invIndex, 1);
+            
+            return socket.emit('combatItemReceipt', { success: true, updatedPlayer: p, message: "⚙️ Swapped gear mid-combat." });
         }
-
-        socket.emit('bombResult', {
-            bombId: bomb.id, bombName: bomb.name, damage: bomb.damage, aoe: bomb.aoe,
-            tx: data.tx, ty: data.ty, updatedPlayer: p
-        });
     });
 	
-    // --- SERVER-AUTHORITATIVE COMBAT INVENTORY ---
-    socket.on('combatItemAction', (data) => {
         let p = activePlayers[socket.id];
         let combat = activeCombats[socket.id];
         if (!p || !combat) return;

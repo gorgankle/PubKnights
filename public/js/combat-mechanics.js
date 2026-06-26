@@ -2,83 +2,35 @@
 
 let activeBombIndex = -1;
 let previousCombatPhase = 'PHASE_1';
-let pendingLoot = []; // <--- NEW: Temporary array for post-combat loot
+let pendingLoot = []; 
 
-// === NEW: CONTESTED PVP/PVE HIT CALCULATOR ===
 function calculateHitResult(attackerAcc, defenderRes, attackerPower) {
-    // 1. Calculate the contested hit chance
     let totalStatPool = attackerAcc + defenderRes;
-    let hitChance = attackerAcc / totalStatPool; // Yields a float between 0.0 and 1.0
-
-    // 2. Roll the dice against the hit chance
+    let hitChance = attackerAcc / totalStatPool; 
     let isHit = Math.random() < hitChance;
 
-    if (!isHit) {
-        return { hit: false, damage: 0 };
-    }
+    if (!isHit) return { hit: false, damage: 0 };
 
-    // 3. If it hits, calculate Damage Variance (20% to 100% of Power)
     let minDamage = Math.ceil(attackerPower * 0.2);
     let maxDamage = attackerPower;
-    
     let varianceDamage = Math.floor(Math.random() * (maxDamage - minDamage + 1)) + minDamage;
 
     return { hit: true, damage: varianceDamage };
 }
 
-
-
+// Data-Driven Special Descriptions
 function getWeaponSpecialDesc(item) {
-    if (!item || item.slot !== "weapon") return "";
-    let wType = item.type || "Mace";
-    
-    if (item.rarity === "Gorilla") return `<b>[Primate Cataclysm]:</b> Unleashes a crushing blow dealing 4.0x damage (${Math.floor(getPlayerTotalPower()*4)} DMG). Ignores resilience mechanics entirely.`;
-    
-    // === NEW: AXE SKILL DESCRIPTION ===
-    if (wType === "Axe") return `<b>[Execute]:</b> Brings down a devastating vertical chop producing 1.5x standard power (${Math.floor(getPlayerTotalPower()*1.5)} DMG).`;
-    
-    if (wType === "Mace" || wType === "Club") return `<b>[Heavy Smash]:</b> Converts weight momentum into a heavy attack producing 1.5x standard power (${Math.floor(getPlayerTotalPower()*1.5)} DMG).`;
-    
-    return `<b>[Flurry]:</b> Strike rapidly targeting weak structural thresholds for 1.2x weapon value.`;
+    if (!item || item.slot !== "weapon" || !item.combat || !item.combat.special) return "";
+    return `<b>[${item.combat.special.name}]:</b> ${item.combat.special.desc}`;
 }
 
-function transitionToTown() { 
-    gameState = 'KNIGHT'; 
-    player.idleJob = 'TAVERN'; // Auto-heal after returning from combat
-    selectedEnemy = null; 
-    player.mapBaited = false; 
-    player.activeCombatBuff = null;
-    pendingMove = null; player.cellarsChummed = false;
-    
-    // === SYNC UI TO MAX UNLOCKED LEVEL ===
-    player.selectedWildernessLevel = player.wildernessLevel;
-    player.selectedCellarLevel = player.cellarLevel;
-
-    if (player.maxStamina) player.stamina = player.maxStamina; 
-    
-    saveGame(); refreshSystemUI(); 
-    window.scrollTo(0, 0);
-}
-
-function advancePhase() {
-	reachableTiles = null;
-    if (combatPhase === 'PHASE_1') combatPhase = 'PHASE_2';
-    else if (combatPhase === 'PHASE_2') combatPhase = 'PHASE_3';
-    else if (combatPhase === 'PHASE_3') {
-        endPlayerTurn();
-        return;
-    }
-    pendingMove = null;
-    refreshSystemUI();
-}
-
+// The Unified Client Dispatcher
 function executeCombatAction(actionType) {
     if (gameState !== 'COMBAT' || currentTurn !== 'PLAYER' || combatPhase === 'TARGET_BOMB') return;
 
-    // --- SERVER-AUTHORITATIVE ACTIONS (Pass, Slash, Special) ---
     if (actionType === 'end' || actionType === 'slash' || actionType === 'special') {
         
-// Client-side visual/range checks before bothering the server
+        // Client-side UX validation (Server will verify this again)
         if (actionType === 'slash' || actionType === 'special') {
             if (combatPhase !== 'PHASE_2') {
                 logMessage("❌ Tactical Error: Attacks can only be performed in Phase 2."); 
@@ -87,42 +39,58 @@ function executeCombatAction(actionType) {
             }
             if (!selectedEnemy || !selectedEnemy.alive) return;
             
-            // === NEW: STRICT STAMINA CHECK ===
-            let staminaCost = actionType === 'special' ? 15 : 5;
+            let weapon = player.equipment.weapon;
+            if (!weapon || !weapon.combat) {
+                logMessage("❌ Tactical Error: Invalid weapon profile.");
+                return;
+            }
+
+            // Pull dynamic rules directly from the item schema
+            let combatRules = actionType === 'special' ? weapon.combat.special : weapon.combat.standard;
+            let staminaCost = combatRules.staminaCost;
+            let range = combatRules.range;
+            
             if (player.stamina < staminaCost) {
                 logMessage(`❌ Legs are too heavy. Not enough stamina (${staminaCost} required).`);
                 if (typeof playRetroSound === 'function') playRetroSound('error');
                 return;
             }
             
-            let range = (player.equipment.weapon && player.equipment.weapon.attackRange) || 1;
             let dist = getGridDistance(player.x, player.y, selectedEnemy.x, selectedEnemy.y, selectedEnemy.size || 1);
+            if (dist > range) { 
+                logMessage(`❌ Target outside weapon scope range (Max Range: ${range}).`); 
+                if (typeof playRetroSound === 'function') playRetroSound('error'); 
+                return; 
+            }
             
-            if (dist > range) { logMessage("❌ Target outside weapon scope range."); if (typeof playRetroSound === 'function') playRetroSound('error'); return; }
-            
-            let losClear = false; let sSize = selectedEnemy.size || 1;
+            let losClear = false; 
+            let sSize = selectedEnemy.size || 1;
             for (let bx = selectedEnemy.x; bx < selectedEnemy.x + sSize; bx++) {
                 for (let by = selectedEnemy.y; by < selectedEnemy.y + sSize; by++) {
                     if (hasLineOfSight(player.x, player.y, bx, by)) losClear = true;
                 }
             }
-            if (!losClear) { logMessage("❌ Line of sight blocked by obstruction."); if (typeof playRetroSound === 'function') playRetroSound('error'); return; }
+            if (!losClear) { 
+                logMessage("❌ Line of sight blocked by obstruction."); 
+                if (typeof playRetroSound === 'function') playRetroSound('error'); 
+                return; 
+            }
             
             if (typeof triggerPlayerAttackAnimation === 'function') triggerPlayerAttackAnimation();
         }
 
-// Beam the action to the Node server!
-        socket.emit('combatAction', { 
-            actionType: actionType, 
+        // ONE unified payload to rule them all
+        socket.emit('dispatchCombatAction', { 
+            actionCategory: actionType === 'end' ? 'pass' : 'weapon',
+            subType: actionType, 
             targetEnemy: selectedEnemy ? { 
-                resilience: selectedEnemy.resilience,
-                x: selectedEnemy.x,   // <--- ADD THIS
-                y: selectedEnemy.y,   // <--- ADD THIS
-                id: selectedEnemy.id  // <--- ADD THIS (Good for failsafes)
+                id: selectedEnemy.id, 
+                uid: selectedEnemy.uid,
+                x: selectedEnemy.x,
+                y: selectedEnemy.y
             } : null 
         });
         
-        // Halt the browser! Do NOT call advancePhase() here.
         return; 
     }
 }
@@ -139,15 +107,29 @@ function endPlayerTurn() {
 }
 
 function handleCombatEquip(idx) {
-    socket.emit('combatItemAction', { action: 'equip', index: idx });
+    socket.emit('dispatchCombatAction', { actionCategory: 'equip', invIndex: idx });
 }
 
 function consumeBrew(invIndex) {
     if (gameState !== 'COMBAT' || currentTurn !== 'PLAYER' || combatPhase === 'TARGET_BOMB') return;
-    
-    // We do NO math here. We just ask the server to handle the potion!
-    socket.emit('combatItemAction', { action: 'brew', index: invIndex });
+    socket.emit('dispatchCombatAction', { actionCategory: 'consumable', invIndex: invIndex });
 }
+
+function executeBombThrow(tx, ty) {
+    if (activeBombIndex < 0 || activeBombIndex >= player.inventory.length) return;
+    
+    socket.emit('dispatchCombatAction', { 
+        actionCategory: 'consumable', 
+        invIndex: activeBombIndex, 
+        tx: tx, 
+        ty: ty 
+    });
+    
+    activeBombIndex = -1;
+    combatPhase = previousCombatPhase;
+    refreshSystemUI(); 
+}
+
 
 function prepBomb(invIndex) {
     if (combatPhase !== 'PHASE_2') {
@@ -172,17 +154,7 @@ function cancelBomb() {
     refreshSystemUI(); 
 }
 
-function executeBombThrow(tx, ty) {
-    if (activeBombIndex < 0 || activeBombIndex >= player.inventory.length) return;
-    
-    // Ask server to authorize the throw and calculate the damage
-    socket.emit('bombAction', { invIndex: activeBombIndex, tx: tx, ty: ty });
-    
-    // Clear the targeting phase immediately so they can't spam clicks
-    activeBombIndex = -1;
-    combatPhase = previousCombatPhase;
-    refreshSystemUI(); 
-}
+
 
 // === POST-COMBAT LOOT GUI ENGINE ===
 

@@ -270,7 +270,7 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
                     document.getElementById("end-btn").disabled = true;
                 } else {
                     // === INSTANT AUTO-TARGETING LOGIC ===
-                    let range = (player.equipment.weapon && player.equipment.weapon.attackRange) || 1;
+                    let range = (player.equipment.weapon && player.equipment.weapon.combat && player.equipment.weapon.combat.standard.range) || 1;
                     let hasTarget = selectedEnemy && selectedEnemy.alive;
                     let withinRange = false; let losClear = false;
                     let isAttackPhase = (combatPhase === 'PHASE_2');
@@ -321,15 +321,34 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
                         }
                     }
                     
-                    let hasStout = player.inventory.some(i => i.id === 'stout' || i.id === 'reserve');
-                    
-                    document.getElementById("slash-btn").disabled = !(hasTarget && withinRange && losClear && isAttackPhase);
-                    document.getElementById("heavy-btn").disabled = !(hasTarget && withinRange && losClear && isAttackPhase);
-                    document.getElementById("combat-brew-btn").disabled = !hasStout; 
-                    
+                    let slashBtn = document.getElementById("slash-btn");
+                    let heavyBtn = document.getElementById("heavy-btn");
                     let endBtn = document.getElementById("end-btn");
-                    endBtn.disabled = false;
-                    endBtn.style.opacity = (hasTarget && withinRange && losClear && isAttackPhase) ? "0.6" : "1.0";
+                    
+                    let weapon = player.equipment.weapon;
+
+                    if (slashBtn) {
+                        slashBtn.disabled = !(hasTarget && withinRange && losClear && isAttackPhase);
+                        if (weapon && weapon.combat && weapon.combat.standard) {
+                            slashBtn.innerText = `Attack (${weapon.combat.standard.staminaCost}⚡)`;
+                        } else {
+                            slashBtn.innerText = `Unarmed Strike (5⚡)`;
+                        }
+                    }
+                    
+                    if (heavyBtn) {
+                        heavyBtn.disabled = !(hasTarget && withinRange && losClear && isAttackPhase);
+                        if (weapon && weapon.combat && weapon.combat.special) {
+                            heavyBtn.innerText = `${weapon.combat.special.name} (${weapon.combat.special.staminaCost}⚡)`;
+                        } else {
+                            heavyBtn.innerText = `Weapon Skill`;
+                        }
+                    }
+                    
+                    if (endBtn) {
+                        endBtn.disabled = false;
+                        endBtn.style.opacity = (hasTarget && withinRange && losClear && isAttackPhase) ? "0.6" : "1.0";
+                    }
                 }
             } else {
                 if (uiHeader) {
@@ -352,24 +371,29 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
                 if (player.inventory.length === 0) {
                     combatInvList.innerHTML = "<span style='font-size:10px;color:#776c62;'>Backpack is empty.</span>";
                 } else {
-                    player.inventory.forEach((item, idx) => {
+                   player.inventory.forEach((item, idx) => {
                         let rc = item.rarity === "Gorilla" ? "GorillaTier" : item.rarity;
                         let btnText = ""; let onclickStr = ""; let bgColor = "";
                         
                         let imgUrl = getItemSpriteURL(item);
                         let imgHtml = imgUrl ? `<img src="${imgUrl}" style="width:28px;height:28px;image-rendering:pixelated;margin-right:6px;vertical-align:middle;">` : ``;
                         
-                        if (item.type === "bomb") {
-                            btnText = `Throw (${item.damage} DMG)`;
-                            onclickStr = `prepBomb(${idx})`;
-                            bgColor = "#c0392b";
-						} else if (item.type === "brew") {
-                            if (item.id === 'ipa') btnText = `Drink (+10% ATK)`;
-                            else if (item.id === 'lager') btnText = `Drink (+1 Stride)`;
-                            else btnText = `Chug (+10% HP)`; 
-                            
-                            onclickStr = `consumeBrew(${idx})`;
-                            bgColor = "#2980b9";
+                        // --- DATA DRIVEN BACKPACK PARSING ---
+                        if (item.combat) {
+                            if (item.combat.actionType === "throwable") {
+                                btnText = `Throw (${item.combat.damageFlat} DMG)`;
+                                onclickStr = `prepBomb(${idx})`;
+                                bgColor = "#c0392b";
+                            } else if (item.combat.actionType === "heal") {
+                                btnText = `Drink (+${item.combat.healPercent * 100}% HP)`;
+                                onclickStr = `consumeBrew(${idx})`;
+                                bgColor = "#2980b9";
+                            } else if (item.combat.actionType === "buff") {
+                                let statName = item.combat.buffTarget ? item.combat.buffTarget.substring(0,3).toUpperCase() : 'BUFF';
+                                btnText = `Drink (+${statName})`;
+                                onclickStr = `consumeBrew(${idx})`;
+                                bgColor = "#8e44ad";
+                            }
                         } else if (item.type === "crate") {
                             btnText = `Sealed`;
                             onclickStr = ``;
@@ -383,7 +407,7 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
                         let disabledStr = "";
                         if (currentTurn !== 'PLAYER' || combatPhase === 'TARGET_BOMB') {
                             disabledStr = "disabled";
-                        } else if (item.type === "bomb" && combatPhase !== 'PHASE_2') {
+                        } else if (item.combat && item.combat.actionType === "throwable" && combatPhase !== 'PHASE_2') {
                             disabledStr = "disabled";
                         }
 

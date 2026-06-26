@@ -142,45 +142,32 @@ function getItemTooltip(item) {
                `<span class='${rarityClass}' style='font-size: 12px;'><b>${item.name}</b></span><br>` +
                `<span style='font-size: 9px; color: #bbaaa0;'>Type: ${item.slot.toUpperCase()} [${item.rarity}]</span></div>`;
                
-    // === NEW: UNIVERSAL STAT CHECKING ===
-    // Instead of checking the item slot, we check if the stat itself exists!
     if (item.slot !== "consumable") {
-        if (item.atkBonus) {
-            html += `💥 <b>Attack Modifier:</b> +${item.atkBonus} ATK<br>`;
-        }
+        if (item.atkBonus) html += `💥 <b>Attack Modifier:</b> +${item.atkBonus} ATK<br>`;
         if (item.deflectChance) {
             html += `🛡️ <b>Deflection:</b> +${item.deflectChance}% Rate<br>`;
-            if (item.rarity === "Gorilla") {
-                html += `<span style="color: #ff3333; font-size: 9px;">⚠️ Deflection capped at 75%</span><br>`; 
-            }
+            if (item.rarity === "Gorilla") html += `<span style="color: #ff3333; font-size: 9px;">⚠️ Deflection capped at 75%</span><br>`; 
         }
-        if (item.moveBonus) {
-            html += `👟 <b>Action Field Extension:</b> +${item.moveBonus} Tile(s)<br>`;
-        }
-        if (item.attackRange) {
-            html += `📏 <b>Weapon Strike Radius:</b> ${item.attackRange} Tile(s)<br>`;
+        if (item.moveBonus) html += `👟 <b>Action Field Extension:</b> ${item.moveBonus > 0 ? '+' : ''}${item.moveBonus} Tile(s)<br>`;
+        
+        // Dynamically pull range from the combat object
+        if (item.combat && item.combat.standard) {
+            html += `📏 <b>Weapon Strike Radius:</b> ${item.combat.standard.range} Tile(s)<br>`;
         }
         
-        // Append weapon skill descriptions if it is a weapon
-        if (item.slot === "weapon") {
+        // Dynamically pull the special attack description
+        if (item.slot === "weapon" && typeof getWeaponSpecialDesc === 'function') {
             html += `<div style='margin-top:4px; padding:4px; background:#1e1712; font-size:10px; border-left:2px solid #ffcc66; color:#e0caad;'>` + 
                     `${getWeaponSpecialDesc(item)}</div>`;
         }
     } 
-    else if (item.slot === "consumable") {
-        if (item.type === "bomb") {
-            html += `🧨 <b>Explosive Yield:</b> ${item.damage} DMG<br>` +
-                    `📏 <b>Blast Radius:</b> 3x3 Grid Area<br>`;
-} else if (item.type === "brew") {
-            if (item.id === 'ipa') {
-                html += `🍺 <b>Combat Effect:</b> +10% Damage Output for the duration of the battle.<br>`;
-            } else if (item.id === 'lager') {
-                html += `🍺 <b>Combat Effect:</b> +1 Tactical Stride movement for the duration of the battle.<br>`;
-            } else if (item.id === 'reserve') {
-                html += `🍷 <b>Combat Effect:</b> Instantly restores 25% of Maximum Vitality.<br>`;
-            } else {
-                html += `🍺 <b>Combat Effect:</b> Instantly restores 10% of Maximum Vitality.<br>`;
-            }
+    else if (item.slot === "consumable" && item.combat) {
+        // Data-Driven Consumables parsing!
+        if (item.combat.actionType === "throwable") {
+            html += `🧨 <b>Explosive Yield:</b> ${item.combat.damageFlat} DMG<br>` +
+                    `📏 <b>Blast Radius:</b> ${item.combat.aoeRadius === 1 ? '3x3' : '5x5'} Grid Area<br>`;
+        } else if (item.combat.actionType === "buff" || item.combat.actionType === "heal") {
+            html += `🍺 <b>Combat Effect:</b> ${item.combat.desc}<br>`;
         }
     }
     

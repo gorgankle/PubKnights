@@ -94,7 +94,7 @@ function drawGrid() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
     let moveRange = getPlayerSwiftness(); 
-    let weaponRange = (player.equipment.weapon && player.equipment.weapon.attackRange) || 1;
+	let weaponRange = (player.equipment.weapon && player.equipment.weapon.combat && player.equipment.weapon.combat.standard.range) || 1;
 
     // --- INTERPOLATION ENGINE: PLAYER ---
     if (player.visualX === undefined) {
@@ -600,7 +600,7 @@ if (isValidPlayerMovePath(tx, ty)) {
         }
 
         let dist = getGridDistance(player.x, player.y, clickedMonster.x, clickedMonster.y, clickedMonster.size || 1);
-        let weaponRange = (player.equipment.weapon && player.equipment.weapon.attackRange) || 1;
+		let weaponRange = (player.equipment.weapon && player.equipment.weapon.combat && player.equipment.weapon.combat.standard.range) || 1;
         if (dist <= weaponRange) {
             let hasLos = false; let cSize = clickedMonster.size || 1;
             for (let bx = clickedMonster.x; bx < clickedMonster.x + cSize; bx++) {
