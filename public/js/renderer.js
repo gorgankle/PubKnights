@@ -118,18 +118,7 @@ function drawGrid() {
 
 // --- DRAW THE CORE TACTICAL GRID ---
     
-    // === NEW: REACHABLE TILES CACHE ===
-    // If it's our turn to move, and we haven't cached the map yet, calculate it ONCE.
-    if (currentTurn === 'PLAYER' && (combatPhase === 'PHASE_1' || combatPhase === 'PHASE_3') && reachableTiles === null) {
-        reachableTiles = {};
-        for (let cx = 0; cx < currentGridSize; cx++) {
-            for (let cy = 0; cy < currentGridSize; cy++) {
-                if (isValidPlayerMovePath(cx, cy)) {
-                    reachableTiles[`${cx},${cy}`] = true;
-                }
-            }
-        }
-    }
+
 
     for (let x = 0; x < currentGridSize; x++) {
         for (let y = 0; y < currentGridSize; y++) {
@@ -149,8 +138,9 @@ if (SpriteMatrices[groundSprite]) {
             if (currentTurn === 'PLAYER' && combatPhase !== 'TARGET_BOMB') {
                 if (combatPhase === 'PHASE_1' || combatPhase === 'PHASE_3') {
                     
-                    // === UPDATED: READ FROM THE CACHE INSTEAD OF CALCULATING ===
-                    if (reachableTiles && reachableTiles[`${x},${y}`]) {
+                    // === THE FIX: DIRECT SMART CACHE HOOK ===
+                    // The renderer now instantly asks the combat-mechanics engine if the tile is valid!
+                    if (isValidPlayerMovePath(x, y)) {
                         ctx.fillStyle = "rgba(52, 152, 219, 0.20)"; 
                         ctx.fillRect(x * currentTileSize, y * currentTileSize, currentTileSize, currentTileSize);
                     }
