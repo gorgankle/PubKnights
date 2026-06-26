@@ -303,18 +303,28 @@ function finishLooting() {
 
 // === NEW: TRUE PATHFINDING MOVEMENT VALIDATOR (OPTIMIZED CACHE) ===
 // A self-cleaning memory cache that prevents the browser from doing heavy math!
-let moveCache = { x: -1, y: -1, turn: '', tiles: new Set() };
+let moveCache = { x: -1, y: -1, turn: '', swiftness: -1, buffs: '', tiles: new Set() };
 
 function isValidPlayerMovePath(targetX, targetY) {
+    let currentSwiftness = getPlayerSwiftness();
+    // Convert the array into a flat string so the engine can easily detect changes
+    let currentBuffs = (player.activeBuffs || []).join(',');
     
-    // If the player moved or the turn swapped to the enemy, automatically wipe the cache and recalculate!
-    if (moveCache.x !== player.x || moveCache.y !== player.y || moveCache.turn !== currentTurn) {
+    // If the player moves, the turn swaps, speed changes, OR a visual buff is applied/removed... wipe the cache!
+    if (moveCache.x !== player.x || 
+        moveCache.y !== player.y || 
+        moveCache.turn !== currentTurn || 
+        moveCache.swiftness !== currentSwiftness ||
+        moveCache.buffs !== currentBuffs) {
+        
         moveCache.x = player.x;
         moveCache.y = player.y;
         moveCache.turn = currentTurn;
+        moveCache.swiftness = currentSwiftness; 
+        moveCache.buffs = currentBuffs; // <--- STORE THE NEW VISUAL STATE
         moveCache.tiles = new Set();
         
-        let maxRange = getPlayerSwiftness(); 
+        let maxRange = currentSwiftness; 
         let queue = [{ x: player.x, y: player.y, dist: 0 }];
         let visited = new Set([`${player.x},${player.y}`]);
         

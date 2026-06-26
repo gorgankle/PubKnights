@@ -149,7 +149,7 @@ const ItemDatabase = {
         combat: { actionType: "heal", targetType: "self", healPercent: 0.5, staminaCost: 0, desc: "Restores 50% of maximum Vitality." }
     },
     "ipa": {
-        id: "ipa", name: "Furious IPA", slot: "consumable", type: "brew", rarity: "Uncommon", value: 45, spriteId: "icon_brew_ipa",
+        id: "ipa", name: "Furious IPA", slot: "consumable", type: "brew", rarity: "Uncommon", value: 45, spriteId: "icon_ipa",
         desc: "A strong, oak-aged specialty ale. Grants a 10% multiplier to all outgoing physical damage.",
         combat: { 
             actionType: "buff", staminaCost: 0, buffType: "IPA", 
@@ -158,7 +158,7 @@ const ItemDatabase = {
         }
     },
     "lager": {
-        id: "lager", name: "Swift Lager", slot: "consumable", type: "brew", rarity: "Uncommon", value: 45, spriteId: "icon_brew_lager",
+        id: "lager", name: "Swift Lager", slot: "consumable", type: "brew", rarity: "Uncommon", value: 45, spriteId: "icon_lager",
         desc: "A light, crisp lager brewed for agility. Grants +1 Tactical Stride range for the duration of the combat.",
         combat: { 
             actionType: "buff", staminaCost: 0, buffType: "LAGER", 
