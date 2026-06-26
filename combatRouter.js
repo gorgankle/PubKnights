@@ -256,13 +256,14 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 
                 // === NEW: SERVER-SIDE THROW VALIDATION ===
                 let throwDist = getGridDistance(p.x, p.y, data.tx, data.ty, 1);
-                let maxRange = rules.range || 4; // Fallback to 4 if missing
+                let maxRange = rules.range || 4; 
                 
                 if (throwDist > maxRange) {
-                    return socket.emit('combatItemReceipt', { success: false, message: '❌ Server: Target out of throwing range.' });
+                    return socket.emit('combatItemReceipt', { success: false, message: '❌ Server: Target out of range.' });
                 }
                 
-                if (!checkLineOfSight(p.x, p.y, data.tx, data.ty, combat)) {
+                // THE FIX: The Server now respects arc-trajectories!
+                if (!rules.ignoresLoS && !checkLineOfSight(p.x, p.y, data.tx, data.ty, combat)) {
                     return socket.emit('combatItemReceipt', { success: false, message: '❌ Server: No line of sight to target area.' });
                 }
                 // =========================================
@@ -282,6 +283,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 }
                 return socket.emit('bombResult', { bombId: item.id, bombName: item.name, damage: rules.damageFlat, aoe: rules.aoeRadius, tx: data.tx, ty: data.ty, updatedPlayer: p });
             }
+		}
         // === 4. EQUIP LOGIC ===
         if (data.actionCategory === 'equip') {
             let invIndex = data.invIndex;

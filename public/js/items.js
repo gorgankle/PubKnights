@@ -190,11 +190,21 @@ const ItemDatabase = {
     // Bombs get their core stats maintained for UI rendering, but the authoritative math is inside combat!
     "bomb_small": { 
         id: "bomb_small", name: "Small Keg Bomb", slot: "consumable", type: "bomb", rarity: "Rare", damage: 45, aoe: 1, value: 10, spriteId: "icon_bomb_small",
-        combat: { actionType: "throwable", targetType: "aoe", range: 5, aoeRadius: 1, damageFlat: 45, staminaCost: 0, desc: "Detonates a 3x3 blast area for 45 DMG." }
+        combat: { actionType: "throwable", targetType: "aoe", range: 5, aoeRadius: 1, damageFlat: 45,
+// === NEW: TARGETING BEHAVIORS ===
+            ignoresLoS: true,    // Bombs arc over walls!
+            aoeShape: "radius",  // Standard circular blast
+            aoeRadius: 1,
+		staminaCost: 15, desc: "Detonates a 3x3 blast area for 45 DMG." }
     },
     "bomb_heavy": { 
         id: "bomb_heavy", name: "Heavy Keg Bomb", slot: "consumable", type: "bomb", rarity: "Epic", damage: 120, aoe: 1, value: 30, spriteId: "icon_bomb_heavy",
-        combat: { actionType: "throwable", targetType: "aoe", range: 4, aoeRadius: 1, damageFlat: 120, staminaCost: 0, desc: "Detonates a 3x3 blast area for 120 DMG." }
+        combat: { actionType: "throwable", targetType: "aoe", range: 4, aoeRadius: 1, damageFlat: 120,
+// === NEW: TARGETING BEHAVIORS ===
+            ignoresLoS: true,    // Bombs arc over walls!
+            aoeShape: "radius",  // Standard circular blast
+            aoeRadius: 1,
+			staminaCost: 15, desc: "Detonates a 3x3 blast area for 120 DMG." }
     },
     
     // === CRATE JACKPOT GEAR ===

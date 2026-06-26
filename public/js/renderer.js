@@ -175,12 +175,26 @@ if (SpriteMatrices[groundSprite]) {
                 }
                 // === UNIFIED ACTION RENDERING (MELEE, MAGIC, & BOMBS) ===
                 else if (combatPhase === 'PHASE_2' || combatPhase === 'TARGETING') {
+                    
+                    // 1. Check if the active item ignores Line of Sight
+                    let currentIgnoresLoS = false;
+                    if (combatPhase === 'TARGETING' && typeof activeTargetIndex !== 'undefined' && activeTargetIndex !== -1) {
+                        let activeItem = player.inventory[activeTargetIndex];
+                        if (activeItem && activeItem.combat && activeItem.combat.ignoresLoS) {
+                            currentIgnoresLoS = true;
+                        }
+                    }
+
+                    // 2. Draw the Grid
                     if (Math.max(Math.abs(x - player.x), Math.abs(y - player.y)) <= currentTargetRange) {
-                        if (hasLineOfSight(player.x, player.y, x, y)) {
+                        
+                        // THE FIX: If it ignores LoS, it's always Yellow!
+                        if (currentIgnoresLoS || hasLineOfSight(player.x, player.y, x, y)) {
                             ctx.fillStyle = "rgba(241, 196, 15, 0.15)"; // Valid Yellow
                         } else {
                             ctx.fillStyle = "rgba(200, 0, 0, 0.15)"; // Blocked Red
                         }
+                        
                         ctx.fillRect(x * currentTileSize, y * currentTileSize, currentTileSize, currentTileSize);
                     }
                 }
