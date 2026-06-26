@@ -395,7 +395,7 @@ canvas.addEventListener("click", function(e) {
     if (tx < 0 || tx >= currentGridSize || ty < 0 || ty >= currentGridSize) return;
 
     if (combatPhase === 'TARGETING') {
-        if (typeof executeBombThrow === 'function') executeBombThrow(tx, ty);
+        if (typeof executeTargetAction === 'function') executeTargetAction(tx, ty);
         hoverTile = {x: -1, y: -1}; return;
     }
 

@@ -200,15 +200,24 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 let isCrit = variedDmg >= Math.floor(serverPower * 0.95);
                 let finalDmg = Math.floor(variedDmg * combatRules.multiplier);
 
+                // === THE UNIVERSAL DAMAGE DISPATCH (WEAPON) ===
                 serverEnemy.hp -= finalDmg;
+                let killed = false;
                 if (serverEnemy.hp <= 0) {
                     serverEnemy.hp = 0;
                     serverEnemy.alive = false; 
+                    killed = true;
                     processSecureKill(socket.id, serverEnemy);
                 }
                 
-                socket.emit('combatResult', { type: 'hit', actionType: data.subType, damage: finalDmg, isCrit: isCrit, newStamina: p.stamina });
-            }
+                socket.emit('combatResult', { 
+                    type: 'hit', 
+                    source: 'weapon',
+                    actionName: data.subType, // 'slash' or 'special'
+                    targets: [{ uid: serverEnemy.uid, damage: finalDmg, isCrit: isCrit, killed: killed }],
+                    fx: { tx: serverEnemy.x, ty: serverEnemy.y, spriteId: weapon.spriteId, isAoE: false },
+                    updatedPlayer: p 
+                });
             return;
         }
 
@@ -271,18 +280,32 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 p.inventory.splice(invIndex, 1);
                 p.stamina -= rules.staminaCost || 0;
 
+                // === THE UNIVERSAL DAMAGE DISPATCH (THROWABLE) ===
+                let hitTargets = [];
                 if (combat) {
                     combat.enemies.forEach(e => {
                         if (!e.alive) return;
                         let dist = getGridDistance(data.tx, data.ty, e.x, e.y, e.size || 1);
                         if (dist <= rules.aoeRadius) {
                             e.hp -= rules.damageFlat;
-                            if (e.hp <= 0) { e.hp = 0; e.alive = false; processSecureKill(socket.id, e); }
+                            let killed = false;
+                            if (e.hp <= 0) { e.hp = 0; e.alive = false; killed = true; processSecureKill(socket.id, e); }
+                            
+                            // Push the enemy data to the payload array
+                            hitTargets.push({ uid: e.uid, damage: rules.damageFlat, isCrit: false, killed: killed });
                         }
                     });
                 }
-                return socket.emit('bombResult', { bombId: item.id, bombName: item.name, damage: rules.damageFlat, aoe: rules.aoeRadius, tx: data.tx, ty: data.ty, updatedPlayer: p });
-            }
+                
+                // Emitting the exact same 'combatResult' channel!
+                return socket.emit('combatResult', { 
+                    type: 'hit',
+                    source: 'throwable',
+                    actionName: item.name, 
+                    targets: hitTargets,
+                    fx: { tx: data.tx, ty: data.ty, spriteId: item.spriteId || "icon_bomb_small", isAoE: true, radius: rules.aoeRadius },
+                    updatedPlayer: p 
+                });
 		}
         // === 4. EQUIP LOGIC ===
         if (data.actionCategory === 'equip') {

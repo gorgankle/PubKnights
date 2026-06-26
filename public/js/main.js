@@ -31,100 +31,89 @@ socket.on('serverTick', (serverData) => {
     updateTownUI(serverData);   // <--- USE serverData HERE
 });
 
+// === SERVER-AUTHORITATIVE COMBAT DISPATCH (UNIFIED ENGINE) ===
 socket.on('combatResult', (result) => {
     if (!result || gameState !== 'COMBAT') return;
 
+    if (result.updatedPlayer) Object.assign(player, result.updatedPlayer); // Instantly sync stamina
+
+    // --- 1. HANDLE EVASION ---
     if (result.type === 'miss') {
         logMessage(`💨 Strike MISSED! Target evaded (${result.hitChance}% Hit Chance).`); 
         if (typeof playRetroSound === 'function') playRetroSound('error'); 
+        if (selectedEnemy) FXEngine.spawnText(selectedEnemy.x, selectedEnemy.y, "MISS", { color: "#3498db" }); 
         
-        FXEngine.spawnText(selectedEnemy.x, selectedEnemy.y, "MISS", { color: "#3498db" }); 
+        advancePhase(); // Unlocks the Phase!
+        refreshSystemUI();
+        return;
     } 
-    else if (result.type === 'hit') {
-        selectedEnemy.hp -= result.damage;
-        
-        if (selectedEnemy.hp <= 0) {
-            selectedEnemy.hp = 0;
-            selectedEnemy.alive = false;
-        }
-        
-        if (result.isCrit) {
-            if (typeof playRetroSound === 'function') playRetroSound('playerCrit');
-            logMessage(`💥 CRITICAL STRIKE! Executed ${result.actionType.toUpperCase()} onto ${selectedEnemy.name} for ${result.damage} DMG!`);
-            FXEngine.spawnText(selectedEnemy.x, selectedEnemy.y, `-${result.damage}!`, { color: "#f1c40f", isCrit: true });
-        } else {
-            if (typeof playRetroSound === 'function') playRetroSound(result.actionType === 'special' ? 'heavyAttack' : 'attack');
-            logMessage(`⚔️ Executed ${result.actionType.toUpperCase()} strike onto ${selectedEnemy.name} for ${result.damage} DMG!`);
-            FXEngine.spawnText(selectedEnemy.x, selectedEnemy.y, `-${result.damage}`, { color: "#e74c3c" });
-        }
-
-        if (player.equipment.weapon && player.equipment.weapon.spriteId) {
-            FXEngine.spawnProjectile(player.x, player.y, selectedEnemy.x, selectedEnemy.y, player.equipment.weapon.spriteId, { arc: 0, spin: true, frames: 10 });
-        }
-
-        if (selectedEnemy && !selectedEnemy.alive) selectedEnemy = null;
-        
-        if (enemies.every(e => !e.alive)) {
-            logMessage("🏆 VICTORY Conditions verified.");
-            if (typeof playRetroSound === 'function') playRetroSound('victory');
-            setTimeout(showLootScreen, 1200); 
-            return; 
-        }
-    }
-    refreshSystemUI();
-});
-
-// === SERVER-AUTHORITATIVE BOMB RESULT ===
-socket.on('bombResult', (result) => {
-    if (!result || gameState !== 'COMBAT') return;
     
-    let spriteToThrow = result.bombId === "bomb_heavy" ? "icon_bomb_heavy" : "icon_bomb_small";
-    
-    FXEngine.spawnProjectile(player.x, player.y, result.tx, result.ty, spriteToThrow, {
-        arc: 1.5, 
-        spin: true, 
-        frames: 30,
-        onComplete: () => {
-            if (typeof playRetroSound === 'function') playRetroSound('explosion'); 
+    // --- 2. HANDLE HITS (MELEE & MAGIC/BOMBS) ---
+    if (result.type === 'hit') {
+        let fx = result.fx;
+        
+        // Define animation physics based on the attack type
+        let animOptions = { arc: 0, spin: true, frames: 10 }; 
+        if (result.source === 'throwable') {
+            animOptions = { arc: 1.5, spin: true, frames: 30 }; 
+        }
+
+        // What happens the exact millisecond the projectile finishes traveling?
+        animOptions.onComplete = () => {
             
-            FXEngine.spawnExplosion(result.tx, result.ty, { radius: result.aoe + 1.25 });
+            // Play physical impact visuals/audio
+            if (result.source === 'throwable') {
+                if (typeof playRetroSound === 'function') playRetroSound('explosion'); 
+                FXEngine.spawnExplosion(fx.tx, fx.ty, { radius: fx.radius + 1.25 });
+                if (result.targets.length === 0) logMessage("💨 Blast hit nothing.");
+            } else {
+                let isCrit = result.targets.length > 0 && result.targets[0].isCrit;
+                if (typeof playRetroSound === 'function') playRetroSound(isCrit ? 'playerCrit' : (result.actionName === 'special' ? 'heavyAttack' : 'attack'));
+            }
 
-            let hitCount = 0;
-            enemies.forEach(e => {
-                if (!e.alive) return;
+            // Loop through EVERY enemy hit by this attack and process damage dynamically
+            result.targets.forEach(targetData => {
+                let e = enemies.find(en => en.uid === targetData.uid);
+                if (!e) return;
                 
-                let sSize = e.size || 1;
-                let blastLeft = result.tx - result.aoe; let blastRight = result.tx + result.aoe;
-                let blastTop = result.ty - result.aoe; let blastBottom = result.ty + result.aoe;
-                let enemyLeft = e.x; let enemyRight = e.x + sSize - 1;
-                let enemyTop = e.y; let enemyBottom = e.y + sSize - 1;
+                e.hp -= targetData.damage;
+                if (targetData.killed) { e.hp = 0; e.alive = false; }
                 
-                let overlaps = !(blastRight < enemyLeft || blastLeft > enemyRight || blastBottom < enemyTop || blastTop > enemyBottom);
-                
-                if (overlaps) {
-                    e.hp -= result.damage; 
-                    if (e.hp <= 0) { e.hp = 0; e.alive = false; }
-                    hitCount++;
-                    
-                    logMessage(`🔥 ${e.name} caught in blast for ${result.damage} DMG!`);
-                    FXEngine.spawnText(e.x, e.y, `-${result.damage}`, { color: "#e74c3c" });
+                if (result.source === 'throwable') {
+                    logMessage(`🔥 ${e.name} caught in blast for ${targetData.damage} DMG!`);
+                    FXEngine.spawnText(e.x, e.y, `-${targetData.damage}`, { color: "#e74c3c" });
+                } else {
+                    if (targetData.isCrit) {
+                        logMessage(`💥 CRITICAL STRIKE! Executed ${result.actionName.toUpperCase()} onto ${e.name} for ${targetData.damage} DMG!`);
+                        FXEngine.spawnText(e.x, e.y, `-${targetData.damage}!`, { color: "#f1c40f", isCrit: true });
+                    } else {
+                        logMessage(`⚔️ Executed ${result.actionName.toUpperCase()} strike onto ${e.name} for ${targetData.damage} DMG!`);
+                        FXEngine.spawnText(e.x, e.y, `-${targetData.damage}`, { color: "#e74c3c" });
+                    }
                 }
             });
 
-            if (hitCount === 0) logMessage("💨 Blast hit nothing.");
-            
+            // Cleanup & Victory Checks
             if (selectedEnemy && !selectedEnemy.alive) selectedEnemy = null;
             
             if (enemies.every(e => !e.alive)) {
                 logMessage("🏆 VICTORY Conditions verified.");
                 if (typeof playRetroSound === 'function') playRetroSound('victory');
                 setTimeout(showLootScreen, 1200); 
-                return; 
+            } else {
+                advancePhase(); // Unlocks the Phase safely!
             }
             
-            advancePhase();
+            refreshSystemUI();
+        };
+
+        // Fire the projectile! (The engine automatically handles the math, then triggers onComplete)
+        if (fx && fx.spriteId) {
+            FXEngine.spawnProjectile(player.x, player.y, fx.tx, fx.ty, fx.spriteId, animOptions);
+        } else {
+            animOptions.onComplete(); // Fallback if no sprite is assigned
         }
-    });
+    }
 });
 
 // === SERVER-AUTHORITATIVE COMBAT ITEM RECEIPT ===

@@ -114,21 +114,6 @@ function consumeBrew(invIndex) {
     socket.emit('dispatchCombatAction', { actionCategory: 'consumable', invIndex: invIndex });
 }
 
-function executeBombThrow(tx, ty) {
-    if (activeTargetIndex   < 0 || activeTargetIndex   >= player.inventory.length) return;
-    
-    socket.emit('dispatchCombatAction', { 
-        actionCategory: 'consumable', 
-        invIndex: activeTargetIndex  , 
-        tx: tx, 
-        ty: ty 
-    });
-    
-    activeTargetIndex   = -1;
-    combatPhase = previousCombatPhase;
-    refreshSystemUI(); 
-}
-
 
 // === TARGETING STATE CONTROLLERS ===
 window.executeTargetAction = function(tx, ty) {
