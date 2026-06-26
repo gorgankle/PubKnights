@@ -187,6 +187,8 @@ if (data.saveData) {
             }
         });
 
+    }); 
+
 // === THE SERVER TICK (Runs every 3 seconds) ===
 setInterval(() => {
     for (let socketId in activePlayers) {
