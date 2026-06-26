@@ -576,6 +576,16 @@ else { // WILDERNESS
 
                     if (p.hp <= 0) {
                         p.gold = Math.max(0, p.gold - 100); p.hp = Math.floor((p.vitality || 70) * 0.5);
+                        
+                        // === NEW: CLEAR COMBAT STATUSES ON DEATH ===
+                        p.activeBuffs = [];
+                        p.activeCombatBuff = null;
+                        p.mapBaited = false;
+                        p.cellarsChummed = false;
+                        
+                        delete activeCombats[socket.id]; // Failsafe memory wipe
+                        // ===========================================
+
                         turnEvents.push({ type: 'death' });
                         break; 
                     }
@@ -678,6 +688,14 @@ else { // WILDERNESS
         }
         
         p.pendingGold = 0; p.pendingXp = 0; p.pendingLoot = [];
+        
+        // === NEW: CLEAR COMBAT STATUSES ON VICTORY ===
+        p.activeBuffs = [];
+        p.activeCombatBuff = null;
+        p.mapBaited = false;
+        p.cellarsChummed = false;
+        // =============================================
+
         socket.emit('combatRewardsReceipt', { updatedPlayer: p });
     });
 };
