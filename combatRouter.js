@@ -632,8 +632,10 @@ else { // WILDERNESS
         if (!p || !combat) return socket.emit('moveReceipt', { success: false, message: '❌ Server connection lost. Please refresh the page.' });
 
         // === NEW: THE BEAUTY OF THE UNIVERSAL STAT ENGINE ===
-let swiftness = getEffectiveStat(p, 'swiftness');
+        let swiftness = getEffectiveStat(p, 'swiftness');
         swiftness = Math.max(1, Math.min(12, swiftness));
+        
+        // Calculated exactly once!
         let dist = getGridDistance(combat.player.x, combat.player.y, data.tx, data.ty, 1);
         
         // === NEW: SERVER-SIDE PHYSICAL REALITY CHECK (ANTI-CHEAT) ===
@@ -656,10 +658,7 @@ let swiftness = getEffectiveStat(p, 'swiftness');
         }
         // ============================================================
 
-        let moveStaminaCost = Math.floor((dist / swiftness) * 10);
-        // ====================================================
-
-        let dist = getGridDistance(combat.player.x, combat.player.y, data.tx, data.ty, 1);
+        // Calculated exactly once!
         let moveStaminaCost = Math.floor((dist / swiftness) * 10);
 
         if (p.stamina >= moveStaminaCost) {
@@ -671,7 +670,6 @@ let swiftness = getEffectiveStat(p, 'swiftness');
             socket.emit('moveReceipt', { success: false, message: `❌ Server: Not enough stamina to move (${p.stamina}/${moveStaminaCost}).`, x: combat.player.x, y: combat.player.y });
         }
     });
-     
 
     // --- SERVER-AUTHORITATIVE COMBAT ESCROW ---
     socket.on('takePendingLoot', (idx) => {
