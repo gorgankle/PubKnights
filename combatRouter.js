@@ -218,8 +218,9 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                     fx: { tx: serverEnemy.x, ty: serverEnemy.y, spriteId: weapon.spriteId, isAoE: false },
                     updatedPlayer: p 
                 });
+            } 
             return;
-        }
+        } 
 
         // === 3. CONSUMABLE LOGIC (Brews & Bombs) ===
         if (data.actionCategory === 'consumable') {
