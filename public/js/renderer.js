@@ -97,11 +97,11 @@ function drawGrid() {
 // === DYNAMIC TARGETING ENGINE ===
     let currentTargetRange = (player.equipment.weapon && player.equipment.weapon.combat && player.equipment.weapon.combat.standard.range) || 1;
     
-    // If we are holding a bomb, override the yellow grid to show the bomb's range!
-    if (combatPhase === 'TARGETING' && typeof activeTargetIndex  !== 'undefined' && activeTargetIndex  !== -1) {
-        let activeBomb = player.inventory[activeBombIndex];
-        if (activeBomb && activeBomb.combat && activeBomb.combat.range) {
-            currentTargetRange = activeBomb.combat.range;
+    // If we are holding a ranged item, override the yellow grid to show its max range!
+    if (combatPhase === 'TARGETING' && typeof activeTargetIndex !== 'undefined' && activeTargetIndex !== -1) {
+        let activeItem = player.inventory[activeTargetIndex];
+        if (activeItem && activeItem.combat && activeItem.combat.range) {
+            currentTargetRange = activeItem.combat.range;
         }
     }
 
