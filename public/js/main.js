@@ -497,18 +497,6 @@ function setGameState(state) {
     }
 }
 
-// Top-Level Keyboard Inputs
-window.addEventListener("keydown", function(e) {
-    if (document.activeElement.tagName === 'INPUT') return;
-    if (gameState !== 'COMBAT' || currentTurn !== 'PLAYER') return;
-    if (combatPhase === 'ACTION' || combatPhase === 'PHASE_2') {
-        if (e.key === '1') executeCombatAction('slash');
-        else if (e.key === '2') executeCombatAction('special');
-        else if (e.key === '3') executeCombatAction('brew');
-        else if (e.key === '4' || e.key === ' ') executeCombatAction('end');
-    }
-});
-
 // === NEW: MOBILE TOOLTIP DISMISSAL ===
 document.addEventListener("touchstart", function(e) {
     // If the player taps somewhere on the screen that does NOT have a tooltip trigger...

@@ -141,41 +141,51 @@ if (data.saveData) {
     });
 
 // --- LOGIN EXISTING KNIGHT ---
-    socket.on('login', async (data) => {
-        try {
-            const playerDoc = await Player.findOne({ username: data.username, password: data.password });
-            if (!playerDoc) return socket.emit('loginError', 'Invalid Knight Name or Password.');
+        socket.on('login', async (data) => {
+            try {
+                const playerDoc = await Player.findOne({ username: data.username, password: data.password });
+                if (!playerDoc) return socket.emit('loginError', 'Invalid Knight Name or Password.');
 
-            // === SAVE REPAIR SYSTEM ===
-            // If the player's save was corrupted by the old missing-payload bug, restore their body!
-            if (!playerDoc.saveData.appearance) {
-                playerDoc.saveData.appearance = { gender: 'male', skin: 'light', hair: 'hair_messy', hairColor: 'brown', eyes: 'eyes_blue', shirtColor: 'blue', pantsColor: 'dark', bootsColor: 'leather' };
+                // === SAVE REPAIR SYSTEM ===
+                // If the player's save was corrupted by the old missing-payload bug, restore their body!
+                if (!playerDoc.saveData.appearance) {
+                    playerDoc.saveData.appearance = { gender: 'male', skin: 'light', hair: 'hair_messy', hairColor: 'brown', eyes: 'eyes_blue', shirtColor: 'blue', pantsColor: 'dark', bootsColor: 'leather' };
+                }
+
+                // === NEW: THE GREAT REWIRING REPAIR PATCH ===
+                // This auto-updates old save files to the new Data-Driven items!
+                let pd = playerDoc.saveData;
+                
+                // 1. Repair Equipment
+                if (pd.equipment) {
+                    for (let slot in pd.equipment) {
+                        let item = pd.equipment[slot];
+                        if (item && item.id && ItemDatabase[item.id]) pd.equipment[slot] = ItemDatabase[item.id];
+                    }
+                }
+                // 2. Repair Backpack
+                if (pd.inventory) {
+                    for (let i = 0; i < pd.inventory.length; i++) {
+                        let item = pd.inventory[i];
+                        if (item && item.id && ItemDatabase[item.id]) pd.inventory[i] = ItemDatabase[item.id];
+                    }
+                }
+                // 3. Repair Vault
+                if (pd.stash) {
+                    for (let i = 0; i < pd.stash.length; i++) {
+                        let item = pd.stash[i];
+                        if (item && item.id && ItemDatabase[item.id]) pd.stash[i] = ItemDatabase[item.id];
+                    }
+                }
+                // ============================================
+
+                activePlayers[socket.id] = playerDoc.saveData;
+                socket.emit('loginSuccess', playerDoc.saveData);
+            } catch (err) {
+                console.error(err);
+                socket.emit('loginError', 'Server error during login.');
             }
-
-            activePlayers[socket.id] = playerDoc.saveData;
-            socket.emit('loginSuccess', playerDoc.saveData);
-        } catch (err) {
-            console.error(err);
-            socket.emit('loginError', 'Server error during login.');
-        }
-    });
-
-    // --- DELEGATED TOWN & INVENTORY ROUTES ---
-    injectTownRouter(socket, activePlayers);
-
-    // --- DELEGATED COMBAT ROUTES ---
-    injectCombatRouter(socket, io, activePlayers, activeCombats);
-	
-	// Inject the Multiplayer Social Router
-    injectSocialRouter(socket, io, activePlayers);
-
-    // --- DISCONNECT ---
-    socket.on('disconnect', () => {
-        console.log(`💨  Knight disconnected: ${socket.id}`);
-        delete activePlayers[socket.id];
-        delete activeCombats[socket.id]; // Prevent memory leaks for combats!
-    });
-});
+        });
 
 // === THE SERVER TICK (Runs every 3 seconds) ===
 setInterval(() => {
