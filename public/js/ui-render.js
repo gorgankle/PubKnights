@@ -362,71 +362,36 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
             
             refreshCombatSidebar();
 
-            const combatInvList = document.getElementById("combat-inventory-list");
-            if (combatInvList) {
-                combatInvList.innerHTML = "";
-                
-                if (player.inventory.length === 0) {
-                    combatInvList.innerHTML = "<span style='font-size:10px;color:#776c62;'>Backpack is empty.</span>";
-                } else {
-                   player.inventory.forEach((item, idx) => {
-                        let rc = item.rarity === "Gorilla" ? "GorillaTier" : item.rarity;
-                        let btnText = ""; let onclickStr = ""; let bgColor = "";
-                        
-                        let imgUrl = getItemSpriteURL(item);
-                        let imgHtml = imgUrl ? `<img src="${imgUrl}" style="width:28px;height:28px;image-rendering:pixelated;margin-right:6px;vertical-align:middle;">` : ``;
-                        
-                        // --- DATA DRIVEN BACKPACK PARSING ---
-                        if (item.combat) {
-                            if (item.combat.actionType === "throwable") {
-                                btnText = `Throw (${item.combat.damageFlat} DMG)`;
-                                onclickStr = `prepTargetAction(${idx})`; // <--- UPDATED
-                                bgColor = "#c0392b";
-                            } else if (item.combat.actionType === "heal") {
-                                btnText = `Drink (+${item.combat.healPercent * 100}% HP)`;
-                                onclickStr = `consumeBrew(${idx})`;
-                                bgColor = "#2980b9";
-                            } else if (item.combat.actionType === "buff") {
-                                let statName = item.combat.buffTarget ? item.combat.buffTarget.substring(0,3).toUpperCase() : 'BUFF';
-                                btnText = `Drink (+${statName})`;
-                                onclickStr = `consumeBrew(${idx})`;
-                                bgColor = "#8e44ad";
-                            }
-                        } else if (item.type === "crate") {
-                            btnText = `Sealed`;
-                            onclickStr = ``;
-                            bgColor = "#55443a";
-                        } else {
-                            btnText = `Equip`;
-                            onclickStr = `handleCombatEquip(${idx})`;
-                            bgColor = "#27ae60";
-                        }
-                        
-                        let disabledStr = "";
-                        if (currentTurn !== 'PLAYER' || combatPhase === 'TARGETING') {
-                            disabledStr = "disabled";
-                        } else if (item.combat && item.combat.actionType === "throwable" && combatPhase !== 'PHASE_2') {
-                            disabledStr = "disabled";
-                        }
-
-                        combatInvList.innerHTML += `
-                            <div style="margin-bottom:4px; font-size:11px; display:flex; justify-content:space-between; align-items:center; background:#1e1712; padding:3px; border-radius:3px; width: 100%;">
-                                <div>${imgHtml}<span class="${rc}" style="cursor:help; text-decoration: underline dashed;" onmouseenter="showInventoryTooltip(${idx}, event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">[${item.slot.toUpperCase()}] ${item.name}</span></div>
-                                <button onclick="${onclickStr}" style="padding: 2px 6px; font-size: 9px; background: ${bgColor};" ${disabledStr}>${btnText}</button>
-                            </div>`;
-                    });
-                }
-                
-if (combatPhase === 'TARGETING') {
-                    let cancelBtn = document.createElement("button");
-                    cancelBtn.innerText = "✖ Cancel Throw";
-                    cancelBtn.style.background = "#443a32"; cancelBtn.style.width = "100%"; cancelBtn.style.marginTop = "4px";
-                    cancelBtn.onclick = () => cancelTarget();
-                    combatInvList.appendChild(cancelBtn);
-                }
-            }
-        }
-        } 
+ const combatInvList = document.getElementById("combat-inventory-list");
+			if (combatInvList) {
+    combatInvList.innerHTML = "";
+    
+    // The Single Access Button
+    let openBtn = document.createElement("button");
+    openBtn.innerText = `🎒 Open Backpack (${player.inventory.length}/${player.maxInventorySlots || 5})`;
+    openBtn.style.width = "100%";
+    openBtn.style.padding = "10px";
+    openBtn.style.background = "#8b5a2b";
+    
+    // Disable opening the bag if it's not the player's turn or they are actively targeting
+    if (currentTurn !== 'PLAYER' || combatPhase === 'TARGETING') {
+        openBtn.disabled = true;
+    }
+    
+    openBtn.onclick = () => renderCombatModal();
+    combatInvList.appendChild(openBtn);
+                if (combatPhase === 'TARGETING') {
+				let cancelBtn = document.createElement("button");
+				cancelBtn.innerText = "✖ Cancel Throw";
+				cancelBtn.style.background = "#443a32"; 
+				cancelBtn.style.width = "100%"; 
+				cancelBtn.style.marginTop = "4px";
+				cancelBtn.onclick = () => cancelTarget();
+				combatInvList.appendChild(cancelBtn);
+				}
+				}
+    }
+} 
         else { 
             // --- CONSOLIDATED TABBED VIEWS ---
             // We are out of combat, show the Nav Bar
@@ -1156,3 +1121,44 @@ function updateTownUI(data) {
     // This function remains available to catch future server-only Town data payloads.
 }
 
+
+function renderCombatModal() {
+    const modal = document.getElementById('combat-backpack-modal');
+    const grid = document.getElementById('combat-modal-grid');
+    grid.innerHTML = '';
+
+    let maxSlots = player.maxInventorySlots || 5;
+
+    for (let idx = 0; idx < maxSlots; idx++) {
+        let item = player.inventory[idx];
+        let slotDiv = document.createElement('div');
+
+        if (item) {
+            let rc = item.rarity === "Gorilla" ? "slot-jackpot" : (item.rarity ? `slot-${item.rarity.toLowerCase()}` : 'slot-common');
+            slotDiv.className = `item-slot ${rc}`;
+            
+            // Hook directly into your existing tooltip engine, flagging it as 'combat'
+            slotDiv.onmouseenter = (e) => showItemTooltip(e, item, idx, 'combat');
+            slotDiv.onmouseleave = hideTooltip;
+
+            // Render the 24x24 Sprite Matrix exactly like Town
+            let imgUrl = getItemSpriteURL(item);
+            if (imgUrl) {
+                slotDiv.innerHTML = `<img src="${imgUrl}" style="width:36px;height:36px;image-rendering:pixelated;pointer-events:none;">`;
+            } else {
+                slotDiv.innerHTML = `<span style="font-size:20px;pointer-events:none;">${item.type === 'crate' ? '📦' : '🛡️'}</span>`;
+            }
+        } else {
+            slotDiv.className = 'item-slot empty-cell';
+        }
+        grid.appendChild(slotDiv);
+    }
+    
+    modal.style.display = 'block';
+    if (typeof playRetroSound === 'function') playRetroSound('menu');
+}
+
+window.closeCombatModal = function() {
+    document.getElementById('combat-backpack-modal').style.display = 'none';
+    hideTooltip();
+}

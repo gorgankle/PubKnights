@@ -347,22 +347,27 @@ function showItemTooltip(event, item, index, location) {
     }
 
     if (isCombat) {
-        actionsHtml += `<div style="color: #e74c3c; font-size: 10px; font-weight: bold; width: 100%; text-align: center;">Actions locked during combat!</div>`;
+        if (location === 'combat') {
+            // Ensure phase locks are respected
+            if (currentTurn !== 'PLAYER' || combatPhase === 'TARGETING') {
+                actionsHtml += `<div style="color: #e74c3c; font-size: 10px; font-weight: bold; width: 100%; text-align: center;">Awaiting Action Phase...</div>`;
+            } else {
+                // Parse items.js data definitions
+                if (item.combat) {
+                    if (item.combat.actionType === "throwable" && combatPhase === 'PHASE_2') {
+                        actionsHtml += `<button onclick="closeCombatModal(); prepTargetAction(${index})" style="background: #c0392b; border-color: #e74c3c; padding: 6px; flex-grow: 1;">Throw (${item.combat.damageFlat} DMG)</button>`;
+                    } else if (item.combat.actionType === "heal" || item.combat.actionType === "buff") {
+                        actionsHtml += `<button onclick="closeCombatModal(); consumeBrew(${index})" style="background: #2980b9; border-color: #3498db; padding: 6px; flex-grow: 1;">Drink</button>`;
+                    }
+                } else if (item.slot !== "consumable" && item.type !== "crate") {
+                    actionsHtml += `<button onclick="closeCombatModal(); handleCombatEquip(${index})" style="background: #27ae60; border-color: #2ecc71; padding: 6px; flex-grow: 1;">Equip</button>`;
+                }
+            }
+        } else {
+            // Lock out Vault and Paperdoll gear actions during combat
+            actionsHtml += `<div style="color: #e74c3c; font-size: 10px; font-weight: bold; width: 100%; text-align: center;">Actions locked during combat!</div>`;
+        }
     }
-
-    actionsHtml += `</div>`;
-    html += actionsHtml;
-
-    tooltip.innerHTML = html;
-    tooltip.style.display = 'block';
-
-    let x = event.pageX + 15;
-    let y = event.pageY + 15;
-    if (x + 250 > window.innerWidth) x = window.innerWidth - 260;
-    if (y + tooltip.offsetHeight > window.innerHeight) y = window.innerHeight - tooltip.offsetHeight - 10;
-    tooltip.style.left = x + 'px';
-    tooltip.style.top = y + 'px';
-}
 
 // Ensure the old hideTooltip acts as an alias so we don't break existing game elements
 function hideTooltip() { hideItemTooltip(); }
