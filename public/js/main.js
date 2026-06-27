@@ -88,6 +88,10 @@ socket.on('combatResult', (result) => {
                 if (typeof playRetroSound === 'function') playRetroSound('explosion'); 
                 FXEngine.spawnExplosion(fx.tx, fx.ty, { radius: fx.radius + 1.25 });
                 if (result.targets.length === 0) logMessage("💨 Blast hit nothing.");
+            } else if (result.source === 'spell') {
+                // === NEW: Spell Impact Sounds ===
+                if (typeof playRetroSound === 'function') playRetroSound('explosion'); 
+                if (result.targets.length === 0) logMessage("💨 Spell scorched nothing but the earth.");
             } else {
                 let isCrit = result.targets.length > 0 && result.targets[0].isCrit;
                 if (typeof playRetroSound === 'function') playRetroSound(isCrit ? 'playerCrit' : (result.actionName === 'special' ? 'heavyAttack' : 'attack'));
@@ -101,7 +105,8 @@ socket.on('combatResult', (result) => {
                 e.hp -= targetData.damage;
                 if (targetData.killed) { e.hp = 0; e.alive = false; }
                 
-                if (result.source === 'throwable') {
+                // === THE FIX: Route spell damage text identical to throwables ===
+                if (result.source === 'throwable' || result.source === 'spell') {
                     logMessage(`🔥 ${e.name} caught in blast for ${targetData.damage} DMG!`);
                     FXEngine.spawnText(e.x, e.y, `-${targetData.damage}`, { color: "#e74c3c" });
                 } else {
@@ -130,7 +135,17 @@ socket.on('combatResult', (result) => {
         };
 
         // === THE MASTER ANIMATION TRIGGER ===
-        if (result.source === 'throwable' && fx && fx.spriteId) {
+        if (result.source === 'spell' && fx && fx.type === 'beam') {
+            
+            // 1. Fire the continuous beam of overlapping particles
+            FXEngine.spawnBeam(player.x, player.y, fx.tx, fx.ty, fx.style);
+            
+            // 2. Delay the damage text/sounds by 350ms so the beam has time to physically travel across the grid!
+            setTimeout(() => { 
+                if (typeof animOptions.onComplete === 'function') animOptions.onComplete(); 
+            }, 350);
+
+        } else if (result.source === 'throwable' && fx && fx.spriteId) {
             FXEngine.spawnProjectile(player.x, player.y, fx.tx, fx.ty, fx.spriteId, animOptions);
         } else {
             // 1. Determine if they used 'standard' or 'special'

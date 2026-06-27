@@ -385,10 +385,10 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 // 5. Emit the universal result to the client!
                 return socket.emit('combatResult', { 
                     type: 'hit',
-                    source: 'throwable', // Tricks the client into playing the explosion FX
+                    source: 'spell', // <--- THE FIX: Explicitly label it as a spell!
                     actionName: spellData.name, 
                     targets: hitTargets,
-                    fx: { tx: data.tx, ty: data.ty, spriteId: "icon_fireball", isAoE: true, radius: 1 }, 
+                    fx: { type: 'beam', style: 'fire', tx: data.tx, ty: data.ty }, // <--- THE FIX: Send the beam parameters!
                     updatedPlayer: p 
                 });
             }
