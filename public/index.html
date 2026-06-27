@@ -120,10 +120,7 @@
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
                             <span id="target-ui-header" style="font-size: 11px; font-weight: bold; color:#ffcc66;">INITIALIZING MATRIX</span>
                         </div>
-						<div style="display:grid; grid-template-columns: 1fr 1fr; gap: 4px;">
-                            <button id="slash-btn" onclick="executeCombatAction('slash')" onmouseenter="showSystemTooltip('combat_slash', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Standard Attack</button>
-                            <button id="heavy-btn" onclick="executeCombatAction('special')" onmouseenter="showSpecialSkillTooltip(event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Weapon Skill</button>
-							<div id="combat-submenu-items" style="display: none; flex-direction: column; background: #111827; border: 2px solid #4b5563; border-radius: 4px; margin-bottom: 8px;">
+						<div id="combat-submenu-items" style="display: none; flex-direction: column; background: #111827; border: 2px solid #4b5563; border-radius: 4px; margin-bottom: 8px;">
                             <div style="display: flex; gap: 2px; padding: 4px; border-bottom: 1px solid #374151; background: #1f2937;">
                                 <button data-tab="EQUIPMENT" onclick="switchCombatItemTab('EQUIPMENT')" class="combat-tab-btn" style="flex: 1; background: #2980b9; border: 1px solid #3498db; color: white; font-size: 10px; font-weight: bold; padding: 6px; cursor: pointer; margin: 0;">🛡️ Equipment</button>
                                 <button data-tab="BREWS" onclick="switchCombatItemTab('BREWS')" class="combat-tab-btn" style="flex: 1; background: #374151; border: 1px solid transparent; color: white; font-size: 10px; font-weight: bold; padding: 6px; cursor: pointer; margin: 0;">🍺 Brews</button>
@@ -132,6 +129,13 @@
                             <div id="combat-item-grid" style="padding: 6px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; max-height: 150px; overflow-y: auto;">
                                 </div>
                         </div>
+
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+                            <button id="slash-btn" onclick="executeCombatAction('slash')" onmouseenter="showSystemTooltip('combat_slash', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Standard Attack</button>
+                            <button id="heavy-btn" onclick="executeCombatAction('special')" onmouseenter="showSpecialSkillTooltip(event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Weapon Skill</button>
+                            
+                            <button id="items-btn" onclick="toggleCombatMenu('ITEMS')" style="background-color: #166534; border-color: #15803d;">🎒 Items</button>
+                            
                             <button id="end-btn" onclick="executeCombatAction('end')" onmouseenter="showSystemTooltip('combat_pass', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Pass Turn</button>
                         </div>
                         
