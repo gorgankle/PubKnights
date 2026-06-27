@@ -369,6 +369,15 @@ function showItemTooltip(event, item, index, location) {
         }
     }
 
+    // === RESTORED: Close the HTML string and inject it into the DOM ===
+    actionsHtml += `</div>`;
+    tooltip.innerHTML = html + actionsHtml;
+    tooltip.style.display = 'block';
+    moveTooltip(event);
+
+} // <--- RESTORED: This closing brace finishes showItemTooltip()!
+
+
 // Ensure the old hideTooltip acts as an alias so we don't break existing game elements
 function hideTooltip() { hideItemTooltip(); }
 
