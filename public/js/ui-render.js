@@ -1156,41 +1156,17 @@ function updateTownUI(data) {
     // This function remains available to catch future server-only Town data payloads.
 }
 
-// === COMBAT GUI: STATE & CATEGORIZATION ===
-
-let activeCombatSubMenu = null; // Tracks if 'ITEMS' or 'SPECIALS' is open
-let activeCombatItemTab = 'BREWS'; // Tracks the active tab within the Items menu
-
-// Master dictionary for sorting inventory items into Combat Tabs
-function getCombatItemCategory(item) {
-    if (!item) return 'UNKNOWN';
-    
-    // Anything that isn't a consumable is treated as Equipment (Weapons, Armor, Rings, etc.)
-    if (item.slot !== 'consumable' && item.slot !== 'material') return 'EQUIPMENT';
-    
-    // Categorize Consumables
-    const type = (item.type || '').toLowerCase();
-    if (type === 'brew' || type === 'potion' || type === 'food') return 'BREWS';
-    if (type === 'throwable' || type === 'bomb') return 'THROWABLES';
-    
-    return 'OTHER';
-}
-
 // ==========================================
-// === NEW COMBAT GUI: ACTION BAR ENGINE ===
+// === NATIVE COMBAT ACTION BAR ENGINE ===
 // ==========================================
 
 let activeCombatSubMenu = null;
 let activeCombatItemTab = 'EQUIPMENT';
 
-// Categorizes items based on your exact items.js variables
 function getCombatItemCategory(item) {
     if (!item) return 'UNKNOWN';
-    
-    // Anything that is NOT a consumable, material, or crate is Equipment
     if (item.slot !== 'consumable' && item.slot !== 'material' && item.type !== 'crate') return 'EQUIPMENT';
     
-    // Categorize Consumables
     const type = (item.type || '').toLowerCase();
     if (type === 'brew' || type === 'potion' || type === 'food') return 'BREWS';
     if (type === 'throwable' || type === 'bomb') return 'THROWABLES';
@@ -1209,7 +1185,7 @@ function toggleCombatMenu(menuName) {
         activeCombatSubMenu = menuName;
         if (menuName === 'ITEMS') {
             menuDiv.style.display = 'flex';
-            switchCombatItemTab('EQUIPMENT'); // Always open to Equipment first
+            switchCombatItemTab('EQUIPMENT'); 
         }
     }
 }
@@ -1218,7 +1194,6 @@ function switchCombatItemTab(tabName) {
     activeCombatItemTab = tabName;
     renderCombatItemGrid();
     
-    // Update visual active state of the tabs
     document.querySelectorAll('.combat-tab-btn').forEach(btn => {
         if (btn.getAttribute('data-tab') === tabName) {
             btn.style.backgroundColor = '#2980b9'; 
@@ -1237,7 +1212,6 @@ function renderCombatItemGrid() {
     grid.innerHTML = ''; 
     let itemsFound = 0;
 
-    // Pulls directly from your live inventory array
     player.inventory.forEach((item, index) => {
         if (!item) return;
 
@@ -1245,9 +1219,9 @@ function renderCombatItemGrid() {
             itemsFound++;
             
             const btn = document.createElement('button');
-            btn.style.cssText = "display: flex; flex-direction: column; align-items: center; justify-content: center; background: #1f2937; border: 1px solid #4b5563; border-radius: 4px; padding: 8px; cursor: pointer; transition: 0.2s;";
+            btn.style.cssText = "display: flex; flex-direction: column; align-items: center; justify-content: center; background: #1f2937; border: 1px solid #4b5563; border-radius: 4px; padding: 6px; cursor: pointer; transition: 0.2s;";
             
-            // FIX: Use a safe, standard closure instead of 'new Function()' to bypass CSP blocks
+            // Safe closure to bypass browser security policies
             btn.onclick = () => {
                 if (activeCombatItemTab === 'EQUIPMENT') {
                     equipItem(index);
@@ -1258,18 +1232,18 @@ function renderCombatItemGrid() {
                         socket.emit('inventoryAction', {action: 'use', index: index});
                     }
                 }
-                toggleCombatMenu('ITEMS'); // Auto-close menu after clicking
+                toggleCombatMenu('ITEMS'); 
             };
             
             btn.innerHTML = `
-                <span style="font-size: 11px; font-weight: bold; color: #f1c40f; text-align: center; line-height: 1.2;">${item.name}</span>
-                <span style="font-size: 9px; color: #9ca3af; margin-top: 4px; text-transform: capitalize;">${item.slot || item.type || ''}</span>
+                <span style="font-size: 10px; font-weight: bold; color: #f1c40f; text-align: center; line-height: 1.2;">${item.name}</span>
+                <span style="font-size: 8px; color: #9ca3af; margin-top: 4px; text-transform: capitalize;">${item.slot || item.type || ''}</span>
             `;
             grid.appendChild(btn);
         }
     });
 
     if (itemsFound === 0) {
-        grid.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; color: #6b7280; font-size: 12px; padding: 10px 0;">No ${activeCombatItemTab.toLowerCase()} found in your bag.</div>`;
+        grid.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; color: #6b7280; font-size: 11px; padding: 10px 0;">No ${activeCombatItemTab.toLowerCase()} found in your bag.</div>`;
     }
 }

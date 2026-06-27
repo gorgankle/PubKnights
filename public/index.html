@@ -112,38 +112,28 @@
         </div>
 
         
-        <div id="master-combat-action-bar" style="position: relative; width: 100%; max-width: 600px; margin: 10px auto;">
-    
-    <div id="combat-submenu-items" style="display: none; flex-direction: column; position: absolute; bottom: 100%; left: 0; width: 100%; background: #111827; border: 2px solid #4b5563; border-radius: 8px 8px 0 0; margin-bottom: 5px; z-index: 20;">
-        
-        <div style="display: flex; gap: 4px; padding: 8px; border-bottom: 1px solid #374151; background: #1f2937; border-radius: 6px 6px 0 0;">
-            <button data-tab="EQUIPMENT" onclick="switchCombatItemTab('EQUIPMENT')" class="combat-tab-btn" style="flex: 1; background: #2980b9; border: 1px solid #3498db; color: white; font-size: 12px; font-weight: bold; padding: 8px; border-radius: 4px; cursor: pointer;">
-                🛡️ Equipment
-            </button>
-            <button data-tab="BREWS" onclick="switchCombatItemTab('BREWS')" class="combat-tab-btn" style="flex: 1; background: #374151; border: 1px solid transparent; color: white; font-size: 12px; font-weight: bold; padding: 8px; border-radius: 4px; cursor: pointer;">
-                🍺 Brews
-            </button>
-            <button data-tab="THROWABLES" onclick="switchCombatItemTab('THROWABLES')" class="combat-tab-btn" style="flex: 1; background: #374151; border: 1px solid transparent; color: white; font-size: 12px; font-weight: bold; padding: 8px; border-radius: 4px; cursor: pointer;">
-                💣 Throwables
-            </button>
-        </div>
-        
-        <div id="combat-item-grid" style="padding: 8px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-height: 200px; overflow-y: auto; min-height: 120px;">
-            </div>
-    </div>
-
-    <div style="display: flex; gap: 8px; background: #1f2937; padding: 8px; border: 2px solid #374151; border-radius: 8px; position: relative; z-index: 10;">
-        <button onclick="executeCombatAction('slash')" style="flex: 1; background: #991b1b; color: white; font-weight: bold; padding: 12px; border: 1px solid #b91c1c; border-radius: 4px; cursor: pointer;">
-            ⚔️ Attack
-        </button>
-        <button onclick="toggleCombatMenu('ITEMS')" style="flex: 1; background: #166534; color: white; font-weight: bold; padding: 12px; border: 1px solid #15803d; border-radius: 4px; cursor: pointer;">
-            🎒 Items
-        </button>
-        <button onclick="advancePhase()" style="flex: 1; background: #a16207; color: white; font-weight: bold; padding: 12px; border: 1px solid #ca8a04; border-radius: 4px; cursor: pointer;">
-            ⏳ End Turn
-        </button>
-    </div>
-</div>
+        <div id="combat-screen" class="panel" style="display: none; width: 1035px; margin: 0 auto;">
+            <div style="display: flex; gap: 15px; align-items: flex-start;">
+                <div style="width: 480px; flex-shrink: 0;">
+                    <canvas id="gameCanvas" width="480" height="480"></canvas>
+				<div id="action-interface">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                            <span id="target-ui-header" style="font-size: 11px; font-weight: bold; color:#ffcc66;">INITIALIZING MATRIX</span>
+                        </div>
+						<div style="display:grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+                            <button id="slash-btn" onclick="executeCombatAction('slash')" onmouseenter="showSystemTooltip('combat_slash', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Standard Attack</button>
+                            <button id="heavy-btn" onclick="executeCombatAction('special')" onmouseenter="showSpecialSkillTooltip(event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Weapon Skill</button>
+							<div id="combat-submenu-items" style="display: none; flex-direction: column; background: #111827; border: 2px solid #4b5563; border-radius: 4px; margin-bottom: 8px;">
+                            <div style="display: flex; gap: 2px; padding: 4px; border-bottom: 1px solid #374151; background: #1f2937;">
+                                <button data-tab="EQUIPMENT" onclick="switchCombatItemTab('EQUIPMENT')" class="combat-tab-btn" style="flex: 1; background: #2980b9; border: 1px solid #3498db; color: white; font-size: 10px; font-weight: bold; padding: 6px; cursor: pointer; margin: 0;">🛡️ Equipment</button>
+                                <button data-tab="BREWS" onclick="switchCombatItemTab('BREWS')" class="combat-tab-btn" style="flex: 1; background: #374151; border: 1px solid transparent; color: white; font-size: 10px; font-weight: bold; padding: 6px; cursor: pointer; margin: 0;">🍺 Brews</button>
+                                <button data-tab="THROWABLES" onclick="switchCombatItemTab('THROWABLES')" class="combat-tab-btn" style="flex: 1; background: #374151; border: 1px solid transparent; color: white; font-size: 10px; font-weight: bold; padding: 6px; cursor: pointer; margin: 0;">💣 Throwables</button>
+                            </div>
+                            <div id="combat-item-grid" style="padding: 6px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; max-height: 150px; overflow-y: auto;">
+                                </div>
+                        </div>
+                            <button id="end-btn" onclick="executeCombatAction('end')" onmouseenter="showSystemTooltip('combat_pass', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Pass Turn</button>
+                        </div>
                         
                         <!-- NEW: Combat Backpack -->
                         <div style="margin-top: 8px; border-top: 1px dashed #4a3b2c; padding-top: 8px;">
