@@ -104,7 +104,7 @@ const FXEngine = {
     spawnMeleeStrike: function(playerRef, targetX, targetY, animType, config = {}) {
         this.queue.push({
             type: 'MELEE',
-            attacker: attackerObj,
+            attacker: playerRef, // <--- THE FIX: Change attackerObj to playerRef!
             tx: targetX, ty: targetY,
             animType: animType,
             life: 0,
