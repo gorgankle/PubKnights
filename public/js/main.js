@@ -155,10 +155,15 @@ socket.on('combatItemReceipt', (receipt) => {
     if (!receipt.success) {
         logMessage(receipt.message);
         if (typeof playRetroSound === 'function') playRetroSound('error');
+        
+        // === THE FIX: Unlock the phase if the server rejects the drink! ===
+        if (combatPhase === 'WAITING_FOR_SERVER') combatPhase = 'PHASE_2'; 
+        refreshSystemUI();
+        
         return;
     }
 
-    if (receipt.updatedPlayer) Object.assign(player, receipt.updatedPlayer); // Magic bullet sync!
+    if (receipt.updatedPlayer) Object.assign(player, receipt.updatedPlayer); // Magic bullet sync
     
     logMessage(receipt.message);
     if (receipt.message.includes("gear")) {

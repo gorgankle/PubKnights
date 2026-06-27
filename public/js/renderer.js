@@ -363,7 +363,21 @@ canvas.addEventListener("mousemove", function(e) {
 
     if (tx < 0 || tx >= currentGridSize || ty < 0 || ty >= currentGridSize) return;
 
-    if (combatPhase === 'TARGETING') { hoverTile = {x: tx, y: ty}; }
+    // === REPLACED: Enforce targeting bounds on hover ===
+    if (combatPhase === 'TARGETING') { 
+        let activeItem = player.inventory[activeTargetIndex];
+        // Pull max range from items.js, default to 4 if undefined
+        let maxRange = (activeItem && activeItem.combat && activeItem.combat.range) ? activeItem.combat.range : 4;
+        let dist = getGridDistance(player.x, player.y, tx, ty);
+        let ignoresLoS = activeItem && activeItem.combat && activeItem.combat.ignoresLoS;
+        
+        // Only show the red targeting box if it's a valid, legal throw
+        if (dist <= maxRange && (ignoresLoS || hasLineOfSight(player.x, player.y, tx, ty))) {
+            hoverTile = {x: tx, y: ty}; 
+        } else {
+            hoverTile = {x: -1, y: -1}; // Hide the red grid if hovering out of bounds
+        }
+    }
 
     let mob = enemies.find(em => { let s = em.size || 1; return em.alive && tx >= em.x && tx < em.x + s && ty >= em.y && ty < em.y + s; });
     

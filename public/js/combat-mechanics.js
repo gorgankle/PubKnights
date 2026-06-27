@@ -78,6 +78,8 @@ function executeCombatAction(actionType) {
             
         }
 
+if (actionType !== 'end') combatPhase = 'WAITING_FOR_SERVER';
+
         // ONE unified payload to rule them all
         socket.emit('dispatchCombatAction', { 
             actionCategory: actionType === 'end' ? 'pass' : 'weapon',
@@ -111,6 +113,10 @@ function handleCombatEquip(idx) {
 
 function consumeBrew(invIndex) {
     if (gameState !== 'COMBAT' || currentTurn !== 'PLAYER' || combatPhase === 'TARGETING') return;
+    
+    // === THE FIX: ENFORCE PHASE LOCK ON CONSUMABLES ===
+    combatPhase = 'WAITING_FOR_SERVER'; 
+    
     socket.emit('dispatchCombatAction', { actionCategory: 'consumable', invIndex: invIndex });
 }
 
@@ -366,7 +372,8 @@ function isValidPlayerMovePath(targetX, targetY) {
 function advancePhase() {
     if (combatPhase === 'PHASE_1' || combatPhase === 'MOVE') {
         combatPhase = 'PHASE_2';
-    } else if (combatPhase === 'PHASE_2' || combatPhase === 'ACTION') {
+    } else if (combatPhase === 'PHASE_2' || combatPhase === 'ACTION' || combatPhase === 'WAITING_FOR_SERVER') {
+        // === THE FIX: Advance from the Server Lock into Phase 3 ===
         combatPhase = 'PHASE_3';
     } else if (combatPhase === 'PHASE_3' || combatPhase === 'MOVE_2') {
         endPlayerTurn();
@@ -375,8 +382,6 @@ function advancePhase() {
     refreshSystemUI(); // Updates the HTML buttons & health bars
     
     // === NEW: THE MASTER CANVAS REDRAW ===
-    // This guarantees the physical game board updates instantly 
-    // whenever a phase shifts, catching all new buffs, states, and ranges!
     if (typeof drawGrid === 'function') {
         drawGrid();
     }
