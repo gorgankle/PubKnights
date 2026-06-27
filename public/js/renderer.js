@@ -110,7 +110,7 @@ if (SpriteMatrices[groundSprite]) {
             ctx.strokeStyle = activeCombatZone==='GORILLA_ARENA' ? "#443425" : "#3a2f26";
             ctx.lineWidth = 1; ctx.strokeRect(x * currentTileSize, y * currentTileSize, currentTileSize, currentTileSize);
             
-            if (currentTurn === 'PLAYER' && combatPhase !== 'TARGETING') {
+            if (currentTurn === 'PLAYER') {
                 if (combatPhase === 'PHASE_1' || combatPhase === 'PHASE_3') {
                     
                     // === THE FIX: DIRECT SMART CACHE HOOK ===
@@ -395,11 +395,25 @@ canvas.addEventListener("click", function(e) {
 
     if (tx < 0 || tx >= currentGridSize || ty < 0 || ty >= currentGridSize) return;
 
+    // === REPLACED: Client-side throw validation ===
     if (combatPhase === 'TARGETING') {
-        if (typeof executeTargetAction === 'function') executeTargetAction(tx, ty);
-        hoverTile = {x: -1, y: -1}; return;
+        let activeItem = player.inventory[activeTargetIndex];
+        let maxRange = (activeItem && activeItem.combat && activeItem.combat.range) ? activeItem.combat.range : 4;
+        let dist = getGridDistance(player.x, player.y, tx, ty);
+        let ignoresLoS = activeItem && activeItem.combat && activeItem.combat.ignoresLoS;
+        
+        if (dist <= maxRange && (ignoresLoS || hasLineOfSight(player.x, player.y, tx, ty))) {
+            // Valid throw! Dispatch to the server dispatcher
+            if (typeof executeTargetAction === 'function') executeTargetAction(tx, ty);
+        } else {
+            // Invalid throw! Reject locally.
+            logMessage("❌ Target outside of throw range or blocked by obstacles.");
+            if (typeof playRetroSound === 'function') playRetroSound('error');
+        }
+        
+        hoverTile = {x: -1, y: -1}; 
+        return;
     }
-
     let clickedMonster = enemies.find(em => { let s = em.size || 1; return em.alive && tx >= em.x && tx < em.x + s && ty >= em.y && ty < em.y + s; });
 
     if (combatPhase === 'PHASE_1' || combatPhase === 'PHASE_3') {
