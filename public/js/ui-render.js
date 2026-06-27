@@ -362,36 +362,56 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
             
             refreshCombatSidebar();
 
- const combatInvList = document.getElementById("combat-inventory-list");
-			if (combatInvList) {
-    combatInvList.innerHTML = "";
-    
-    // The Single Access Button
-    let openBtn = document.createElement("button");
-    openBtn.innerText = `🎒 Open Backpack (${player.inventory.length}/${player.maxInventorySlots || 5})`;
-    openBtn.style.width = "100%";
-    openBtn.style.padding = "10px";
-    openBtn.style.background = "#8b5a2b";
-    
-    // Disable opening the bag if it's not the player's turn or they are actively targeting
-    if (currentTurn !== 'PLAYER' || combatPhase === 'TARGETING') {
-        openBtn.disabled = true;
-    }
-    
-    openBtn.onclick = () => renderCombatModal();
-    combatInvList.appendChild(openBtn);
-                if (combatPhase === 'TARGETING') {
-				let cancelBtn = document.createElement("button");
-				cancelBtn.innerText = "✖ Cancel Throw";
-				cancelBtn.style.background = "#443a32"; 
-				cancelBtn.style.width = "100%"; 
-				cancelBtn.style.marginTop = "4px";
-				cancelBtn.onclick = () => cancelTarget();
-				combatInvList.appendChild(cancelBtn);
-				}
-				}
-    }
-} 
+const combatInvList = document.getElementById("combat-inventory-list");
+        if (combatInvList) {
+            combatInvList.innerHTML = "";
+            
+            // === NEW: 50/50 Action Bar Flex Container ===
+            let btnContainer = document.createElement("div");
+            btnContainer.style.display = "flex";
+            btnContainer.style.gap = "4px";
+            btnContainer.style.width = "100%";
+        
+            // 🎒 Backpack Button
+            let bagBtn = document.createElement("button");
+            bagBtn.innerText = `🎒 Backpack (${player.inventory.length}/${player.maxInventorySlots || 5})`;
+            bagBtn.style.flex = "1";
+            bagBtn.style.padding = "10px";
+            bagBtn.style.background = "#8b5a2b";
+        
+            // 📖 Spellbook Button
+            let spellBtn = document.createElement("button");
+            spellBtn.innerText = `📖 Spellbook`;
+            spellBtn.style.flex = "1";
+            spellBtn.style.padding = "10px";
+            spellBtn.style.background = "#8e44ad";
+            spellBtn.style.borderColor = "#9b59b6";
+        
+            // Phase Locks
+            if (currentTurn !== 'PLAYER' || combatPhase === 'TARGETING') {
+                bagBtn.disabled = true;
+                spellBtn.disabled = true;
+            }
+        
+            // Actions
+            bagBtn.onclick = () => renderCombatModal();
+            spellBtn.onclick = () => { if (typeof renderSpellbookModal === 'function') renderSpellbookModal(); };
+        
+            btnContainer.appendChild(bagBtn);
+            btnContainer.appendChild(spellBtn);
+            combatInvList.appendChild(btnContainer);
+
+            // Keep the Cancel button logic intact!
+            if (combatPhase === 'TARGETING') {
+                let cancelBtn = document.createElement("button");
+                cancelBtn.innerText = "✖ Cancel Action";
+                cancelBtn.style.background = "#443a32"; 
+                cancelBtn.style.width = "100%"; 
+                cancelBtn.style.marginTop = "4px";
+                cancelBtn.onclick = () => cancelTarget();
+                combatInvList.appendChild(cancelBtn);
+            }
+        }
         else { 
             // --- CONSOLIDATED TABBED VIEWS ---
             // We are out of combat, show the Nav Bar

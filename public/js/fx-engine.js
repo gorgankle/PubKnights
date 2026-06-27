@@ -37,8 +37,58 @@ const FXEngine = {
             onComplete: config.onComplete || null
         });
     },
+	
+	// === NEW: 3. CONTINUOUS MAGIC BEAMS (Vector Interpolation) ===
+    spawnBeam: function(startX, startY, endX, endY, style = 'fire') {
+        // 1. Calculate the raw pixel coordinates (assuming 60px tiles)
+        // We add (currentTileSize / 2) to center the beam in the middle of the tile
+        let pxStart = (startX * currentTileSize) + (currentTileSize / 2);
+        let pyStart = (startY * currentTileSize) + (currentTileSize / 2);
+        let pxEnd = (endX * currentTileSize) + (currentTileSize / 2);
+        let pyEnd = (endY * currentTileSize) + (currentTileSize / 2);
 
-    // 3. Grid-Based AoE Explosions
+        // 2. Calculate the distance and angle of the beam using Pythagorean theorem
+        let dx = pxEnd - pxStart;
+        let dy = pyEnd - pyStart;
+        let distance = Math.sqrt(dx * dx + dy * dy);
+        
+        // 3. Determine how many 24x24 particle sprites we need to bridge the gap smoothly
+        let particleCount = Math.floor(distance / 12); // Overlap them every 12 pixels
+        if (particleCount < 1) particleCount = 1; // Failsafe for point-blank casts
+        
+        // Pick the palette based on the spell type
+        let colors = style === 'fire' ? ['#e74c3c', '#f1c40f', '#d35400'] : ['#9b59b6', '#8e44ad', '#3498db'];
+
+        // 4. Fire the particles in a rapid sequence along the vector path
+        for (let i = 0; i <= particleCount; i++) {
+            setTimeout(() => {
+                let progress = i / particleCount;
+                let currentX = pxStart + (dx * progress);
+                let currentY = pyStart + (dy * progress);
+                
+                // Add a slight random scatter so the beam looks volatile
+                let scatterX = (Math.random() - 0.5) * 15;
+                let scatterY = (Math.random() - 0.5) * 15;
+
+                // Push to your existing particle render loop!
+                // NOTE: Make sure this pushes to whatever array your renderer.js uses to draw explosions/particles!
+                if (typeof activeExplosions !== 'undefined') {
+                    activeExplosions.push({
+                        x: currentX + scatterX,
+                        y: currentY + scatterY,
+                        radius: 6 + Math.random() * 8, // Varies size between 6 and 14
+                        color: colors[Math.floor(Math.random() * colors.length)],
+                        life: 1.0, 
+                        decay: 0.03 + (Math.random() * 0.04) // Fast fade out
+                    });
+                }
+                
+            }, i * 15); // Stagger the spawns by 15ms so the beam physically "travels" forward!
+        }
+    },
+    // ==============================================================
+
+    // 4. Grid Explosions
     spawnExplosion: function(gridX, gridY, config = {}) {
         this.queue.push({
             type: 'EXPLOSION',
@@ -50,8 +100,8 @@ const FXEngine = {
         });
     },
 
-    // 4. Data-Driven Melee Animations
-    spawnMeleeStrike: function(attackerObj, targetX, targetY, animType, config = {}) {
+    // 5. Melee Lunges
+    spawnMeleeStrike: function(playerRef, targetX, targetY, animType, config = {}) {
         this.queue.push({
             type: 'MELEE',
             attacker: attackerObj,

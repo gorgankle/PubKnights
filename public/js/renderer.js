@@ -64,13 +64,19 @@ function drawGrid() {
 // === DYNAMIC TARGETING ENGINE ===
     let currentTargetRange = (player.equipment.weapon && player.equipment.weapon.combat && player.equipment.weapon.combat.standard.range) || 1;
     
-    // If we are holding a ranged item, override the yellow grid to show its max range!
-    if (combatPhase === 'TARGETING' && typeof activeTargetIndex !== 'undefined' && activeTargetIndex !== -1) {
-        let activeItem = player.inventory[activeTargetIndex];
-        if (activeItem && activeItem.combat && activeItem.combat.range) {
-            currentTargetRange = activeItem.combat.range;
-        }
-    }
+    let activeItem = player.inventory[activeTargetIndex];
+            let maxRange = 4;
+            let ignoresLoS = false;
+    
+            if (activeItem && activeItem.combat) {
+                if (activeItem.combat.actionType === 'spell') {
+                    let spellData = typeof SpellDatabase !== 'undefined' ? SpellDatabase[activeItem.combat.spellId] : null;
+                    if (spellData) { maxRange = spellData.range || 4; ignoresLoS = spellData.ignoresLoS || false; }
+                } else {
+                    maxRange = activeItem.combat.range || 4;
+                    ignoresLoS = activeItem.combat.ignoresLoS || false;
+                }
+            }
 
     // --- INTERPOLATION ENGINE: PLAYER ---
     if (player.visualX === undefined) {
@@ -366,10 +372,23 @@ canvas.addEventListener("mousemove", function(e) {
     // === REPLACED: Enforce targeting bounds on hover ===
     if (combatPhase === 'TARGETING') { 
         let activeItem = player.inventory[activeTargetIndex];
-        // Pull max range from items.js, default to 4 if undefined
-        let maxRange = (activeItem && activeItem.combat && activeItem.combat.range) ? activeItem.combat.range : 4;
-        let dist = getGridDistance(player.x, player.y, tx, ty);
-        let ignoresLoS = activeItem && activeItem.combat && activeItem.combat.ignoresLoS;
+        let maxRange = 4;
+        let ignoresLoS = false;
+
+        if (activeItem && activeItem.combat) {
+            if (activeItem.combat.actionType === 'spell') {
+                // Route to the spell dictionary
+                let spellData = typeof SpellDatabase !== 'undefined' ? SpellDatabase[activeItem.combat.spellId] : null;
+                if (spellData) {
+                    maxRange = spellData.range || 4;
+                    ignoresLoS = spellData.ignoresLoS || false;
+                }
+            } else {
+                // Route to standard item dictionary (Bombs)
+                maxRange = activeItem.combat.range || 4;
+                ignoresLoS = activeItem.combat.ignoresLoS || false;
+            }
+        }
         
         // Only show the red targeting box if it's a valid, legal throw
         if (dist <= maxRange && (ignoresLoS || hasLineOfSight(player.x, player.y, tx, ty))) {
@@ -412,9 +431,23 @@ canvas.addEventListener("click", function(e) {
     // === REPLACED: Client-side throw validation ===
     if (combatPhase === 'TARGETING') {
         let activeItem = player.inventory[activeTargetIndex];
-        let maxRange = (activeItem && activeItem.combat && activeItem.combat.range) ? activeItem.combat.range : 4;
-        let dist = getGridDistance(player.x, player.y, tx, ty);
-        let ignoresLoS = activeItem && activeItem.combat && activeItem.combat.ignoresLoS;
+        let maxRange = 4;
+        let ignoresLoS = false;
+
+        if (activeItem && activeItem.combat) {
+            if (activeItem.combat.actionType === 'spell') {
+                // Route to the spell dictionary
+                let spellData = typeof SpellDatabase !== 'undefined' ? SpellDatabase[activeItem.combat.spellId] : null;
+                if (spellData) {
+                    maxRange = spellData.range || 4;
+                    ignoresLoS = spellData.ignoresLoS || false;
+                }
+            } else {
+                // Route to standard item dictionary (Bombs)
+                maxRange = activeItem.combat.range || 4;
+                ignoresLoS = activeItem.combat.ignoresLoS || false;
+            }
+        }
         
         if (dist <= maxRange && (ignoresLoS || hasLineOfSight(player.x, player.y, tx, ty))) {
             // Valid throw! Dispatch to the server dispatcher

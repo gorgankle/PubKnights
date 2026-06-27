@@ -292,7 +292,25 @@ const ItemDatabase = {
     "harvest_crate": {
         id: "harvest_crate", name: "Overgrown Harvest Crate", slot: "consumable", type: "crate", rarity: "Epic", value: 1000, spriteId: "icon_crate_harvest",
         desc: "A crate wrapped in thick vines. Smells faintly of fermenting hops."
-    }
+    },
+	
+	
+	// === Scrolls === //
+	
+	// Inside items.js
+"scroll_fireball": {
+    name: "Scroll: Fireball Breath",
+    type: "scroll",
+    slot: "consumable", // Keeps it in the main inventory
+    rarity: "Epic",
+    combat: { 
+        actionType: "spell", 
+        spellId: "fireball_breath" // <--- THE CRITICAL POINTER
+    },
+    desc: "A charred parchment radiating intense heat."
+}
+	
+	
 };
 
 // The helper function stays safely OUTSIDE the database

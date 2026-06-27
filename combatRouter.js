@@ -4,6 +4,7 @@
 const { ItemDatabase } = require('./public/js/items.js');
 const { LootTables } = require('./public/js/lootTables.js');
 const { NpcDatabase, createEnemy } = require('./public/js/npc-database.js');
+const { SpellDatabase } = require('./public/js/spells.js');
 
 function getGridDistance(x1, y1, x2, y2, size2 = 1) {
     let closeX = Math.max(x2, Math.min(x1, x2 + size2 - 1));
@@ -28,6 +29,30 @@ function getGridDistance(x1, y1, x2, y2, size2 = 1) {
             if (e2 < dx) { err += dx; cy += sy; }
         }
     }
+	
+	// === UNIVERSAL LINE OF EFFECT (Bresenham Blast Path) ===
+function getLineOfEffectPath(x1, y1, x2, y2, maxRange, stopsAtWalls, combatState) {
+    let path = [];
+    let dx = Math.abs(x2 - x1); let dy = Math.abs(y2 - y1);
+    let sx = (x1 < x2) ? 1 : -1; let sy = (y1 < y2) ? 1 : -1;
+    let err = dx - dy; let cx = x1; let cy = y1;
+    let distanceTraveled = 0;
+    
+    while (distanceTraveled <= maxRange) {
+        if (cx !== x1 || cy !== y1) {
+            path.push({ x: cx, y: cy });
+            // If it hits a wall and doesn't ignore LoS, the beam stops here!
+            if (stopsAtWalls && combatState.obstacles.some(o => o.x === cx && o.y === cy)) break; 
+        }
+        if (cx === x2 && cy === y2) break; 
+        
+        let e2 = 2 * err;
+        if (e2 > -dy) { err -= dy; cx += sx; }
+        if (e2 < dx) { err += dx; cy += sy; }
+        distanceTraveled++;
+    }
+    return path;
+}
 
 
 module.exports = function(socket, io, activePlayers, activeCombats) {
@@ -308,6 +333,66 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                     updatedPlayer: p 
                 });
             }
+			// === NEW: MAGIC SPELL LOGIC (Permanent Scrolls) ===
+            if (rules.actionType === 'spell') {
+                if (data.tx === undefined || data.ty === undefined) return;
+
+                // 1. Pull the master math from spells.js
+                const { SpellDatabase } = require('./public/js/spells.js'); // Ensure this is at the top of your file!
+                let spellData = SpellDatabase[rules.spellId];
+                if (!spellData) return socket.emit('combatItemReceipt', { success: false, message: "❌ Server: Invalid spell logic." });
+
+                // 2. Validate Stamina & Range
+                if (p.stamina < spellData.cost) {
+                    return socket.emit('combatItemReceipt', { success: false, message: '❌ Server: Insufficient stamina to cast.' });
+                }
+                let castDist = getGridDistance(p.x, p.y, data.tx, data.ty, 1);
+                if (castDist > spellData.range) {
+                    return socket.emit('combatItemReceipt', { success: false, message: '❌ Server: Target out of spell range.' });
+                }
+
+                // 3. Deduct Stamina (CRITICAL: Notice we DO NOT use p.inventory.splice here! The scroll survives!)
+                p.stamina -= spellData.cost;
+
+                // 4. Calculate the path of destruction
+                let hitTargets = [];
+                if (spellData.type === 'line') {
+                    let blastPath = getLineOfEffectPath(p.x, p.y, data.tx, data.ty, spellData.range, !spellData.ignoresLoS, combat);
+                    
+                    if (combat) {
+                        combat.enemies.forEach(e => {
+                            if (!e.alive) return;
+                            
+                            // Check if the enemy's coordinates exist anywhere in the line path
+                            let isHit = false;
+                            let s = e.size || 1;
+                            for (let bx = e.x; bx < e.x + s; bx++) {
+                                for (let by = e.y; by < e.y + s; by++) {
+                                    if (blastPath.some(tile => tile.x === bx && tile.y === by)) isHit = true;
+                                }
+                            }
+
+                            if (isHit) {
+                                e.hp -= spellData.damageFlat;
+                                let killed = false;
+                                if (e.hp <= 0) { e.hp = 0; e.alive = false; killed = true; processSecureKill(socket.id, e); }
+                                hitTargets.push({ uid: e.uid, damage: spellData.damageFlat, isCrit: false, killed: killed });
+                            }
+                        });
+                    }
+                }
+
+                // 5. Emit the universal result to the client!
+                return socket.emit('combatResult', { 
+                    type: 'hit',
+                    source: 'throwable', // Tricks the client into playing the explosion FX
+                    actionName: spellData.name, 
+                    targets: hitTargets,
+                    fx: { tx: data.tx, ty: data.ty, spriteId: "icon_fireball", isAoE: true, radius: 1 }, 
+                    updatedPlayer: p 
+                });
+            }
+			
         } 
 
         // === 4. EQUIP LOGIC ===
