@@ -1244,14 +1244,22 @@ function renderCombatItemGrid() {
         if (getCombatItemCategory(item) === activeCombatItemTab) {
             itemsFound++;
             
-            // Routes to your existing equipItem() or server use action!
-            let clickAction = activeCombatItemTab === 'EQUIPMENT' 
-                ? `equipItem(${index}); toggleCombatMenu('ITEMS');` 
-                : `if(typeof useItem === 'function') useItem(${index}); else socket.emit('inventoryAction', {action: 'use', index: ${index}}); toggleCombatMenu('ITEMS');`;
-
             const btn = document.createElement('button');
             btn.style.cssText = "display: flex; flex-direction: column; align-items: center; justify-content: center; background: #1f2937; border: 1px solid #4b5563; border-radius: 4px; padding: 8px; cursor: pointer; transition: 0.2s;";
-            btn.onclick = new Function(clickAction);
+            
+            // FIX: Use a safe, standard closure instead of 'new Function()' to bypass CSP blocks
+            btn.onclick = () => {
+                if (activeCombatItemTab === 'EQUIPMENT') {
+                    equipItem(index);
+                } else {
+                    if (typeof useItem === 'function') {
+                        useItem(index);
+                    } else {
+                        socket.emit('inventoryAction', {action: 'use', index: index});
+                    }
+                }
+                toggleCombatMenu('ITEMS'); // Auto-close menu after clicking
+            };
             
             btn.innerHTML = `
                 <span style="font-size: 11px; font-weight: bold; color: #f1c40f; text-align: center; line-height: 1.2;">${item.name}</span>
