@@ -412,6 +412,8 @@ const combatInvList = document.getElementById("combat-inventory-list");
                 combatInvList.appendChild(cancelBtn);
             }
         }
+        } // <--- RESTORED BRACKET 1
+    } // <--- RESTORED BRACKET 2
         else { 
             // --- CONSOLIDATED TABBED VIEWS ---
             // We are out of combat, show the Nav Bar
