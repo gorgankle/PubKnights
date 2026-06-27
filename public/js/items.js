@@ -21,7 +21,7 @@ const ItemDatabase = {
         id: "rusty_mace", name: "Rusty Mace", slot: "weapon", type: "Mace", rarity: "Common", 
         atkBonus: 8, attackRange: 1, value: 15, spriteId: "weap_rusty_mace",
         combat: {
-            standard: { range: 1, staminaCost: 5, multiplier: 1.0 },
+            standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
             special: { name: "Heavy Smash", range: 1, staminaCost: 15, multiplier: 1.5, ignoresResilience: false, desc: "Converts weight momentum into a heavy attack producing 1.5x standard power." }
         }
     },
@@ -35,7 +35,7 @@ const ItemDatabase = {
         id: "behemoth_maw_crusher", name: "Behemoth's Splintered Maw", slot: "weapon", type: "Club", rarity: "Unique", 
         atkBonus: 55, attackRange: 1, value: 450, spriteId: "weap_behemoth_maw",
         combat: {
-            standard: { range: 1, staminaCost: 5, multiplier: 1.0 },
+            standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
             special: { name: "Heavy Smash", range: 1, staminaCost: 15, multiplier: 1.5, ignoresResilience: false, desc: "Converts weight momentum into a heavy attack producing 1.5x standard power." }
         }
     },
@@ -46,7 +46,7 @@ const ItemDatabase = {
         id: "scavenged_machete", name: "Scavenged Machete", slot: "weapon", type: "Sword", rarity: "Common", 
         atkBonus: 14, attackRange: 1, value: 25, spriteId: "weap_machete",
         combat: {
-            standard: { range: 1, staminaCost: 5, multiplier: 1.0 },
+            standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
             special: { name: "Flurry", range: 1, staminaCost: 15, multiplier: 1.2, ignoresResilience: false, desc: "Strike rapidly targeting weak structural thresholds for 1.2x weapon value." }
         }
     },
@@ -54,7 +54,7 @@ const ItemDatabase = {
         id: "hunters_spear", name: "Hunter's Spear", slot: "weapon", type: "Spear", rarity: "Rare", 
         atkBonus: 8, attackRange: 2, value: 40, spriteId: "weap_spear",
         combat: {
-            standard: { range: 2, staminaCost: 5, multiplier: 1.0 },
+            standard: { range: 2, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
             special: { name: "Flurry", range: 2, staminaCost: 15, multiplier: 1.2, ignoresResilience: false, desc: "Strike rapidly targeting weak structural thresholds for 1.2x weapon value." }
         }
     },
@@ -68,7 +68,7 @@ const ItemDatabase = {
         id: "mimic_fang_dagger", name: "Mimic Fang Dagger", slot: "weapon", type: "Sword", rarity: "Epic", 
         atkBonus: 20, attackRange: 1, value: 150, spriteId: "weap_mimic_dagger",
         combat: {
-            standard: { range: 1, staminaCost: 5, multiplier: 1.0 },
+            standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
             special: { name: "Flurry", range: 1, staminaCost: 15, multiplier: 1.2, ignoresResilience: false, desc: "Strike rapidly targeting weak structural thresholds for 1.2x weapon value." }
         }
     },
@@ -80,7 +80,7 @@ const ItemDatabase = {
         id: "brewmasters_club", name: "Brewmaster's Great-Club", slot: "weapon", type: "Mace", rarity: "Rare", 
         atkBonus: 25, attackRange: 1, value: 120, spriteId: "brewmasters_club",
         combat: {
-            standard: { range: 1, staminaCost: 5, multiplier: 1.0 },
+            standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
             special: { name: "Heavy Smash", range: 1, staminaCost: 15, multiplier: 1.5, ignoresResilience: false, desc: "Converts weight momentum into a heavy attack producing 1.5x standard power." }
         }
     },
@@ -91,7 +91,7 @@ const ItemDatabase = {
         id: "silverback_greatclub", name: "🍌 Silverback Great-Club", slot: "weapon", type: "Mace", rarity: "Gorilla", 
         atkBonus: 450, attackRange: 2, value: 500, spriteId: "silverback_greatclub",
         combat: {
-            standard: { range: 2, staminaCost: 5, multiplier: 1.0 },
+            standard: { range: 2, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
             special: { name: "Primate Cataclysm", range: 2, staminaCost: 15, multiplier: 4.0, ignoresResilience: true, desc: "Unleashes a crushing blow dealing 4.0x damage. Ignores resilience mechanics entirely." }
         }
     },
@@ -104,7 +104,7 @@ const ItemDatabase = {
         id: "pubserker_knuckles", name: "Pubserker Brass Knuckles", slot: "weapon", type: "Club", rarity: "Rare", 
         atkBonus: 22, attackRange: 1, value: 100, spriteId: "weap_knuckles",
         combat: {
-            standard: { range: 1, staminaCost: 5, multiplier: 1.0 },
+            standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
             special: { name: "Heavy Smash", range: 1, staminaCost: 15, multiplier: 1.5, ignoresResilience: false, desc: "Converts weight momentum into a heavy attack producing 1.5x standard power." }
         }
     },
@@ -118,7 +118,7 @@ const ItemDatabase = {
         id: "beerglass_shiv", name: "Jagged Beerglass Shiv", slot: "weapon", type: "Sword", rarity: "Epic", 
         atkBonus: 45, attackRange: 1, value: 150, spriteId: "weap_beerglass",
         combat: {
-            standard: { range: 1, staminaCost: 5, multiplier: 1.0 },
+            standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
             special: { name: "Flurry", range: 1, staminaCost: 15, multiplier: 1.2, ignoresResilience: false, desc: "Strike rapidly targeting weak structural thresholds for 1.2x weapon value." }
         }
     },
@@ -132,7 +132,7 @@ const ItemDatabase = {
         id: "tankard_maul", name: "Iron-Banded Tankard Maul", slot: "weapon", type: "Mace", rarity: "Epic", 
         atkBonus: 15, attackRange: 1, value: 120, spriteId: "weap_tankard",
         combat: {
-            standard: { range: 1, staminaCost: 5, multiplier: 1.0 },
+            standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
             special: { name: "Heavy Smash", range: 1, staminaCost: 15, multiplier: 1.5, ignoresResilience: false, desc: "Converts weight momentum into a heavy attack producing 1.5x standard power." }
         }
     },
@@ -174,7 +174,7 @@ const ItemDatabase = {
         id: "blackout_axe", name: "Void-Forged Keg-Splitter", slot: "weapon", type: "Axe", rarity: "Relic", 
         atkBonus: 145, attackRange: 1, value: 5000, spriteId: "weap_blackout",
         combat: {
-            standard: { range: 1, staminaCost: 5, multiplier: 1.0 },
+            standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
             special: { name: "Execute", range: 1, staminaCost: 15, multiplier: 1.5, ignoresResilience: false, desc: "Brings down a devastating vertical chop producing 1.5x standard power." }
         }
     },
@@ -212,7 +212,7 @@ const ItemDatabase = {
         id: "axe_timberlord", name: "Timber-Lord's Axe", slot: "weapon", type: "Axe", rarity: "Relic", 
         atkBonus: 95, attackRange: 1, value: 800, spriteId: "weap_timberlord",
         combat: {
-            standard: { range: 1, staminaCost: 5, multiplier: 1.0 },
+            standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
             special: { name: "Execute", range: 1, staminaCost: 15, multiplier: 1.5, ignoresResilience: false, desc: "Brings down a devastating vertical chop producing 1.5x standard power." }
         }
     },
@@ -230,7 +230,7 @@ const ItemDatabase = {
         id: "sawblade_chakram", name: "Rusty Sawblade", slot: "weapon", type: "Sword", rarity: "Epic", 
         atkBonus: 28, attackRange: 1, value: 140, spriteId: "sawblade_chakram",
         combat: {
-            standard: { range: 1, staminaCost: 5, multiplier: 1.0 },
+            standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
             special: { name: "Flurry", range: 1, staminaCost: 15, multiplier: 1.2, ignoresResilience: false, desc: "Strike rapidly targeting weak structural thresholds for 1.2x weapon value." }
         }
     },
@@ -248,7 +248,7 @@ const ItemDatabase = {
         id: "harpoon_trident", name: "Whaler's Harpoon", slot: "weapon", type: "Spear", rarity: "Epic", 
         atkBonus: 24, attackRange: 2, value: 150, spriteId: "harpoon_trident",
         combat: {
-            standard: { range: 2, staminaCost: 5, multiplier: 1.0 },
+            standard: { range: 2, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
             special: { name: "Flurry", range: 2, staminaCost: 15, multiplier: 1.2, ignoresResilience: false, desc: "Strike rapidly targeting weak structural thresholds for 1.2x weapon value." }
         }
     },
@@ -266,7 +266,7 @@ const ItemDatabase = {
         id: "pitchfork_spear", name: "Farmer's Pitchfork", slot: "weapon", type: "Spear", rarity: "Epic", 
         atkBonus: 22, attackRange: 2, value: 130, spriteId: "pitchfork_spear",
         combat: {
-            standard: { range: 2, staminaCost: 5, multiplier: 1.0 },
+            standard: { range: 2, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
             special: { name: "Flurry", range: 2, staminaCost: 15, multiplier: 1.2, ignoresResilience: false, desc: "Strike rapidly targeting weak structural thresholds for 1.2x weapon value." }
         }
     },
@@ -275,7 +275,7 @@ const ItemDatabase = {
         id: "scythe_of_reaping", name: "Scythe of Reaping", slot: "weapon", type: "Axe", rarity: "Relic", 
         atkBonus: 115, attackRange: 1, value: 1600, spriteId: "scythe_of_reaping",
         combat: {
-            standard: { range: 1, staminaCost: 5, multiplier: 1.0 },
+            standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
             special: { name: "Execute", range: 1, staminaCost: 15, multiplier: 1.5, ignoresResilience: false, desc: "Brings down a devastating vertical chop producing 1.5x standard power." }
         }
     },
