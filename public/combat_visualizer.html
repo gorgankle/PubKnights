@@ -17,12 +17,12 @@
         ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
     </style>
 </head>
-<body class="min-h-screen flex flex-col p-6 overflow-hidden">
+<body class="min-h-screen flex flex-col p-6">
 
-    <div class="max-w-7xl w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 h-[90vh]">
+    <div class="max-w-7xl w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
         
         <!-- UI CONTROLS (Left Column) -->
-        <div class="col-span-1 lg:col-span-4 bg-gray-800 p-6 rounded-lg shadow-lg flex flex-col gap-6 overflow-y-auto">
+        <div class="col-span-1 lg:col-span-4 bg-gray-800 p-6 rounded-lg shadow-lg flex flex-col gap-6 max-h-[90vh] overflow-y-auto border border-gray-700">
             <div>
                 <h1 class="text-2xl font-bold text-yellow-500 mb-1">FX Sandbox Pro</h1>
                 <p class="text-sm text-gray-400">Asset & Kinematics Visualizer</p>
@@ -131,31 +131,42 @@
                     ▶ Play
                 </button>
                 <button id="pauseBtn" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-4 rounded transition-colors shadow-lg">
-                    ⏸
+                    ⏸ Pause
                 </button>
             </div>
-            
-            <button id="exportBtn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded transition-colors shadow-lg mt-2">
-                📋 Export Code to fx-engine.js
-            </button>
-            
-            <textarea id="exportArea" class="hidden"></textarea>
         </div>
 
-        <!-- CANVAS VISUALIZER (Right Column) -->
-        <div class="col-span-1 lg:col-span-8 flex flex-col items-center justify-center relative bg-gray-900 rounded-lg shadow-inner overflow-hidden border-2 border-gray-700">
-            <canvas id="fxCanvas" width="840" height="540" class="max-w-full shadow-2xl"></canvas>
+        <!-- CANVAS & EXPORT VISUALIZER (Right Column) -->
+        <div class="col-span-1 lg:col-span-8 flex flex-col gap-6">
             
-            <div class="absolute bottom-4 left-4 right-4 bg-gray-800/90 p-4 rounded-lg border border-gray-600 flex justify-between items-center backdrop-blur-sm">
-                <p class="text-sm text-gray-300">
-                    Adjust the <span class="text-blue-400 font-bold">Kinematic Variables</span> to tune the distance and size of the FX.<br>
-                    When perfect, click <span class="text-white font-bold bg-blue-600 px-2 py-1 rounded text-xs ml-1">Export Code</span>.
-                </p>
-                <div class="text-right">
-                    <p class="text-xs text-gray-400 uppercase tracking-widest mb-1">Target Coordinates</p>
-                    <p class="text-lg font-mono text-yellow-500">Grid ΔX: <span id="dxReadout">3</span> | Grid ΔY: <span id="dyReadout">0</span></p>
+            <!-- Canvas Container -->
+            <div class="flex flex-col items-center justify-center relative bg-gray-900 rounded-lg shadow-inner overflow-hidden border-2 border-gray-700 h-[540px]">
+                <canvas id="fxCanvas" width="840" height="540" class="max-w-full shadow-2xl"></canvas>
+                
+                <div class="absolute bottom-4 left-4 right-4 bg-gray-800/90 p-4 rounded-lg border border-gray-600 flex justify-between items-center backdrop-blur-sm">
+                    <p class="text-sm text-gray-300">
+                        Adjust the <span class="text-blue-400 font-bold">Kinematic Variables</span> to tune the distance and size of the FX.<br>
+                        When perfect, click <span class="text-white font-bold bg-blue-600 px-2 py-1 rounded text-xs ml-1">Generate Code</span> below.
+                    </p>
+                    <div class="text-right">
+                        <p class="text-xs text-gray-400 uppercase tracking-widest mb-1">Target Coordinates</p>
+                        <p class="text-lg font-mono text-yellow-500">Grid ΔX: <span id="dxReadout">3</span> | Grid ΔY: <span id="dyReadout">0</span></p>
+                    </div>
                 </div>
             </div>
+
+            <!-- EXPORT PANEL -->
+            <div class="bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-700 flex flex-col">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-yellow-500 font-bold text-lg">Exported Profile Code</h3>
+                    <button id="exportBtn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-6 rounded transition-colors shadow-lg">
+                        📋 Generate & Copy Code
+                    </button>
+                </div>
+                <p class="text-xs text-gray-400 mb-2">If the automatic copy fails, simply highlight the code inside this box and press Ctrl+C to copy it manually.</p>
+                <textarea id="exportArea" class="w-full bg-gray-900 text-green-400 font-mono text-sm p-4 rounded border border-gray-600 h-64 outline-none resize-y shadow-inner" readonly placeholder="Click the 'Generate & Copy Code' button to output your custom fx-engine profile here..."></textarea>
+            </div>
+
         </div>
     </div>
 
@@ -581,21 +592,28 @@ exportBtn.addEventListener('click', () => {
     
     const exportArea = document.getElementById('exportArea');
     exportArea.value = exportCode;
-    exportArea.style.display = 'block';
-    exportArea.select();
-    document.execCommand('copy');
-    exportArea.style.display = 'none';
-
-    let originalText = exportBtn.innerText;
-    exportBtn.innerText = "✅ COPIED TO CLIPBOARD!";
-    exportBtn.classList.remove('bg-blue-600', 'hover:bg-blue-500');
-    exportBtn.classList.add('bg-green-600', 'hover:bg-green-500');
     
-    setTimeout(() => { 
-        exportBtn.innerText = originalText; 
-        exportBtn.classList.remove('bg-green-600', 'hover:bg-green-500');
-        exportBtn.classList.add('bg-blue-600', 'hover:bg-blue-500');
-    }, 2000);
+    // Attempt automatic copy to clipboard
+    try {
+        exportArea.select();
+        document.execCommand('copy');
+        
+        // Show success state on button
+        let originalText = exportBtn.innerText;
+        exportBtn.innerText = "✅ COPIED TO CLIPBOARD!";
+        exportBtn.classList.remove('bg-blue-600', 'hover:bg-blue-500');
+        exportBtn.classList.add('bg-green-600', 'hover:bg-green-500');
+        
+        setTimeout(() => { 
+            exportBtn.innerText = originalText; 
+            exportBtn.classList.remove('bg-green-600', 'hover:bg-green-500');
+            exportBtn.classList.add('bg-blue-600', 'hover:bg-blue-500');
+        }, 2000);
+    } catch (err) {
+        console.warn("Clipboard auto-copy failed. Text is available for manual copying.");
+        exportBtn.innerText = "Code Generated! (Manually Copy Below)";
+        setTimeout(() => { exportBtn.innerText = "📋 Generate & Copy Code"; }, 3000);
+    }
 });
 
 // --- Core Render Loop ---
