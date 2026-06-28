@@ -366,23 +366,21 @@ const combatInvList = document.getElementById("combat-inventory-list");
         if (combatInvList) {
             combatInvList.innerHTML = "";
             
-            // === NEW: 50/50 Action Bar Flex Container ===
-            let btnContainer = document.createElement("div");
-            btnContainer.style.display = "flex";
-            btnContainer.style.gap = "4px";
-            btnContainer.style.width = "100%";
-        
+            // === REPLACED ===
+            // let btnContainer = document.createElement("div");
+            // btnContainer.style.display = "flex";
+            // ... [removed flex container logic] ...
+            // ================
+
             // 🎒 Backpack Button
             let bagBtn = document.createElement("button");
             bagBtn.innerText = `🎒 Backpack (${player.inventory.length}/${player.maxInventorySlots || 5})`;
-            bagBtn.style.flex = "1";
             bagBtn.style.padding = "10px";
             bagBtn.style.background = "#8b5a2b";
         
             // 📖 Spellbook Button
             let spellBtn = document.createElement("button");
             spellBtn.innerText = `📖 Spellbook`;
-            spellBtn.style.flex = "1";
             spellBtn.style.padding = "10px";
             spellBtn.style.background = "#8e44ad";
             spellBtn.style.borderColor = "#9b59b6";
@@ -394,22 +392,20 @@ const combatInvList = document.getElementById("combat-inventory-list");
             }
         
             // Actions
-        bagBtn.onclick = () => renderCombatModal();
+            bagBtn.onclick = () => renderCombatModal();
+            spellBtn.onclick = () => renderSpellbookModal();
         
-        // === THE FIX: Remove the failsafe so the browser throws an error if it's missing! ===
-        spellBtn.onclick = () => renderSpellbookModal();
-        
-            btnContainer.appendChild(bagBtn);
-            btnContainer.appendChild(spellBtn);
-            combatInvList.appendChild(btnContainer);
+            // === NEW: APPEND DIRECTLY TO THE GRID ===
+            combatInvList.appendChild(bagBtn);
+            combatInvList.appendChild(spellBtn);
 
-            // Keep the Cancel button logic intact!
+            // Keep the Cancel button logic intact, but make it span both columns!
             if (combatPhase === 'TARGETING') {
                 let cancelBtn = document.createElement("button");
                 cancelBtn.innerText = "✖ Cancel Action";
                 cancelBtn.style.background = "#443a32"; 
-                cancelBtn.style.width = "100%"; 
-                cancelBtn.style.marginTop = "4px";
+                cancelBtn.style.gridColumn = "span 2"; // <--- THE FIX: Spans across the 2-column grid
+                cancelBtn.style.padding = "10px";
                 cancelBtn.onclick = () => cancelTarget();
                 combatInvList.appendChild(cancelBtn);
             }
