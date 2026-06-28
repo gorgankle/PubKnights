@@ -117,21 +117,19 @@
                 <div style="width: 480px; flex-shrink: 0;">
                     <canvas id="gameCanvas" width="480" height="480"></canvas>
 				<div id="action-interface">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                            <span id="target-ui-header" style="font-size: 11px; font-weight: bold; color:#ffcc66;">INITIALIZING MATRIX</span>
-                        </div>
-						<div style="display:grid; grid-template-columns: 1fr 1fr; gap: 4px;">
-                            <button id="slash-btn" onclick="executeCombatAction('slash')" onmouseenter="showSystemTooltip('combat_slash', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Standard Attack</button>
-                            <button id="heavy-btn" onclick="executeCombatAction('special')" onmouseenter="showSpecialSkillTooltip(event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Weapon Skill</button>
-                            <button id="end-btn" onclick="executeCombatAction('end')" onmouseenter="showSystemTooltip('combat_pass', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Pass Turn</button>
-                        </div>
-                        
-                        <!-- NEW: Combat Backpack -->
-                        <div style="margin-top: 8px; border-top: 1px dashed #4a3b2c; padding-top: 8px;">
-                            <h4 style="margin: 0 0 4px 0; font-size: 11px; color: #ffcc66;">🎒 Combat Backpack (Consumables)</h4>
-                            <div id="combat-inventory-list" style="display: flex; gap: 4px; flex-wrap: wrap;"></div>
-                        </div>
-                    </div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+        <span id="target-ui-header" style="font-size: 11px; font-weight: bold; color:#ffcc66;">INITIALIZING MATRIX</span>
+    </div>
+    
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 4px;">
+        <button id="slash-btn" onclick="executeCombatAction('slash')" onmouseenter="showSystemTooltip('combat_slash', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Standard Attack</button>
+        <button id="heavy-btn" onclick="executeCombatAction('special')" onmouseenter="showSpecialSkillTooltip(event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Weapon Skill</button>
+    </div>
+    
+    <div id="combat-inventory-list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 8px;"></div>
+    
+    <button id="end-btn" onclick="executeCombatAction('end')" style="width: 100%; padding: 10px; font-size: 14px; background: #c0392b; border: 2px solid #e74c3c; font-weight: bold; text-shadow: 1px 1px 2px #000;" onmouseenter="showSystemTooltip('combat_pass', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">⌛ Pass Turn</button>
+</div>
                 </div>
 
                 <div id="combat-status-sidebar" style="flex-grow: 1; background: #221a14; padding: 12px; border-radius: 4px; border: 1px solid #634e3d; min-height: 546px; box-sizing: border-box; text-align: left;">
