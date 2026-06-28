@@ -45,7 +45,7 @@ const LootTables = {
             { itemId: "pubserker_flatcap", weight: 3 },
             { itemId: "pubserker_suspenders", weight: 3 },
             { itemId: "pubserker_stompers", weight: 3 },
-			{ itemId: "hunter_bow", weight: 500000 }
+			{ itemId: "hunter_bow", weight: 25 }
         ]
     },
     "wilderness_overlord": {
