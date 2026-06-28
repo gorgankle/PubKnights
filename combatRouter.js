@@ -391,10 +391,21 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 // 5. Emit the universal result to the client!
                 return socket.emit('combatResult', { 
                     type: 'hit',
-                    source: 'spell', // <--- THE FIX: Explicitly label it as a spell!
+                    source: 'spell', 
                     actionName: spellData.name, 
                     targets: hitTargets,
-                    fx: { type: 'beam', style: 'fire', tx: data.tx, ty: data.ty }, // <--- THE FIX: Send the beam parameters!
+                    
+                    // === THE FIX: Inject the specific spell's FX data into the payload! ===
+                    fx: { 
+                        type: spellData.fx ? spellData.fx.type : 'beam', 
+                        style: spellData.fx ? spellData.fx.style : 'fire',
+                        density: spellData.fx ? spellData.fx.density : 12,
+                        spread: spellData.fx ? spellData.fx.spread : 15,
+                        speed: spellData.fx ? spellData.fx.speed : 15,
+                        tx: data.tx, 
+                        ty: data.ty 
+                    }, 
+                    
                     updatedPlayer: p 
                 });
             }
