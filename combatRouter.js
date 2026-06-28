@@ -185,7 +185,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
 
    
 			
-			et staminaCost = combatRules.staminaCost;
+			let staminaCost = combatRules.staminaCost;
             if (p.stamina < staminaCost) {
                 return socket.emit('combatResult', { type: 'error', message: `❌ Server: Insufficient stamina (${Math.floor(p.stamina)}/${staminaCost}).`, newStamina: p.stamina });
             }
