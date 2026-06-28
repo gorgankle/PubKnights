@@ -124,12 +124,19 @@ function consumeBrew(invIndex) {
 // === TARGETING STATE CONTROLLERS ===
 window.prepTargetAction = function(idx) {
     if (gameState !== 'COMBAT') return;
-    activeTargetIndex = idx;         // THE FIX: Unified Variable!
-    combatPhase = 'TARGETING';       // THE FIX: Unified State!
+    
+    // === THE FIX: Enforce Phase 2 for ALL throws and spells! ===
+    if (combatPhase !== 'PHASE_2') {
+        logMessage("❌ Tactical Error: Spells and throwables can only be aimed during Phase 2.");
+        if (typeof playRetroSound === 'function') playRetroSound('error');
+        return;
+    }
+
+    activeTargetIndex = idx;         
+    combatPhase = 'TARGETING';       
     refreshSystemUI(); 
     if (typeof drawGrid === 'function') drawGrid(); 
 };
-
 window.executeTargetAction = function(tx, ty) {
     if (activeTargetIndex === -1) return;
     

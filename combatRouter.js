@@ -357,10 +357,12 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 // 4. Calculate the path of destruction
                 let hitTargets = [];
                 if (spellData.type === 'line') {
-                    let blastPath = getLineOfEffectPath(p.x, p.y, data.tx, data.ty, spellData.range, !spellData.ignoresLoS, combat);
                     
-                    if (combat) {
-                        combat.enemies.forEach(e => {
+                    // THE FIX: Changed 'combat' to 'combatState' so it reads the map correctly!
+                    let blastPath = getLineOfEffectPath(p.x, p.y, data.tx, data.ty, spellData.range, !spellData.ignoresLoS, combatState);
+                    
+                    if (combatState) { // THE FIX: Changed 'combat' to 'combatState'
+                        combatState.enemies.forEach(e => {
                             if (!e.alive) return;
                             
                             // Check if the enemy's coordinates exist anywhere in the line path

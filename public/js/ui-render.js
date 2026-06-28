@@ -1146,10 +1146,13 @@ function updateTownUI(data) {
 }
 
 
-// === REPLACED: Filtered Combat Backpack (No 'All' Tab) ===
-function renderCombatModal(filter = 'DRINK') { // Default to Drinks when opened!
+function renderCombatModal(filter = 'DRINK') { 
     const modal = document.getElementById('combat-backpack-modal');
     let grid = document.getElementById('combat-modal-grid');
+    
+    // === THE FIX: Reset the title back to Backpack! ===
+    let title = document.getElementById('combat-modal-title');
+    if (title) title.innerText = "🎒 Combat Backpack";
     
     // --- 1. DYNAMIC FILTER TABS ---
     let filterContainer = document.getElementById('combat-modal-filters');

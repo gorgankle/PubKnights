@@ -44,6 +44,31 @@ window.clearSpriteCache = function(spriteKey) {
 let activeProjectiles = [];
 let activeExplosions = [];
 
+// === NEW: CLIENT-SIDE LINE OF EFFECT MATH ===
+function getLineOfEffectPath(x1, y1, x2, y2, maxRange, stopsAtWalls) {
+    let path = [];
+    let dx = Math.abs(x2 - x1); let dy = Math.abs(y2 - y1);
+    let sx = (x1 < x2) ? 1 : -1; let sy = (y1 < y2) ? 1 : -1;
+    let err = dx - dy; let cx = x1; let cy = y1;
+    let distanceTraveled = 0;
+
+    while (distanceTraveled <= maxRange) {
+        if (cx !== x1 || cy !== y1) {
+            path.push({ x: cx, y: cy });
+            // Stop drawing the red line if it hits a rock
+            if (stopsAtWalls && mapObstacles.some(o => o.x === cx && o.y === cy)) break; 
+        }
+        if (cx === x2 && cy === y2) break; 
+        
+        let e2 = 2 * err;
+        if (e2 > -dy) { err -= dy; cx += sx; }
+        if (e2 < dx) { err += dx; cy += sy; }
+        distanceTraveled++;
+    }
+    return path;
+}
+
+
 // === ENGINE HEARTBEAT LOOP ===
 function updateAnimationEngine() {
     requestAnimationFrame(updateAnimationEngine);
@@ -313,16 +338,42 @@ if (SpriteMatrices[e.id]) {
         }
     });
 
+  // === REPLACED: Dynamic Area of Effect Rendering ===
     if (combatPhase === 'TARGETING' && hoverTile && hoverTile.x >= 0) {
-            ctx.fillStyle = "rgba(231, 76, 60, 0.4)"; 
+        ctx.fillStyle = "rgba(231, 76, 60, 0.4)"; 
+        
+        let activeItem = player.inventory[activeTargetIndex];
+        let isLineSpell = false;
+        let spellRange = 5;
+        let ignoresLoS = false;
+
+        // Check if the item we are holding is a line spell
+        if (activeItem && activeItem.combat && activeItem.combat.actionType === 'spell') {
+            let spellData = typeof SpellDatabase !== 'undefined' ? SpellDatabase[activeItem.combat.spellId] : null;
+            if (spellData && spellData.type === 'line') {
+                isLineSpell = true;
+                spellRange = spellData.range || 5;
+                ignoresLoS = spellData.ignoresLoS || false;
+            }
+        }
+
+        if (isLineSpell) {
+            // === DRAW THE BRESENHAM BEAM ===
+            let blastPath = getLineOfEffectPath(player.x, player.y, hoverTile.x, hoverTile.y, spellRange, !ignoresLoS);
+            blastPath.forEach(tile => {
+                ctx.fillRect(tile.x * currentTileSize, tile.y * currentTileSize, currentTileSize, currentTileSize);
+            });
+        } else {
+            // === STANDARD BOMB 3x3 SQUARE ===
             let startX = hoverTile.x - 1; let startY = hoverTile.y - 1;
             for(let bx = startX; bx <= startX + 2; bx++) {
                 for(let by = startY; by <= startY + 2; by++) {
-                    if (bx >= 0 && bx < currentGridSize && by >= 0 && by < currentGridSize) ctx.fillRect(bx * currentTileSize, by * currentTileSize, currentTileSize, currentTileSize);
+                    if (bx >= 0 && bx < currentGridSize && by >= 0 && by < currentGridSize) {
+                        ctx.fillRect(bx * currentTileSize, by * currentTileSize, currentTileSize, currentTileSize);
+                    }
                 }
             }
         }
-		FXEngine.render(ctx, currentTileSize);
     }
 
 
