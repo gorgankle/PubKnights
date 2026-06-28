@@ -394,8 +394,10 @@ const combatInvList = document.getElementById("combat-inventory-list");
             }
         
             // Actions
-            bagBtn.onclick = () => renderCombatModal();
-            spellBtn.onclick = () => { if (typeof renderSpellbookModal === 'function') renderSpellbookModal(); };
+        bagBtn.onclick = () => renderCombatModal();
+        
+        // === THE FIX: Remove the failsafe so the browser throws an error if it's missing! ===
+        spellBtn.onclick = () => renderSpellbookModal();
         
             btnContainer.appendChild(bagBtn);
             btnContainer.appendChild(spellBtn);
