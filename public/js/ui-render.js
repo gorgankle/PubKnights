@@ -1192,9 +1192,6 @@ function renderCombatModal(filter = 'DRINK') { // Default to Drinks when opened!
         
         if (!item) continue; // We no longer render empty slots in the filtered views!
         
-        // Hide magic scrolls (they belong in the Spellbook)
-        let isScroll = item.combat && item.combat.actionType === 'spell';
-        if (isScroll) continue; 
 
         // Apply the active category filter
         let showItem = false;
