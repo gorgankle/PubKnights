@@ -15,6 +15,7 @@ const LootTables = {
             // Added Starter Leather Gear
             { itemId: "leather_tunic", weight: 15 },
             { itemId: "leather_mitts", weight: 15 },
+			{ itemId: "scroll_fireball", weight: 1000 }
             { itemId: "hide_boots", weight: 15 }
         ]
     },
