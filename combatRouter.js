@@ -183,12 +183,9 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             let combatRules = data.subType === 'special' ? weapon.combat.special : weapon.combat.standard;
             if (!combatRules) return socket.emit('combatResult', { type: 'error', message: '❌ Server: Action not supported by weapon.', newStamina: p.stamina });
 
-            let staminaCost = combatRules.staminaCost;
-            if (p.stamina < staminaCost) {
-                return socket.emit('combatResult', { type: 'error', message: `❌ Server: Insufficient stamina (${Math.floor(p.stamina)}/${staminaCost}).`, newStamina: p.stamina });
-            }
+   
 			
-			let staminaCost = combatRules.staminaCost;
+			et staminaCost = combatRules.staminaCost;
             if (p.stamina < staminaCost) {
                 return socket.emit('combatResult', { type: 'error', message: `❌ Server: Insufficient stamina (${Math.floor(p.stamina)}/${staminaCost}).`, newStamina: p.stamina });
             }
