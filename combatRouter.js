@@ -244,9 +244,6 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 });
             }
             // ==========================================
-
-            // Secure Target Verification (Standard Single Target Legacy Math)
-            let serverEnemy = null;
 			
 
             // Secure Target Verification
