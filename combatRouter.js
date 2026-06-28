@@ -168,9 +168,10 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         if (data.actionCategory === 'pass') {
             let recover = Math.floor((p.maxStamina || 50) * 0.15); 
             p.stamina = Math.min(p.maxStamina || 50, (p.stamina || 0) + recover);
-            return socket.emit('combatResult', { type: 'pass', newStamina: p.stamina, recovered: recover });
+            
+            // === THE FIX: Send updatedPlayer: p so the client syncs instantly! ===
+            return socket.emit('combatResult', { type: 'pass', updatedPlayer: p, recovered: recover });
         }
-
         // === 2. WEAPON ATTACK LOGIC ===
         if (data.actionCategory === 'weapon') {
             let weapon = p.equipment.weapon;

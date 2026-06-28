@@ -40,7 +40,6 @@ const FXEngine = {
 	
 	// === 3. CONTINUOUS MAGIC BEAMS (Data-Driven Interpolation) ===
     spawnBeam: function(startX, startY, endX, endY, config = {}) {
-        // 1. Extract the custom variables (with safe fallbacks)
         let style = config.style || 'fire';
         let density = config.density || 12;
         let spread = config.spread || 15;
@@ -55,7 +54,6 @@ const FXEngine = {
         let dy = pyEnd - pyStart;
         let distance = Math.sqrt(dx * dx + dy * dy);
         
-        // 2. Use the data-driven DENSITY 
         let particleCount = Math.floor(distance / density); 
         if (particleCount < 1) particleCount = 1; 
         
@@ -69,7 +67,6 @@ const FXEngine = {
                 let currentX = pxStart + (dx * progress);
                 let currentY = pyStart + (dy * progress);
                 
-                // 3. Use the data-driven SPREAD volatility
                 let scatterX = (Math.random() - 0.5) * spread;
                 let scatterY = (Math.random() - 0.5) * spread;
 
@@ -83,7 +80,7 @@ const FXEngine = {
                         decay: 0.03 + (Math.random() * 0.04) 
                     });
                 }
-            }, i * speed); // <--- The syntax error is safely resolved right here!
+            }, i * speed); 
         }
     },
     // ==============================================================

@@ -364,6 +364,7 @@ if (SpriteMatrices[e.id]) {
                 ctx.fillRect(tile.x * currentTileSize, tile.y * currentTileSize, currentTileSize, currentTileSize);
             });
         } else {
+            } else {
             // === STANDARD BOMB 3x3 SQUARE ===
             let startX = hoverTile.x - 1; let startY = hoverTile.y - 1;
             for(let bx = startX; bx <= startX + 2; bx++) {
@@ -375,7 +376,30 @@ if (SpriteMatrices[e.id]) {
             }
         }
     } 
-} // <--- THE FIX: THIS BRACKET CLOSES drawGrid()!
+
+    // === NEW: VISUAL FX PARTICLE RENDERER ===
+    if (typeof activeExplosions !== 'undefined') {
+        for (let i = activeExplosions.length - 1; i >= 0; i--) {
+            let p = activeExplosions[i];
+            p.life -= p.decay;
+            p.radius -= (p.decay * 5); 
+            
+            if (p.life <= 0 || p.radius <= 0) {
+                activeExplosions.splice(i, 1);
+                continue;
+            }
+            
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1.0; 
+        }
+    }
+    // ========================================
+
+} // <--- This bracket closes drawGrid()!
 
 function renderGridHealthBar(gridX, gridY, currentHp, maximumHp, size = 1, currentStamina = null, maxStamina = null) {
     let barWidth = (currentTileSize * size) - 6; 
