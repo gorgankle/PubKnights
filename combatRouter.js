@@ -197,12 +197,13 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 return socket.emit('combatResult', { type: 'error', message: '❌ Server: Target lost or already deceased.', newStamina: p.stamina });
             }
 
-            // Secure Range Verification
-            let dist = getGridDistance(p.x, p.y, serverEnemy.x, serverEnemy.y, serverEnemy.size || 1);
+          // Secure Range Verification
+            // === THE FIX: Use combat.player instead of p ===
+            let dist = getGridDistance(combat.player.x, combat.player.y, serverEnemy.x, serverEnemy.y, serverEnemy.size || 1);
+            
             if (dist > combatRules.range) {
                 return socket.emit('combatResult', { type: 'error', message: '❌ Server: Target out of confirmed range.', newStamina: p.stamina });
             }
-
             // Execute resource burn
             p.stamina -= staminaCost; 
 
@@ -289,16 +290,16 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             if (rules.actionType === 'throwable') {
                 if (data.tx === undefined || data.ty === undefined) return;
                 
-                // === NEW: SERVER-SIDE THROW VALIDATION ===
-                let throwDist = getGridDistance(p.x, p.y, data.tx, data.ty, 1);
+                // === THE FIX: Use combat.player instead of p ===
+                let throwDist = getGridDistance(combat.player.x, combat.player.y, data.tx, data.ty, 1);
                 let maxRange = rules.range || 4; 
                 
                 if (throwDist > maxRange) {
                     return socket.emit('combatItemReceipt', { success: false, message: '❌ Server: Target out of range.' });
                 }
                 
-                // THE FIX: The Server now respects arc-trajectories!
-                if (!rules.ignoresLoS && !checkLineOfSight(p.x, p.y, data.tx, data.ty, combat)) {
+                // === THE FIX: Use combat.player instead of p ===
+                if (!rules.ignoresLoS && !checkLineOfSight(combat.player.x, combat.player.y, data.tx, data.ty, combat)) {
                     return socket.emit('combatItemReceipt', { success: false, message: '❌ Server: No line of sight to target area.' });
                 }
                 // =========================================
@@ -346,7 +347,10 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 if (p.stamina < spellData.cost) {
                     return socket.emit('combatItemReceipt', { success: false, message: '❌ Server: Insufficient stamina to cast.' });
                 }
-                let castDist = getGridDistance(p.x, p.y, data.tx, data.ty, 1);
+                
+                // === THE FIX: Use combat.player instead of p ===
+                let castDist = getGridDistance(combat.player.x, combat.player.y, data.tx, data.ty, 1);
+                
                 if (castDist > spellData.range) {
                     return socket.emit('combatItemReceipt', { success: false, message: '❌ Server: Target out of spell range.' });
                 }
@@ -358,10 +362,10 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 let hitTargets = [];
                 if (spellData.type === 'line') {
                     
-                    // THE FIX: Changed 'combatState' back to 'combat' so the server doesn't crash!
-                    let blastPath = getLineOfEffectPath(p.x, p.y, data.tx, data.ty, spellData.range, !spellData.ignoresLoS, combat);
+                    // === THE FIX: Use combat.player instead of p ===
+                    let blastPath = getLineOfEffectPath(combat.player.x, combat.player.y, data.tx, data.ty, spellData.range, !spellData.ignoresLoS, combat);
                     
-                    if (combat) { // THE FIX: Changed 'combatState' back to 'combat'
+                    if (combat) {
                         combat.enemies.forEach(e => {
                             if (!e.alive) return;
                             
