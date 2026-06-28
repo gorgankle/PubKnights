@@ -377,24 +377,22 @@ canvas.addEventListener("mousemove", function(e) {
 
         if (activeItem && activeItem.combat) {
             if (activeItem.combat.actionType === 'spell') {
-                // Route to the spell dictionary
                 let spellData = typeof SpellDatabase !== 'undefined' ? SpellDatabase[activeItem.combat.spellId] : null;
-                if (spellData) {
-                    maxRange = spellData.range || 4;
-                    ignoresLoS = spellData.ignoresLoS || false;
-                }
+                if (spellData) { maxRange = spellData.range || 4; ignoresLoS = spellData.ignoresLoS || false; }
             } else {
-                // Route to standard item dictionary (Bombs)
                 maxRange = activeItem.combat.range || 4;
                 ignoresLoS = activeItem.combat.ignoresLoS || false;
             }
         }
         
+        // === THE FIX: Calculate the distance before checking it! ===
+        let dist = getGridDistance(player.x, player.y, tx, ty);
+        
         // Only show the red targeting box if it's a valid, legal throw
         if (dist <= maxRange && (ignoresLoS || hasLineOfSight(player.x, player.y, tx, ty))) {
             hoverTile = {x: tx, y: ty}; 
         } else {
-            hoverTile = {x: -1, y: -1}; // Hide the red grid if hovering out of bounds
+            hoverTile = {x: -1, y: -1}; 
         }
     }
 
@@ -436,24 +434,20 @@ canvas.addEventListener("click", function(e) {
 
         if (activeItem && activeItem.combat) {
             if (activeItem.combat.actionType === 'spell') {
-                // Route to the spell dictionary
                 let spellData = typeof SpellDatabase !== 'undefined' ? SpellDatabase[activeItem.combat.spellId] : null;
-                if (spellData) {
-                    maxRange = spellData.range || 4;
-                    ignoresLoS = spellData.ignoresLoS || false;
-                }
+                if (spellData) { maxRange = spellData.range || 4; ignoresLoS = spellData.ignoresLoS || false; }
             } else {
-                // Route to standard item dictionary (Bombs)
                 maxRange = activeItem.combat.range || 4;
                 ignoresLoS = activeItem.combat.ignoresLoS || false;
             }
         }
         
+        // === THE FIX: Calculate the distance before checking it! ===
+        let dist = getGridDistance(player.x, player.y, tx, ty);
+        
         if (dist <= maxRange && (ignoresLoS || hasLineOfSight(player.x, player.y, tx, ty))) {
-            // Valid throw! Dispatch to the server dispatcher
             if (typeof executeTargetAction === 'function') executeTargetAction(tx, ty);
         } else {
-            // Invalid throw! Reject locally.
             logMessage("❌ Target outside of throw range or blocked by obstacles.");
             if (typeof playRetroSound === 'function') playRetroSound('error');
         }
