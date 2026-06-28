@@ -7,16 +7,16 @@ const LootTables = {
         xpDrop: 20,
         dropChance: 0.9, 
         pools: [
-            { itemId: "boar_hide_armor", weight: 5 },   
-            { itemId: "scavenged_machete", weight: 10 },
+            { itemId: "boar_hide_armor", weight: 10 },   
+            { itemId: "scavenged_machete", weight: 5 },
             { itemId: "rusty_mace", weight: 10 },        
-            { itemId: "sturdy_boots", weight: 15 },
+            { itemId: "sturdy_boots", weight: 10 },
             { itemId: "rusty_coif", weight: 15 },
             // Added Starter Leather Gear
             { itemId: "leather_tunic", weight: 15 },
             { itemId: "leather_mitts", weight: 15 },
-			{ itemId: "scroll_fireball", weight: 1000 }
-            { itemId: "hide_boots", weight: 15 }
+			{ itemId: "scroll_fireball", weight: 5000 },
+            { itemId: "hide_boots", weight: 20 }
         ]
     },
 	"publing": {
