@@ -61,22 +61,26 @@ function drawGrid() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
     let moveRange = getPlayerSwiftness(); 
-// === DYNAMIC TARGETING ENGINE ===
+	// === DYNAMIC TARGETING ENGINE ===
     let currentTargetRange = (player.equipment.weapon && player.equipment.weapon.combat && player.equipment.weapon.combat.standard.range) || 1;
-    
-    let activeItem = player.inventory[activeTargetIndex];
-            let maxRange = 4;
-            let ignoresLoS = false;
-    
-            if (activeItem && activeItem.combat) {
-                if (activeItem.combat.actionType === 'spell') {
-                    let spellData = typeof SpellDatabase !== 'undefined' ? SpellDatabase[activeItem.combat.spellId] : null;
-                    if (spellData) { maxRange = spellData.range || 4; ignoresLoS = spellData.ignoresLoS || false; }
-                } else {
-                    maxRange = activeItem.combat.range || 4;
-                    ignoresLoS = activeItem.combat.ignoresLoS || false;
+    let currentIgnoresLoS = false; 
+
+    // THE FIX: If we are actively targeting with an item, override the melee weapon's range!
+    if (combatPhase === 'TARGETING' && typeof activeTargetIndex !== 'undefined' && activeTargetIndex !== -1) {
+        let activeItem = player.inventory[activeTargetIndex];
+        if (activeItem && activeItem.combat) {
+            if (activeItem.combat.actionType === 'spell') {
+                let spellData = typeof SpellDatabase !== 'undefined' ? SpellDatabase[activeItem.combat.spellId] : null;
+                if (spellData) { 
+                    currentTargetRange = spellData.range || 4; 
+                    currentIgnoresLoS = spellData.ignoresLoS || false; 
                 }
+            } else {
+                currentTargetRange = activeItem.combat.range || 4;
+                currentIgnoresLoS = activeItem.combat.ignoresLoS || false;
             }
+        }
+    }
 
     // --- INTERPOLATION ENGINE: PLAYER ---
     if (player.visualX === undefined) {
@@ -145,19 +149,10 @@ if (SpriteMatrices[groundSprite]) {
                         ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
                     }
                 }
-                // === UNIFIED ACTION RENDERING (MELEE, MAGIC, & BOMBS) ===
+               // === UNIFIED ACTION RENDERING (MELEE, MAGIC, & BOMBS) ===
                 else if (combatPhase === 'PHASE_2' || combatPhase === 'TARGETING') {
                     
-                    // 1. Check if the active item ignores Line of Sight
-                    let currentIgnoresLoS = false;
-                    if (combatPhase === 'TARGETING' && typeof activeTargetIndex !== 'undefined' && activeTargetIndex !== -1) {
-                        let activeItem = player.inventory[activeTargetIndex];
-                        if (activeItem && activeItem.combat && activeItem.combat.ignoresLoS) {
-                            currentIgnoresLoS = true;
-                        }
-                    }
-
-                    // 2. Draw the Grid
+                    // 2. Draw the Grid (Using the dynamically calculated currentTargetRange)
                     if (Math.max(Math.abs(x - player.x), Math.abs(y - player.y)) <= currentTargetRange) {
                         
                         // THE FIX: If it ignores LoS, it's always Yellow!
