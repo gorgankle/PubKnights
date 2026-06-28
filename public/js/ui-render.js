@@ -1144,40 +1144,91 @@ function updateTownUI(data) {
 }
 
 
-function renderCombatModal() {
+// === REPLACED: Filtered Combat Backpack (No 'All' Tab) ===
+function renderCombatModal(filter = 'DRINK') { // Default to Drinks when opened!
     const modal = document.getElementById('combat-backpack-modal');
-    const grid = document.getElementById('combat-modal-grid');
-    grid.innerHTML = '';
+    let grid = document.getElementById('combat-modal-grid');
+    
+    // --- 1. DYNAMIC FILTER TABS ---
+    let filterContainer = document.getElementById('combat-modal-filters');
+    if (!filterContainer) {
+        filterContainer = document.createElement('div');
+        filterContainer.id = 'combat-modal-filters';
+        filterContainer.style.display = 'flex';
+        filterContainer.style.gap = '4px';
+        filterContainer.style.marginBottom = '10px';
+        grid.parentNode.insertBefore(filterContainer, grid); 
+    }
+    filterContainer.innerHTML = ''; 
 
+    // The 'ALL' tab is completely removed from the array
+    const filters = [
+        { id: 'DRINK', icon: '🍺', text: 'Drinks' },
+        { id: 'THROW', icon: '💣', text: 'Throw' },
+        { id: 'EQUIP', icon: '🛡️', text: 'Gear' }
+    ];
+
+    filters.forEach(f => {
+        let btn = document.createElement('button');
+        btn.innerText = `${f.icon} ${f.text}`;
+        btn.style.flex = "1";
+        btn.style.padding = "6px 2px";
+        btn.style.fontSize = "11px";
+        btn.style.fontWeight = "bold";
+        btn.style.background = filter === f.id ? "#27ae60" : "#443a32"; // Highlight active tab green
+        btn.style.border = "1px solid #111";
+        btn.style.color = "#fff";
+        btn.onclick = () => renderCombatModal(f.id); 
+        filterContainer.appendChild(btn);
+    });
+
+    // --- 2. GRID RENDERING ---
+    grid.innerHTML = ''; 
     let maxSlots = player.maxInventorySlots || 5;
+    let foundAny = false; // Tracks if the current tab is completely empty
 
     for (let idx = 0; idx < maxSlots; idx++) {
         let item = player.inventory[idx];
+        
+        if (!item) continue; // We no longer render empty slots in the filtered views!
+        
+        // Hide magic scrolls (they belong in the Spellbook)
+        let isScroll = item.combat && item.combat.actionType === 'spell';
+        if (isScroll) continue; 
+
+        // Apply the active category filter
+        let showItem = false;
+        if (filter === 'DRINK' && item.slot === 'consumable' && item.combat && (item.combat.actionType === 'heal' || item.combat.actionType === 'buff')) showItem = true;
+        else if (filter === 'THROW' && item.slot === 'consumable' && item.combat && item.combat.actionType === 'throwable') showItem = true;
+        else if (filter === 'EQUIP' && item.slot !== 'consumable' && item.type !== 'crate') showItem = true;
+
+        if (!showItem) continue; 
+
+        foundAny = true; // We found at least one valid item for this tab
         let slotDiv = document.createElement('div');
+        let rc = item.rarity === "Gorilla" ? "slot-jackpot" : (item.rarity ? `slot-${item.rarity.toLowerCase()}` : 'slot-common');
+        slotDiv.className = `item-slot ${rc}`;
+        
+        slotDiv.onmouseenter = (e) => { if (typeof showItemTooltip === 'function') showItemTooltip(e, item, idx, 'combat'); };
+        slotDiv.onmouseleave = typeof hideTooltip === 'function' ? hideTooltip : null;
 
-        if (item) {
-            let rc = item.rarity === "Gorilla" ? "slot-jackpot" : (item.rarity ? `slot-${item.rarity.toLowerCase()}` : 'slot-common');
-            slotDiv.className = `item-slot ${rc}`;
-            
-            // Hook directly into your existing tooltip engine, flagging it as 'combat'
-            slotDiv.onmouseenter = (e) => showItemTooltip(e, item, idx, 'combat');
-            slotDiv.onmouseleave = hideTooltip;
-
-            // Render the 24x24 Sprite Matrix exactly like Town
-            let imgUrl = getItemSpriteURL(item);
-            if (imgUrl) {
-                slotDiv.innerHTML = `<img src="${imgUrl}" style="width:36px;height:36px;image-rendering:pixelated;pointer-events:none;">`;
-            } else {
-                slotDiv.innerHTML = `<span style="font-size:20px;pointer-events:none;">${item.type === 'crate' ? '📦' : '🛡️'}</span>`;
-            }
+        let imgUrl = typeof getItemSpriteURL === 'function' ? getItemSpriteURL(item) : "";
+        if (imgUrl) {
+            slotDiv.innerHTML = `<img src="${imgUrl}" style="width:36px;height:36px;image-rendering:pixelated;pointer-events:none;">`;
         } else {
-            slotDiv.className = 'item-slot empty-cell';
+            slotDiv.innerHTML = `<span style="font-size:20px;pointer-events:none;">${item.type === 'crate' ? '📦' : '🛡️'}</span>`;
         }
         grid.appendChild(slotDiv);
     }
     
+    // --- 3. EMPTY STATE FALLBACK ---
+    if (!foundAny) {
+        grid.innerHTML = `<div style="color: #bbaaa0; text-align: center; padding: 25px 15px; font-size: 12px; font-style: italic; width: 100%;">No items of this type in your bag.</div>`;
+    }
+    
+    // Play the bag rustle sound only when first opening the modal
+    if (modal.style.display !== 'block' && typeof playRetroSound === 'function') playRetroSound('menu');
     modal.style.display = 'block';
-    if (typeof playRetroSound === 'function') playRetroSound('menu');
 }
 
 window.closeCombatModal = function() {
