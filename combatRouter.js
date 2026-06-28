@@ -338,7 +338,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 if (data.tx === undefined || data.ty === undefined) return;
 
                 // 1. Pull the master math from spells.js
-                const { SpellDatabase } = require('./public/js/spells.js'); // Ensure this is at the top of your file!
+                // ---> DELETE THE REQUIRE LINE HERE! <---
                 let spellData = SpellDatabase[rules.spellId];
                 if (!spellData) return socket.emit('combatItemReceipt', { success: false, message: "❌ Server: Invalid spell logic." });
 
@@ -358,11 +358,11 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 let hitTargets = [];
                 if (spellData.type === 'line') {
                     
-                    // THE FIX: Changed 'combat' to 'combatState' so it reads the map correctly!
-                    let blastPath = getLineOfEffectPath(p.x, p.y, data.tx, data.ty, spellData.range, !spellData.ignoresLoS, combatState);
+                    // THE FIX: Changed 'combatState' back to 'combat' so the server doesn't crash!
+                    let blastPath = getLineOfEffectPath(p.x, p.y, data.tx, data.ty, spellData.range, !spellData.ignoresLoS, combat);
                     
-                    if (combatState) { // THE FIX: Changed 'combat' to 'combatState'
-                        combatState.enemies.forEach(e => {
+                    if (combat) { // THE FIX: Changed 'combatState' back to 'combat'
+                        combat.enemies.forEach(e => {
                             if (!e.alive) return;
                             
                             // Check if the enemy's coordinates exist anywhere in the line path
