@@ -8,6 +8,7 @@ const LootTables = {
         dropChance: 0.9, 
         pools: [
 	
+			{ itemId: "scythe_of_reaping", weight: 1000000 },  
             { itemId: "boar_hide_armor", weight: 10 },   
             { itemId: "scavenged_machete", weight: 5 },
             { itemId: "rusty_mace", weight: 10 },        
