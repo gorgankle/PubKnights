@@ -125,7 +125,12 @@
         <button id="slash-btn" onclick="executeCombatAction('slash')" onmouseenter="showSystemTooltip('combat_slash', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Standard Attack</button>
         <button id="heavy-btn" onclick="executeCombatAction('special')" onmouseenter="showSpecialSkillTooltip(event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Weapon Skill</button>
     </div>
-    
+    <style>
+        #combat-inventory-list > button {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
     <div id="combat-inventory-list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 8px;"></div>
     
     <button id="end-btn" onclick="executeCombatAction('end')" style="width: 100%; padding: 10px; font-size: 14px; background: #c0392b; border: 2px solid #e74c3c; font-weight: bold; text-shadow: 1px 1px 2px #000;" onmouseenter="showSystemTooltip('combat_pass', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">⌛ Pass Turn</button>
