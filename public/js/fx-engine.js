@@ -38,7 +38,7 @@ const FXEngine = {
         });
     },
 	
-	// === UPDATED: CONTINUOUS MAGIC BEAMS (Data-Driven Interpolation) ===
+	// === 3. CONTINUOUS MAGIC BEAMS (Data-Driven Interpolation) ===
     spawnBeam: function(startX, startY, endX, endY, config = {}) {
         // 1. Extract the custom variables (with safe fallbacks)
         let style = config.style || 'fire';
@@ -83,32 +83,7 @@ const FXEngine = {
                         decay: 0.03 + (Math.random() * 0.04) 
                     });
                 }
-
-        // 4. Fire the particles in a rapid sequence along the vector path
-        for (let i = 0; i <= particleCount; i++) {
-            setTimeout(() => {
-                let progress = i / particleCount;
-                let currentX = pxStart + (dx * progress);
-                let currentY = pyStart + (dy * progress);
-                
-                // Add a slight random scatter so the beam looks volatile
-                let scatterX = (Math.random() - 0.5) * 15;
-                let scatterY = (Math.random() - 0.5) * 15;
-
-                // Push to your existing particle render loop!
-                // NOTE: Make sure this pushes to whatever array your renderer.js uses to draw explosions/particles!
-                if (typeof activeExplosions !== 'undefined') {
-                    activeExplosions.push({
-                        x: currentX + scatterX,
-                        y: currentY + scatterY,
-                        radius: 6 + Math.random() * 8, // Varies size between 6 and 14
-                        color: colors[Math.floor(Math.random() * colors.length)],
-                        life: 1.0, 
-                        decay: 0.03 + (Math.random() * 0.04) // Fast fade out
-                    });
-                }
-             // 4. Use the data-driven TRAVEL SPEED
-            }, i * speed); 
+            }, i * speed); // <--- The syntax error is safely resolved right here!
         }
     },
     // ==============================================================
