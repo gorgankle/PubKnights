@@ -144,8 +144,6 @@ socket.on('combatResult', (result) => {
                 if (typeof animOptions.onComplete === 'function') animOptions.onComplete(); 
             }, 350);
 
-        }
-
         } else if (result.source === 'throwable' && fx && fx.spriteId) {
             FXEngine.spawnProjectile(player.x, player.y, fx.tx, fx.ty, fx.spriteId, animOptions);
         } else {

@@ -107,8 +107,8 @@ const FXEngine = {
                         decay: 0.03 + (Math.random() * 0.04) // Fast fade out
                     });
                 }
-                
-            }, i * 15); // Stagger the spawns by 15ms so the beam physically "travels" forward!
+             // 4. Use the data-driven TRAVEL SPEED
+            }, i * speed); 
         }
     },
     // ==============================================================
