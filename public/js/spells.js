@@ -2,14 +2,22 @@
 const SpellDatabase = {
     "fireball_breath": {
         name: "Fireball Breath",
-        type: "line",       // Tells the server to use Line of Effect math
-        cost: 20,           // Stamina drain
-        range: 5,           // Maximum tiles away the player can target
-        damageFlat: 35,     // Base damage before modifiers
-        ignoresLoS: false,  // If false, the fireball stops when it hits a wall
-        desc: "Exhale a scorching beam of fire that burns everything in a straight path."
+        type: "line",       
+        cost: 20,           
+        range: 5,           
+        damageFlat: 35,     
+        ignoresLoS: false,  
+        desc: "Exhale a scorching beam of fire that burns everything in a straight path.",
+        
+        // === NEW: DATA-DRIVEN FX SETTINGS ===
+        fx: {
+            type: 'beam',
+            style: 'fire',   // Maps to your color palettes
+            density: 12,     // Distance between overlapping particles
+            spread: 15,      // How wild the fire looks
+            speed: 15        // Travel speed (ms per frame)
+        }
     }
-    // Future spells like "arcane_nova" (type: 'burst') or "mend" (type: 'heal') go here!
 };
 
 // Ensure export for Node.js backend

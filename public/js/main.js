@@ -137,13 +137,14 @@ socket.on('combatResult', (result) => {
         // === THE MASTER ANIMATION TRIGGER ===
         if (result.source === 'spell' && fx && fx.type === 'beam') {
             
-            // 1. Fire the continuous beam of overlapping particles
-            FXEngine.spawnBeam(player.x, player.y, fx.tx, fx.ty, fx.style);
+            // THE FIX: Pass the entire 'fx' configuration object instead of just the style string!
+            FXEngine.spawnBeam(player.x, player.y, fx.tx, fx.ty, fx);
             
-            // 2. Delay the damage text/sounds by 350ms so the beam has time to physically travel across the grid!
             setTimeout(() => { 
                 if (typeof animOptions.onComplete === 'function') animOptions.onComplete(); 
             }, 350);
+
+        }
 
         } else if (result.source === 'throwable' && fx && fx.spriteId) {
             FXEngine.spawnProjectile(player.x, player.y, fx.tx, fx.ty, fx.spriteId, animOptions);

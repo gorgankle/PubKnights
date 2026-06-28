@@ -38,26 +38,51 @@ const FXEngine = {
         });
     },
 	
-	// === NEW: 3. CONTINUOUS MAGIC BEAMS (Vector Interpolation) ===
-    spawnBeam: function(startX, startY, endX, endY, style = 'fire') {
-        // 1. Calculate the raw pixel coordinates (assuming 60px tiles)
-        // We add (currentTileSize / 2) to center the beam in the middle of the tile
+	// === UPDATED: CONTINUOUS MAGIC BEAMS (Data-Driven Interpolation) ===
+    spawnBeam: function(startX, startY, endX, endY, config = {}) {
+        // 1. Extract the custom variables (with safe fallbacks)
+        let style = config.style || 'fire';
+        let density = config.density || 12;
+        let spread = config.spread || 15;
+        let speed = config.speed || 15;
+
         let pxStart = (startX * currentTileSize) + (currentTileSize / 2);
         let pyStart = (startY * currentTileSize) + (currentTileSize / 2);
         let pxEnd = (endX * currentTileSize) + (currentTileSize / 2);
         let pyEnd = (endY * currentTileSize) + (currentTileSize / 2);
 
-        // 2. Calculate the distance and angle of the beam using Pythagorean theorem
         let dx = pxEnd - pxStart;
         let dy = pyEnd - pyStart;
         let distance = Math.sqrt(dx * dx + dy * dy);
         
-        // 3. Determine how many 24x24 particle sprites we need to bridge the gap smoothly
-        let particleCount = Math.floor(distance / 12); // Overlap them every 12 pixels
-        if (particleCount < 1) particleCount = 1; // Failsafe for point-blank casts
+        // 2. Use the data-driven DENSITY 
+        let particleCount = Math.floor(distance / density); 
+        if (particleCount < 1) particleCount = 1; 
         
-        // Pick the palette based on the spell type
-        let colors = style === 'fire' ? ['#e74c3c', '#f1c40f', '#d35400'] : ['#9b59b6', '#8e44ad', '#3498db'];
+        let colors = style === 'fire' ? ['#e74c3c', '#f1c40f', '#d35400'] : 
+                     style === 'arcane' ? ['#9b59b6', '#8e44ad', '#3498db'] :
+                     style === 'poison' ? ['#2ecc71', '#27ae60', '#f1c40f'] : ['#ffffff'];
+
+        for (let i = 0; i <= particleCount; i++) {
+            setTimeout(() => {
+                let progress = i / particleCount;
+                let currentX = pxStart + (dx * progress);
+                let currentY = pyStart + (dy * progress);
+                
+                // 3. Use the data-driven SPREAD volatility
+                let scatterX = (Math.random() - 0.5) * spread;
+                let scatterY = (Math.random() - 0.5) * spread;
+
+                if (typeof activeExplosions !== 'undefined') {
+                    activeExplosions.push({
+                        x: currentX + scatterX,
+                        y: currentY + scatterY,
+                        radius: 6 + Math.random() * 8, 
+                        color: colors[Math.floor(Math.random() * colors.length)],
+                        life: 1.0, 
+                        decay: 0.03 + (Math.random() * 0.04) 
+                    });
+                }
 
         // 4. Fire the particles in a rapid sequence along the vector path
         for (let i = 0; i <= particleCount; i++) {
