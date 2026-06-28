@@ -398,6 +398,13 @@ if (SpriteMatrices[e.id]) {
     }
     // ========================================
 
+    // === THE MISSING HEARTBEAT ===
+    // This tells the engine to physically draw the arrows, lunges, and damage text!
+    if (typeof FXEngine !== 'undefined') {
+        FXEngine.render(ctx, currentTileSize);
+    }
+    // =============================
+
 } // <--- This bracket closes drawGrid()!
 
 function renderGridHealthBar(gridX, gridY, currentHp, maximumHp, size = 1, currentStamina = null, maxStamina = null) {
