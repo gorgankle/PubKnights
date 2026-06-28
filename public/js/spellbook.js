@@ -1,4 +1,4 @@
-// --- magic.js ---
+// --- spellbook.js ---
 
 function renderSpellbookModal() {
     const modal = document.getElementById('combat-backpack-modal');
@@ -14,12 +14,15 @@ function renderSpellbookModal() {
     grid.innerHTML = '';
 
     let foundSpells = false;
+    let maxSlots = player.maxInventorySlots || 5;
 
-    // === THE FIX: Scan the physical inventory for scrolls ===
-    player.inventory.forEach((item, index) => {
+    // === THE FIX: Standard For-Loop (Immune to Array Prototype Errors) ===
+    for (let i = 0; i < maxSlots; i++) {
+        let item = player.inventory[i];
+        
         if (item && item.combat && item.combat.actionType === 'spell') {
-            let spell = SpellDatabase[item.combat.spellId];
-            if (!spell) return;
+            let spell = typeof SpellDatabase !== 'undefined' ? SpellDatabase[item.combat.spellId] : null;
+            if (!spell) continue;
             
             foundSpells = true;
 
@@ -34,30 +37,28 @@ function renderSpellbookModal() {
             btn.style.fontWeight = "bold";
 
             // Tooltip Hook
-            btn.onmouseenter = (e) => showSystemTooltip({ isSpell: true, data: spell }, e);
-            btn.onmouseleave = hideTooltip;
+            btn.onmouseenter = (e) => { if (typeof showSystemTooltip === 'function') showSystemTooltip({ isSpell: true, data: spell }, e); };
+            btn.onmouseleave = typeof hideTooltip === 'function' ? hideTooltip : null;
 
-            // Click Hook inside spellbook.js
+            // Click Hook
             btn.onclick = () => {
                 if (player.stamina < spell.cost) {
                     logMessage(`❌ Not enough stamina! (${spell.cost} required)`);
                     if (typeof playRetroSound === 'function') playRetroSound('error');
                     return;
                 }
-                closeCombatModal();
-                
-                // === THE FIX: Route directly into your universal bomb dispatcher! ===
-                prepTargetAction(index); 
+                if (typeof closeCombatModal === 'function') closeCombatModal();
+                if (typeof prepTargetAction === 'function') prepTargetAction(i); 
             };
+
             grid.appendChild(btn);
         }
-    });
+    }
 
     if (!foundSpells) {
-        grid.innerHTML = `<div style="color: #bbaaa0; text-align: center; padding: 15px; font-size: 11px;">No magic scrolls currently equipped in backpack.</div>`;
+        grid.innerHTML = `<div style="color: #bbaaa0; text-align: center; padding: 25px 15px; font-size: 12px; font-style: italic;">📜 Scroll required for spells.</div>`;
     }
 
     modal.style.display = 'block';
     if (typeof playRetroSound === 'function') playRetroSound('menu');
 }
-
