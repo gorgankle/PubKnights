@@ -15,7 +15,7 @@ const LootTables = {
             // Added Starter Leather Gear
             { itemId: "leather_tunic", weight: 15 },
             { itemId: "leather_mitts", weight: 15 },
-			{ itemId: "scroll_fireball", weight: 5000 },
+			{ itemId: "scroll_fireball", weight: 5 },
             { itemId: "hide_boots", weight: 20 }
         ]
     },
@@ -30,6 +30,7 @@ const LootTables = {
             { itemId: "scavenged_machete", weight: 15 },
             // Small chance for mid-game gear 
             { itemId: "brewmasters_club", weight: 15 }
+		
         ]
     },
     "alpha_poacher": {
@@ -44,6 +45,7 @@ const LootTables = {
             { itemId: "pubserker_flatcap", weight: 3 },
             { itemId: "pubserker_suspenders", weight: 3 },
             { itemId: "pubserker_stompers", weight: 3 },
+			{ itemId: "hunter_bow", weight: 500000 }
         ]
     },
     "wilderness_overlord": {

@@ -198,13 +198,20 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 return socket.emit('combatResult', { type: 'error', message: '❌ Server: Target lost or already deceased.', newStamina: p.stamina });
             }
 
-          // Secure Range Verification
-            // === THE FIX: Use combat.player instead of p ===
+       // Secure Range Verification
             let dist = getGridDistance(combat.player.x, combat.player.y, serverEnemy.x, serverEnemy.y, serverEnemy.size || 1);
             
             if (dist > combatRules.range) {
                 return socket.emit('combatResult', { type: 'error', message: '❌ Server: Target out of confirmed range.', newStamina: p.stamina });
             }
+			
+			if (!combatRules.ignoresLoS) {
+                const hasLOS = checkLineOfSight(combat.player.x, combat.player.y, serverEnemy.x, serverEnemy.y, combat);
+                if (!hasLOS) {
+                    return socket.emit('combatResult', { type: 'error', message: '❌ Server: Target is obscured by an obstacle.', newStamina: p.stamina });
+                }
+            }
+			
             // Execute resource burn
             p.stamina -= staminaCost; 
 
@@ -237,12 +244,20 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                     processSecureKill(socket.id, serverEnemy);
                 }
                 
+                const isRanged = !!weapon.projectileSprite; 
+                
                 socket.emit('combatResult', { 
                     type: 'hit', 
                     source: 'weapon',
-                    actionName: data.subType, // 'slash' or 'special'
+                    actionName: data.subType, 
                     targets: [{ uid: serverEnemy.uid, damage: finalDmg, isCrit: isCrit, killed: killed }],
-                    fx: { tx: serverEnemy.x, ty: serverEnemy.y, spriteId: weapon.spriteId, isAoE: false },
+                    fx: { 
+                        tx: serverEnemy.x, 
+                        ty: serverEnemy.y, 
+                        spriteId: isRanged ? weapon.projectileSprite : weapon.spriteId, 
+                        isProjectile: isRanged, 
+                        isAoE: false 
+                    },
                     updatedPlayer: p 
                 });
             } 

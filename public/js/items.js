@@ -2,6 +2,20 @@
 // A master dictionary of all items in the game. 
 
 const ItemDatabase = {
+	
+	// === THE RANGED ARSENAL ===
+    "hunter_bow": {
+        id: "hunter_bow", name: "Hunter's Bow", slot: "weapon", 
+        type: "Bow", // Keeps your item typings intact
+        rarity: "Common", atkBonus: 12, attackRange: 5, value: 75, spriteId: "weap_bow",
+        projectileSprite: "icon_arrow", // <-- THIS becomes our universal flag
+        combat: {
+            standard: { range: 5, staminaCost: 5, multiplier: 1.0, animType: "shoot" },
+            special: { name: "Piercing Shot", range: 5, staminaCost: 15, multiplier: 1.5, ignoresResilience: true, desc: "A high-velocity shot that pierces armor." }
+        }
+    },
+	
+	
     // === PET DROPS ===
     "bone_fetch_club": { 
         id: "bone_fetch_club", name: "Ancient Fetching Bone", slot: "weapon", type: "Club", rarity: "Unique", 

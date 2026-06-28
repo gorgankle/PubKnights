@@ -146,6 +146,13 @@ socket.on('combatResult', (result) => {
 
         } else if (result.source === 'throwable' && fx && fx.spriteId) {
             FXEngine.spawnProjectile(player.x, player.y, fx.tx, fx.ty, fx.spriteId, animOptions);
+        } else if (result.source === 'weapon' && fx && fx.isProjectile) {
+            // Configure flat trajectory for arrows and bolts
+            animOptions.arc = 0;
+            animOptions.spin = false; 
+            animOptions.frames = 15; // Quick arrow flight speed
+            
+            FXEngine.spawnProjectile(player.x, player.y, fx.tx, fx.ty, fx.spriteId, animOptions);
         } else {
             // 1. Determine if they used 'standard' or 'special'
             let profileKey = result.actionName === 'special' ? 'special' : 'standard';
