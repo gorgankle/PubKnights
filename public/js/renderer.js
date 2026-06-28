@@ -374,8 +374,8 @@ if (SpriteMatrices[e.id]) {
                 }
             }
         }
-    }
-
+    } 
+} // <--- THE FIX: THIS BRACKET CLOSES drawGrid()!
 
 function renderGridHealthBar(gridX, gridY, currentHp, maximumHp, size = 1, currentStamina = null, maxStamina = null) {
     let barWidth = (currentTileSize * size) - 6; 
