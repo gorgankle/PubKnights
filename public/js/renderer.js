@@ -357,14 +357,13 @@ if (SpriteMatrices[e.id]) {
             }
         }
 
-        if (isLineSpell) {
+      if (isLineSpell) {
             // === DRAW THE BRESENHAM BEAM ===
             let blastPath = getLineOfEffectPath(player.x, player.y, hoverTile.x, hoverTile.y, spellRange, !ignoresLoS);
             blastPath.forEach(tile => {
                 ctx.fillRect(tile.x * currentTileSize, tile.y * currentTileSize, currentTileSize, currentTileSize);
             });
         } else {
-            } else {
             // === STANDARD BOMB 3x3 SQUARE ===
             let startX = hoverTile.x - 1; let startY = hoverTile.y - 1;
             for(let bx = startX; bx <= startX + 2; bx++) {
@@ -375,7 +374,7 @@ if (SpriteMatrices[e.id]) {
                 }
             }
         }
-    } 
+    }
 
     // === NEW: VISUAL FX PARTICLE RENDERER ===
     if (typeof activeExplosions !== 'undefined') {
