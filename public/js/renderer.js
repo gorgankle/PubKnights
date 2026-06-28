@@ -92,7 +92,7 @@ function drawGrid() {
 
     // THE FIX: If we are actively targeting with an item, override the melee weapon's range!
     if (combatPhase === 'TARGETING' && typeof activeTargetIndex !== 'undefined' && activeTargetIndex !== -1) {
-        let activeItem = player.inventory[activeTargetIndex];
+        let activeItem = activeTargetIndex === 'weapon' ? player.equipment.weapon : player.inventory[activeTargetIndex];
         if (activeItem && activeItem.combat) {
             if (activeItem.combat.actionType === 'spell') {
                 let spellData = typeof SpellDatabase !== 'undefined' ? SpellDatabase[activeItem.combat.spellId] : null;
@@ -342,7 +342,7 @@ if (SpriteMatrices[e.id]) {
     if (combatPhase === 'TARGETING' && hoverTile && hoverTile.x >= 0) {
         ctx.fillStyle = "rgba(231, 76, 60, 0.4)"; 
         
-        let activeItem = player.inventory[activeTargetIndex];
+        let activeItem = activeTargetIndex === 'weapon' ? player.equipment.weapon : player.inventory[activeTargetIndex];
         let isLineSpell = false;
         let spellRange = 5;
         let ignoresLoS = false;
@@ -447,7 +447,7 @@ canvas.addEventListener("mousemove", function(e) {
 
     // === REPLACED: Enforce targeting bounds on hover ===
     if (combatPhase === 'TARGETING') { 
-        let activeItem = player.inventory[activeTargetIndex];
+        let activeItem = activeTargetIndex === 'weapon' ? player.equipment.weapon : player.inventory[activeTargetIndex];
         let maxRange = 4;
         let ignoresLoS = false;
 
@@ -504,7 +504,7 @@ canvas.addEventListener("click", function(e) {
 
     // === REPLACED: Client-side throw validation ===
     if (combatPhase === 'TARGETING') {
-        let activeItem = player.inventory[activeTargetIndex];
+        let activeItem = activeTargetIndex === 'weapon' ? player.equipment.weapon : player.inventory[activeTargetIndex];
         let maxRange = 4;
         let ignoresLoS = false;
 

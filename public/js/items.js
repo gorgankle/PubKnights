@@ -287,10 +287,21 @@ const ItemDatabase = {
     "burlap_sack_mask": { id: "burlap_sack_mask", name: "Scarecrow's Sack", slot: "helmet", rarity: "Epic", deflectChance: 18, value: 140, spriteId: "burlap_sack_mask" },
     "scythe_of_reaping": { 
         id: "scythe_of_reaping", name: "Scythe of Reaping", slot: "weapon", type: "Axe", rarity: "Relic", 
-        atkBonus: 115, attackRange: 1, value: 1600, spriteId: "scythe_of_reaping",
+        atkBonus: 115, attackRange: 2, value: 1600, spriteId: "scythe_of_reaping",
         combat: {
-            standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
-            special: { name: "Execute", range: 1, staminaCost: 15, multiplier: 1.5, ignoresResilience: false, desc: "Brings down a devastating vertical chop producing 1.5x standard power." }
+            standard: { range: 2, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
+            special: { 
+                name: "Scythe Spin", 
+                targetType: "aoe",       // NEW: Triggers Targeting Phase
+                aoeShape: "radius",      // NEW: Draws the 3x3 red box
+                aoeRadius: 1,            // NEW: 1 tile radius = 3x3 grid
+                range: 2, 
+                staminaCost: 30, 
+                multiplier: 1.2, 
+                ignoresResilience: false, 
+                animType: "lunge_slash", // Physically whirlwinds to the target center!
+                desc: "Whirlwinds to a target location, striking all entities in a 3x3 radius." 
+            }
         }
     },
 

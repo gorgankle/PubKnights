@@ -45,6 +45,19 @@ function executeCombatAction(actionType) {
                 return;
             }
 
+// === NEW: TACTICAL WEAPON SPECIAL INTERCEPT ===
+        // If it's an AoE weapon skill, stop the normal attack and switch to TARGETING!
+        if (actionType === 'special' && weapon.combat.special && weapon.combat.special.targetType === 'aoe') {
+            activeTargetIndex = 'weapon'; // Flag it as the weapon special
+            combatPhase = 'TARGETING';
+            logMessage("📍 Targeting AoE Special... Select the epicenter.");
+            refreshSystemUI();
+            if (typeof drawGrid === 'function') drawGrid();
+            return; 
+        }
+        // ===============================================
+
+
             // Pull dynamic rules directly from the item schema
             let combatRules = actionType === 'special' ? weapon.combat.special : weapon.combat.standard;
             let staminaCost = combatRules.staminaCost;
@@ -140,16 +153,14 @@ window.prepTargetAction = function(idx) {
 window.executeTargetAction = function(tx, ty) {
     if (activeTargetIndex === -1) return;
     
-    // Lock the phase so the click event doesn't fall through!
     combatPhase = 'WAITING_FOR_SERVER'; 
     
-    // Dispatch the payload securely to the server
-    socket.emit('dispatchCombatAction', { 
-        actionCategory: 'consumable', 
-        invIndex: activeTargetIndex, 
-        tx: tx, 
-        ty: ty 
-    });
+    // Route Weapon Specials vs Consumables!
+    if (activeTargetIndex === 'weapon') {
+        socket.emit('dispatchCombatAction', { actionCategory: 'weapon', subType: 'special', tx: tx, ty: ty });
+    } else {
+        socket.emit('dispatchCombatAction', { actionCategory: 'consumable', invIndex: activeTargetIndex, tx: tx, ty: ty });
+    }
     
     activeTargetIndex = -1;
     refreshSystemUI();

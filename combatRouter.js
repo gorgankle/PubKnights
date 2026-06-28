@@ -187,6 +187,70 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             if (p.stamina < staminaCost) {
                 return socket.emit('combatResult', { type: 'error', message: `❌ Server: Insufficient stamina (${Math.floor(p.stamina)}/${staminaCost}).`, newStamina: p.stamina });
             }
+			
+			let staminaCost = combatRules.staminaCost;
+            if (p.stamina < staminaCost) {
+                return socket.emit('combatResult', { type: 'error', message: `❌ Server: Insufficient stamina (${Math.floor(p.stamina)}/${staminaCost}).`, newStamina: p.stamina });
+            }
+
+            // === NEW: TACTICAL WEAPON SPECIAL (AoE) ===
+            if (data.subType === 'special' && combatRules.targetType === 'aoe') {
+                if (data.tx === undefined || data.ty === undefined) return;
+                
+                // 1. Verify we can throw the center of the AoE that far
+                let castDist = getGridDistance(combat.player.x, combat.player.y, data.tx, data.ty, 1);
+                if (castDist > combatRules.range) {
+                    return socket.emit('combatResult', { type: 'error', message: '❌ Server: Target out of range.', newStamina: p.stamina });
+                }
+
+                // 2. Verify Line of Sight
+                if (!combatRules.ignoresLoS && !checkLineOfSight(combat.player.x, combat.player.y, data.tx, data.ty, combat)) {
+                    return socket.emit('combatResult', { type: 'error', message: '❌ Server: No line of sight to target area.', newStamina: p.stamina });
+                }
+
+                p.stamina -= staminaCost;
+                
+                let serverPower = getEffectiveStat(p, 'power');
+                let finalBaseDmg = Math.floor(serverPower * combatRules.multiplier);
+                let hitTargets = [];
+
+                // 3. Process the AoE Blast
+                if (combat) {
+                    combat.enemies.forEach(e => {
+                        if (!e.alive) return;
+                        
+                        let eDist = getGridDistance(data.tx, data.ty, e.x, e.y, e.size || 1);
+                        
+                        if (eDist <= (combatRules.aoeRadius || 1)) {
+                            let minDmg = Math.ceil(finalBaseDmg * 0.85);
+                            let maxDmg = finalBaseDmg;
+                            let variedDmg = Math.floor(Math.random() * (maxDmg - minDmg + 1)) + minDmg;
+                            let isCrit = variedDmg >= Math.floor(finalBaseDmg * 0.95);
+
+                            e.hp -= variedDmg;
+                            let killed = false;
+                            if (e.hp <= 0) { e.hp = 0; e.alive = false; killed = true; processSecureKill(socket.id, e); }
+                            
+                            hitTargets.push({ uid: e.uid, damage: variedDmg, isCrit: isCrit, killed: killed });
+                        }
+                    });
+                }
+
+                // 4. Emit the Unified Payload back to the client!
+                return socket.emit('combatResult', { 
+                    type: 'hit',
+                    source: 'weapon',
+                    actionName: data.subType, 
+                    targets: hitTargets,
+                    fx: { tx: data.tx, ty: data.ty, spriteId: weapon.spriteId, isAoE: true, radius: combatRules.aoeRadius || 1 },
+                    updatedPlayer: p 
+                });
+            }
+            // ==========================================
+
+            // Secure Target Verification (Standard Single Target Legacy Math)
+            let serverEnemy = null;
+			
 
             // Secure Target Verification
             let serverEnemy = null;
