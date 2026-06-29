@@ -82,7 +82,7 @@ module.exports = function(socket, io, activePlayers) {
             
             await dbUser.save();
             
-            // === NEW: Sync to RAM and Emit Online Status ===
+           // === NEW: Sync to RAM and Emit Online Status ===
             p.friends = dbUser.friends;
             p.ignored = dbUser.ignored;
             
@@ -91,6 +91,11 @@ module.exports = function(socket, io, activePlayers) {
             
             socket.emit('socialListsData', { friends: p.friends, ignored: p.ignored, onlineFriends: onlineFriends });
             // ===============================================
+            
+        } catch(err) {
+            console.error("Social List Error:", err);
+        }
+    }); 
     // =========================================
 	
 	socket.on('fetchSocialLists', async () => {
