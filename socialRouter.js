@@ -116,6 +116,25 @@ module.exports = function(socket, io, activePlayers) {
     });
     // =========================================
 	
+	socket.on('fetchSocialLists', async () => {
+         let p = activePlayers[socket.id];
+         if (!p) return;
+         
+         // If lists aren't in memory yet, pull from DB
+         if (!p.friends || !p.ignored) {
+             try {
+                 const PlayerModel = mongoose.model('Player');
+                 let dbUser = await PlayerModel.findOne({ username: p.username });
+                 if (dbUser) {
+                     p.friends = dbUser.friends || [];
+                     p.ignored = dbUser.ignored || [];
+                 }
+             } catch (err) {}
+         }
+         
+         socket.emit('socialListsData', { friends: p.friends || [], ignored: p.ignored || [] });
+    });
+	
 	
 	// --- RENAISSANCE CORNER: UGC HANDLING ---
 
