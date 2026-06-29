@@ -61,32 +61,44 @@ module.exports = function(socket, io, activePlayers) {
             let dbUser = await PlayerModel.findOne({ username: p.username });
             if (!dbUser) return;
             
-            let target = data.target;
+            let targetInput = data.target;
             
             // Cannot add/block yourself
-            if (target.toLowerCase() === p.username.toLowerCase()) {
+            if (targetInput.toLowerCase() === p.username.toLowerCase()) {
                 return socket.emit('zoneNotification', { message: `❌ You cannot target yourself.` });
             }
 
+            // 1. Case-Insensitive Database Lookup!
+            // We do this to ensure we grab the EXACT spelling/casing of their name from the DB.
+            let targetUser = await PlayerModel.findOne({ username: new RegExp('^' + targetInput + '$', 'i') });
+
+            // Ensure the user actually exists before trying to friend OR ignore them
+            if (data.action === 'addFriend' || data.action === 'addIgnore') {
+                if (!targetUser) {
+                    return socket.emit('zoneNotification', { message: `❌ User '${targetInput}' does not exist.` });
+                }
+            }
+
             if (data.action === 'addFriend') {
-                if (!dbUser.friends.includes(target)) {
-                    // Check if target actually exists in the database!
-                    let targetExists = await PlayerModel.exists({ username: target });
-                    if (!targetExists) return socket.emit('zoneNotification', { message: `❌ User '${target}' does not exist.` });
-                    
-                    dbUser.friends.push(target);
-                    socket.emit('zoneNotification', { message: `🤝 Added ${target} to Friends List.` });
+                if (!dbUser.friends.includes(targetUser.username)) {
+                    dbUser.friends.push(targetUser.username);
+                    socket.emit('zoneNotification', { message: `🤝 Added ${targetUser.username} to Friends List.` });
+                } else {
+                    socket.emit('zoneNotification', { message: `ℹ️ ${targetUser.username} is already your friend.` });
                 }
             } else if (data.action === 'removeFriend') {
-                dbUser.friends = dbUser.friends.filter(f => f !== target);
+                dbUser.friends = dbUser.friends.filter(f => f.toLowerCase() !== targetInput.toLowerCase());
             } else if (data.action === 'addIgnore') {
-                if (!dbUser.ignored.includes(target)) {
-                    dbUser.ignored.push(target);
-                    dbUser.friends = dbUser.friends.filter(f => f !== target); // Remove from friends if ignored
-                    socket.emit('zoneNotification', { message: `🚫 Ignored ${target}.` });
+                if (!dbUser.ignored.includes(targetUser.username)) {
+                    dbUser.ignored.push(targetUser.username);
+                    // Remove from friends if ignored
+                    dbUser.friends = dbUser.friends.filter(f => f !== targetUser.username);
+                    socket.emit('zoneNotification', { message: `🚫 Ignored ${targetUser.username}.` });
+                } else {
+                    socket.emit('zoneNotification', { message: `ℹ️ ${targetUser.username} is already ignored.` });
                 }
             } else if (data.action === 'removeIgnore') {
-                dbUser.ignored = dbUser.ignored.filter(i => i !== target);
+                dbUser.ignored = dbUser.ignored.filter(i => i.toLowerCase() !== targetInput.toLowerCase());
             }
             
             await dbUser.save();
@@ -101,26 +113,6 @@ module.exports = function(socket, io, activePlayers) {
         } catch(err) {
             console.error("Social List Error:", err);
         }
-    });
-
-    // Fetches the lists when the player opens the Social Hub
-    socket.on('fetchSocialLists', async () => {
-         let p = activePlayers[socket.id];
-         if (!p) return;
-         
-         // If lists aren't in memory yet, pull from DB
-         if (!p.friends || !p.ignored) {
-             try {
-                 const PlayerModel = mongoose.model('Player');
-                 let dbUser = await PlayerModel.findOne({ username: p.username });
-                 if (dbUser) {
-                     p.friends = dbUser.friends || [];
-                     p.ignored = dbUser.ignored || [];
-                 }
-             } catch (err) {}
-         }
-         
-         socket.emit('socialListsData', { friends: p.friends || [], ignored: p.ignored || [] });
     });
     // =========================================
 	
