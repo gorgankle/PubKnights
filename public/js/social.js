@@ -410,6 +410,7 @@ socket.on('tradeCompleted', (data) => {
 let localPMHistory = []; 
 let localFriends = []; 
 let localIgnored = [];
+let localOnlineFriends = []; // NEW!
 
 // Catch incoming Private Messages
 socket.on('receivePM', (data) => {
@@ -432,6 +433,7 @@ socket.on('receivePM', (data) => {
 socket.on('socialListsData', (data) => {
     localFriends = data.friends || [];
     localIgnored = data.ignored || [];
+    localOnlineFriends = data.onlineFriends || []; // Catch online friends!
     
     if (document.getElementById('friends-list-container')) renderSocialList('friends');
     if (document.getElementById('ignore-list-container')) renderSocialList('ignore');
@@ -527,7 +529,6 @@ window.renderSocialList = function(type) {
     if (!container) return;
     
     let list = type === 'friends' ? localFriends : localIgnored;
-    let icon = type === 'friends' ? '🤝' : '🚫';
     
     if (list.length === 0) {
         container.innerHTML = `<p style="text-align: center; color: #776c62; margin-top: 20px;">List is empty.</p>`;
@@ -536,10 +537,29 @@ window.renderSocialList = function(type) {
 
     let html = `<div style="display: flex; flex-direction: column; gap: 4px;">`;
     list.forEach(name => {
-        html += `<div style="background: #110d0a; padding: 6px 10px; border-radius: 4px; display:flex; justify-content:space-between;">
-                    <span>${icon} ${name}</span>
-                    <button onclick="requestSocialAction('${type === 'friends' ? 'removeFriend' : 'removeIgnore'}', null, '${name}')" style="background:none; border:none; color:#e74c3c; cursor:pointer;">✖</button>
-                 </div>`;
+        if (type === 'friends') {
+            let isOnline = localOnlineFriends.includes(name);
+            let statusColor = isOnline ? '#2ecc71' : '#7f8c8d'; // Green for online, Gray for offline
+            let statusText = isOnline ? 'Online' : 'Offline';
+
+            html += `
+            <div style="background: #110d0a; padding: 6px 10px; border-radius: 4px; display:flex; justify-content:space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="color: ${statusColor}; font-size: 10px;" title="${statusText}">●</span>
+                    <span>${name}</span>
+                </div>
+                <div style="display: flex; gap: 6px;">
+                    <button onclick="replyToPM('${name}')" style="background:#34495e; border:none; color:white; padding: 2px 6px; border-radius: 3px; cursor:pointer;" title="Send Message">✉️</button>
+                    <button onclick="requestSocialAction('removeFriend', null, '${name}')" style="background:none; border:none; color:#e74c3c; cursor:pointer;" title="Remove Friend">✖</button>
+                </div>
+            </div>`;
+        } else {
+            html += `
+            <div style="background: #110d0a; padding: 6px 10px; border-radius: 4px; display:flex; justify-content:space-between; align-items: center;">
+                <span>🚫 ${name}</span>
+                <button onclick="requestSocialAction('removeIgnore', null, '${name}')" style="background:none; border:none; color:#e74c3c; cursor:pointer;">✖</button>
+            </div>`;
+        }
     });
     html += `</div>`;
     container.innerHTML = html;
@@ -561,6 +581,22 @@ window.sendHubPM = function() {
     if (target && msg) {
         socket.emit('sendPrivateMessage', { target: target, message: msg });
         document.getElementById('pm-msg-input').value = ""; 
+
+        // THE FIX: Push to our local history so we can see what we sent!
+        localPMHistory.push({ from: `You (to ${target})`, message: msg, timestamp: Date.now() });
+        switchSocialHubTab('pms'); 
+    }
+};
+
+window.replyToPM = function(senderName) {
+    // THE FIX: Ensure we switch to the Messages tab FIRST so the HTML inputs exist!
+    switchSocialHubTab('pms');
+
+    let targetInput = document.getElementById('pm-target-input');
+    let msgInput = document.getElementById('pm-msg-input');
+    if (targetInput && msgInput) {
+        targetInput.value = senderName;
+        msgInput.focus();
     }
 };
 

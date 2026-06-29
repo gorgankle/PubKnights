@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 
 module.exports = function(socket, io, activePlayers) {
 	
-// === NEW: GLOBAL PRIVATE MESSAGE ROUTER ===
+// === REPLACED: GLOBAL PRIVATE MESSAGE ROUTER (LIVE ONLY) ===
     socket.on('sendPrivateMessage', async (data) => {
         let p = activePlayers[socket.id];
         if (!p) return;
@@ -13,42 +13,21 @@ module.exports = function(socket, io, activePlayers) {
         let msg = data.message;
 
         // 1. Check if the target is online by scanning ALL active sockets globally
-        let targetSocketId = Object.keys(activePlayers).find(key => activePlayers[key].username === targetName);
+        let targetSocketId = Object.keys(activePlayers).find(key => activePlayers[key].username.toLowerCase() === targetName.toLowerCase());
 
         if (targetSocketId) {
             let targetPlayer = activePlayers[targetSocketId];
             
-            // 2. Filter Check: Did they ignore the sender?
-            if (targetPlayer.ignored && targetPlayer.ignored.includes(p.username)) {
-                return socket.emit('zoneNotification', { message: `❌ Cannot send message to ${targetName}.` });
+            if (targetPlayer.ignored && targetPlayer.ignored.some(i => i.toLowerCase() === p.username.toLowerCase())) {
+                return socket.emit('zoneNotification', { message: `❌ Cannot send message to ${targetPlayer.username}.` });
             }
             
-            // 3. Route the PM directly to the active socket!
             io.to(targetSocketId).emit('receivePM', { from: p.username, message: msg, timestamp: Date.now() });
-            socket.emit('zoneNotification', { message: `✉️ Message sent to ${targetName}.` });
+            socket.emit('zoneNotification', { message: `✉️ Message sent to ${targetPlayer.username}.` });
             
         } else {
-            // 4. Target is OFFLINE. Save to MongoDB Inbox!
-            try {
-                const PlayerModel = mongoose.model('Player'); 
-                let offlineUser = await PlayerModel.findOne({ username: targetName });
-                
-                if (offlineUser) {
-                    if (offlineUser.ignored && offlineUser.ignored.includes(p.username)) {
-                        return socket.emit('zoneNotification', { message: `❌ Cannot send message to ${targetName}.` });
-                    }
-                    
-                    // Push the message to their database array
-                    offlineUser.offlineMessages.push({ from: p.username, message: msg, timestamp: Date.now() });
-                    await offlineUser.save();
-                    
-                    socket.emit('zoneNotification', { message: `📭 ${targetName} is offline. Message delivered to their inbox.` });
-                } else {
-                    socket.emit('zoneNotification', { message: `❌ User '${targetName}' does not exist.` });
-                }
-            } catch (err) {
-                console.error("Offline PM Error:", err);
-            }
+            // 2. Target is OFFLINE. Reject the message!
+            socket.emit('zoneNotification', { message: `❌ ${targetName} is offline or does not exist.` });
         }
     });
 // === NEW: DATABASE SOCIAL LIST MANAGER ===
@@ -103,36 +82,34 @@ module.exports = function(socket, io, activePlayers) {
             
             await dbUser.save();
             
-            // Sync to RAM
+            // === NEW: Sync to RAM and Emit Online Status ===
             p.friends = dbUser.friends;
             p.ignored = dbUser.ignored;
             
-            // Push updated list back to client to instantly redraw the UI
-            socket.emit('socialListsData', { friends: p.friends, ignored: p.ignored });
+            let activeNames = Object.values(activePlayers).map(player => (player.username || "").toLowerCase());
+            let onlineFriends = (p.friends || []).filter(f => activeNames.includes(f.toLowerCase()));
             
-        } catch(err) {
-            console.error("Social List Error:", err);
-        }
-    });
+            socket.emit('socialListsData', { friends: p.friends, ignored: p.ignored, onlineFriends: onlineFriends });
+            // ===============================================
     // =========================================
 	
 	socket.on('fetchSocialLists', async () => {
          let p = activePlayers[socket.id];
          if (!p) return;
          
-         // If lists aren't in memory yet, pull from DB
-         if (!p.friends || !p.ignored) {
-             try {
-                 const PlayerModel = mongoose.model('Player');
-                 let dbUser = await PlayerModel.findOne({ username: p.username });
-                 if (dbUser) {
-                     p.friends = dbUser.friends || [];
-                     p.ignored = dbUser.ignored || [];
-                 }
-             } catch (err) {}
-         }
+         try {
+             const PlayerModel = mongoose.model('Player');
+             let dbUser = await PlayerModel.findOne({ username: p.username });
+             if (dbUser) {
+                 p.friends = dbUser.friends || [];
+                 p.ignored = dbUser.ignored || [];
+             }
+         } catch (err) {}
          
-         socket.emit('socialListsData', { friends: p.friends || [], ignored: p.ignored || [] });
+         let activeNames = Object.values(activePlayers).map(player => (player.username || "").toLowerCase());
+         let onlineFriends = (p.friends || []).filter(f => activeNames.includes(f.toLowerCase()));
+         
+         socket.emit('socialListsData', { friends: p.friends || [], ignored: p.ignored || [], onlineFriends: onlineFriends });
     });
 	
 	

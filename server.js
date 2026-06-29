@@ -38,7 +38,6 @@ const playerSchema = new mongoose.Schema({
     // === NEW: SOCIAL INFRASTRUCTURE ===
     friends: { type: [String], default: [] },
     ignored: { type: [String], default: [] },
-    offlineMessages: { type: Array, default: [] }
     // ==================================
 }, { timestamps: true });
 
