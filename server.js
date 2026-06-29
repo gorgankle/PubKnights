@@ -23,12 +23,15 @@ const activeCombats = {};
 app.use(express.json());
 app.use(express.static('public'));
 
-// === MONGODB DATABASE CONNECTION ===
+// === REPLACED: PRODUCTION MONGODB CONNECTION ===
 const dbURI = process.env.MONGO_URI || 'mongodb://localhost:27017/pubknights';
 
-mongoose.connect(dbURI)
-    .then(() => console.log('🛡️  MongoDB Secured & Connected'))
+mongoose.connect(dbURI, {
+    autoIndex: process.env.NODE_ENV !== 'production', // <--- THE OPTIMIZATION
+})
+    .then(() => console.log('🛡️  MongoDB Secured, Indexed & Connected'))
     .catch(err => console.error('❌ MongoDB Connection Error:', err));
+// ===============================================
 
 const playerSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
@@ -41,6 +44,13 @@ const playerSchema = new mongoose.Schema({
     // ==================================
 }, { timestamps: true });
 
+// === NEW: CASE-INSENSITIVE COLLATION INDEX ===
+// Strength 2 tells MongoDB to ignore capitalization when searching this index!
+playerSchema.index(
+    { username: 1 }, 
+    { collation: { locale: 'en', strength: 2 } }
+);
+
 const Player = mongoose.model('Player', playerSchema);
 
 // === USER GENERATED CONTENT (UGC) SCHEMA ===
@@ -52,6 +62,14 @@ const ugcSchema = new mongoose.Schema({
     contentData: { type: mongoose.Schema.Types.Mixed, required: true },
     likes: { type: Number, default: 0 }, // Future-proofing for social sharing
 }, { timestamps: true });
+
+// === NEW: COMPOUND GALLERY INDEX ===
+// This perfectly matches your .find().sort() query, making gallery loads instant.
+ugcSchema.index({ authorUsername: 1, createdAt: -1 });
+
+// Future-proofing: In case you ever want a "Global Recent Art" feed
+ugcSchema.index({ type: 1, createdAt: -1 });
+// ===================================
 
 const UGC = mongoose.model('UGC', ugcSchema);
 

@@ -599,4 +599,3 @@ window.replyToPM = function(senderName) {
         msgInput.focus();
     }
 };
-
