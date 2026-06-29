@@ -51,7 +51,78 @@ module.exports = function(socket, io, activePlayers) {
             }
         }
     });
-    // ==========================================	
+// === NEW: DATABASE SOCIAL LIST MANAGER ===
+    socket.on('manageSocialList', async (data) => {
+        let p = activePlayers[socket.id];
+        if (!p) return;
+        
+        try {
+            const PlayerModel = mongoose.model('Player');
+            let dbUser = await PlayerModel.findOne({ username: p.username });
+            if (!dbUser) return;
+            
+            let target = data.target;
+            
+            // Cannot add/block yourself
+            if (target.toLowerCase() === p.username.toLowerCase()) {
+                return socket.emit('zoneNotification', { message: `❌ You cannot target yourself.` });
+            }
+
+            if (data.action === 'addFriend') {
+                if (!dbUser.friends.includes(target)) {
+                    // Check if target actually exists in the database!
+                    let targetExists = await PlayerModel.exists({ username: target });
+                    if (!targetExists) return socket.emit('zoneNotification', { message: `❌ User '${target}' does not exist.` });
+                    
+                    dbUser.friends.push(target);
+                    socket.emit('zoneNotification', { message: `🤝 Added ${target} to Friends List.` });
+                }
+            } else if (data.action === 'removeFriend') {
+                dbUser.friends = dbUser.friends.filter(f => f !== target);
+            } else if (data.action === 'addIgnore') {
+                if (!dbUser.ignored.includes(target)) {
+                    dbUser.ignored.push(target);
+                    dbUser.friends = dbUser.friends.filter(f => f !== target); // Remove from friends if ignored
+                    socket.emit('zoneNotification', { message: `🚫 Ignored ${target}.` });
+                }
+            } else if (data.action === 'removeIgnore') {
+                dbUser.ignored = dbUser.ignored.filter(i => i !== target);
+            }
+            
+            await dbUser.save();
+            
+            // Sync to RAM
+            p.friends = dbUser.friends;
+            p.ignored = dbUser.ignored;
+            
+            // Push updated list back to client to instantly redraw the UI
+            socket.emit('socialListsData', { friends: p.friends, ignored: p.ignored });
+            
+        } catch(err) {
+            console.error("Social List Error:", err);
+        }
+    });
+
+    // Fetches the lists when the player opens the Social Hub
+    socket.on('fetchSocialLists', async () => {
+         let p = activePlayers[socket.id];
+         if (!p) return;
+         
+         // If lists aren't in memory yet, pull from DB
+         if (!p.friends || !p.ignored) {
+             try {
+                 const PlayerModel = mongoose.model('Player');
+                 let dbUser = await PlayerModel.findOne({ username: p.username });
+                 if (dbUser) {
+                     p.friends = dbUser.friends || [];
+                     p.ignored = dbUser.ignored || [];
+                 }
+             } catch (err) {}
+         }
+         
+         socket.emit('socialListsData', { friends: p.friends || [], ignored: p.ignored || [] });
+    });
+    // =========================================
 	
 	
 	// --- RENAISSANCE CORNER: UGC HANDLING ---

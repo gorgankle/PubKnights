@@ -401,3 +401,174 @@ socket.on('tradeCompleted', (data) => {
     
     if (typeof saveGame === 'function') saveGame();
 });
+
+
+// ==========================================================
+// === GLOBAL SOCIAL HUB (PERSISTENT UI) ===
+// ==========================================================
+
+let localPMHistory = []; 
+let localFriends = []; 
+let localIgnored = [];
+
+// Catch incoming Private Messages
+socket.on('receivePM', (data) => {
+    localPMHistory.push(data);
+    
+    let modal = document.getElementById('global-social-modal');
+    if (modal && modal.style.display === 'none') {
+        let btn = document.getElementById('global-social-button');
+        if (btn) btn.classList.add('social-glow-alert');
+        if (typeof playRetroSound === 'function') playRetroSound('click'); 
+    } else {
+        let content = document.getElementById('social-hub-content');
+        if (content && content.innerHTML.includes("pm-target-input")) {
+            switchSocialHubTab('pms'); 
+        }
+    }
+});
+
+// Catch Social List Updates from Server
+socket.on('socialListsData', (data) => {
+    localFriends = data.friends || [];
+    localIgnored = data.ignored || [];
+    
+    if (document.getElementById('friends-list-container')) renderSocialList('friends');
+    if (document.getElementById('ignore-list-container')) renderSocialList('ignore');
+});
+
+// --- UI Navigation Helpers ---
+window.toggleSocialHub = function() {
+    let modal = document.getElementById('global-social-modal');
+    if (!modal) return;
+
+    if (modal.style.display === 'none') {
+        modal.style.display = 'flex';
+        let btn = document.getElementById('global-social-button');
+        if (btn) btn.classList.remove('social-glow-alert');
+        
+        switchSocialHubTab('pms'); 
+        socket.emit('fetchSocialLists'); 
+    } else {
+        modal.style.display = 'none';
+    }
+};
+
+window.switchSocialHubTab = function(tabName) {
+    ['friends', 'pms', 'ignore'].forEach(tab => {
+        let btn = document.getElementById(`tab-btn-${tab}`);
+        if (btn) {
+            btn.style.background = '#2c241d';
+            btn.style.color = '#aaa';
+        }
+    });
+
+    let activeBtn = document.getElementById(`tab-btn-${tabName}`);
+    if (activeBtn) {
+        activeBtn.style.background = '#3a2f26';
+        activeBtn.style.color = 'white';
+    }
+
+    const content = document.getElementById('social-hub-content');
+    if (!content) return;
+
+    if (tabName === 'friends') {
+        content.innerHTML = `
+            <div style="display:flex; gap: 4px; margin-bottom: 10px;">
+                <input type="text" id="add-friend-input" placeholder="Username..." style="flex:1; padding:6px; background:#110d0a; color:white; border:1px solid #4a3b2c;">
+                <button onclick="requestSocialAction('addFriend', 'add-friend-input')" style="background:#27ae60; color:white; border:none; padding:6px 12px; cursor:pointer; font-weight:bold;">➕ Add</button>
+            </div>
+            <div id="friends-list-container"></div>
+        `;
+        renderSocialList('friends');
+
+    } else if (tabName === 'ignore') {
+        content.innerHTML = `
+            <div style="display:flex; gap: 4px; margin-bottom: 10px;">
+                <input type="text" id="add-ignore-input" placeholder="Username..." style="flex:1; padding:6px; background:#110d0a; color:white; border:1px solid #4a3b2c;">
+                <button onclick="requestSocialAction('addIgnore', 'add-ignore-input')" style="background:#c0392b; color:white; border:none; padding:6px 12px; cursor:pointer; font-weight:bold;">🚫 Block</button>
+            </div>
+            <div id="ignore-list-container"></div>
+        `;
+        renderSocialList('ignore');
+
+    } else if (tabName === 'pms') {
+        let html = `
+            <div style="display:flex; gap: 4px; margin-bottom: 10px;">
+                <input type="text" id="pm-target-input" placeholder="To..." style="width: 70px; padding:6px; background:#110d0a; color:white; border:1px solid #4a3b2c;">
+                <input type="text" id="pm-msg-input" placeholder="Message..." style="flex:1; padding:6px; background:#110d0a; color:white; border:1px solid #4a3b2c;">
+                <button onclick="sendHubPM()" style="background:#8e44ad; color:white; border:none; padding:6px 12px; cursor:pointer; font-weight:bold;">✉️ Send</button>
+            </div>
+        `;
+
+        if (localPMHistory.length === 0) {
+            html += `<p style="text-align: center; color: #776c62; margin-top: 20px;">No messages received.</p>`;
+        } else {
+            html += `<div style="display: flex; flex-direction: column; gap: 8px;">`;
+            [...localPMHistory].reverse().forEach(pm => {
+                let timeStr = new Date(pm.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                html += `
+                <div style="background: #1a1410; padding: 6px; border-radius: 4px; border-left: 3px solid #e67e22;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 4px;">
+                        <span style="color: #f39c12; font-weight: bold; font-size: 11px;">[${timeStr}] ${pm.from}:</span>
+                        <button onclick="replyToPM('${pm.from}')" style="background: #34495e; color: white; border: none; font-size: 10px; padding: 3px 6px; border-radius: 3px; cursor: pointer;">↩ Reply</button>
+                    </div>
+                    <span style="color: #ddd; word-wrap: break-word;">${pm.message}</span>
+                </div>`;
+            });
+            html += `</div>`;
+        }
+        content.innerHTML = html;
+    }
+};
+
+window.renderSocialList = function(type) {
+    let container = document.getElementById(`${type}-list-container`);
+    if (!container) return;
+    
+    let list = type === 'friends' ? localFriends : localIgnored;
+    let icon = type === 'friends' ? '🤝' : '🚫';
+    
+    if (list.length === 0) {
+        container.innerHTML = `<p style="text-align: center; color: #776c62; margin-top: 20px;">List is empty.</p>`;
+        return;
+    }
+
+    let html = `<div style="display: flex; flex-direction: column; gap: 4px;">`;
+    list.forEach(name => {
+        html += `<div style="background: #110d0a; padding: 6px 10px; border-radius: 4px; display:flex; justify-content:space-between;">
+                    <span>${icon} ${name}</span>
+                    <button onclick="requestSocialAction('${type === 'friends' ? 'removeFriend' : 'removeIgnore'}', null, '${name}')" style="background:none; border:none; color:#e74c3c; cursor:pointer;">✖</button>
+                 </div>`;
+    });
+    html += `</div>`;
+    container.innerHTML = html;
+};
+
+// --- Action Emitters ---
+window.requestSocialAction = function(actionType, inputId, directTarget = null) {
+    let target = directTarget;
+    if (inputId) {
+        let inputEl = document.getElementById(inputId);
+        if (inputEl) { target = inputEl.value.trim(); inputEl.value = ""; }
+    }
+    if (target) socket.emit('manageSocialList', { action: actionType, target: target });
+};
+
+window.sendHubPM = function() {
+    let target = document.getElementById('pm-target-input').value.trim();
+    let msg = document.getElementById('pm-msg-input').value.trim();
+    if (target && msg) {
+        socket.emit('sendPrivateMessage', { target: target, message: msg });
+        document.getElementById('pm-msg-input').value = ""; 
+    }
+};
+
+window.replyToPM = function(senderName) {
+    let targetInput = document.getElementById('pm-target-input');
+    let msgInput = document.getElementById('pm-msg-input');
+    if (targetInput && msgInput) {
+        targetInput.value = senderName;
+        msgInput.focus();
+    }
+};
