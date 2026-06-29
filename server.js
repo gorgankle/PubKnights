@@ -30,11 +30,16 @@ mongoose.connect(dbURI)
     .then(() => console.log('🛡️  MongoDB Secured & Connected'))
     .catch(err => console.error('❌ MongoDB Connection Error:', err));
 
-// === DATABASE SCHEMA ===
 const playerSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
     password: { type: String, required: true }, 
-    saveData: { type: Object, default: {} }     
+    saveData: { type: Object, default: {} },
+    
+    // === NEW: SOCIAL INFRASTRUCTURE ===
+    friends: { type: [String], default: [] },
+    ignored: { type: [String], default: [] },
+    offlineMessages: { type: Array, default: [] }
+    // ==================================
 }, { timestamps: true });
 
 const Player = mongoose.model('Player', playerSchema);

@@ -1,7 +1,58 @@
 // --- socialRouter.js ---
 // Handles all Community Square logic: Zone instancing, chat, and movement.
+const mongoose = require('mongoose');
 
 module.exports = function(socket, io, activePlayers) {
+	
+// === NEW: GLOBAL PRIVATE MESSAGE ROUTER ===
+    socket.on('sendPrivateMessage', async (data) => {
+        let p = activePlayers[socket.id];
+        if (!p) return;
+
+        let targetName = data.target;
+        let msg = data.message;
+
+        // 1. Check if the target is online by scanning ALL active sockets globally
+        let targetSocketId = Object.keys(activePlayers).find(key => activePlayers[key].username === targetName);
+
+        if (targetSocketId) {
+            let targetPlayer = activePlayers[targetSocketId];
+            
+            // 2. Filter Check: Did they ignore the sender?
+            if (targetPlayer.ignored && targetPlayer.ignored.includes(p.username)) {
+                return socket.emit('zoneNotification', { message: `❌ Cannot send message to ${targetName}.` });
+            }
+            
+            // 3. Route the PM directly to the active socket!
+            io.to(targetSocketId).emit('receivePM', { from: p.username, message: msg, timestamp: Date.now() });
+            socket.emit('zoneNotification', { message: `✉️ Message sent to ${targetName}.` });
+            
+        } else {
+            // 4. Target is OFFLINE. Save to MongoDB Inbox!
+            try {
+                const PlayerModel = mongoose.model('Player'); 
+                let offlineUser = await PlayerModel.findOne({ username: targetName });
+                
+                if (offlineUser) {
+                    if (offlineUser.ignored && offlineUser.ignored.includes(p.username)) {
+                        return socket.emit('zoneNotification', { message: `❌ Cannot send message to ${targetName}.` });
+                    }
+                    
+                    // Push the message to their database array
+                    offlineUser.offlineMessages.push({ from: p.username, message: msg, timestamp: Date.now() });
+                    await offlineUser.save();
+                    
+                    socket.emit('zoneNotification', { message: `📭 ${targetName} is offline. Message delivered to their inbox.` });
+                } else {
+                    socket.emit('zoneNotification', { message: `❌ User '${targetName}' does not exist.` });
+                }
+            } catch (err) {
+                console.error("Offline PM Error:", err);
+            }
+        }
+    });
+    // ==========================================	
+	
 	
 	// --- RENAISSANCE CORNER: UGC HANDLING ---
 
