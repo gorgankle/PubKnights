@@ -124,7 +124,9 @@ appearance: { gender: 'male', skin: 'light', hair: 'hair_messy', hairColor: 'bro
                     // PULL SECURELY FROM ITEM DATABASE!
                     weapon: JSON.parse(JSON.stringify(ItemDatabase["rusty_mace"])),
                 },
-                inventory: [], stash: [], workers: { woodcutters: 0, fishermen: 0, farmers: 0 },
+                inventory: [], stash: [], 
+                buildings: { workerCabin: 1 },
+                workers: { total: 0, assigned: { wood: 0, fish: 0, hops: 0 } },
                 supplyCart: { wood: 0, fish: 0, hops: 0, max: 100, level: 1 },
                 maxInventorySlots: 5, backpackUpgrades: 0,
                 pet: { adopted: false, level: 1 }
@@ -207,11 +209,21 @@ if (data.saveData) {
                 if (pd.inventory) {
                     pd.inventory = pd.inventory.map(item => sanitizeItemSchema(item));
                 }
-                // 3. Sanitize Stash/Vault
+              
+          // 3. Sanitize Stash/Vault
                 if (pd.stash) {
                     pd.stash = pd.stash.map(item => sanitizeItemSchema(item));
                 }
                 // ============================================
+
+                // --- LEGACY SCHEMA MIGRATION ---
+                if (!pd.buildings) pd.buildings = { workerCabin: 1 };
+                if (pd.workers && pd.workers.woodcutters !== undefined) {
+                    let w = pd.workers.woodcutters || 0;
+                    let f = pd.workers.fishermen || 0;
+                    let h = pd.workers.farmers || 0;
+                    pd.workers = { total: w + f + h, assigned: { wood: w, fish: f, hops: h } };
+                }
 
                 activePlayers[socket.id] = pd;
                 socket.emit('loginSuccess', pd);
@@ -253,16 +265,19 @@ setInterval(() => {
         if (p.happyHourTicks > 0) p.happyHourTicks--;
 
         for (let cycle = 0; cycle < productionCycles; cycle++) {
-            if (p.workers && p.supplyCart) {
-                for (let i = 0; i < (p.workers.woodcutters || 0); i++) {
-                    if (p.supplyCart.wood + p.supplyCart.fish + (p.supplyCart.hops || 0) < p.supplyCart.max) p.supplyCart.wood++;
-                }
-                for (let i = 0; i < (p.workers.fishermen || 0); i++) {
-                    if (p.supplyCart.wood + p.supplyCart.fish + (p.supplyCart.hops || 0) < p.supplyCart.max) p.supplyCart.fish++;
-                }
-                for (let i = 0; i < (p.workers.farmers || 0); i++) {
-                    if (p.supplyCart.wood + p.supplyCart.fish + (p.supplyCart.hops || 0) < p.supplyCart.max) p.supplyCart.hops++;
-                }
+            if (p.workers && p.workers.assigned && p.supplyCart) {
+                // Exponential generation math for long-term balance
+                let genWood = p.workers.assigned.wood > 0 ? Math.floor(Math.pow(1.15, p.workers.assigned.wood)) : 0;
+                let genFish = p.workers.assigned.fish > 0 ? Math.floor(Math.pow(1.15, p.workers.assigned.fish)) : 0;
+                let genHops = p.workers.assigned.hops > 0 ? Math.floor(Math.pow(1.15, p.workers.assigned.hops)) : 0;
+                
+                let currentTotal = p.supplyCart.wood + p.supplyCart.fish + (p.supplyCart.hops || 0);
+                
+                if (currentTotal < p.supplyCart.max) p.supplyCart.wood = Math.min(p.supplyCart.wood + genWood, p.supplyCart.max);
+                currentTotal = p.supplyCart.wood + p.supplyCart.fish + (p.supplyCart.hops || 0);
+                if (currentTotal < p.supplyCart.max) p.supplyCart.fish = Math.min(p.supplyCart.fish + genFish, p.supplyCart.max);
+                currentTotal = p.supplyCart.wood + p.supplyCart.fish + (p.supplyCart.hops || 0);
+                if (currentTotal < p.supplyCart.max) p.supplyCart.hops = Math.min(p.supplyCart.hops + genHops, p.supplyCart.max);
             }
         }
 

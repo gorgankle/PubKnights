@@ -160,25 +160,53 @@ if (data.action === 'equip') {
                 socket.emit('townReceipt', { success: true, action: 'exportFish', updatedPlayer: p, message: "🐟 Wholesale Export Complete: Traded 100 fish for 150g!" });
             } else socket.emit('townReceipt', { success: false, message: "❌ Wholesalers require a clean batch of 100 Fish." });
         }
-        // 6. HIRE WORKER
+        // 6. WORKER HOUSING & RECRUITMENT
         else if (data.action === 'hireWorker') {
+            let maxWorkers = (p.buildings.workerCabin || 1) * 10;
+            if ((p.workers.total || 0) >= maxWorkers) {
+                return socket.emit('townReceipt', { success: false, message: `❌ Housing full. Upgrade Worker Cabin (Max ${maxWorkers}).` });
+            }
             if (p.gold >= 75) {
                 p.gold -= 75;
-                p.workers = p.workers || { woodcutters: 0, fishermen: 0, farmers: 0 };
-                if (data.type === 'woodcutter') p.workers.woodcutters++;
-                else if (data.type === 'fisherman') p.workers.fishermen++;
-                else if (data.type === 'farmer') p.workers.farmers++;
-                socket.emit('townReceipt', { success: true, action: 'hireWorker', updatedPlayer: p, message: `👷 Hired a new ${data.type}!` });
-            } else socket.emit('townReceipt', { success: false, message: "❌ Insufficient gold reserves to recruit workers." });
+                p.workers.total = (p.workers.total || 0) + 1;
+                socket.emit('townReceipt', { success: true, action: 'hireWorker', updatedPlayer: p, message: `👷 Hired a new worker! Assign them to a resource.` });
+            } else socket.emit('townReceipt', { success: false, message: "❌ Insufficient gold reserves to recruit." });
         }
-        // 7. CLAIM SUPPLY CART
+        else if (data.action === 'upgradeCabin') {
+            let lvl = p.buildings.workerCabin || 1;
+            if (lvl >= 20) return socket.emit('townReceipt', { success: false, message: "❌ Cabin is at maximum level (20)." });
+            
+            let cost = Math.floor(100 * Math.pow(1.3, lvl)); 
+            if (p.wood >= cost && p.gold >= cost) {
+                p.wood -= cost; p.gold -= cost;
+                p.buildings.workerCabin++;
+                socket.emit('townReceipt', { success: true, action: 'upgradeCabin', updatedPlayer: p, message: `🏠 Worker Cabin upgraded to Lvl ${p.buildings.workerCabin}! Housing increased.` });
+            } else socket.emit('townReceipt', { success: false, message: `❌ Requires ${cost}W, ${cost}g.` });
+        }
+        else if (data.action === 'assignWorker') {
+            let reqW = data.wood || 0; let reqF = data.fish || 0; let reqH = data.hops || 0;
+            if ((reqW + reqF + reqH) > (p.workers.total || 0)) return socket.emit('townReceipt', { success: false, message: "❌ Cannot exceed total hired workers." });
+            
+            p.workers.assigned = { wood: reqW, fish: reqF, hops: reqH };
+            socket.emit('townReceipt', { success: true, action: 'assignWorker', updatedPlayer: p, message: "👷 Labor pool reallocated." });
+        }
+        // 7. CLAIM SUPPLY CART (Flat Wage Model)
         else if (data.action === 'claimCart') {
             let w = p.supplyCart.wood || 0; let f = p.supplyCart.fish || 0; let h = p.supplyCart.hops || 0;
-            if (w === 0 && f === 0 && h === 0) return socket.emit('townReceipt', { success: false, message: "❌ Supply cart is empty." });
+            let totalClaimed = w + f + h;
+            if (totalClaimed === 0) return socket.emit('townReceipt', { success: false, message: "❌ Supply cart is empty." });
+            
+            let wageCost = totalClaimed * 1; // 1g per resource tax
+            
+            if (p.gold < wageCost) {
+                return socket.emit('townReceipt', { success: false, message: `❌ Insufficient gold for wages. Cart delivery requires ${wageCost}g.` });
+            }
+            
+            p.gold -= wageCost;
             p.wood += w; p.fish += f; p.hops += h;
             p.supplyCart.wood = 0; p.supplyCart.fish = 0; p.supplyCart.hops = 0;
             
-            socket.emit('townReceipt', { success: true, action: 'claimCart', isAuto: data.isAuto, updatedPlayer: p, message: `🧺 Claimed Production Supplies: +${w} Timber, +${f} Fish, +${h} Hops!` });
+            socket.emit('townReceipt', { success: true, action: 'claimCart', isAuto: data.isAuto, updatedPlayer: p, message: `🧺 Claimed Supplies: +${w} Timber, +${f} Fish, +${h} Hops. (Paid ${wageCost}g to drivers)` });
         }
         // 8. HOST HAPPY HOUR
         else if (data.action === 'happyHour') {

@@ -66,8 +66,38 @@ function chumForbiddenCellars() {
     socket.emit('townAction', { action: 'chumCellars' });
 }
 
-function hireWorker(type) {
-    socket.emit('townAction', { action: 'hireWorker', type: type });
+function hireWorker() {
+    socket.emit('townAction', { action: 'hireWorker' });
+}
+
+function upgradeCabin() {
+    socket.emit('townAction', { action: 'upgradeCabin' });
+}
+
+function adjustWorker(type, delta) {
+    if (typeof gameState !== 'undefined' && gameState === 'COMBAT') {
+        logMessage("❌ You cannot reassign town workers while deployed in combat zones.");
+        return;
+    }
+    if (typeof combatPhase !== 'undefined' && combatPhase === 'WAITING_FOR_SERVER') return;
+    
+    let w = player.workers.assigned.wood || 0;
+    let f = player.workers.assigned.fish || 0;
+    let h = player.workers.assigned.hops || 0;
+    let totalAssigned = w + f + h;
+    let maxTotal = player.workers.total || 0;
+    
+    if (delta > 0 && totalAssigned >= maxTotal) return; 
+    
+    if (type === 'wood' && w + delta >= 0) w += delta;
+    if (type === 'fish' && f + delta >= 0) f += delta;
+    if (type === 'hops' && h + delta >= 0) h += delta;
+    
+    if (w + f + h <= maxTotal) {
+        player.workers.assigned = { wood: w, fish: f, hops: h };
+        refreshSystemUI(); // Optimistic UI update
+        socket.emit('townAction', { action: 'assignWorker', wood: w, fish: f, hops: h });
+    }
 }
 
 function upgradeCartCapacity() { socket.emit('townAction', { action: 'upgradeCart' }); }
