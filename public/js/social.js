@@ -600,11 +600,3 @@ window.replyToPM = function(senderName) {
     }
 };
 
-window.replyToPM = function(senderName) {
-    let targetInput = document.getElementById('pm-target-input');
-    let msgInput = document.getElementById('pm-msg-input');
-    if (targetInput && msgInput) {
-        targetInput.value = senderName;
-        msgInput.focus();
-    }
-};
