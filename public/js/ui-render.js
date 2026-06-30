@@ -718,7 +718,7 @@ if (hopsScreen) hopsScreen.style.display = "none";
             if(wHop) wHop.innerText = player.workers.assigned.hops || 0;
 
             let hBtn = document.getElementById("hire-worker-btn");
-            if (hBtn) hBtn.disabled = (player.gold < 75 || (player.workers.total || 0) >= maxW);
+            if (hBtn) hBtn.disabled = (player.gold < 100 || (player.workers.total || 0) >= maxW);
             
             let upCabBtn = document.getElementById("upgrade-cabin-btn");
             if (upCabBtn) {

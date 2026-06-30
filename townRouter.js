@@ -156,7 +156,7 @@ if (data.action === 'equip') {
         // 5. EXPORT FISH WHOLESALE
         else if (data.action === 'exportFish') {
             if (p.fish >= 100) {
-                p.fish -= 100; p.gold += 150;
+                p.fish -= 100; p.gold += 120;
                 socket.emit('townReceipt', { success: true, action: 'exportFish', updatedPlayer: p, message: "🐟 Wholesale Export Complete: Traded 100 fish for 150g!" });
             } else socket.emit('townReceipt', { success: false, message: "❌ Wholesalers require a clean batch of 100 Fish." });
         }
@@ -166,8 +166,8 @@ if (data.action === 'equip') {
             if ((p.workers.total || 0) >= maxWorkers) {
                 return socket.emit('townReceipt', { success: false, message: `❌ Housing full. Upgrade Worker Cabin (Max ${maxWorkers}).` });
             }
-            if (p.gold >= 75) {
-                p.gold -= 75;
+            if (p.gold >= 100) {
+                p.gold -= 100;
                 p.workers.total = (p.workers.total || 0) + 1;
                 socket.emit('townReceipt', { success: true, action: 'hireWorker', updatedPlayer: p, message: `👷 Hired a new worker! Assign them to a resource.` });
             } else socket.emit('townReceipt', { success: false, message: "❌ Insufficient gold reserves to recruit." });
@@ -346,14 +346,17 @@ if (data.action === 'equip') {
         }
         else if (data.action === 'upgradeCart') {
             let level = p.supplyCart.level || 1;
+            if (level >= 21) return socket.emit('townReceipt', { success: false, message: "❌ Cart has reached maximum capacity (400)." });
+            
             let upg = level - 1;
-            let gCost = Math.floor(200 * Math.pow(1.2, upg)); 
-            let wCost = Math.floor(100 * Math.pow(1.2, upg));
+            // Bumped base cost and exponential curve to compensate for the level cap
+            let gCost = Math.floor(250 * Math.pow(1.25, upg)); 
+            let wCost = Math.floor(125 * Math.pow(1.25, upg));
             
             if (p.gold >= gCost && p.wood >= wCost) {
                 p.gold -= gCost; p.wood -= wCost;
-                p.supplyCart.max += 50; p.supplyCart.level = level + 1;
-                socket.emit('townReceipt', { success: true, action: 'upgradeCart', updatedPlayer: p, message: `📦 Cart upgraded to Level ${p.supplyCart.level}!` });
+                p.supplyCart.max += 15; p.supplyCart.level = level + 1;
+                socket.emit('townReceipt', { success: true, action: 'upgradeCart', updatedPlayer: p, message: `📦 Cart capacity expanded to ${p.supplyCart.max}!` });
             } else socket.emit('townReceipt', { success: false, message: "❌ Insufficient funds for Cart upgrade." });
         }
         // 17. BLACK MARKET (SERVER-SIDE LOOT ROLL)
@@ -386,7 +389,7 @@ if (data.action === 'equip') {
         else if (data.action === 'sellFishBulk') {
             if (!p.tradeRoutesExpanded) return socket.emit('townReceipt', { success: false, message: "❌ Trade routes are not expanded." });
             if (p.fish >= 1000) {
-                p.fish -= 1000; p.gold += 1500;
+                p.fish -= 1000; p.gold += 1200;
                 socket.emit('townReceipt', { success: true, action: 'sellFishBulk', updatedPlayer: p, message: "🚢 Exported 1,000 Fish to distant lands for 1,500 Gold." });
             } else socket.emit('townReceipt', { success: false, message: "❌ Not enough stock. The merchant ships require exactly 1,000 Fish." });
         }

@@ -96,13 +96,12 @@ function getPlayerTotalAttack() { return getPlayerTotalPower(); }
 function getCartUpgradeCost() {
     let level = player.supplyCart ? (player.supplyCart.level || 1) : 1;
     let upg = level - 1;
-    // Base cost: 200g/100w. Scales moderately by 1.2x.
+    // Wave 5 Economy Balance: 250g/125w. Scales heavily by 1.25x.
     return { 
-        gold: Math.floor(200 * Math.pow(1.2, upg)), 
-        wood: Math.floor(100 * Math.pow(1.2, upg)) 
+        gold: Math.floor(250 * Math.pow(1.25, upg)), 
+        wood: Math.floor(125 * Math.pow(1.25, upg)) 
     };
 }
-
 function getBackpackUpgradeCost() {
     let upg = player.backpackUpgrades || 0;
     // Base cost: 250g/100w. Scales moderately by 1.2x.
