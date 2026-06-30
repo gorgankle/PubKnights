@@ -458,10 +458,10 @@ if (hopsScreen) hopsScreen.style.display = "none";
 
             // === UPDATED STATE ROUTER ===
             if (gameState === 'KNIGHT') {
-                if (knightScreen) knightScreen.style.display = "block";
+                if (knightScreen) knightScreen.style.display = "flex";
                 document.getElementById('nav-knight').classList.add('active-tab');
             } else if (gameState === 'TOWN') {
-                townScreen.style.display = "block";
+                townScreen.style.display = "flex";
                 document.getElementById('nav-town').classList.add('active-tab');
             } else if (gameState === 'MERCHANT') {
                 merchantScreen.style.display = "flex";
@@ -470,7 +470,7 @@ if (hopsScreen) hopsScreen.style.display = "none";
                 if (adventuresScreen) adventuresScreen.style.display = "flex";
                 document.getElementById('nav-adventures').classList.add('active-tab');
             } else if (gameState === 'VAULT') {
-                vaultScreen.style.display = "block";
+                vaultScreen.style.display = "flex";
                 document.getElementById('nav-vault').classList.add('active-tab');
 
                 document.getElementById("vault-screen-count").innerText = player.stash.length;
@@ -491,7 +491,7 @@ if (hopsScreen) hopsScreen.style.display = "none";
                 document.getElementById('nav-town').classList.add('active-tab');
             } else if (gameState === 'STUDIO') {
                 // === NEW: Show the Studio iframe ===
-                if (studioScreen) studioScreen.style.display = "block";
+                if (studioScreen) studioScreen.style.display = "flex";
                 document.getElementById('nav-town').classList.add('active-tab'); // Keep Town tab highlighted
             }
 
