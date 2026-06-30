@@ -120,6 +120,19 @@ function endPlayerTurn() {
     socket.emit('endPlayerTurn', { playerPos: { x: player.x, y: player.y } });
 }
 
+function fleeCombat() {
+    if (gameState !== 'COMBAT' || currentTurn !== 'PLAYER' || combatPhase === 'TARGETING') return;
+    
+    let confirmFlee = confirm("Are you sure you want to run away? You will forfeit all pending loot and return to town.");
+    if (!confirmFlee) return;
+
+    // Lock the phase so they can't spam buttons while fleeing
+    combatPhase = 'WAITING_FOR_SERVER';
+    refreshSystemUI();
+    
+    socket.emit('dispatchCombatAction', { actionCategory: 'flee' });
+}
+
 function handleCombatEquip(idx) {
     socket.emit('dispatchCombatAction', { actionCategory: 'equip', invIndex: idx });
 }
