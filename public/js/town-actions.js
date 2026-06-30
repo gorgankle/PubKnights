@@ -15,16 +15,6 @@ function upgradeVaultCapacity() {
     socket.emit('townAction', { action: 'upgradeVault' });
 }
 
-function setIdleJob(jobType) { 
-    player.idleJob = jobType; 
-    if (typeof playRetroSound === 'function') playRetroSound('menu');
-    
-    // Bypass the blocked save payload and explicitly tell the server via townAction
-    socket.emit('townAction', { action: 'setIdleJob', job: jobType }); 
-    if (typeof saveGame === 'function') saveGame(); 
-    
-    refreshSystemUI(); 
-}
 
 // === NEW: ITEM-BASED CONSUMPTION IN TOWN ===
 function drinkBrewFromInventory(idx) { socket.emit('townAction', { action: 'drinkBrew', idx: idx }); }

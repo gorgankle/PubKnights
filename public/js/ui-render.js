@@ -616,23 +616,11 @@ if (hopsScreen) hopsScreen.style.display = "none";
             let markBtn = document.getElementById("market-trader-btn");
             if(markBtn) markBtn.disabled = (player.hops < 50);
 
-            const hhTimer = document.getElementById("happy-hour-timer");
+          const hhTimer = document.getElementById("happy-hour-timer");
             if (hhTimer) {
                 if (player.happyHourTicks > 0) hhTimer.style.display = "inline";
                 else hhTimer.style.display = "none";
             }
-
-            let tavernBtn = document.getElementById("job-tavern-btn");
-            if (tavernBtn) tavernBtn.className = player.idleJob === 'TAVERN' ? "active-job" : "";
-            
-            let forestBtn = document.getElementById("job-forest-btn");
-            if (forestBtn) forestBtn.className = player.idleJob === 'FOREST' ? "active-job" : "";
-            
-            let lakeBtn = document.getElementById("job-lake-btn");
-            if (lakeBtn) lakeBtn.className = player.idleJob === 'LAKE' ? "active-job" : "";
-            
-            let hopsBtn = document.getElementById("job-hops-btn");
-            if (hopsBtn) hopsBtn.className = player.idleJob === 'HOPS' ? "active-job" : "";
 
             const cellarGate = document.getElementById("cellar-gate-btn");
             if(cellarGate) {

@@ -514,12 +514,7 @@ if (data.action === 'equip') {
             socket.emit('crateOpened', { success: true, lootMessage: lootMsg, rarity: finalRarity });
             socket.emit('townReceipt', { success: true, action: 'inventoryUpdate', updatedPlayer: p, message: "" });
         }
-		// 24. SECURE IDLE JOB ASSIGNMENT
-        else if (data.action === 'setIdleJob') {
-            if (['TAVERN', 'FOREST', 'LAKE', 'HOPS'].includes(data.job)) {
-                p.idleJob = data.job;
-                socket.emit('townReceipt', { success: true, action: 'setIdleJob', updatedPlayer: p, message: "" });
-            }
-        }
+		// === WITH ===
+        // (Idle Job Assignment Removed)
     });
 };

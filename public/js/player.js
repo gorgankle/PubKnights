@@ -13,7 +13,7 @@ let player = {
 	lumberPoints: 0,  // NEW: Active timber game currency
     fishingPoints: 0, // NEW: Active fishing game currency
     hopsPoints: 0,    // NEW: Active hops game currency
-    idleJob: 'TAVERN', wildernessLevel: 1, cellarsUnlocked: false, cellarLevel: 1,         
+    wildernessLevel: 1, cellarsUnlocked: false, cellarLevel: 1,         
     
 	appearance: { gender: 'male', skin: 'light', hair: 'hair_messy', hairColor: 'brown', eyes: 'eyes_blue', shirtColor: 'blue', pantsColor: 'dark', bootsColor: 'leather' },
     equipment: {
@@ -147,7 +147,7 @@ function saveGame(manualNotify = false) {
         abyssUnlocked: player.abyssUnlocked, abyssDepth: player.abyssDepth,
         appearance: player.appearance, // <--- CRITICAL FIX!
         equipment: player.equipment, inventory: player.inventory, stash: player.stash,
-        workers: player.workers, supplyCart: player.supplyCart, idleJob: player.idleJob, mapBaited: player.mapBaited,
+        workers: player.workers, supplyCart: player.supplyCart, mapBaited: player.mapBaited,
         maxInventorySlots: player.maxInventorySlots, sharpeningStoneBought: player.sharpeningStoneBought,
         ironPlatingBought: player.ironPlatingBought, backpackUpgrades: player.backpackUpgrades,
         activeCombatBuff: player.activeCombatBuff, activeBuffs: player.activeBuffs, happyHourTicks: player.happyHourTicks, cellarsChummed: player.cellarsChummed,

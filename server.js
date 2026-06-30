@@ -254,13 +254,7 @@ setInterval(() => {
         let p = activePlayers[socketId];
         if (!p) continue;
 
-        // 1. Process Personal Idle Job
-        if (p.idleJob === 'TAVERN') p.hp = Math.min(p.vitality || 70, (p.hp || 0) + 5);
-        else if (p.idleJob === 'FOREST') p.wood = (p.wood || 0) + 1;
-        else if (p.idleJob === 'LAKE') p.fish = (p.fish || 0) + 1;
-        else if (p.idleJob === 'HOPS') p.hops = (p.hops || 0) + 1;
-
-        // 2. Process Workers & Supply Cart
+        // 1. Process Workers & Supply Cart
         let productionCycles = (p.happyHourTicks > 0) ? 2 : 1;
         if (p.happyHourTicks > 0) p.happyHourTicks--;
 
