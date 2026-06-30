@@ -703,7 +703,7 @@ if (hopsScreen) hopsScreen.style.display = "none";
                 upCartBtn.disabled = (player.gold < cartCost.gold || player.wood < cartCost.wood);
             }
 
-            let maxW = (player.buildings.workerCabin || 1) * 10;
+            let maxW = (player.buildings && player.buildings.workerCabin ? player.buildings.workerCabin : 1) * 10;
             
             let wTot = document.getElementById("worker-total-count");
             if (wTot) wTot.innerText = player.workers.total || 0;
@@ -711,18 +711,20 @@ if (hopsScreen) hopsScreen.style.display = "none";
             if (wMax) wMax.innerText = maxW;
             
             let wWood = document.getElementById("worker-wood-count");
-            if(wWood) wWood.innerText = player.workers.assigned.wood || 0;
+            if(wWood) wWood.innerText = (player.workers && player.workers.assigned && player.workers.assigned.wood) ? player.workers.assigned.wood : 0;
+            
             let wFish = document.getElementById("worker-fish-count");
-            if(wFish) wFish.innerText = player.workers.assigned.fish || 0;
+            if(wFish) wFish.innerText = (player.workers && player.workers.assigned && player.workers.assigned.fish) ? player.workers.assigned.fish : 0;
+            
             let wHop = document.getElementById("worker-hop-count");
-            if(wHop) wHop.innerText = player.workers.assigned.hops || 0;
+            if(wHop) wHop.innerText = (player.workers && player.workers.assigned && player.workers.assigned.hops) ? player.workers.assigned.hops : 0;
 
             let hBtn = document.getElementById("hire-worker-btn");
             if (hBtn) hBtn.disabled = (player.gold < 100 || (player.workers.total || 0) >= maxW);
             
             let upCabBtn = document.getElementById("upgrade-cabin-btn");
             if (upCabBtn) {
-                let lvl = player.buildings.workerCabin || 1;
+                let lvl = (player.buildings && player.buildings.workerCabin) ? player.buildings.workerCabin : 1;
                 let cost = Math.floor(100 * Math.pow(1.3, lvl));
                 upCabBtn.innerText = `Lvl ${lvl + 1} Cabin (${cost}W, ${cost}g)`;
                 upCabBtn.disabled = (lvl >= 20 || player.wood < cost || player.gold < cost);
