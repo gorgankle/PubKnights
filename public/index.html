@@ -131,7 +131,7 @@
             height: 100%;
         }
     </style>
-    <<div id="combat-inventory-list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 8px;"></div>
+    <div id="combat-inventory-list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 8px;"></div>
     
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
         <button id="end-btn" onclick="executeCombatAction('end')" style="padding: 10px; font-size: 14px; background: #e67e22; border: 2px solid #d35400; font-weight: bold; text-shadow: 1px 1px 2px #000;" onmouseenter="showSystemTooltip('combat_pass', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">⌛ Pass Turn</button>
@@ -402,7 +402,7 @@
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                                 <span style="font-size: 11px; color: #f1c40f;">👷 Labor Pool: <b id="worker-total-count">0</b> / <b id="worker-max-count">10</b></span>
                                 <div>
-                                    <<button id="hire-worker-btn" onclick="hireWorker()" style="padding: 4px 8px; font-size: 9px; margin: 0; background: #27ae60;">Hire (100g)</button>
+                                    <button id="hire-worker-btn" onclick="hireWorker()" style="padding: 4px 8px; font-size: 9px; margin: 0; background: #27ae60;">Hire (100g)</button>
                                     <button id="upgrade-cabin-btn" onclick="upgradeCabin()" style="padding: 4px 8px; font-size: 9px; margin: 0; background: #e67e22;">Upgrade Cabin</button>
                                 </div>
                             </div>
@@ -581,7 +581,7 @@
     <iframe id="studio-iframe" src="" style="width: 100%; height: 100%; border: none; background: #1e1915;"></iframe>
 	</div>
 
-</div> <div id="log"">--- Tavern Records ---<br>Engine v0.8.13 modular running... All synchronization pipelines functional.</div>
+</div> <div id="log">--- Tavern Records ---<br>Engine v0.8.13 modular running... All synchronization pipelines functional.</div>
 
 	<div id="social-view" class="game-screen" style="display:none; max-width: 1000px; margin: 0 auto; gap: 15px; grid-template-columns: 2fr 1fr; padding-top: 20px;">
     

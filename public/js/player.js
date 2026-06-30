@@ -21,9 +21,11 @@ let player = {
         armor: null, 
         weapon: typeof ItemDatabase !== 'undefined' ? JSON.parse(JSON.stringify(ItemDatabase["rusty_mace"])) : null,
         gloves: null, 
-        boots: null
+        boots: null 
     },
-    inventory: [], stash: [], workers: { woodcutters: 0, fishermen: 0, farmers: 0 },
+    inventory: [], stash: [], 
+    buildings: { workerCabin: 1 },
+    workers: { total: 0, assigned: { wood: 0, fish: 0, hops: 0 } },
     supplyCart: { wood: 0, fish: 0, hops: 0, max: 100, level: 1 }, mapBaited: false,
 maxInventorySlots: 5, sharpeningStoneBought: 0, ironPlatingBought: 0, backpackUpgrades: 0,
     
@@ -147,6 +149,7 @@ function saveGame(manualNotify = false) {
         abyssUnlocked: player.abyssUnlocked, abyssDepth: player.abyssDepth,
         appearance: player.appearance, // <--- CRITICAL FIX!
         equipment: player.equipment, inventory: player.inventory, stash: player.stash,
+        buildings: player.buildings,
         workers: player.workers, supplyCart: player.supplyCart, mapBaited: player.mapBaited,
         maxInventorySlots: player.maxInventorySlots, sharpeningStoneBought: player.sharpeningStoneBought,
         ironPlatingBought: player.ironPlatingBought, backpackUpgrades: player.backpackUpgrades,
