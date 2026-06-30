@@ -264,9 +264,10 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
                         uiHeader.innerHTML = `🎯 TARGETING: Click anywhere in range to execute!`;
                         uiHeader.style.color = "#e74c3c";
                     }
-                    document.getElementById("slash-btn").disabled = true;
-                    document.getElementById("heavy-btn").disabled = true;
-                    document.getElementById("end-btn").disabled = true;
+                    if (document.getElementById("slash-btn")) document.getElementById("slash-btn").disabled = true;
+                    if (document.getElementById("heavy-btn")) document.getElementById("heavy-btn").disabled = true;
+                    if (document.getElementById("end-btn")) document.getElementById("end-btn").disabled = true;
+                    if (document.getElementById("flee-btn")) document.getElementById("flee-btn").disabled = true;
                 } else {
                     // === INSTANT AUTO-TARGETING LOGIC ===
                     let range = (player.equipment.weapon && player.equipment.weapon.combat && player.equipment.weapon.combat.standard.range) || 1;
@@ -348,16 +349,27 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
                         endBtn.disabled = false;
                         endBtn.style.opacity = (hasTarget && withinRange && losClear && isAttackPhase) ? "0.6" : "1.0";
                     }
+                    let fleeBtn = document.getElementById("flee-btn");
+                    if (fleeBtn) {
+                        fleeBtn.disabled = false;
+                        fleeBtn.style.opacity = "1.0";
+                    }
                 }
             } else {
                 if (uiHeader) {
                     uiHeader.innerHTML = "🤖 MONSTERS EXECUTING TACTICAL ENGINE";
                     uiHeader.style.color = "#e74c3c";
                 }
-                document.getElementById("slash-btn").disabled = true;
-                document.getElementById("heavy-btn").disabled = true;
-                document.getElementById("end-btn").disabled = true;
-                document.getElementById("end-btn").style.opacity = "1.0";
+                if (document.getElementById("slash-btn")) document.getElementById("slash-btn").disabled = true;
+                if (document.getElementById("heavy-btn")) document.getElementById("heavy-btn").disabled = true;
+                if (document.getElementById("end-btn")) {
+                    document.getElementById("end-btn").disabled = true;
+                    document.getElementById("end-btn").style.opacity = "1.0";
+                }
+                if (document.getElementById("flee-btn")) {
+                    document.getElementById("flee-btn").disabled = true;
+                    document.getElementById("flee-btn").style.opacity = "1.0";
+                }
             }
             
             refreshCombatSidebar();

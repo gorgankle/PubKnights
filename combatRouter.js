@@ -155,12 +155,23 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             delete activeCombats[socketId];
         }
     }
-
 // --- SERVER-AUTHORITATIVE COMBAT ENGINE (UNIFIED DISPATCHER) ---
     socket.on('dispatchCombatAction', (data) => {
         let p = activePlayers[socket.id];
         let combat = activeCombats[socket.id];
         
+		if (data.actionCategory === 'flee') {
+            // Erase any escrow/pending loot they gathered before fleeing
+            p.pendingGold = 0;
+            p.pendingXp = 0;
+            p.pendingLoot = [];
+            
+            // Remove them from the active server battle
+            delete activeCombats[socket.id];
+            
+            return socket.emit('combatResult', { type: 'flee', updatedPlayer: p });
+        }
+		
         // FIX: Prevent Silent Ghost Sockets
         if (!p) return socket.emit('combatResult', { type: 'error', message: '❌ Server connection lost. Please refresh the page.' });
 
@@ -827,9 +838,28 @@ else { // WILDERNESS
                     }
 
                     if (p.hp <= 0) {
-                        p.gold = Math.max(0, p.gold - 100); p.hp = Math.floor((p.vitality || 70) * 0.5);
+                        // === WAVE 6: FULL LOOT DEATH PENALTY ===
+                        p.inventory = []; // Obliterates the backpack
                         
-                        // === NEW: CLEAR COMBAT STATUSES ON DEATH ===
+                        // Wipes all equipped gear but maintains the strict object structure
+                        p.equipment = { 
+                            helmet: null, 
+                            armor: null, 
+                            weapon: null, 
+                            gloves: null, 
+                            boots: null 
+                        };
+                        
+                        // Rejuvenate the fallen Knight
+                        p.hp = p.vitality;
+                        p.stamina = p.maxStamina;
+
+                        // Wipe Escrow (They lose all gathered gold/XP/Items from the map)
+                        p.pendingGold = 0;
+                        p.pendingXp = 0;
+                        p.pendingLoot = [];
+                        
+                        // Clear Combat Statuses
                         p.activeBuffs = [];
                         p.activeCombatBuff = null;
                         p.mapBaited = false;

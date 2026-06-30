@@ -57,6 +57,18 @@ socket.on('combatResult', (result) => {
         if (typeof drawGrid === 'function') drawGrid();
         return;
     }
+
+    if (result.type === 'flee') {
+        logMessage(`🏃 You fled the battlefield in terror!`);
+        if (typeof playRetroSound === 'function') playRetroSound('step');
+        
+        // Clear any pending escrow loot locally
+        pendingLoot = [];
+        if (player) player.pendingLoot = [];
+        
+        setTimeout(transitionToTown, 500);
+        return;
+    }
     // ==========================================
 
     // --- 1. HANDLE EVASION ---
