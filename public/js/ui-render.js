@@ -460,7 +460,7 @@ if (hopsScreen) hopsScreen.style.display = "none";
             if (gameState === 'KNIGHT') {
                 if (knightScreen) knightScreen.style.display = "block";
                 document.getElementById('nav-knight').classList.add('active-tab');
-            } else if (gameState === 'block') {
+            } else if (gameState === 'TOWN') {
                 townScreen.style.display = "block";
                 document.getElementById('nav-town').classList.add('active-tab');
             } else if (gameState === 'MERCHANT') {
