@@ -302,9 +302,9 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             p.stamina -= staminaCost; 
 
             // === THE DUAL-STAGE LEVEL-BASED HIT ALGORITHM ===
-            let attackerOffense = getEffectiveStat(p, 'offense');
-            let defenderSpeed = serverEnemy.speed || 1;
-            let defenderDefense = combatRules.ignoresDefense ? 0 : (serverEnemy.defense || 1);
+            let attackerOffense = getEffectiveStat(p, 'offense') * 10;
+            let defenderSpeed = (serverEnemy.speed || 1) * 10;
+            let defenderDefense = combatRules.ignoresDefense ? 0 : (serverEnemy.defense || 1) * 10;
 
             // ---------------------------------------------------------
             // STAGE 1: EVASION (Offense vs. Speed)
@@ -826,24 +826,24 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 }
             }
 
+            // === REPLACED ===
             if (dist <= e.attackRange && hasLos) {
                 let isPoacher = e.attackRange > 1;
                 
                 // STAGE 1: PLAYER EVASION (Enemy Offense vs Player Speed)
-                let enemyHitPower = (e.offense * 0.5) + (Math.random() * e.offense * 0.5);
+                let eOffense = e.offense * 10;
+                let playerSpeed = getEffectiveStat(p, 'speed') * 10; // Unbounded actual speed!
+                let enemyHitPower = (eOffense * 0.5) + (Math.random() * eOffense * 0.5);
                 
-                // Server-side evaluation instead of client functions
-                let playerSwift = Math.max(1, Math.min(12, getEffectiveStat(p, 'speed')));
-                let playerSpeedMitigation = Math.random() * playerSwift;
+                let playerSpeedMitigation = Math.random() * playerSpeed;
 
                 if ((enemyHitPower - playerSpeedMitigation) <= 0) {
                     turnEvents.push({ type: 'deflect', enemyName: e.name }); 
                 } else {
                     // STAGE 2: PLAYER ABSORPTION (Enemy Offense vs Player Defense)
-                    let rawDamageRoll = Math.sqrt(Math.random()) * e.offense;
+                    let rawDamageRoll = Math.sqrt(Math.random()) * eOffense;
                     
-                    // Server-side evaluation instead of client functions
-                    let playerDef = Math.max(0, Math.min(75, getEffectiveStat(p, 'defense')));
+                    let playerDef = getEffectiveStat(p, 'defense') * 10;
                     let playerAbsorption = Math.pow(Math.random(), 2) * playerDef;
                     
                     let mitigatedDmg = Math.floor(rawDamageRoll - playerAbsorption);
@@ -851,7 +851,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                     if (mitigatedDmg <= 0) {
                         turnEvents.push({ type: 'deflect', enemyName: e.name }); 
                     } else {
-                        let isCrit = mitigatedDmg >= Math.floor(e.offense * 0.90);
+                        let isCrit = mitigatedDmg >= Math.floor(eOffense * 0.90);
                         p.hp -= mitigatedDmg;
                         turnEvents.push({ type: 'hit', uid: e.uid, enemyName: e.name, damage: mitigatedDmg, isCrit: isCrit, isPoacher: isPoacher, ex: e.x, ey: e.y });
 

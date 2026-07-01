@@ -144,7 +144,7 @@ function refreshCombatSidebar() {
         <div style="background: #1a1512; padding: 10px; border-radius: 4px; border: 1px solid #4a3b2c; margin-bottom: 12px;">
             <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; margin-bottom: 4px;">
                 <span style="color: #ffcc66;">STAMINA:</span>
-                <span style="color: #f1c40f;">${player.stamina} / ${player.maxStamina} STAM</span>
+                <span style="color: #f1c40f;">${Math.floor(player.stamina)} / ${maxStamCalc} STAM</span>
             </div>
             <div style="width: 100%; background: #110d0a; height: 12px; border-radius: 3px; overflow: hidden; border: 1px solid #55443a;">
                 <div style="width: ${stPct}%; background: #e67e22; height: 100%; transition: width 0.2s;"></div>
@@ -162,10 +162,9 @@ function refreshCombatSidebar() {
             ${buffHTML}
         </div>
         <div style="background: #1a1512; padding: 10px; border-radius: 4px; border: 1px solid #4a3b2c; font-size: 11px; color: #bbaaa0; line-height: 1.5;">
-            💥 <b>Power Output:</b> ${getPlayerTotalPower()} DMG<br>
-            🎯 <b>Accuracy Rating:</b> ${player.accuracy}<br>
-            🛡️ <b>Resilience (Passive Deflect):</b> ${getPlayerDeflectChance()}%<br>
-            🏃 <b>Swiftness (Stride):</b> ${getPlayerSwiftness()} Steps
+            💥 <b>Power Output:</b> Lvl ${getPlayerTotalPower()} (Max ${getPlayerTotalPower() * 10} DMG)<br>
+            🛡️ <b>Defense (Absorption):</b> Lvl ${getPlayerDeflectChance()}<br>
+            🏃 <b>Speed (Evasion):</b> Lvl ${getPlayerSwiftness()}
         </div>
     `;
 }

@@ -5,7 +5,12 @@ let activeTargetIndex   = -1;
 let previousCombatPhase = 'PHASE_1';
 let pendingLoot = []; 
 
+// === REPLACED ===
 function calculateHitResult(attackerOffense, defenderDefense, defenderSpeed) {
+    attackerOffense *= 10;
+    defenderDefense *= 10;
+    defenderSpeed *= 10;
+
     // ---------------------------------------------------------
     // STAGE 1: EVASION (Offense vs. Speed)
     // ---------------------------------------------------------
