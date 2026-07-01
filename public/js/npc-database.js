@@ -1,25 +1,26 @@
+// === REPLACED ===
 // --- npc-database.js ---
 // A master dictionary of all base enemy stats.
 
 const NpcDatabase = {
     // Wilderness
-    "wild_ravager": { name: "Wild Ravager", type: "MELEE", hp: 45, maxHp: 45, moveRange: 2, attackRange: 1, attack: 7, resilience: 5, accuracy: 75, icon: "👾", size: 1 },
-	"publing": { name: "Wild Publing", type: "MELEE", hp: 65, maxHp: 65, moveRange: 2, attackRange: 1, attack: 11, resilience: 8, accuracy: 80, icon: "🐻", size: 1 },
-    "alpha_poacher": { name: "Wilderness Alpha-Poacher", type: "RANGED", hp: 110, maxHp: 110, moveRange: 1, attackRange: 3, attack: 22, resilience: 10, accuracy: 100, icon: "🏹", size: 1 },
-    "wilderness_overlord": { name: "Wilderness Apex Overlord (BOSS)", type: "MELEE", hp: 650, maxHp: 650, moveRange: 3, attackRange: 1, attack: 40, resilience: 30, accuracy: 110, icon: "🐗", size: 2 },
+    "wild_ravager": { name: "Wild Ravager", type: "MELEE", hp: 45, maxHp: 45, attackRange: 1, offense: 10, defense: 5, speed: 2, icon: "👾", size: 1 },
+    "publing": { name: "Wild Publing", type: "MELEE", hp: 65, maxHp: 65, attackRange: 1, offense: 15, defense: 8, speed: 2, icon: "🐻", size: 1 },
+    "alpha_poacher": { name: "Wilderness Alpha-Poacher", type: "RANGED", hp: 110, maxHp: 110, attackRange: 3, offense: 25, defense: 10, speed: 1, icon: "🏹", size: 1 },
+    "wilderness_overlord": { name: "Wilderness Apex Overlord (BOSS)", type: "MELEE", hp: 650, maxHp: 650, attackRange: 1, offense: 45, defense: 30, speed: 3, icon: "🐗", size: 2 },
     
     // Cellars
-    "corrupted_cask": { name: "Corrupted Wine-Cask", type: "MELEE", hp: 250, maxHp: 250, moveRange: 3, attackRange: 1, attack: 25, resilience: 15, accuracy: 95, icon: "🛢️", size: 1 },
-    "pub_crawl_mimic": { name: "Pub-Crawl Mimic", type: "MELEE", hp: 100, maxHp: 100, moveRange: 4, attackRange: 1, attack: 12, resilience: 20, accuracy: 100, icon: "🍺", size: 1 },
-    "vintage_behemoth": { name: "The Grand Vintage Behemoth (BOSS)", type: "MELEE", hp: 1200, maxHp: 1200, moveRange: 2, attackRange: 1, attack: 65, resilience: 45, accuracy: 120, icon: "🏺", size: 2 },
+    "corrupted_cask": { name: "Corrupted Wine-Cask", type: "MELEE", hp: 250, maxHp: 250, attackRange: 1, offense: 30, defense: 15, speed: 3, icon: "🛢️", size: 1 },
+    "pub_crawl_mimic": { name: "Pub-Crawl Mimic", type: "MELEE", hp: 100, maxHp: 100, attackRange: 1, offense: 20, defense: 20, speed: 4, icon: "🍺", size: 1 },
+    "vintage_behemoth": { name: "The Grand Vintage Behemoth (BOSS)", type: "MELEE", hp: 1200, maxHp: 1200, attackRange: 1, offense: 70, defense: 45, speed: 2, icon: "🏺", size: 2 },
 
     // Gorilla Event
-    "enraged_gorilla": { name: "Enraged Gorilla", type: "MELEE", hp: 12000, maxHp: 12000, moveRange: 2, attackRange: 1, attack: 180, resilience: 30, accuracy: 120, icon: "🦍", size: 1 },
+    "enraged_gorilla": { name: "Enraged Gorilla", type: "MELEE", hp: 12000, maxHp: 12000, attackRange: 1, offense: 100, defense: 50, speed: 2, icon: "🦍", size: 1 },
 
     // Abyss Base Templates (These will be dynamically scaled by the map script)
-    "spectral_barfly": { name: "Spectral Barfly", type: "RANGED", hp: 80, maxHp: 80, moveRange: 2, attackRange: 4, attack: 18, resilience: 5, accuracy: 95, icon: "👻", size: 1 },
-    "mash_crawler": { name: "Blighted Mash-Crawler", type: "MELEE", hp: 120, maxHp: 120, moveRange: 4, attackRange: 1, attack: 20, resilience: 15, accuracy: 85, icon: "🦠", size: 1 },
-    "eldritch_keg": { name: "Eldritch Keg-Walker", type: "MELEE", hp: 180, maxHp: 180, moveRange: 2, attackRange: 1, attack: 35, resilience: 25, accuracy: 110, icon: "🗿", size: 1 }
+    "spectral_barfly": { name: "Spectral Barfly", type: "RANGED", hp: 80, maxHp: 80, attackRange: 4, offense: 25, defense: 5, speed: 2, icon: "👻", size: 1 },
+    "mash_crawler": { name: "Blighted Mash-Crawler", type: "MELEE", hp: 120, maxHp: 120, attackRange: 1, offense: 30, defense: 15, speed: 4, icon: "🦠", size: 1 },
+    "eldritch_keg": { name: "Eldritch Keg-Walker", type: "MELEE", hp: 180, maxHp: 180, attackRange: 1, offense: 45, defense: 25, speed: 2, icon: "🗿", size: 1 }
 };
 
 // Global helper function to spawn enemies easily
@@ -37,12 +38,11 @@ function createEnemy(id, x, y, customPrefix = "", statMult = 1.0) {
         type: template.type,
         hp: Math.floor(template.hp * statMult),
         maxHp: Math.floor(template.maxHp * statMult),
-        moveRange: template.moveRange,
         attackRange: template.attackRange,
-        attack: Math.floor(template.attack * statMult),
-        // Resilience doesn't scale linearly, it scales additively in the abyss logic
-        resilience: template.resilience, 
-        accuracy: template.accuracy,
+        offense: Math.floor(template.offense * statMult),
+        // Defense remains unscaled linearly to prevent unkillable abyssal tanks
+        defense: template.defense, 
+        speed: template.speed,
         alive: true,
         icon: template.icon,
         x: x,

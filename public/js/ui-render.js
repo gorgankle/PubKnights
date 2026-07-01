@@ -98,8 +98,11 @@ function refreshCombatSidebar() {
     const sidebar = document.getElementById("combat-status-sidebar");
     if (!sidebar) return;
 
-    let hpPct = Math.max(0, Math.min(100, (player.hp / player.vitality) * 100));
-    let stPct = Math.max(0, Math.min(100, (player.stamina / player.maxStamina) * 100));
+	let maxHpCalc = getPlayerMaxHp();
+    let maxStamCalc = getPlayerMaxStamina();
+
+    let hpPct = Math.max(0, Math.min(100, (player.hp / maxHpCalc) * 100));
+    let stPct = Math.max(0, Math.min(100, (player.stamina / maxStamCalc) * 100));
     
     let hImg = getItemSpriteURL(player.equipment.helmet);
     let aImg = getItemSpriteURL(player.equipment.armor);
@@ -132,7 +135,7 @@ function refreshCombatSidebar() {
         <div style="background: #1a1512; padding: 10px; border-radius: 4px; border: 1px solid #4a3b2c; margin-bottom: 8px;">
             <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; margin-bottom: 4px;">
                 <span style="color: #ffcc66;">VITALITY:</span>
-                <span style="color: #2ecc71;">${player.hp} / ${player.vitality} HP</span>
+                <span style="color: #2ecc71;">${player.hp} / ${maxHpCalc} HP</span>
             </div>
             <div style="width: 100%; background: #110d0a; height: 12px; border-radius: 3px; overflow: hidden; border: 1px solid #55443a;">
                 <div style="width: ${hpPct}%; background: ${hpPct > 45 ? '#27ae60' : '#c0392b'}; height: 100%; transition: width 0.2s;"></div>
@@ -505,13 +508,12 @@ if (hopsScreen) hopsScreen.style.display = "none";
             const knightStats = document.getElementById("knight-town-stats");
             if (knightStats) {
                 knightStats.innerHTML = `
-                    <div style="color: #2ecc71; margin-bottom: 2px; font-weight: bold;">❤️ ${player.hp} / ${player.vitality} HP</div>
-                    <div style="color: #f1c40f; margin-bottom: 4px; font-weight: bold;">⚡ ${player.stamina} / ${player.maxStamina} STAM</div>
+                    <div style="color: #2ecc71; margin-bottom: 2px; font-weight: bold;">❤️ ${player.hp} / ${getPlayerMaxHp()} HP</div>
+                    <div style="color: #f1c40f; margin-bottom: 4px; font-weight: bold;">⚡ ${player.stamina} / ${getPlayerMaxStamina()} STAM</div>
                     <div style="color: #bbaaa0; border-top: 1px dashed #3a2f26; padding-top: 4px; line-height: 1.3;">
-                        💥 <b>PWR:</b> ${getPlayerTotalPower()} DMG<br>
-                        🎯 <b>ACC:</b> ${player.accuracy}<br>
-                        🛡️ <b>DEF:</b> ${getPlayerDeflectChance()}%<br>
-                        🏃 <b>SPD:</b> ${getPlayerSwiftness()} Steps
+                        ⚔️ <b>Offense:</b> Lvl ${getPlayerTotalPower()}<br>
+                        🛡️ <b>Defense:</b> Lvl ${getPlayerDeflectChance()}<br>
+                        🏃 <b>Speed:</b> Lvl ${getPlayerSwiftness()}
                     </div>`;
             }
 
@@ -775,26 +777,24 @@ if (hopsScreen) hopsScreen.style.display = "none";
                     
                     <div id="stats-dropdown" style="display: ${statsExpanded ? 'block' : 'none'}; padding: 12px; border: 1px solid #d35400; border-top: none; background: #1a110c; border-bottom-left-radius: 4px; border-bottom-right-radius: 4px; margin-bottom: 10px;">
                         <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; font-size: 12px;">
-                            <div style="cursor:help;" onmouseenter="showSystemTooltip('stat_vitality', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"><b>Vitality:</b> ${player.vitality} HP</div> 
+                            <div style="cursor:help;" onmouseenter="showSystemTooltip('stat_vitality', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"><b>Vitality:</b> Lvl ${player.vitality}</div> 
                             <button ${btnDisabled} onclick="allocateStat('vitality')" style="padding: 2px 10px;" onmouseenter="showSystemTooltip('stat_vitality', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">+1</button>
                             
-                            <div style="cursor:help;" onmouseenter="showSystemTooltip('stat_stamina', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"><b>Stamina:</b> ${player.maxStamina} STAM</div> 
+                            <div style="cursor:help;" onmouseenter="showSystemTooltip('stat_stamina', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"><b>Stamina:</b> Lvl ${player.maxStamina}</div> 
                             <button ${btnDisabled} onclick="allocateStat('maxStamina')" style="padding: 2px 10px;" onmouseenter="showSystemTooltip('stat_stamina', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">+1</button>
                             
-                            <div style="cursor:help;" onmouseenter="showSystemTooltip('stat_power', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"><b>Power:</b> ${player.power} DMG</div> 
-                            <button ${btnDisabled} onclick="allocateStat('power')" style="padding: 2px 10px;" onmouseenter="showSystemTooltip('stat_power', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">+1</button>
+                            <div style="cursor:help;" onmouseenter="showSystemTooltip('stat_power', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"><b>Offense:</b> Lvl ${player.offense}</div> 
+                            <button ${btnDisabled} onclick="allocateStat('offense')" style="padding: 2px 10px;" onmouseenter="showSystemTooltip('stat_power', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">+1</button>
                             
-                            <div style="cursor:help;" onmouseenter="showSystemTooltip('stat_accuracy', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"><b>Accuracy:</b> ${player.accuracy}</div> 
-                            <button ${btnDisabled} onclick="allocateStat('accuracy')" style="padding: 2px 10px;" onmouseenter="showSystemTooltip('stat_accuracy', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">+1</button>
+                            <div style="cursor:help;" onmouseenter="showSystemTooltip('stat_resilience', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"><b>Defense:</b> Lvl ${player.defense}</div> 
+                            <button ${btnDisabled} onclick="allocateStat('defense')" style="padding: 2px 10px;" onmouseenter="showSystemTooltip('stat_resilience', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">+1</button>
                             
-                            <div style="cursor:help;" onmouseenter="showSystemTooltip('stat_resilience', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"><b>Resilience:</b> ${player.resilience}%</div> 
-                            <button ${btnDisabled} onclick="allocateStat('resilience')" style="padding: 2px 10px;" onmouseenter="showSystemTooltip('stat_resilience', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">+1</button>
-                            
-                            <div style="cursor:help;" onmouseenter="showSystemTooltip('stat_swiftness', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"><b>Swiftness:</b> ${player.swiftness} Steps</div> 
-                            <button ${btnDisabled} onclick="allocateStat('swiftness')" style="padding: 2px 10px;" onmouseenter="showSystemTooltip('stat_swiftness', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">+1</button>
+                            <div style="cursor:help;" onmouseenter="showSystemTooltip('stat_swiftness', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"><b>Speed:</b> Lvl ${player.speed}</div> 
+                            <button ${btnDisabled} onclick="allocateStat('speed')" style="padding: 2px 10px;" onmouseenter="showSystemTooltip('stat_swiftness', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">+1</button>
                         </div>
                         <button ${resetDisabledStr} onclick="resetStats()" style="width: 100%; margin-top: 10px; background: #8e44ad; padding: 4px 0; border-color: #9b59b6;" onmouseenter="showSystemTooltip('stat_reset', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🔄 Reset Stats (1000g)</button>
                     </div>
+// ============================================
                 `;
             }
             

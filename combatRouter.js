@@ -30,29 +30,43 @@ function getGridDistance(x1, y1, x2, y2, size2 = 1) {
         }
     }
 	
-	// === UNIVERSAL LINE OF EFFECT (Bresenham Blast Path) ===
-function getLineOfEffectPath(x1, y1, x2, y2, maxRange, stopsAtWalls, combatState) {
-    let path = [];
-    let dx = Math.abs(x2 - x1); let dy = Math.abs(y2 - y1);
-    let sx = (x1 < x2) ? 1 : -1; let sy = (y1 < y2) ? 1 : -1;
-    let err = dx - dy; let cx = x1; let cy = y1;
-    let distanceTraveled = 0;
-    
-    while (distanceTraveled <= maxRange) {
-        if (cx !== x1 || cy !== y1) {
-            path.push({ x: cx, y: cy });
-            // If it hits a wall and doesn't ignore LoS, the beam stops here!
-            if (stopsAtWalls && combatState.obstacles.some(o => o.x === cx && o.y === cy)) break; 
+// === REPLACED ===
+    // Helper functions to keep the HP/Stamina math completely hidden from the client
+    function getMaxHp(player) { return getEffectiveStat(player, 'vitality') * 10; }
+    function getMaxStamina(player) { return getEffectiveStat(player, 'stamina') * 5; }
+
+    // Calculates the true level of any stat by combining Base + Gear + Buffs
+    function getEffectiveStat(player, statKey) {
+        let base = player[statKey] || 1; // Default to Level 1
+        let flatBonus = 0;
+        let multiplier = 1.0;
+
+        // 1. Apply Equipment Level Modifiers dynamically
+        for (let slot in player.equipment) {
+            let item = player.equipment[slot];
+            if (item) {
+                if (statKey === 'offense' && item.offense) flatBonus += item.offense;
+                if (statKey === 'defense' && item.defense) flatBonus += item.defense;
+                if (statKey === 'speed' && item.speed) flatBonus += item.speed;
+                if (statKey === 'vitality' && item.vitality) flatBonus += item.vitality;
+                if (statKey === 'stamina' && item.stamina) flatBonus += item.stamina;
+            }
         }
-        if (cx === x2 && cy === y2) break; 
-        
-        let e2 = 2 * err;
-        if (e2 > -dy) { err -= dy; cx += sx; }
-        if (e2 < dx) { err += dx; cy += sy; }
-        distanceTraveled++;
+
+        // 2. Apply Active Buffs (Potions, Magic, etc.)
+        if (player.activeBuffs && player.activeBuffs.length > 0) {
+            player.activeBuffs.forEach(buffId => {
+                let buffData = ItemDatabase[buffId.toLowerCase()];
+                if (buffData && buffData.combat && buffData.combat.effectCategory === statKey) {
+                    if (buffData.combat.effectType === 'flat') flatBonus += buffData.combat.effectValue;
+                    else if (buffData.combat.effectType === 'multiplier') multiplier *= buffData.combat.effectValue;
+                }
+            });
+        }
+
+        return Math.floor((base + flatBonus) * multiplier);
     }
-    return path;
-}
+// ============================================
 
 
 module.exports = function(socket, io, activePlayers, activeCombats) {
@@ -281,56 +295,80 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 }
             }
 			
+            // === REPLACED ===
             // Execute resource burn
             p.stamina -= staminaCost; 
 
-            // === THE BEAUTY OF THE UNIVERSAL STAT ENGINE ===
-            let serverPower = getEffectiveStat(p, 'power');
-            let serverAccuracy = Math.max(10, Math.min(100, getEffectiveStat(p, 'accuracy')));
+            // === THE DUAL-STAGE LEVEL-BASED HIT ALGORITHM ===
+            let attackerOffense = getEffectiveStat(p, 'offense');
+            let defenderSpeed = serverEnemy.speed || 1;
+            let defenderDefense = combatRules.ignoresResilience ? 0 : (serverEnemy.defense || 1);
 
-            // Contested Hit Math (With Data-Driven Gorilla Bypass)
-            let enemyResilience = combatRules.ignoresResilience ? 0 : (serverEnemy.resilience || 0);
-            let totalStatPool = serverAccuracy + enemyResilience;
-            let hitChancePct = (serverAccuracy / totalStatPool) * 100;
+            // ---------------------------------------------------------
+            // STAGE 1: EVASION (Offense vs. Speed)
+            // ---------------------------------------------------------
+            // Favoritism to Offense: It retains at least 50% of its base level.
+            let offenseHitPower = (attackerOffense * 0.5) + (Math.random() * attackerOffense * 0.5);
+            let speedMitigation = Math.random() * defenderSpeed;
 
-            if (Math.random() * 100 > hitChancePct) {
-                socket.emit('combatResult', { type: 'miss', hitChance: Math.floor(hitChancePct), newStamina: p.stamina });
-            } else {
-                let minDmg = Math.ceil(serverPower * 0.2);
-                let maxDmg = serverPower;
-                let variedDmg = Math.floor(Math.random() * (maxDmg - minDmg + 1)) + minDmg;
-                
-                let isCrit = variedDmg >= Math.floor(serverPower * 0.95);
-                let finalDmg = Math.floor(variedDmg * combatRules.multiplier);
+            if ((offenseHitPower - speedMitigation) <= 0) {
+                // Speed wins. The attack is entirely dodged.
+                socket.emit('combatResult', { type: 'miss', hitChance: 0, newStamina: p.stamina });
+                return;
+            }
 
-                // === THE UNIVERSAL DAMAGE DISPATCH (WEAPON) ===
-                serverEnemy.hp -= finalDmg;
-                let killed = false;
-                if (serverEnemy.hp <= 0) {
-                    serverEnemy.hp = 0;
-                    serverEnemy.alive = false; 
-                    killed = true;
-                    processSecureKill(socket.id, serverEnemy);
-                }
-                
-                const isRanged = !!weapon.projectileSprite; 
-                
-                socket.emit('combatResult', { 
-                    type: 'hit', 
-                    source: 'weapon',
-                    actionName: data.subType, 
-                    targets: [{ uid: serverEnemy.uid, damage: finalDmg, isCrit: isCrit, killed: killed }],
-                    fx: { 
-                        tx: serverEnemy.x, 
-                        ty: serverEnemy.y, 
-                        spriteId: isRanged ? weapon.projectileSprite : weapon.spriteId, 
-                        isProjectile: isRanged, 
-                        isAoE: false 
-                    },
-                    updatedPlayer: p 
-                });
-            } 
+            // ---------------------------------------------------------
+            // STAGE 2: ABSORPTION & DEFLECTION (Offense vs. Defense)
+            // ---------------------------------------------------------
+            // Math.sqrt(random) skews Offense HIGH. (Attacker frequently hits near max potential).
+            // Math.pow(random, 2) skews Defense LOW. (Armor mostly absorbs moderate hits).
+            
+            let rawDamageRoll = Math.sqrt(Math.random()) * attackerOffense;
+            let armorAbsorption = Math.pow(Math.random(), 2) * defenderDefense;
+            
+            let mitigatedDmg = Math.floor(rawDamageRoll - armorAbsorption);
+
+            if (mitigatedDmg <= 0) {
+                // Defense wins. The armor completely absorbed the remaining blow (Deflection).
+                socket.emit('combatResult', { type: 'miss', hitChance: 100, newStamina: p.stamina });
+                return;
+            }
+
+            // ---------------------------------------------------------
+            // STAGE 3: THE DAMAGE DISPATCH
+            // ---------------------------------------------------------
+            // A Crit is awarded if they pushed through armor and still landed in their top 10% damage bracket
+            let isCrit = mitigatedDmg >= Math.floor(attackerOffense * 0.90); 
+            let finalDmg = Math.floor(mitigatedDmg * combatRules.multiplier);
+
+            // Apply Damage
+            serverEnemy.hp -= finalDmg;
+            let killed = false;
+            if (serverEnemy.hp <= 0) {
+                serverEnemy.hp = 0;
+                serverEnemy.alive = false; 
+                killed = true;
+                processSecureKill(socket.id, serverEnemy);
+            }
+            
+            const isRanged = !!weapon.projectileSprite; 
+            
+            socket.emit('combatResult', { 
+                type: 'hit', 
+                source: 'weapon',
+                actionName: data.subType, 
+                targets: [{ uid: serverEnemy.uid, damage: finalDmg, isCrit: isCrit, killed: killed }],
+                fx: { 
+                    tx: serverEnemy.x, 
+                    ty: serverEnemy.y, 
+                    spriteId: isRanged ? weapon.projectileSprite : weapon.spriteId, 
+                    isProjectile: isRanged, 
+                    isAoE: false 
+                },
+                updatedPlayer: p 
+            });
             return;
+// ============================================
         } 
 
         // === 3. CONSUMABLE LOGIC (Brews & Bombs) ===

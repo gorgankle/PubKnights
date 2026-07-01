@@ -5,17 +5,18 @@
 const MAX_PLAYER_LEVEL = 50;
 const SP_PER_LEVEL = 5;
 
+// === REPLACED ===
 let player = { 
     x: 1, y: 1, 
     level: 1, xp: 0, xpToNext: 100, skillPoints: 0,
-    vitality: 70, hp: 70, stamina: 50, maxStamina: 50, power: 12, accuracy: 85, resilience: 5, swiftness: 3,
+    vitality: 70, hp: 70, stamina: 50, maxStamina: 50, 
+    offense: 15, defense: 5, speed: 3, // <--- THE NEW CORE 5
     vaultSlots: 10, gold: 0, hops: 0, wood: 0, fish: 0, 
-	lumberPoints: 0,  // NEW: Active timber game currency
-    fishingPoints: 0, // NEW: Active fishing game currency
-    hopsPoints: 0,    // NEW: Active hops game currency
+	lumberPoints: 0, fishingPoints: 0, hopsPoints: 0, 
     wildernessLevel: 1, cellarsUnlocked: false, cellarLevel: 1,         
     
 	appearance: { gender: 'male', skin: 'light', hair: 'hair_messy', hairColor: 'brown', eyes: 'eyes_blue', shirtColor: 'blue', pantsColor: 'dark', bootsColor: 'leather' },
+// ===================
     equipment: {
         helmet: null,
         armor: null, 
@@ -80,16 +81,16 @@ function getEffectiveStat(targetPlayer, statKey) {
     return Math.floor((base + flatBonus) * multiplier);
 }
 
+// === REPLACED / ADDED === (Inside player.js)
 // Ultra-clean 1-line getter functions for the UI!
-function getPlayerSwiftness() { return Math.max(1, Math.min(12, getEffectiveStat(player, 'swiftness'))); }
-function getPlayerTotalPower() { return Math.max(1, getEffectiveStat(player, 'power')); }
-function getPlayerAccuracy() { return Math.max(10, Math.min(100, getEffectiveStat(player, 'accuracy'))); }
-function getPlayerDeflectChance() {
-    // Scale curve: Every point of resilience only grants 0.75% deflect chance
-    let rawDeflect = Math.floor(getEffectiveStat(player, 'resilience') * 0.75);
-    return Math.max(0, Math.min(75, rawDeflect));
-}
+function getPlayerMaxHp() { return getEffectiveStat(player, 'vitality') * 10; }
+function getPlayerMaxStamina() { return getEffectiveStat(player, 'stamina') * 5; }
 
+function getPlayerSwiftness() { return Math.max(1, Math.min(12, getEffectiveStat(player, 'speed'))); } // Re-wired to Speed!
+function getPlayerTotalPower() { return Math.max(1, getEffectiveStat(player, 'offense')); }
+function getPlayerAccuracy() { return Math.max(1, getEffectiveStat(player, 'offense')); } // Obfuscated
+function getPlayerDeflectChance() { return Math.max(0, Math.min(75, getEffectiveStat(player, 'defense'))); }
+// ============================================
 // Aliases used by other scripts
 function getPlayerMoveRange() { return getPlayerSwiftness(); }
 function getPlayerTotalAttack() { return getPlayerTotalPower(); }

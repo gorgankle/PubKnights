@@ -240,6 +240,7 @@ if (data.action === 'equip') {
                 socket.emit('townReceipt', { success: true, action: 'upgradeVault', updatedPlayer: p, message: `🏦 Vault capacity expanded to ${p.vaultSlots} slots!` });
             } else socket.emit('townReceipt', { success: false, message: "❌ Insufficient gold or wood to upgrade vault." });
         }
+// === REPLACED ===
         // 11. RESET STATS
         else if (data.action === 'resetStats') {
             const SP_PER_LEVEL = 5;
@@ -251,7 +252,7 @@ if (data.action === 'equip') {
                 p.gold -= 1000;
                 p.vitality = 70; p.hp = Math.min(p.hp, 70);
                 p.maxStamina = 50; p.stamina = Math.min(p.stamina, 50);
-                p.power = 12; p.accuracy = 85; p.resilience = 5; p.swiftness = 3;
+                p.offense = 15; p.defense = 5; p.speed = 3; // <--- THE NEW CORE 5
                 p.skillPoints = totalExpectedSP;
                 socket.emit('townReceipt', { success: true, action: 'resetStats', updatedPlayer: p, message: "🔄 Knight stats reset! Reallocate your Skill Points." });
             } else socket.emit('townReceipt', { success: false, message: "❌ Insufficient gold for a stat reset." });
@@ -263,14 +264,14 @@ if (data.action === 'equip') {
                 switch(data.statKey) {
                     case 'vitality': p.vitality += 10; p.hp += 10; break;
                     case 'maxStamina': p.maxStamina += 5; p.stamina += 5; break;
-                    case 'power': p.power += 2; break;
-                    case 'accuracy': p.accuracy += 2; break;
-                    case 'resilience': p.resilience += 1; break;
-                    case 'swiftness': p.swiftness += 1; break; 
+                    case 'offense': p.offense += 2; break; // Merged Power & Accuracy scaling
+                    case 'defense': p.defense += 1; break; 
+                    case 'speed': p.speed += 1; break; 
                 }
                 socket.emit('townReceipt', { success: true, action: 'allocateStat', updatedPlayer: p, message: "🌟 Stat point allocated!" });
             } else socket.emit('townReceipt', { success: false, message: "❌ No Skill Points available." });
         }
+// ===================
 // 13. CRAFT BOMB
         else if (data.action === 'craftBomb') {
             let tier = data.tier;
