@@ -470,7 +470,7 @@ socket.on('enemyTurnReceipt', (receipt) => {
         else delay += (50 * timeCompression);
     });
 
-    // 3. Finally, sync the grid truth but DO NOT artificially unlock the turn!
+    // 3. Finally, hand control back to the player!
     setTimeout(() => {
         // We only overwrite the grid with the server's truth AFTER the movie finishes playing!
         if (receipt.updatedCombatState) {
@@ -480,13 +480,14 @@ socket.on('enemyTurnReceipt', (receipt) => {
 
         if (player.hp > 0) {
             reachableTiles = null;
-            // THE FIX: The Ghost Unlock has been deleted! 
-            // The client will securely remain in 'WAITING_FOR_ATB' until the Server's ATB_READY pulse arrives.
+            // (Ghost Unlock remains removed!)
             if (typeof saveGame === 'function') saveGame();
             refreshSystemUI();
-            
-            // Force a canvas redraw so the final enemy positions are physically painted
             if (typeof drawGrid === 'function') drawGrid(); 
+            
+            // === THE FIX: THE MOVIE HANDSHAKE ===
+            // Tell the server the visual animation is finished so it can unpause the ATB Heartbeat!
+            socket.emit('clientPlaybackComplete');
         }
     }, delay + 200);
 });

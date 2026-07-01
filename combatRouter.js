@@ -675,7 +675,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
 
     // === REPLACED: AI DECOUPLER ===
     // --- SERVER-AUTHORITATIVE ENEMY AI ---
-    socket.on('endPlayerTurn', (data) => {
+   socket.on('endPlayerTurn', (data) => {
         let p = activePlayers[socket.id];
         let combat = activeCombats[socket.id];
         if (!p || !combat) return;
@@ -688,6 +688,12 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         // Turn is over, reset ATB and resume time for monsters!
         combat.player.atbCharge = 0;
         combat.atbPaused = false;
+    });
+
+    // === THE FIX: CLIENT MOVIE ACKNOWLEDGEMENT ===
+    socket.on('clientPlaybackComplete', () => {
+        let combat = activeCombats[socket.id];
+        if (combat) combat.playbackLock = false; // Unlocks the ATB Heartbeat for the next tick!
     });
 
     // --- STANDALONE AI PROCESSOR ---
