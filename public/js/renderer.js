@@ -108,18 +108,6 @@ function drawGrid() {
     }
 
     // --- INTERPOLATION ENGINE: PLAYER ---
-	// === NEW: PLAYER ATB VISUAL MATH ===
-    if (player.visualAtb === undefined) player.visualAtb = 0;
-    
-    if (combatPhase === 'WAITING_FOR_ATB') {
-        let pSpeed = getPlayerSwiftness();
-        // 60fps approximation of the server's 200ms tick rate
-        player.visualAtb += (pSpeed * 5) / 60; 
-        if (player.visualAtb > 100) player.visualAtb = 100;
-    } else if (combatPhase === 'ACTION_READY') {
-        player.visualAtb = 100;
-    }
-    // ===================================
     if (player.visualX === undefined) {
         player.visualX = player.x; player.visualY = player.y;
         player.moveAnimTimer = 0; 
@@ -293,7 +281,7 @@ mapObstacles.forEach(o => {
 
     ctx.restore(); 
 
-renderGridHealthBar(player.visualX, player.visualY - (playerHopY / currentTileSize), player.hp, getPlayerMaxHp(), 1, player.stamina, getPlayerMaxStamina(), player.visualAtb);
+renderGridHealthBar(player.visualX, player.visualY - (playerHopY / currentTileSize), player.hp, getPlayerMaxHp(), 1, player.stamina, getPlayerMaxStamina());
 
     if (selectedEnemy && selectedEnemy.alive) {
         let sSize = selectedEnemy.size || 1;
@@ -305,16 +293,6 @@ renderGridHealthBar(player.visualX, player.visualY - (playerHopY / currentTileSi
     enemies.forEach(e => {
         if (e.alive) {
             let sSize = e.size || 1;
-
-            // === NEW: ENEMY ATB VISUAL MATH ===
-            if (e.visualAtb === undefined) e.visualAtb = 0;
-            
-            // Wait Mode Logic: Monsters ONLY gain ATB while we are waiting
-            if (combatPhase === 'WAITING_FOR_ATB') {
-                let eSpeed = e.speed || 1;
-                e.visualAtb += (eSpeed * 5) / 60;
-                if (e.visualAtb > 100) e.visualAtb = 100;
-            }
             
             if (e.visualX === undefined) {
                 e.visualX = e.x; e.visualY = e.y; e.moveAnimTimer = 0; e.attackTimer = 0;
@@ -356,7 +334,7 @@ if (SpriteMatrices[e.id]) {
             }
             ctx.restore();
 
-            renderGridHealthBar(e.visualX, e.visualY - (enemyHopY / currentTileSize), e.hp, e.maxHp, sSize, null, null, e.visualAtb);
+            renderGridHealthBar(e.visualX, e.visualY - (enemyHopY / currentTileSize), e.hp, e.maxHp, sSize);
         }
     });
 
@@ -430,34 +408,28 @@ if (SpriteMatrices[e.id]) {
 } // <--- This bracket closes drawGrid()!
 
 // === REPLACED ===
-function renderGridHealthBar(gridX, gridY, currentHp, maximumHp, size = 1, currentStamina = null, maxStamina = null, currentAtb = null) {
+function renderGridHealthBar(gridX, gridY, currentHp, maximumHp, size = 1, currentStamina = null, maxStamina = null) {
     let barWidth = (currentTileSize * size) - 6; 
     let rx = gridX * currentTileSize + 3; 
     let ry = gridY * currentTileSize + 1; 
     
-    // 1. HP Bar (Clamped)
+    // CLAMPED: Prevents the bar from exceeding 100% width!
     let hpRatio = Math.max(0, Math.min(1.0, currentHp / maximumHp));
-    ctx.fillStyle = "#110d0a"; ctx.fillRect(rx, ry, barWidth, 2);
-    ctx.fillStyle = hpRatio > 0.45 ? "#27ae60" : "#c0392b"; ctx.fillRect(rx, ry, barWidth * hpRatio, 2);
+    
+    ctx.fillStyle = "#110d0a"; 
+    ctx.fillRect(rx, ry, barWidth, 2);
+    ctx.fillStyle = hpRatio > 0.45 ? "#27ae60" : "#c0392b"; 
+    ctx.fillRect(rx, ry, barWidth * hpRatio, 2);
 
-    let nextY = ry + 3;
-
-    // 2. Stamina Bar
     if (currentStamina !== null && maxStamina !== null) {
+        // CLAMPED: Prevents the bar from exceeding 100% width!
         let stRatio = Math.max(0, Math.min(1.0, currentStamina / maxStamina));
-        ctx.fillStyle = "#110d0a"; ctx.fillRect(rx, nextY, barWidth, 2);
-        ctx.fillStyle = "#e67e22"; ctx.fillRect(rx, nextY, barWidth * stRatio, 2);
-        nextY += 3;
-    }
-
-    // 3. NEW: Dynamic ATB Gauge
-    if (currentAtb !== null) {
-        let atbRatio = Math.max(0, Math.min(1.0, currentAtb / 100));
-        ctx.fillStyle = "#110d0a"; ctx.fillRect(rx, nextY, barWidth, 2);
+        let ryStamina = ry + 3; 
         
-        // Glows yellow when full, blue when charging
-        ctx.fillStyle = currentAtb >= 100 ? "#f1c40f" : "#3498db"; 
-        ctx.fillRect(rx, nextY, barWidth * atbRatio, 2);
+        ctx.fillStyle = "#110d0a"; 
+        ctx.fillRect(rx, ryStamina, barWidth, 2);
+        ctx.fillStyle = "#e67e22"; 
+        ctx.fillRect(rx, ryStamina, barWidth * stRatio, 2);
     }
 }
 // ============================================
