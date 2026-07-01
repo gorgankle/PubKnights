@@ -114,8 +114,8 @@ io.on('connection', (socket) => {
 // === REPLACED ===
 const defaultTemplate = {
                 level: 1, xp: 0, xpToNext: 100, skillPoints: 0,
-                vitality: 70, hp: 70, stamina: 50, maxStamina: 50,
-                offense: 15, defense: 5, speed: 3, // <--- THE NEW CORE 5
+                vitality: 1, hp: 25, stamina: 25, maxStamina: 1, 
+                offense: 1, defense: 1, speed: 1,
                 vaultSlots: 10, gold: 0, hops: 0, wood: 0, fish: 0,
                 lumberPoints: 0, fishingPoints: 0, hopsPoints: 0,
                 pendingGold: 0, pendingXp: 0, pendingLoot: [],
@@ -218,6 +218,7 @@ if (data.saveData) {
                 }
                 // ============================================
 
+
                 // --- LEGACY SCHEMA MIGRATION ---
                 if (!pd.buildings) pd.buildings = { workerCabin: 1 };
                 if (pd.workers && pd.workers.woodcutters !== undefined) {
@@ -226,6 +227,12 @@ if (data.saveData) {
                     let h = pd.workers.farmers || 0;
                     pd.workers = { total: w + f + h, assigned: { wood: w, fish: f, hops: h } };
                 }
+
+                // === PHASE 0: RECONNECT SAFETY NET ===
+                // Recalculate true maxes to heal them instantly upon logging into the hub
+                pd.hp = (pd.vitality || 1) * 10;
+                pd.stamina = (pd.maxStamina || 1) * 5;
+                // =====================================
 
                 activePlayers[socket.id] = pd;
                 socket.emit('loginSuccess', pd);

@@ -60,11 +60,10 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
 	// === UNIVERSAL STAT ENGINE ===
     // Calculates the true level of any stat by combining Base + Gear + Buffs
     function getEffectiveStat(player, statKey) {
-        let base = player[statKey] || 1; // Default to Level 1
+        let base = player[statKey] || 1; 
         let flatBonus = 0;
         let multiplier = 1.0;
 
-        // 1. Apply Equipment Level Modifiers dynamically
         for (let slot in player.equipment) {
             let item = player.equipment[slot];
             if (item) {
@@ -72,7 +71,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 if (statKey === 'defense' && item.defense) flatBonus += item.defense;
                 if (statKey === 'speed' && item.speed) flatBonus += item.speed;
                 if (statKey === 'vitality' && item.vitality) flatBonus += item.vitality;
-                if (statKey === 'stamina' && item.stamina) flatBonus += item.stamina;
+                if (statKey === 'maxStamina' && item.stamina) flatBonus += item.stamina; // <--- FIXED KEY MISMATCH
             }
         }
 
@@ -95,8 +94,8 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
 
 // === REPLACED ===
     // Helper functions to keep the HP/Stamina math completely hidden from the client
-    function getMaxHp(player) { return getEffectiveStat(player, 'vitality') * 10; }
-    function getMaxStamina(player) { return getEffectiveStat(player, 'maxStamina') * 5; } // <--- FIXED: Now looks at maxStamina
+    function getMaxHp(player) { return getEffectiveStat(player, 'vitality') * 25; }
+    function getMaxStamina(player) { return getEffectiveStat(player, 'maxStamina') * 25; }// <--- FIXED: Now looks at maxStamina
 // ============================================
 
     // --- SECURE KILL PROCESSOR ---
@@ -173,6 +172,11 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             p.pendingXp = 0;
             p.pendingLoot = [];
             
+            // === PHASE 0: FLEE REJUVENATION ===
+            p.hp = getMaxHp(p);
+            p.stamina = getMaxStamina(p);
+            // ==================================
+            
             // Remove them from the active server battle
             delete activeCombats[socket.id];
             
@@ -191,13 +195,21 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             return socket.emit('combatResult', { type: 'pass', updatedPlayer: p, recovered: recover });
         }
         
-        // === 2. WEAPON ATTACK LOGIC ===
+// === 2. WEAPON ATTACK LOGIC ===
         if (data.actionCategory === 'weapon') {
             let weapon = p.equipment.weapon;
             
+            // === PHASE 0: UNARMED SERVER FALLBACK ===
             if (!weapon || !weapon.combat) {
-                return socket.emit('combatResult', { type: 'error', message: '❌ Server: Invalid weapon profile.', newStamina: p.stamina });
+                weapon = {
+                    spriteId: "icon_punch", // Failsafe empty rendering
+                    combat: {
+                        standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
+                        special: { name: "Haymaker", range: 1, staminaCost: 15, multiplier: 1.5, ignoresDefense: false }
+                    }
+                };
             }
+            // ========================================
 
             let combatRules = data.subType === 'special' ? weapon.combat.special : weapon.combat.standard;
             if (!combatRules) return socket.emit('combatResult', { type: 'error', message: '❌ Server: Action not supported by weapon.', newStamina: p.stamina });
@@ -965,7 +977,13 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 p.xp = 0;
                 p.xpToNext = "MAX";
             }
-        }
+        } // End of XP checks
+        
+        // === PHASE 0: VICTORY REJUVENATION ===
+        // Triggers unconditionally after every won match
+        p.hp = getMaxHp(p);
+        p.stamina = getMaxStamina(p);
+        // =====================================
         
         p.pendingGold = 0; p.pendingXp = 0; p.pendingLoot = [];
         

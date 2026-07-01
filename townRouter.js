@@ -250,9 +250,10 @@ if (data.action === 'equip') {
             
             if (p.gold >= 1000) {
                 p.gold -= 1000;
-                p.vitality = 70; p.hp = Math.min(p.hp, 70);
-                p.maxStamina = 50; p.stamina = Math.min(p.stamina, 50);
-                p.offense = 15; p.defense = 5; p.speed = 3; // <--- THE NEW CORE 5
+                // Reset to new proper baselines
+                p.vitality = 3; p.hp = Math.min(p.hp, 75);
+                p.maxStamina = 2; p.stamina = Math.min(p.stamina, 50);
+                p.offense = 1; p.defense = 1; p.speed = 1; 
                 p.skillPoints = totalExpectedSP;
                 socket.emit('townReceipt', { success: true, action: 'resetStats', updatedPlayer: p, message: "🔄 Knight stats reset! Reallocate your Skill Points." });
             } else socket.emit('townReceipt', { success: false, message: "❌ Insufficient gold for a stat reset." });
@@ -262,9 +263,9 @@ if (data.action === 'equip') {
             if (p.skillPoints > 0) {
                 p.skillPoints--;
                 switch(data.statKey) {
-                    case 'vitality': p.vitality += 10; p.hp += 10; break;
-                    case 'maxStamina': p.maxStamina += 5; p.stamina += 5; break;
-                    case 'offense': p.offense += 2; break; 
+                    case 'vitality': p.vitality += 1; p.hp += 25; break; // +1 Level, +25 resource
+                    case 'maxStamina': p.maxStamina += 1; p.stamina += 25; break;
+                    case 'offense': p.offense += 1; break; 
                     case 'defense': p.defense += 1; break; 
                     case 'speed': p.speed += 1; break; 
                 }

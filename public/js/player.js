@@ -9,8 +9,8 @@ const SP_PER_LEVEL = 5;
 let player = { 
     x: 1, y: 1, 
     level: 1, xp: 0, xpToNext: 100, skillPoints: 0,
-    vitality: 70, hp: 70, stamina: 50, maxStamina: 50, 
-    offense: 15, defense: 5, speed: 3, // <--- THE NEW CORE 5
+    vitality: 1, hp: 25, stamina: 25, maxStamina: 1, 
+    offense: 1, defense: 1, speed: 1, // <--- THE NEW CORE 5
     vaultSlots: 10, gold: 0, hops: 0, wood: 0, fish: 0, 
 	lumberPoints: 0, fishingPoints: 0, hopsPoints: 0, 
     wildernessLevel: 1, cellarsUnlocked: false, cellarLevel: 1,         
@@ -55,7 +55,7 @@ function calculateNextLevelXp(currentLevel) {
 
 // === REPLACED ===
 function getEffectiveStat(targetPlayer, statKey) {
-    let base = targetPlayer[statKey] || 1; // Default to Level 1
+    let base = targetPlayer[statKey] || 1; 
     let flatBonus = 0;
     let multiplier = 1.0;
 
@@ -66,7 +66,7 @@ function getEffectiveStat(targetPlayer, statKey) {
             if (statKey === 'defense' && item.defense) flatBonus += item.defense;
             if (statKey === 'speed' && item.speed) flatBonus += item.speed;
             if (statKey === 'vitality' && item.vitality) flatBonus += item.vitality;
-            if (statKey === 'stamina' && item.stamina) flatBonus += item.stamina;
+            if (statKey === 'maxStamina' && item.stamina) flatBonus += item.stamina; // <--- FIXED KEY MISMATCH
         }
     }
 
@@ -86,8 +86,8 @@ function getEffectiveStat(targetPlayer, statKey) {
 
 // === REPLACED / ADDED === (Inside player.js)
 // Ultra-clean 1-line getter functions for the UI!
-function getPlayerMaxHp() { return getEffectiveStat(player, 'vitality') * 10; }
-function getPlayerMaxStamina() { return getEffectiveStat(player, 'maxStamina') * 5; } // <--- FIXED: Now looks at maxStamina
+function getPlayerMaxHp() { return getEffectiveStat(player, 'vitality') * 25; }
+function getPlayerMaxStamina() { return getEffectiveStat(player, 'maxStamina') * 25; }
 
 function getPlayerSwiftness() { return Math.max(1, Math.min(12, getEffectiveStat(player, 'speed'))); } // Re-wired to Speed!
 function getPlayerTotalPower() { return Math.max(1, getEffectiveStat(player, 'offense')); }

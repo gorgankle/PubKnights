@@ -46,13 +46,21 @@ function executeCombatAction(actionType) {
                 if (typeof playRetroSound === 'function') playRetroSound('error'); 
                 return;
             }
-            if (!selectedEnemy || !selectedEnemy.alive) return;
+           if (!selectedEnemy || !selectedEnemy.alive) return;
             
             let weapon = player.equipment.weapon;
+            
+            // === PHASE 0: UNARMED CLIENT FALLBACK ===
+            // Injects a mock weapon dynamically so it passes validation and emits to the server
             if (!weapon || !weapon.combat) {
-                logMessage("❌ Tactical Error: Invalid weapon profile.");
-                return;
+                weapon = {
+                    combat: {
+                        standard: { range: 1, staminaCost: 5 },
+                        special: { name: "Haymaker", range: 1, staminaCost: 15, targetType: 'single' }
+                    }
+                };
             }
+            // ========================================
 
 // === NEW: TACTICAL WEAPON SPECIAL INTERCEPT ===
         // If it's an AoE weapon skill, stop the normal attack and switch to TARGETING!
