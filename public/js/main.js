@@ -238,6 +238,21 @@ socket.on('moveReceipt', (receipt) => {
     }
 });
 
+// === NEW: DYNAMIC ATB ENGINE LISTENER ===
+socket.on('ATB_READY', (data) => {
+    if (gameState !== 'COMBAT') return;
+    
+    // Unlock the UI!
+    combatPhase = 'ACTION_READY'; 
+    currentTurn = 'PLAYER';
+    
+    logMessage("⚡ ATB Gauge Full! Your move, Knight.");
+    if (typeof playRetroSound === 'function') playRetroSound('equip'); 
+    
+    refreshSystemUI();
+    if (typeof drawGrid === 'function') drawGrid();
+});
+// ========================================
 
 
 // === SERVER-AUTHORITATIVE ECONOMY RECEIPT ===
@@ -356,7 +371,7 @@ socket.on('combatDeployed', (serverCombatState) => {
     player.idleJob = 'NONE';
     gameState = 'COMBAT'; 
     currentTurn = serverCombatState.turn; 
-    combatPhase = serverCombatState.phase;
+    combatPhase = 'WAITING_FOR_ATB'; // Start the fight waiting for bars to fill!
     activeCombatZone = serverCombatState.zone; 
     pendingMove = null;
     player.pendingXp = 0;
@@ -406,8 +421,16 @@ socket.on('enemyTurnReceipt', (receipt) => {
     let delay = 0; // The playback timer!
 
     // 2. Play the events sequentially on the screen
-    events.forEach(ev => {
+   events.forEach(ev => {
         setTimeout(() => {
+            
+            // === NEW: RESET VISUAL ENEMY ATB ===
+            if (ev.type === 'move' || ev.type === 'hit' || ev.type === 'deflect') {
+                let e = ev.uid ? enemies.find(en => en.uid === ev.uid) : enemies.find(en => en.name === ev.name);
+                if (e) e.visualAtb = 0; 
+            }
+            // ===================================
+            
             if (ev.type === 'move') {
                 let e = ev.uid ? enemies.find(en => en.uid === ev.uid) : enemies.find(en => en.name === ev.name);
                 if (e) { e.x = ev.finalX; e.y = ev.finalY; }

@@ -186,6 +186,14 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         // FIX: Prevent Silent Ghost Sockets
         if (!p) return socket.emit('combatResult', { type: 'error', message: '❌ Server connection lost. Please refresh the page.' });
 
+        // === WAIT MODE: UNPAUSE & RESET ATB ===
+        // If the player successfully emits an action, their turn is over. Reset their clock.
+        if (combat && data.actionCategory !== 'flee') {
+            combat.player.atbCharge = 0;
+            combat.atbPaused = false; 
+        }
+        // ======================================
+
         // === 1. PASS TURN LOGIC ===
         if (data.actionCategory === 'pass') {
             let maxStam = getMaxStamina(p);
@@ -550,7 +558,8 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             zone: zone, activeLevel: runLvl, 
             turn: 'PLAYER', phase: 'MOVE',
             gridSize: 8, tileSize: 60,
-            player: { x: 1, y: 1 }, enemies: [], obstacles: []
+            player: { x: 1, y: 1, atbCharge: 0 }, enemies: [], obstacles: [],
+            atbPaused: false // <--- THE WAIT MODE LOCK
         };
 
         let baitMultiplier = (zone === 'WILDERNESS' && p.mapBaited) ? 1.4 : 1.0;
@@ -654,32 +663,32 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             }
         }
 
-        combatState.enemies.forEach((e, idx) => { e.uid = `mob_${idx}`; });
+        combatState.enemies.forEach((e, idx) => { 
+            e.uid = `mob_${idx}`; 
+            e.atbCharge = 0; // <--- INJECT ENEMY ATB
+        });
         activeCombats[socket.id] = combatState;
         socket.emit('combatDeployed', combatState);
     });
 
-    // --- SERVER-AUTHORITATIVE ENEMY AI ---
-    socket.on('endPlayerTurn', (data) => {
-        let p = activePlayers[socket.id];
-        let combat = activeCombats[socket.id];
+-
+// === REPLACED ===
+    // --- SERVER-AUTHORITATIVE ENEMY AI (STANDALONE ATB PROCESSOR) ---
+    function executeEnemyTurn(socketId, combat, p, e) {
+        if (!e.alive || p.hp <= 0) return;
         
-        if (!p || !combat) return socket.emit('combatResult', { type: 'error', message: '❌ Server connection lost. Please refresh the page.' });
-
-        combat.turn = 'ENEMY';
         let turnEvents = [];
-
         let collisionMatrix = Array(combat.gridSize).fill(null).map(() => Array(combat.gridSize).fill(0));
         
         combat.obstacles.forEach(o => {
             if (o.x >= 0 && o.x < combat.gridSize && o.y >= 0 && o.y < combat.gridSize) collisionMatrix[o.x][o.y] = 1;
         });
         
-        combat.enemies.forEach(e => {
-            if (e.alive) {
-                let eSize = e.size || 1;
-                for (let bx = e.x; bx < e.x + eSize; bx++) {
-                    for (let by = e.y; by < e.y + eSize; by++) {
+        combat.enemies.forEach(en => {
+            if (en.alive) {
+                let enSize = en.size || 1;
+                for (let bx = en.x; bx < en.x + enSize; bx++) {
+                    for (let by = en.y; by < en.y + enSize; by++) {
                         if (bx >= 0 && bx < combat.gridSize && by >= 0 && by < combat.gridSize) collisionMatrix[bx][by] = 2;
                     }
                 }
@@ -705,14 +714,14 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             }
         }
 
-        function getEnemyPathStep(e) {
-            let eSize = e.size || 1;
-            let queue = [{x: e.x, y: e.y}];
-            let visited = new Set([`${e.x},${e.y}`]);
+        function getEnemyPathStep(entity) {
+            let eSize = entity.size || 1;
+            let queue = [{x: entity.x, y: entity.y}];
+            let visited = new Set([`${entity.x},${entity.y}`]);
             let parent = {};
             let dirs = [{x:0, y:-1}, {x:1, y:0}, {x:0, y:1}, {x:-1, y:0}];
             let targetNode = null; 
-            let closestNode = {x: e.x, y: e.y}; 
+            let closestNode = {x: entity.x, y: entity.y}; 
             let minDist = Infinity;
             
             let searchCount = 0; let searchLimit = 30; 
@@ -720,10 +729,10 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             while(queue.length > 0 && searchCount < searchLimit) {
                 searchCount++;
                 let curr = queue.shift();
-                let dist = getGridDistance(combat.player.x, combat.player.y, curr.x, curr.y, eSize);
+                let d = getGridDistance(combat.player.x, combat.player.y, curr.x, curr.y, eSize);
                 
                 let hasLos = false;
-                if (dist <= e.attackRange) {
+                if (d <= entity.attackRange) {
                     for (let bx = curr.x; bx < curr.x + eSize; bx++) {
                         for (let by = curr.y; by < curr.y + eSize; by++) {
                             if (hasLineOfSightMatrix(bx, by, combat.player.x, combat.player.y)) hasLos = true;
@@ -731,11 +740,11 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                     }
                 }
 
-                if (dist < minDist) { minDist = dist; closestNode = curr; }
-                if (dist <= e.attackRange && hasLos) { targetNode = curr; break; }
+                if (d < minDist) { minDist = d; closestNode = curr; }
+                if (d <= entity.attackRange && hasLos) { targetNode = curr; break; }
 
-                for (let d of dirs) {
-                    let nx = curr.x + d.x; let ny = curr.y + d.y;
+                for (let dir of dirs) {
+                    let nx = curr.x + dir.x; let ny = curr.y + dir.y;
                     let key = `${nx},${ny}`;
                     if (!visited.has(key)) {
                         visited.add(key);
@@ -743,7 +752,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                         for (let bx = nx; bx < nx + eSize; bx++) {
                             for (let by = ny; by < ny + eSize; by++) {
                                 if (bx < 0 || bx >= combat.gridSize || by < 0 || by >= combat.gridSize) blocked = true; 
-                                else if (collisionMatrix[bx][by] === 2 && !(bx >= e.x && bx < e.x + eSize && by >= e.y && by < e.y + eSize)) blocked = true; 
+                                else if (collisionMatrix[bx][by] === 2 && !(bx >= entity.x && bx < entity.x + eSize && by >= entity.y && by < entity.y + eSize)) blocked = true; 
                                 else if (collisionMatrix[bx][by] === 1 && eSize === 1) blocked = true; 
                             }
                         }
@@ -752,137 +761,120 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 }
             }
             if (!targetNode) targetNode = closestNode;
-            if (targetNode.x === e.x && targetNode.y === e.y) return null;
+            if (targetNode.x === entity.x && targetNode.y === entity.y) return null;
 
             let step = targetNode;
-            while (parent[`${step.x},${step.y}`] && (parent[`${step.x},${step.y}`].x !== e.x || parent[`${step.x},${step.y}`].y !== e.y)) { 
+            while (parent[`${step.x},${step.y}`] && (parent[`${step.x},${step.y}`].x !== entity.x || parent[`${step.x},${step.y}`].y !== entity.y)) { 
                 step = parent[`${step.x},${step.y}`]; 
             }
             return step;
         }
 
-        let activeEnemies = combat.enemies.filter(e => e.alive);
+        let eSize = e.size || 1;
+        let dist = getGridDistance(combat.player.x, combat.player.y, e.x, e.y, eSize);
+        let hasLos = false;
         
-        for (let e of activeEnemies) {
-            if (!e.alive || p.hp <= 0) break;
-            
-            let eSize = e.size || 1;
-            let dist = getGridDistance(combat.player.x, combat.player.y, e.x, e.y, eSize);
-            let hasLos = false;
-            
-            if (dist <= e.attackRange) {
-                for (let bx = e.x; bx < e.x + eSize; bx++) {
-                    for (let by = e.y; by < e.y + eSize; by++) {
-                        if (hasLineOfSightMatrix(bx, by, combat.player.x, combat.player.y)) hasLos = true;
-                    }
+        if (dist <= e.attackRange) {
+            for (let bx = e.x; bx < e.x + eSize; bx++) {
+                for (let by = e.y; by < e.y + eSize; by++) {
+                    if (hasLineOfSightMatrix(bx, by, combat.player.x, combat.player.y)) hasLos = true;
                 }
             }
+        }
 
-            if (dist > e.attackRange || !hasLos) {
-                let steps = e.speed;
-                while (steps > 0) {
-                    dist = getGridDistance(combat.player.x, combat.player.y, e.x, e.y, eSize);
-                    hasLos = false;
-                    if (dist <= e.attackRange) {
-                        for (let bx = e.x; bx < e.x + eSize; bx++) {
-                            for (let by = e.y; by < e.y + eSize; by++) { 
-                                if (hasLineOfSightMatrix(bx, by, combat.player.x, combat.player.y)) hasLos = true; 
-                            }
+        if (dist > e.attackRange || !hasLos) {
+            let steps = e.speed;
+            while (steps > 0) {
+                dist = getGridDistance(combat.player.x, combat.player.y, e.x, e.y, eSize);
+                hasLos = false;
+                if (dist <= e.attackRange) {
+                    for (let bx = e.x; bx < e.x + eSize; bx++) {
+                        for (let by = e.y; by < e.y + eSize; by++) { 
+                            if (hasLineOfSightMatrix(bx, by, combat.player.x, combat.player.y)) hasLos = true; 
                         }
                     }
-                    if (dist <= e.attackRange && hasLos) break;
-
-                    let nextStep = getEnemyPathStep(e);
-                    if (nextStep) {
-                        for(let bx = e.x; bx < e.x + eSize; bx++) {
-                            for(let by = e.y; by < e.y + eSize; by++) collisionMatrix[bx][by] = 0;
-                        }
-                        
-                        e.x = nextStep.x; e.y = nextStep.y;
-                        
-                        for(let bx = e.x; bx < e.x + eSize; bx++) {
-                            for(let by = e.y; by < e.y + eSize; by++) collisionMatrix[bx][by] = 2;
-                        }
-
-                        turnEvents.push({ type: 'move', uid: e.uid, enemyId: e.id, name: e.name, finalX: e.x, finalY: e.y });
-                        
-                        if (eSize > 1) { 
-                            let oLen = combat.obstacles.length;
-                            combat.obstacles = combat.obstacles.filter(o => !(o.x >= e.x && o.x < e.x + eSize && o.y >= e.y && o.y < e.y + eSize));
-                            if (combat.obstacles.length < oLen) turnEvents.push({ type: 'crush', enemyName: e.name });
-                        }
-                    } else break;
-                    steps--;
                 }
-            }
+                if (dist <= e.attackRange && hasLos) break;
 
-            dist = getGridDistance(combat.player.x, combat.player.y, e.x, e.y, eSize);
-            hasLos = false;
-            if (dist <= e.attackRange) {
-                for (let bx = e.x; bx < e.x + eSize; bx++) {
-                    for (let by = e.y; by < e.y + eSize; by++) { 
-                        if (hasLineOfSightMatrix(bx, by, combat.player.x, combat.player.y)) hasLos = true; 
+                let nextStep = getEnemyPathStep(e);
+                if (nextStep) {
+                    for(let bx = e.x; bx < e.x + eSize; bx++) {
+                        for(let by = e.y; by < e.y + eSize; by++) collisionMatrix[bx][by] = 0;
                     }
+                    
+                    e.x = nextStep.x; e.y = nextStep.y;
+                    
+                    for(let bx = e.x; bx < e.x + eSize; bx++) {
+                        for(let by = e.y; by < e.y + eSize; by++) collisionMatrix[bx][by] = 2;
+                    }
+
+                    turnEvents.push({ type: 'move', uid: e.uid, enemyId: e.id, name: e.name, finalX: e.x, finalY: e.y });
+                    
+                    if (eSize > 1) { 
+                        let oLen = combat.obstacles.length;
+                        combat.obstacles = combat.obstacles.filter(o => !(o.x >= e.x && o.x < e.x + eSize && o.y >= e.y && o.y < e.y + eSize));
+                        if (combat.obstacles.length < oLen) turnEvents.push({ type: 'crush', enemyName: e.name });
+                    }
+                } else break;
+                steps--;
+            }
+        }
+
+        dist = getGridDistance(combat.player.x, combat.player.y, e.x, e.y, eSize);
+        hasLos = false;
+        if (dist <= e.attackRange) {
+            for (let bx = e.x; bx < e.x + eSize; bx++) {
+                for (let by = e.y; by < e.y + eSize; by++) { 
+                    if (hasLineOfSightMatrix(bx, by, combat.player.x, combat.player.y)) hasLos = true; 
                 }
             }
+        }
 
-            // === REPLACED ===
-            if (dist <= e.attackRange && hasLos) {
-                let isPoacher = e.attackRange > 1;
+        if (dist <= e.attackRange && hasLos) {
+            let isPoacher = e.attackRange > 1;
+            let eOffense = e.offense * 10;
+            let playerSpeed = getEffectiveStat(p, 'speed') * 10; 
+            let enemyHitPower = (eOffense * 0.5) + (Math.random() * eOffense * 0.5);
+            let playerSpeedMitigation = Math.random() * playerSpeed;
+
+            if ((enemyHitPower - playerSpeedMitigation) <= 0) {
+                turnEvents.push({ type: 'deflect', enemyName: e.name }); 
+            } else {
+                let rawDamageRoll = Math.sqrt(Math.random()) * eOffense;
+                let playerDef = getEffectiveStat(p, 'defense') * 10;
+                let playerAbsorption = Math.pow(Math.random(), 2) * playerDef;
                 
-                // STAGE 1: PLAYER EVASION (Enemy Offense vs Player Speed)
-                let eOffense = e.offense * 10;
-                let playerSpeed = getEffectiveStat(p, 'speed') * 10; // Unbounded actual speed!
-                let enemyHitPower = (eOffense * 0.5) + (Math.random() * eOffense * 0.5);
-                
-                let playerSpeedMitigation = Math.random() * playerSpeed;
+                let mitigatedDmg = Math.floor(rawDamageRoll - playerAbsorption);
 
-                if ((enemyHitPower - playerSpeedMitigation) <= 0) {
+                if (mitigatedDmg <= 0) {
                     turnEvents.push({ type: 'deflect', enemyName: e.name }); 
                 } else {
-                    // STAGE 2: PLAYER ABSORPTION (Enemy Offense vs Player Defense)
-                    let rawDamageRoll = Math.sqrt(Math.random()) * eOffense;
-                    
-                    let playerDef = getEffectiveStat(p, 'defense') * 10;
-                    let playerAbsorption = Math.pow(Math.random(), 2) * playerDef;
-                    
-                    let mitigatedDmg = Math.floor(rawDamageRoll - playerAbsorption);
+                    let isCrit = mitigatedDmg >= Math.floor(eOffense * 0.90);
+                    p.hp -= mitigatedDmg;
+                    turnEvents.push({ type: 'hit', uid: e.uid, enemyName: e.name, damage: mitigatedDmg, isCrit: isCrit, isPoacher: isPoacher, ex: e.x, ey: e.y });
 
-                    if (mitigatedDmg <= 0) {
-                        turnEvents.push({ type: 'deflect', enemyName: e.name }); 
-                    } else {
-                        let isCrit = mitigatedDmg >= Math.floor(eOffense * 0.90);
-                        p.hp -= mitigatedDmg;
-                        turnEvents.push({ type: 'hit', uid: e.uid, enemyName: e.name, damage: mitigatedDmg, isCrit: isCrit, isPoacher: isPoacher, ex: e.x, ey: e.y });
+                    if (e.name.includes("Mimic")) {
+                        let bIdx = p.inventory.findIndex(i => i.type === 'brew');
+                        if (bIdx !== -1) { p.inventory.splice(bIdx, 1); turnEvents.push({ type: 'steal', enemyName: e.name }); }
+                    }
 
-                        if (e.name.includes("Mimic")) {
-                            let bIdx = p.inventory.findIndex(i => i.type === 'brew');
-                            if (bIdx !== -1) { p.inventory.splice(bIdx, 1); turnEvents.push({ type: 'steal', enemyName: e.name }); }
-                        }
+                    if (p.hp <= 0) {
+                        p.inventory = []; 
+                        p.equipment = { helmet: null, armor: null, weapon: null, gloves: null, boots: null };
+                        p.hp = getMaxHp(p); p.stamina = getMaxStamina(p);
+                        p.pendingGold = 0; p.pendingXp = 0; p.pendingLoot = [];
+                        p.activeBuffs = []; p.activeCombatBuff = null; p.mapBaited = false; p.cellarsChummed = false;
+                        
+                        delete activeCombats[socketId]; 
+                        turnEvents.push({ type: 'death' });
+                    }
+                } 
+            } 
+        } 
 
-                        if (p.hp <= 0) {
-                            // === WAVE 6: FULL LOOT DEATH PENALTY ===
-                            p.inventory = []; 
-                            p.equipment = { helmet: null, armor: null, weapon: null, gloves: null, boots: null };
-                            
-                            p.hp = getMaxHp(p);
-                            p.stamina = getMaxStamina(p);
-
-                            p.pendingGold = 0; p.pendingXp = 0; p.pendingLoot = [];
-                            p.activeBuffs = []; p.activeCombatBuff = null; p.mapBaited = false; p.cellarsChummed = false;
-                            
-                            delete activeCombats[socket.id]; 
-                            turnEvents.push({ type: 'death' });
-                            break; 
-                        }
-                    } // Ends Absorption Check
-                } // Ends Evasion Check
-            } // Ends Attack Execution
-        } // Ends For Loop
-
-        combat.turn = 'PLAYER';
-        socket.emit('enemyTurnReceipt', { events: turnEvents, updatedPlayer: p, updatedCombatState: combat });
-    });
+        io.to(socketId).emit('enemyTurnReceipt', { events: turnEvents, updatedPlayer: p, updatedCombatState: combat });
+    }
+// ===================
 
     // --- SERVER-AUTHORITATIVE MOVEMENT SYNC ---
     socket.on('combatMove', (data) => {
@@ -994,4 +986,57 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
 
         socket.emit('combatRewardsReceipt', { updatedPlayer: p });
     });
+
+// === NEW: THE ATB COMBAT HEARTBEAT (Runs every 200ms) ===
+    setInterval(() => {
+        for (let socketId in activeCombats) {
+            let combat = activeCombats[socketId];
+            let p = activePlayers[socketId];
+
+            // If the game is paused for the player's turn, time stands still.
+            if (!p || !combat || combat.atbPaused) continue;
+
+            // 1. Calculate Speeds
+            let playerSpeed = getEffectiveStat(p, 'speed');
+
+            // 2. Add Charges (Capped at 100)
+            combat.player.atbCharge = Math.min(100, (combat.player.atbCharge || 0) + playerSpeed);
+
+            combat.enemies.forEach(e => {
+                if (e.alive) {
+                    e.atbCharge = Math.min(100, (e.atbCharge || 0) + (e.speed || 1));
+                }
+            });
+
+            // 3. Check Thresholds
+            let playerReady = combat.player.atbCharge >= 100;
+            let readyEnemies = combat.enemies.filter(e => e.alive && e.atbCharge >= 100);
+
+            // 4. RNG Tie-Breaker (If both hit 100 on the exact same tick)
+            if (playerReady && readyEnemies.length > 0) {
+                if (Math.random() > 0.5) {
+                    readyEnemies = []; // Player wins, monsters wait
+                } else {
+                    playerReady = false; // Monster wins, player waits
+                }
+            }
+
+            // 5. Execute Turn Routing
+            if (playerReady) {
+                combat.atbPaused = true; // Engage Wait Mode!
+                
+                // Tell the client their UI is unlocked
+                io.to(socketId).emit('ATB_READY', { turn: 'PLAYER' }); 
+            } 
+           else if (readyEnemies.length > 0) {
+                // Take the first ready monster
+                let activeEnemy = readyEnemies[0];
+                
+                activeEnemy.atbCharge = 0; 
+                executeEnemyTurn(socketId, combat, p, activeEnemy);
+            }
+        }
+    }, 200);
+	
+
 };

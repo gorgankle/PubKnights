@@ -44,10 +44,10 @@ function executeCombatAction(actionType) {
 
     if (actionType === 'end' || actionType === 'slash' || actionType === 'special') {
         
-        // Client-side UX validation (Server will verify this again)
+        // Client-side UX validation
         if (actionType === 'slash' || actionType === 'special') {
-            if (combatPhase !== 'PHASE_2') {
-                logMessage("❌ Tactical Error: Attacks can only be performed in Phase 2."); 
+            if (combatPhase !== 'ACTION_READY') {
+                logMessage("❌ Tactical Error: You must wait for your ATB gauge to fill."); 
                 if (typeof playRetroSound === 'function') playRetroSound('error'); 
                 return;
             }
@@ -113,7 +113,7 @@ function executeCombatAction(actionType) {
             
         }
 
-if (actionType !== 'end') combatPhase = 'WAITING_FOR_SERVER';
+combatPhase = 'WAITING_FOR_ATB'; // Lock UI immediately upon dispatch
 
         // ONE unified payload to rule them all
         socket.emit('dispatchCombatAction', { 
@@ -131,16 +131,7 @@ if (actionType !== 'end') combatPhase = 'WAITING_FOR_SERVER';
     }
 }
 
-function endPlayerTurn() { 
-    currentTurn = 'ENEMY'; 
-    combatPhase = 'PHASE_1'; 
-    selectedEnemy = null; 
-    pendingMove = null; 
-    refreshSystemUI(); 
-    
-    // Pass control securely to the Server AI, and sync our final X/Y position!
-    socket.emit('endPlayerTurn', { playerPos: { x: player.x, y: player.y } });
-}
+
 
 function fleeCombat() {
     if (gameState !== 'COMBAT' || currentTurn !== 'PLAYER' || combatPhase === 'TARGETING') return;
@@ -426,23 +417,16 @@ function isValidPlayerMovePath(targetX, targetY) {
 }
 // === THE PHASE CONTROLLER ===
 function advancePhase() {
-    if (combatPhase === 'PHASE_1' || combatPhase === 'MOVE') {
-        combatPhase = 'PHASE_2';
-    } else if (combatPhase === 'PHASE_2' || combatPhase === 'ACTION' || combatPhase === 'WAITING_FOR_SERVER') {
-        // === THE FIX: Advance from the Server Lock into Phase 3 ===
-        combatPhase = 'PHASE_3';
-    } else if (combatPhase === 'PHASE_3' || combatPhase === 'MOVE_2') {
-        endPlayerTurn();
-    }
+    combatPhase = 'WAITING_FOR_ATB';
+    currentTurn = 'ENEMY'; 
+    player.visualAtb = 0; // <--- ADD THIS RESET!
     
-    refreshSystemUI(); // Updates the HTML buttons & health bars
+    selectedEnemy = null; 
+    pendingMove = null;
     
-    // === NEW: THE MASTER CANVAS REDRAW ===
-    if (typeof drawGrid === 'function') {
-        drawGrid();
-    }
+    refreshSystemUI(); 
+    if (typeof drawGrid === 'function') drawGrid();
 }
-
 // === RESTORED TRANSITION FUNCTION ===
 window.transitionToTown = function() {
     if (typeof setGameState === 'function') {
