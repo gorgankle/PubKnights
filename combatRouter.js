@@ -993,4 +993,4 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 }
             }, 200);
         }
-    };actually c
+    };
