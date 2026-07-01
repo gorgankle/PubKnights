@@ -113,12 +113,12 @@ function drawGrid() {
 // === NEW: PLAYER ATB VISUAL MATH ===
     if (player.visualAtb === undefined) player.visualAtb = 0;
     if (combatPhase === 'WAITING_FOR_ATB') {
-        let pSpeed = getPlayerSwiftness();
+        let pSpeed = (getPlayerSwiftness() * 3) + 5; // Matches server buff
         player.visualAtb += (pSpeed * 5) / 60; 
         if (player.visualAtb > 100) player.visualAtb = 100;
     } else {
         player.visualAtb = 100; // Remains full during their active turn
-    }	
+    }
 
 	
     if (player.visualX === undefined) {
@@ -310,7 +310,7 @@ renderGridHealthBar(player.visualX, player.visualY - (playerHopY / currentTileSi
             // === NEW: ENEMY ATB VISUAL MATH ===
             if (e.visualAtb === undefined) e.visualAtb = 0;
             if (combatPhase === 'WAITING_FOR_ATB') {
-                let eSpeed = e.speed || 1;
+                let eSpeed = ((e.speed || 1) * 3) + 5; // Matches server buff
                 e.visualAtb += (eSpeed * 5) / 60;
                 if (e.visualAtb > 100) e.visualAtb = 100;
             }
