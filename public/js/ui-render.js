@@ -794,7 +794,6 @@ if (hopsScreen) hopsScreen.style.display = "none";
                         </div>
                         <button ${resetDisabledStr} onclick="resetStats()" style="width: 100%; margin-top: 10px; background: #8e44ad; padding: 4px 0; border-color: #9b59b6;" onmouseenter="showSystemTooltip('stat_reset', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🔄 Reset Stats (1000g)</button>
                     </div>
-// ============================================
                 `;
             }
             

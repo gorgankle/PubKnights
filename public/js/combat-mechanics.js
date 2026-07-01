@@ -1,10 +1,6 @@
 // --- COMBAT CORE MECHANICS & ACTIONS ---
 
-let activeTargetIndex   = -1;
-let previousCombatPhase = 'PHASE_1';
-let pendingLoot = []; 
-
-// === REPLACED ===
+// Make sure these three lines only appear ONCE at the top of the file!
 let activeTargetIndex   = -1;
 let previousCombatPhase = 'PHASE_1';
 let pendingLoot = []; 
