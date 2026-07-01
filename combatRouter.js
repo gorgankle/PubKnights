@@ -93,9 +93,11 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         return Math.floor((base + flatBonus) * multiplier);
     }
 
+// === REPLACED ===
     // Helper functions to keep the HP/Stamina math completely hidden from the client
     function getMaxHp(player) { return getEffectiveStat(player, 'vitality') * 10; }
-    function getMaxStamina(player) { return getEffectiveStat(player, 'stamina') * 5; }
+    function getMaxStamina(player) { return getEffectiveStat(player, 'maxStamina') * 5; } // <--- FIXED: Now looks at maxStamina
+// ============================================
 
     // --- SECURE KILL PROCESSOR ---
     function processSecureKill(socketId, serverEnemy) {

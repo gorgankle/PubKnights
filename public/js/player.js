@@ -87,7 +87,7 @@ function getEffectiveStat(targetPlayer, statKey) {
 // === REPLACED / ADDED === (Inside player.js)
 // Ultra-clean 1-line getter functions for the UI!
 function getPlayerMaxHp() { return getEffectiveStat(player, 'vitality') * 10; }
-function getPlayerMaxStamina() { return getEffectiveStat(player, 'stamina') * 5; }
+function getPlayerMaxStamina() { return getEffectiveStat(player, 'maxStamina') * 5; } // <--- FIXED: Now looks at maxStamina
 
 function getPlayerSwiftness() { return Math.max(1, Math.min(12, getEffectiveStat(player, 'speed'))); } // Re-wired to Speed!
 function getPlayerTotalPower() { return Math.max(1, getEffectiveStat(player, 'offense')); }

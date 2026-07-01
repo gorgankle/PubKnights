@@ -281,7 +281,7 @@ mapObstacles.forEach(o => {
 
     ctx.restore(); 
 
-    renderGridHealthBar(player.visualX, player.visualY - (playerHopY / currentTileSize), player.hp, player.vitality, 1, player.stamina, player.maxStamina);
+renderGridHealthBar(player.visualX, player.visualY - (playerHopY / currentTileSize), player.hp, getPlayerMaxHp(), 1, player.stamina, getPlayerMaxStamina());
 
     if (selectedEnemy && selectedEnemy.alive) {
         let sSize = selectedEnemy.size || 1;
@@ -407,12 +407,14 @@ if (SpriteMatrices[e.id]) {
 
 } // <--- This bracket closes drawGrid()!
 
+// === REPLACED ===
 function renderGridHealthBar(gridX, gridY, currentHp, maximumHp, size = 1, currentStamina = null, maxStamina = null) {
     let barWidth = (currentTileSize * size) - 6; 
     let rx = gridX * currentTileSize + 3; 
     let ry = gridY * currentTileSize + 1; 
     
-    let hpRatio = Math.max(0, currentHp / maximumHp);
+    // CLAMPED: Prevents the bar from exceeding 100% width!
+    let hpRatio = Math.max(0, Math.min(1.0, currentHp / maximumHp));
     
     ctx.fillStyle = "#110d0a"; 
     ctx.fillRect(rx, ry, barWidth, 2);
@@ -420,7 +422,8 @@ function renderGridHealthBar(gridX, gridY, currentHp, maximumHp, size = 1, curre
     ctx.fillRect(rx, ry, barWidth * hpRatio, 2);
 
     if (currentStamina !== null && maxStamina !== null) {
-        let stRatio = Math.max(0, currentStamina / maxStamina);
+        // CLAMPED: Prevents the bar from exceeding 100% width!
+        let stRatio = Math.max(0, Math.min(1.0, currentStamina / maxStamina));
         let ryStamina = ry + 3; 
         
         ctx.fillStyle = "#110d0a"; 
@@ -429,6 +432,7 @@ function renderGridHealthBar(gridX, gridY, currentHp, maximumHp, size = 1, curre
         ctx.fillRect(rx, ryStamina, barWidth * stRatio, 2);
     }
 }
+// ============================================
 
 canvas.addEventListener("mouseleave", hideTooltip);
 canvas.addEventListener("mousemove", function(e) {
