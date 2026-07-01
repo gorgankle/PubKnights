@@ -10,7 +10,7 @@ let player = {
     x: 1, y: 1, 
     level: 1, xp: 0, xpToNext: 100, skillPoints: 0,
     vitality: 1, hp: 25, stamina: 25, maxStamina: 1, 
-    offense: 1, defense: 1, speed: 1, // <--- THE NEW CORE 5
+    offense: 1, defense: 1, speed: 1, // <--- PROPER LEVEL 1 START
     vaultSlots: 10, gold: 0, hops: 0, wood: 0, fish: 0, 
 	lumberPoints: 0, fishingPoints: 0, hopsPoints: 0, 
     wildernessLevel: 1, cellarsUnlocked: false, cellarLevel: 1,         

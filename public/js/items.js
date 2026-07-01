@@ -11,7 +11,7 @@ const ItemDatabase = {
         projectileSprite: "icon_arrow", // <-- THIS becomes our universal flag
         combat: {
             standard: { range: 5, staminaCost: 5, multiplier: 1.0, animType: "shoot" },
-            special: { name: "Piercing Shot", range: 5, staminaCost: 15, multiplier: 1.5, ignoresResilience: true, desc: "A high-velocity shot that pierces armor." }
+            special: { name: "Piercing Shot", range: 5, staminaCost: 15, multiplier: 1.5, ignoresDefense: true, desc: "A high-velocity shot that pierces armor." }
         }
     },
 	
@@ -22,7 +22,7 @@ const ItemDatabase = {
         offense: 60, attackRange: 1, value: 500, spriteId: "weap_bone",
         combat: {
             standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
-            special: { name: "Heavy Smash", range: 1, staminaCost: 15, multiplier: 1.5, ignoresResilience: false, animType: "jump_smash", desc: "Converts weight momentum into a heavy attack producing 1.5x standard power." }
+            special: { name: "Heavy Smash", range: 1, staminaCost: 15, multiplier: 1.5, ignoresDefense: false, animType: "jump_smash", desc: "Converts weight momentum into a heavy attack producing 1.5x standard power." }
         }
     },
     "scavengers_mitts": { id: "scavengers_mitts", name: "Scavenger's Muddy Mitts", slot: "gloves", rarity: "Unique", offense: 25, defense: 5, value: 350, spriteId: "gloves_scavenger" },
@@ -36,7 +36,7 @@ const ItemDatabase = {
         offense: 2, attackRange: 1, value: 15, spriteId: "weap_rusty_mace", // <--- Converted to Offense
         combat: {
             standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
-            special: { name: "Heavy Smash", range: 1, staminaCost: 15, multiplier: 1.5, ignoresResilience: false, desc: "Converts weight momentum into a heavy attack producing 1.5x standard power." }
+            special: { name: "Heavy Smash", range: 1, staminaCost: 15, multiplier: 1.5, ignoresDefense: false, desc: "Converts weight momentum into a heavy attack producing 1.5x standard power." }
         }
     },
     "rusty_coif": { id: "rusty_coif", name: "Rusty Coif", slot: "helmet", rarity: "common", defense: 5, value: 15, spriteId: "helm_rusty_coif" },
@@ -50,7 +50,7 @@ const ItemDatabase = {
         offense: 55, attackRange: 1, value: 450, spriteId: "weap_behemoth_maw",
         combat: {
             standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
-            special: { name: "Heavy Smash", range: 1, staminaCost: 15, multiplier: 1.5, ignoresResilience: false, desc: "Converts weight momentum into a heavy attack producing 1.5x standard power." }
+            special: { name: "Heavy Smash", range: 1, staminaCost: 15, multiplier: 1.5, ignoresDefense: false, desc: "Converts weight momentum into a heavy attack producing 1.5x standard power." }
         }
     },
     "vintage_cask_plate": { id: "vintage_cask_plate", name: "Iron-Banded Cask Plate", slot: "armor", rarity: "Unique", defense: 30, speed: -1, value: 400, spriteId: "armor_cask_plate" },
@@ -61,7 +61,7 @@ const ItemDatabase = {
         offense: 14, attackRange: 1, value: 25, spriteId: "weap_machete",
         combat: {
             standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
-            special: { name: "Flurry", range: 1, staminaCost: 15, multiplier: 1.2, ignoresResilience: false, desc: "Strike rapidly targeting weak structural thresholds for 1.2x weapon value." }
+            special: { name: "Flurry", range: 1, staminaCost: 15, multiplier: 1.2, ignoresDefense: false, desc: "Strike rapidly targeting weak structural thresholds for 1.2x weapon value." }
         }
     },
     "hunters_spear": { 
@@ -69,7 +69,7 @@ const ItemDatabase = {
         offense: 8, attackRange: 2, value: 40, spriteId: "weap_spear",
         combat: {
             standard: { range: 2, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
-            special: { name: "Flurry", range: 2, staminaCost: 15, multiplier: 1.2, ignoresResilience: false, desc: "Strike rapidly targeting weak structural thresholds for 1.2x weapon value." }
+            special: { name: "Flurry", range: 2, staminaCost: 15, multiplier: 1.2, ignoresDefense: false, desc: "Strike rapidly targeting weak structural thresholds for 1.2x weapon value." }
         }
     },
     "boar_hide_armor": { id: "boar_hide_armor", name: "Boar-Hide Cuirass", slot: "armor", rarity: "Common", defense: 6, value: 30, spriteId: "armor_boar_hide" },
@@ -83,7 +83,7 @@ const ItemDatabase = {
         offense: 20, attackRange: 1, value: 150, spriteId: "weap_mimic_dagger",
         combat: {
             standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
-            special: { name: "Flurry", range: 1, staminaCost: 15, multiplier: 1.2, ignoresResilience: false, desc: "Strike rapidly targeting weak structural thresholds for 1.2x weapon value." }
+            special: { name: "Flurry", range: 1, staminaCost: 15, multiplier: 1.2, ignoresDefense: false, desc: "Strike rapidly targeting weak structural thresholds for 1.2x weapon value." }
         }
     },
     "cellar_striders": { id: "cellar_striders", name: "Cellar Striders", slot: "boots", rarity: "Epic", speed: 2, value: 100, spriteId: "boots_cellar" },
@@ -95,7 +95,7 @@ const ItemDatabase = {
         offense: 25, attackRange: 1, value: 120, spriteId: "brewmasters_club",
         combat: {
             standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
-            special: { name: "Heavy Smash", range: 1, staminaCost: 15, multiplier: 1.5, ignoresResilience: false, desc: "Converts weight momentum into a heavy attack producing 1.5x standard power." }
+            special: { name: "Heavy Smash", range: 1, staminaCost: 15, multiplier: 1.5, ignoresDefense: false, desc: "Converts weight momentum into a heavy attack producing 1.5x standard power." }
         }
     },
     "hop_infused_boots": { id: "hop_infused_boots", name: "Hop-Infused Boots", slot: "boots", rarity: "Rare", speed: 3, value: 80, spriteId: "hop_infused_boots" },
@@ -106,7 +106,7 @@ const ItemDatabase = {
         offense: 450, attackRange: 2, value: 500, spriteId: "silverback_greatclub",
         combat: {
             standard: { range: 2, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
-            special: { name: "Primate Cataclysm", range: 2, staminaCost: 15, multiplier: 4.0, ignoresResilience: true, desc: "Unleashes a crushing blow dealing 4.0x damage. Ignores resilience mechanics entirely." }
+            special: { name: "Primate Cataclysm", range: 2, staminaCost: 15, multiplier: 4.0, ignoresDefense: true, desc: "Unleashes a crushing blow dealing 4.0x damage. Ignores resilience mechanics entirely." }
         }
     },
     "primate_armor": { id: "primate_armor", name: "🍌 Primate-Armor Skullplate", slot: "helmet", rarity: "Gorilla", defense: 75, value: 500, spriteId: "primate_armor" },
@@ -119,7 +119,7 @@ const ItemDatabase = {
         offense: 22, attackRange: 1, value: 100, spriteId: "weap_knuckles",
         combat: {
             standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
-            special: { name: "Heavy Smash", range: 1, staminaCost: 15, multiplier: 1.5, ignoresResilience: false, desc: "Converts weight momentum into a heavy attack producing 1.5x standard power." }
+            special: { name: "Heavy Smash", range: 1, staminaCost: 15, multiplier: 1.5, ignoresDefense: false, desc: "Converts weight momentum into a heavy attack producing 1.5x standard power." }
         }
     },
     "pubserker_wraps": { id: "pubserker_wraps", name: "Pubserker Knuckle Wraps", slot: "gloves", rarity: "Rare", offense: 12, value: 60, spriteId: "gloves_pubserker" },
@@ -133,7 +133,7 @@ const ItemDatabase = {
         offense: 45, attackRange: 1, value: 150, spriteId: "weap_beerglass",
         combat: {
             standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
-            special: { name: "Flurry", range: 1, staminaCost: 15, multiplier: 1.2, ignoresResilience: false, desc: "Strike rapidly targeting weak structural thresholds for 1.2x weapon value." }
+            special: { name: "Flurry", range: 1, staminaCost: 15, multiplier: 1.2, ignoresDefense: false, desc: "Strike rapidly targeting weak structural thresholds for 1.2x weapon value." }
         }
     },
     "beerglass_gloves": { id: "beerglass_gloves", name: "Beerglass Shard Gloves", slot: "gloves", rarity: "Epic", offense: 25, value: 90, spriteId: "gloves_beerglass" },
@@ -147,7 +147,7 @@ const ItemDatabase = {
         offense: 15, attackRange: 1, value: 120, spriteId: "weap_tankard",
         combat: {
             standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
-            special: { name: "Heavy Smash", range: 1, staminaCost: 15, multiplier: 1.5, ignoresResilience: false, desc: "Converts weight momentum into a heavy attack producing 1.5x standard power." }
+            special: { name: "Heavy Smash", range: 1, staminaCost: 15, multiplier: 1.5, ignoresDefense: false, desc: "Converts weight momentum into a heavy attack producing 1.5x standard power." }
         }
     },
     "tankard_gauntlets": { id: "tankard_gauntlets", name: "Tankard Iron Gauntlets", slot: "gloves", rarity: "Epic", offense: 5, value: 80, spriteId: "gloves_tankard" }, 
@@ -189,7 +189,7 @@ const ItemDatabase = {
         offense: 145, attackRange: 1, value: 5000, spriteId: "weap_blackout",
         combat: {
             standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
-            special: { name: "Execute", range: 1, staminaCost: 15, multiplier: 1.5, ignoresResilience: false, desc: "Brings down a devastating vertical chop producing 1.5x standard power." }
+            special: { name: "Execute", range: 1, staminaCost: 15, multiplier: 1.5, ignoresDefense: false, desc: "Brings down a devastating vertical chop producing 1.5x standard power." }
         }
     },
     "blackout_wraps": { id: "blackout_wraps", name: "Numbed Knuckle Wraps", slot: "gloves", rarity: "Relic", offense: 75, value: 2000, spriteId: "gloves_blackout" },
@@ -227,7 +227,7 @@ const ItemDatabase = {
         offense: 95, attackRange: 1, value: 800, spriteId: "weap_timberlord",
         combat: {
             standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
-            special: { name: "Execute", range: 1, staminaCost: 15, multiplier: 1.5, ignoresResilience: false, desc: "Brings down a devastating vertical chop producing 1.5x standard power." }
+            special: { name: "Execute", range: 1, staminaCost: 15, multiplier: 1.5, ignoresDefense: false, desc: "Brings down a devastating vertical chop producing 1.5x standard power." }
         }
     },
     "waders_angler": { id: "waders_angler", name: "The Angler's Waders", slot: "boots", rarity: "Relic", speed: 2, defense: 15, value: 800, spriteId: "boots_angler" },
@@ -245,7 +245,7 @@ const ItemDatabase = {
         offense: 28, attackRange: 1, value: 140, spriteId: "sawblade_chakram",
         combat: {
             standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
-            special: { name: "Flurry", range: 1, staminaCost: 15, multiplier: 1.2, ignoresResilience: false, desc: "Strike rapidly targeting weak structural thresholds for 1.2x weapon value." }
+            special: { name: "Flurry", range: 1, staminaCost: 15, multiplier: 1.2, ignoresDefense: false, desc: "Strike rapidly targeting weak structural thresholds for 1.2x weapon value." }
         }
     },
     "heartwood_cuirass": { id: "heartwood_cuirass", name: "Heartwood Cuirass", slot: "armor", rarity: "Epic", defense: 22, value: 160, spriteId: "heartwood_cuirass" },
@@ -263,7 +263,7 @@ const ItemDatabase = {
         offense: 24, attackRange: 2, value: 150, spriteId: "harpoon_trident",
         combat: {
             standard: { range: 2, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
-            special: { name: "Flurry", range: 2, staminaCost: 15, multiplier: 1.2, ignoresResilience: false, desc: "Strike rapidly targeting weak structural thresholds for 1.2x weapon value." }
+            special: { name: "Flurry", range: 2, staminaCost: 15, multiplier: 1.2, ignoresDefense: false, desc: "Strike rapidly targeting weak structural thresholds for 1.2x weapon value." }
         }
     },
     "abyssal_diving_suit": { id: "abyssal_diving_suit", name: "Abyssal Diving Suit", slot: "armor", rarity: "Epic", defense: 25, value: 180, spriteId: "abyssal_diving_suit" },
@@ -281,7 +281,7 @@ const ItemDatabase = {
         offense: 22, attackRange: 2, value: 130, spriteId: "pitchfork_spear",
         combat: {
             standard: { range: 2, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
-            special: { name: "Flurry", range: 2, staminaCost: 15, multiplier: 1.2, ignoresResilience: false, desc: "Strike rapidly targeting weak structural thresholds for 1.2x weapon value." }
+            special: { name: "Flurry", range: 2, staminaCost: 15, multiplier: 1.2, ignoresDefense: false, desc: "Strike rapidly targeting weak structural thresholds for 1.2x weapon value." }
         }
     },
     "burlap_sack_mask": { id: "burlap_sack_mask", name: "Scarecrow's Sack", slot: "helmet", rarity: "Epic", defense: 18, value: 140, spriteId: "burlap_sack_mask" },
@@ -298,7 +298,7 @@ const ItemDatabase = {
                 range: 2, 
                 staminaCost: 30, 
                 multiplier: 1.2, 
-                ignoresResilience: false, 
+                ignoresDefense: false, 
                 animType: "lunge_slash", // Physically whirlwinds to the target center!
                 desc: "Whirlwinds to a target location, striking all entities in a 3x3 radius." 
             }
