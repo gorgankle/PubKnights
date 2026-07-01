@@ -951,6 +951,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                     if (!p || !combat || combat.atbPaused) continue;
 
                     // BUFFED SPEED MATH: Base 5 + (Speed * 3)
+                   // 2. Add Charges (Capped at 100)
                     let playerSpeed = (getEffectiveStat(p, 'speed') * 3) + 5;
                     combat.player.atbCharge = Math.min(100, (combat.player.atbCharge || 0) + playerSpeed);
 
@@ -961,25 +962,35 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                         }
                     });
 
-                    let playerReady = combat.player.atbCharge >= 100;
-                    let readyEnemies = combat.enemies.filter(e => e.alive && e.atbCharge >= 100);
-
-                    if (playerReady && readyEnemies.length > 0) {
-                        if (Math.random() > 0.5) readyEnemies = []; else playerReady = false; 
+                    // 3. THE D100 INITIATIVE ROLL (Tie-Breaker)
+                    let contested = [];
+                    if (combat.player.atbCharge >= 100) {
+                        contested.push({ type: 'player', entity: combat.player, roll: Math.random() * 100 });
                     }
+                    
+                    combat.enemies.forEach(e => {
+                        if (e.alive && e.atbCharge >= 100) {
+                            contested.push({ type: 'enemy', entity: e, roll: Math.random() * 100 });
+                        }
+                    });
 
-                    if (playerReady) {
-                        combat.atbPaused = true; 
-                        io.to(socketId).emit('ATB_READY'); 
-                    } 
-                    else if (readyEnemies.length > 0) {
-                        let activeEnemy = readyEnemies[0];
-                        activeEnemy.atbCharge = 0; 
-                        executeEnemyTurn(socketId, combat, p, activeEnemy);
+                    // 4. Execute the Winner
+                    if (contested.length > 0) {
+                        // Sort highest roll to the top
+                        contested.sort((a, b) => b.roll - a.roll);
+                        let winner = contested[0];
+
+                        if (winner.type === 'player') {
+                            combat.atbPaused = true; 
+                            io.to(socketId).emit('ATB_READY'); 
+                        } 
+                        else {
+                            let activeEnemy = winner.entity;
+                            activeEnemy.atbCharge = 0; 
+                            executeEnemyTurn(socketId, combat, p, activeEnemy);
+                        }
                     }
                 }
             }, 200);
         }
-
-	
-};
+    };actually c
