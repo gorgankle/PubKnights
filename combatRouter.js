@@ -987,56 +987,45 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         socket.emit('combatRewardsReceipt', { updatedPlayer: p });
     });
 
-// === NEW: THE ATB COMBAT HEARTBEAT (Runs every 200ms) ===
-    setInterval(() => {
-        for (let socketId in activeCombats) {
-            let combat = activeCombats[socketId];
-            let p = activePlayers[socketId];
+// === REPLACED: BOTTOM OF combatRouter.js ===
+        // === NEW: SINGLETON ATB HEARTBEAT ===
+        if (!global.atbEngineStarted) {
+            global.atbEngineStarted = true;
+            
+            setInterval(() => {
+                for (let socketId in activeCombats) {
+                    let combat = activeCombats[socketId];
+                    let p = activePlayers[socketId];
 
-            // If the game is paused for the player's turn, time stands still.
-            if (!p || !combat || combat.atbPaused) continue;
+                    if (!p || !combat || combat.atbPaused) continue;
 
-            // 1. Calculate Speeds
-            let playerSpeed = getEffectiveStat(p, 'speed');
+                    let playerSpeed = getEffectiveStat(p, 'speed');
+                    combat.player.atbCharge = Math.min(100, (combat.player.atbCharge || 0) + playerSpeed);
 
-            // 2. Add Charges (Capped at 100)
-            combat.player.atbCharge = Math.min(100, (combat.player.atbCharge || 0) + playerSpeed);
+                    combat.enemies.forEach(e => {
+                        if (e.alive) {
+                            e.atbCharge = Math.min(100, (e.atbCharge || 0) + (e.speed || 1));
+                        }
+                    });
 
-            combat.enemies.forEach(e => {
-                if (e.alive) {
-                    e.atbCharge = Math.min(100, (e.atbCharge || 0) + (e.speed || 1));
+                    let playerReady = combat.player.atbCharge >= 100;
+                    let readyEnemies = combat.enemies.filter(e => e.alive && e.atbCharge >= 100);
+
+                    if (playerReady && readyEnemies.length > 0) {
+                        if (Math.random() > 0.5) readyEnemies = []; 
+                        else playerReady = false; 
+                    }
+
+                    if (playerReady) {
+                        combat.atbPaused = true; 
+                        io.to(socketId).emit('ATB_READY', { turn: 'PLAYER' }); 
+                    } 
+                    else if (readyEnemies.length > 0) {
+                        let activeEnemy = readyEnemies[0];
+                        activeEnemy.atbCharge = 0; 
+                        executeEnemyTurn(socketId, combat, p, activeEnemy);
+                    }
                 }
-            });
-
-            // 3. Check Thresholds
-            let playerReady = combat.player.atbCharge >= 100;
-            let readyEnemies = combat.enemies.filter(e => e.alive && e.atbCharge >= 100);
-
-            // 4. RNG Tie-Breaker (If both hit 100 on the exact same tick)
-            if (playerReady && readyEnemies.length > 0) {
-                if (Math.random() > 0.5) {
-                    readyEnemies = []; // Player wins, monsters wait
-                } else {
-                    playerReady = false; // Monster wins, player waits
-                }
-            }
-
-            // 5. Execute Turn Routing
-            if (playerReady) {
-                combat.atbPaused = true; // Engage Wait Mode!
-                
-                // Tell the client their UI is unlocked
-                io.to(socketId).emit('ATB_READY', { turn: 'PLAYER' }); 
-            } 
-           else if (readyEnemies.length > 0) {
-                // Take the first ready monster
-                let activeEnemy = readyEnemies[0];
-                
-                activeEnemy.atbCharge = 0; 
-                executeEnemyTurn(socketId, combat, p, activeEnemy);
-            }
+            }, 200);
         }
-    }, 200);
-	
-
-};
+    }; // <--- THIS BRACKET CLOSES module.exports = function(...)
