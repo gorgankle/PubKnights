@@ -510,9 +510,9 @@ if (hopsScreen) hopsScreen.style.display = "none";
                     <div style="color: #2ecc71; margin-bottom: 2px; font-weight: bold;">❤️ ${player.hp} / ${getPlayerMaxHp()} HP</div>
                     <div style="color: #f1c40f; margin-bottom: 4px; font-weight: bold;">⚡ ${player.stamina} / ${getPlayerMaxStamina()} STAM</div>
                     <div style="color: #bbaaa0; border-top: 1px dashed #3a2f26; padding-top: 4px; line-height: 1.3;">
-                        ⚔️ <b>Offense:</b> Lvl ${getPlayerTotalPower()}<br>
-                        🛡️ <b>Defense:</b> Lvl ${getPlayerDeflectChance()}<br>
-                        🏃 <b>Speed:</b> Lvl ${getPlayerSwiftness()}
+                        ⚔️ <b>Offense:</b> Total ${getPlayerTotalPower()}<br>
+                        🛡️ <b>Defense:</b> Total ${getPlayerDeflectChance()}<br>
+                        🏃 <b>Speed:</b> Total ${getPlayerSwiftness()}
                     </div>`;
             }
 
