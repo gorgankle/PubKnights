@@ -63,12 +63,11 @@ else if (item && item.slot === "consumable") {
     else if (type === 'chum_cellars') {
         html = `<h3>🛢️ Chum Subterranean Vaults</h3>Dump 100 ground Fish down the drainage pipes. Your next Forbidden Cellars exploration run will draw out <b>5 additional treasure-bearing Mimics</b>.<br>⚠️ Danger: Grid matrix crowding scales up intensely.`;
     }
-    else if (type === 'stat_vitality') {
+   else if (type === 'stat_vitality') {
         html = `<h3>❤️ Vitality</h3>Increases your maximum health pool.<br>📈 Gain <b>+25 Max HP</b> per level.`;
     }
     else if (type === 'stat_stamina') {
         html = `<h3>⚡ Stamina</h3>Expands your energy reserves for attacks and movement.<br>📈 Gain <b>+25 Max Stamina</b> per level.`;
-    }ml = `<h3>⚡ Stamina</h3>Expands your energy reserves for attacks and movement.<br>📈 Gain <b>+5 Max Stamina</b> per level.`;
     }
     else if (type === 'stat_power') {
         html = `<h3>💥 Offense</h3>Governs your hit chance and maximum damage potential.<br>📈 Pitted against Evasion (Speed) and Absorption (Defense).`;
