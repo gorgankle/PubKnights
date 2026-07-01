@@ -162,11 +162,21 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
     }
 
     // --- SERVER-AUTHORITATIVE COMBAT ENGINE (UNIFIED DISPATCHER) ---
+    // --- SERVER-AUTHORITATIVE COMBAT ENGINE (UNIFIED DISPATCHER) ---
     socket.on('dispatchCombatAction', (data) => {
         let p = activePlayers[socket.id];
         let combat = activeCombats[socket.id];
         
-		if (data.actionCategory === 'flee') {
+        // FIX: Prevent Silent Ghost Sockets
+        if (!p) return socket.emit('combatResult', { type: 'error', message: '❌ Server connection lost. Please refresh the page.' });
+
+        // === THE FIX: SERVER-SIDE ATB ENFORCEMENT ===
+        // Strictly ignore combat actions if the server hasn't locked the ATB state for a player turn!
+        if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
+            return socket.emit('combatResult', { type: 'error', message: '❌ Tactical Error: It is not your turn.', newStamina: p.stamina });
+        }
+        
+        if (data.actionCategory === 'flee') {
             // Erase any escrow/pending loot they gathered before fleeing
             p.pendingGold = 0;
             p.pendingXp = 0;
@@ -834,6 +844,11 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         let combat = activeCombats[socket.id];
         
         if (!p || !combat) return socket.emit('moveReceipt', { success: false, message: '❌ Server connection lost. Please refresh the page.' });
+
+        // === THE FIX: SERVER-SIDE ATB ENFORCEMENT ===
+        if (combat.atbPaused !== true) {
+            return socket.emit('moveReceipt', { success: false, message: '❌ Tactical Error: Cannot move out of turn.', x: combat.player.x, y: combat.player.y });
+        }
 
         let speed = getEffectiveStat(p, 'speed');
         speed = Math.max(1, Math.min(12, speed));
