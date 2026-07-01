@@ -26,8 +26,8 @@ const ItemDatabase = {
         }
     },
     "scavengers_mitts": { id: "scavengers_mitts", name: "Scavenger's Muddy Mitts", slot: "gloves", rarity: "Unique", offense: 25, defense: 5, value: 350, spriteId: "gloves_scavenger" },
-    "chewed_stompers": { id: "chewed_stompers", name: "Chewed Leather Stompers", slot: "boots", rarity: "Rare", moveBonus: 3, defense: 2, value: 450, spriteId: "boots_chewed" },
-    "beastmaster_tunic": { id: "beastmaster_tunic", name: "Beastmaster's Tunic", slot: "armor", rarity: "Epic", defense: 25, moveBonus: 1, value: 1500, spriteId: "armor_beastmaster" },
+    "chewed_stompers": { id: "chewed_stompers", name: "Chewed Leather Stompers", slot: "boots", rarity: "Rare", speed: 3, defense: 2, value: 450, spriteId: "boots_chewed" },
+    "beastmaster_tunic": { id: "beastmaster_tunic", name: "Beastmaster's Tunic", slot: "armor", rarity: "Epic", defense: 25, speed: 1, value: 1500, spriteId: "armor_beastmaster" },
     "alpha_collar": { id: "alpha_collar", name: "Alpha's Spiked Collar", slot: "helmet", rarity: "Relic", defense: 35, offense: 25, value: 4500, spriteId: "helm_alpha" },
 	
     // === BASIC GEAR ===
@@ -40,10 +40,10 @@ const ItemDatabase = {
         }
     },
     "rusty_coif": { id: "rusty_coif", name: "Rusty Coif", slot: "helmet", rarity: "common", defense: 5, value: 15, spriteId: "helm_rusty_coif" },
-    "sturdy_boots": { id: "sturdy_boots", name: "Sturdy Boots", slot: "boots", rarity: "Common", moveBonus: 1, value: 15, spriteId: "sturdy_boots" },
+    "sturdy_boots": { id: "sturdy_boots", name: "Sturdy Boots", slot: "boots", rarity: "Common", speed: 1, value: 15, spriteId: "sturdy_boots" },
     "leather_tunic": { id: "leather_tunic", name: "Leather Tunic", slot: "armor", rarity: "Common", defense: 2, value: 10, spriteId: "armor_tunic" },
     "leather_mitts": { id: "leather_mitts", name: "Leather Mitts", slot: "gloves", rarity: "Common", offense: 2, value: 10, spriteId: "gloves_leather_mitts" },
-    "hide_boots": { id: "hide_boots", name: "Hide Boots", slot: "boots", rarity: "Common", moveBonus: 1, value: 10, spriteId: "boots_hide" },
+    "hide_boots": { id: "hide_boots", name: "Hide Boots", slot: "boots", rarity: "Common", speed: 1, value: 10, spriteId: "boots_hide" },
 	
     "behemoth_maw_crusher": { 
         id: "behemoth_maw_crusher", name: "Behemoth's Splintered Maw", slot: "weapon", type: "Club", rarity: "Unique", 
@@ -53,7 +53,7 @@ const ItemDatabase = {
             special: { name: "Heavy Smash", range: 1, staminaCost: 15, multiplier: 1.5, ignoresResilience: false, desc: "Converts weight momentum into a heavy attack producing 1.5x standard power." }
         }
     },
-    "vintage_cask_plate": { id: "vintage_cask_plate", name: "Iron-Banded Cask Plate", slot: "armor", rarity: "Unique", defense: 30, moveBonus: -1, value: 400, spriteId: "armor_cask_plate" },
+    "vintage_cask_plate": { id: "vintage_cask_plate", name: "Iron-Banded Cask Plate", slot: "armor", rarity: "Unique", defense: 30, speed: -1, value: 400, spriteId: "armor_cask_plate" },
 	
     // === WILDERNESS TIER GEAR ===
     "scavenged_machete": { 
@@ -86,7 +86,7 @@ const ItemDatabase = {
             special: { name: "Flurry", range: 1, staminaCost: 15, multiplier: 1.2, ignoresResilience: false, desc: "Strike rapidly targeting weak structural thresholds for 1.2x weapon value." }
         }
     },
-    "cellar_striders": { id: "cellar_striders", name: "Cellar Striders", slot: "boots", rarity: "Epic", moveBonus: 2, value: 100, spriteId: "boots_cellar" },
+    "cellar_striders": { id: "cellar_striders", name: "Cellar Striders", slot: "boots", rarity: "Epic", speed: 2, value: 100, spriteId: "boots_cellar" },
     "cellar_guard": { id: "cellar_guard", name: "Cellar Guard Gauntlets", slot: "gloves", rarity: "Epic", offense: 15, value: 75, spriteId: "cellar_guard" },
 
     // === THEMATIC / PREMIUM GEAR ===
@@ -98,7 +98,7 @@ const ItemDatabase = {
             special: { name: "Heavy Smash", range: 1, staminaCost: 15, multiplier: 1.5, ignoresResilience: false, desc: "Converts weight momentum into a heavy attack producing 1.5x standard power." }
         }
     },
-    "hop_infused_boots": { id: "hop_infused_boots", name: "Hop-Infused Boots", slot: "boots", rarity: "Rare", moveBonus: 3, value: 80, spriteId: "hop_infused_boots" },
+    "hop_infused_boots": { id: "hop_infused_boots", name: "Hop-Infused Boots", slot: "boots", rarity: "Rare", speed: 3, value: 80, spriteId: "hop_infused_boots" },
 
     // === GORILLA BOSS GEAR ===
     "silverback_greatclub": { 
@@ -123,7 +123,7 @@ const ItemDatabase = {
         }
     },
     "pubserker_wraps": { id: "pubserker_wraps", name: "Pubserker Knuckle Wraps", slot: "gloves", rarity: "Rare", offense: 12, value: 60, spriteId: "gloves_pubserker" },
-    "pubserker_stompers": { id: "pubserker_stompers", name: "Pubserker Stompers", slot: "boots", rarity: "Rare", moveBonus: 1, value: 60, spriteId: "boots_pubserker" },
+    "pubserker_stompers": { id: "pubserker_stompers", name: "Pubserker Stompers", slot: "boots", rarity: "Rare", speed: 1, value: 60, spriteId: "boots_pubserker" },
 
     // === THE BEERGLASS SET (Glass Cannon / Evasion - Epic) ===
     "beerglass_visor": { id: "beerglass_visor", name: "Beerglass Visor", slot: "helmet", rarity: "Epic", defense: 5, value: 80, spriteId: "helm_beerglass" }, 
@@ -137,7 +137,7 @@ const ItemDatabase = {
         }
     },
     "beerglass_gloves": { id: "beerglass_gloves", name: "Beerglass Shard Gloves", slot: "gloves", rarity: "Epic", offense: 25, value: 90, spriteId: "gloves_beerglass" },
-    "beerglass_cleats": { id: "beerglass_cleats", name: "Beerglass Cleats", slot: "boots", rarity: "Epic", moveBonus: 3, value: 110, spriteId: "boots_beerglass" },
+    "beerglass_cleats": { id: "beerglass_cleats", name: "Beerglass Cleats", slot: "boots", rarity: "Epic", speed: 3, value: 110, spriteId: "boots_beerglass" },
 
     // === THE TANKARD SET (Heavy Defense / Juggernaut - Epic) ===
     "tankard_helm": { id: "tankard_helm", name: "Heavy Tankard Helm", slot: "helmet", rarity: "Epic", defense: 35, value: 100, spriteId: "helm_tankard" },
@@ -151,7 +151,7 @@ const ItemDatabase = {
         }
     },
     "tankard_gauntlets": { id: "tankard_gauntlets", name: "Tankard Iron Gauntlets", slot: "gloves", rarity: "Epic", offense: 5, value: 80, spriteId: "gloves_tankard" }, 
-    "tankard_sabatons": { id: "tankard_sabatons", name: "Tankard Sabatons", slot: "boots", rarity: "Epic", moveBonus: -1, value: 90, spriteId: "boots_tankard" },
+    "tankard_sabatons": { id: "tankard_sabatons", name: "Tankard Sabatons", slot: "boots", rarity: "Epic", speed: -1, value: 90, spriteId: "boots_tankard" },
 	
     // === CONSUMABLES ===
     "stout": { 
@@ -193,7 +193,7 @@ const ItemDatabase = {
         }
     },
     "blackout_wraps": { id: "blackout_wraps", name: "Numbed Knuckle Wraps", slot: "gloves", rarity: "Relic", offense: 75, value: 2000, spriteId: "gloves_blackout" },
-    "blackout_staggers": { id: "blackout_staggers", name: "The Spins (Staggering Boots)", slot: "boots", rarity: "Relic", moveBonus: 3, value: 2200, spriteId: "boots_blackout" },
+    "blackout_staggers": { id: "blackout_staggers", name: "The Spins (Staggering Boots)", slot: "boots", rarity: "Relic", speed: 3, value: 2200, spriteId: "boots_blackout" },
 
     // === CRATE DROPS & JUNK ===
     "junk_splinters": { id: "junk_splinters", name: "Handful of Splinters", slot: "consumable", type: "junk", rarity: "Common", value: 1, spriteId: "icon_junk" },
@@ -230,7 +230,7 @@ const ItemDatabase = {
             special: { name: "Execute", range: 1, staminaCost: 15, multiplier: 1.5, ignoresResilience: false, desc: "Brings down a devastating vertical chop producing 1.5x standard power." }
         }
     },
-    "waders_angler": { id: "waders_angler", name: "The Angler's Waders", slot: "boots", rarity: "Relic", moveBonus: 2, defense: 15, value: 800, spriteId: "boots_angler" },
+    "waders_angler": { id: "waders_angler", name: "The Angler's Waders", slot: "boots", rarity: "Relic", speed: 2, defense: 15, value: 800, spriteId: "boots_angler" },
     "hat_harvester": { id: "hat_harvester", name: "Harvester's Straw Hat", slot: "helmet", rarity: "Relic", defense: 25, value: 800, spriteId: "helm_harvester" },
 
     // === NEW TIMBER CRATE EXPANSION ===
@@ -239,7 +239,7 @@ const ItemDatabase = {
     "flannel_shirt": { id: "flannel_shirt", name: "Lumberjack's Flannel", slot: "armor", rarity: "Uncommon", defense: 4, value: 25, spriteId: "flannel_shirt" },
     "beanie_hat": { id: "beanie_hat", name: "Wool Beanie", slot: "helmet", rarity: "Uncommon", defense: 2, value: 20, spriteId: "beanie_hat" },
     "bark_wraps": { id: "bark_wraps", name: "Rough Bark Wraps", slot: "gloves", rarity: "Rare", offense: 10, value: 55, spriteId: "bark_wraps" },
-    "stump_stompers": { id: "stump_stompers", name: "Stump Stompers", slot: "boots", rarity: "Rare", moveBonus: 1, value: 65, spriteId: "stump_stompers" },
+    "stump_stompers": { id: "stump_stompers", name: "Stump Stompers", slot: "boots", rarity: "Rare", speed: 1, value: 65, spriteId: "stump_stompers" },
     "sawblade_chakram": { 
         id: "sawblade_chakram", name: "Rusty Sawblade", slot: "weapon", type: "Sword", rarity: "Epic", 
         offense: 28, attackRange: 1, value: 140, spriteId: "sawblade_chakram",
@@ -257,7 +257,7 @@ const ItemDatabase = {
     "slicker_jacket": { id: "slicker_jacket", name: "Yellow Rain Slicker", slot: "armor", rarity: "Uncommon", defense: 5, value: 30, spriteId: "slicker_jacket" },
     "fishermans_hat": { id: "fishermans_hat", name: "Fisherman's Bucket Hat", slot: "helmet", rarity: "Uncommon", defense: 3, value: 25, spriteId: "fishermans_hat" },
     "barnacle_bracers": { id: "barnacle_bracers", name: "Barnacle Bracers", slot: "gloves", rarity: "Rare", offense: 12, value: 60, spriteId: "barnacle_bracers" },
-    "coral_sabatons": { id: "coral_sabatons", name: "Coral Sabatons", slot: "boots", rarity: "Rare", moveBonus: 1, value: 70, spriteId: "coral_sabatons" },
+    "coral_sabatons": { id: "coral_sabatons", name: "Coral Sabatons", slot: "boots", rarity: "Rare", speed: 1, value: 70, spriteId: "coral_sabatons" },
     "harpoon_trident": { 
         id: "harpoon_trident", name: "Whaler's Harpoon", slot: "weapon", type: "Spear", rarity: "Epic", 
         offense: 24, attackRange: 2, value: 150, spriteId: "harpoon_trident",
@@ -275,7 +275,7 @@ const ItemDatabase = {
     "denim_overalls": { id: "denim_overalls", name: "Denim Overalls", slot: "armor", rarity: "Uncommon", defense: 4, value: 25, spriteId: "denim_overalls" },
     "straw_hat": { id: "straw_hat", name: "Woven Straw Hat", slot: "helmet", rarity: "Uncommon", defense: 2, value: 20, spriteId: "straw_hat" },
     "work_gloves": { id: "work_gloves", name: "Sturdy Work Gloves", slot: "gloves", rarity: "Rare", offense: 11, value: 50, spriteId: "work_gloves" },
-    "muddy_boots": { id: "muddy_boots", name: "Mud-Caked Boots", slot: "boots", rarity: "Rare", moveBonus: 2, value: 65, spriteId: "muddy_boots" },
+    "muddy_boots": { id: "muddy_boots", name: "Mud-Caked Boots", slot: "boots", rarity: "Rare", speed: 2, value: 65, spriteId: "muddy_boots" },
     "pitchfork_spear": { 
         id: "pitchfork_spear", name: "Farmer's Pitchfork", slot: "weapon", type: "Spear", rarity: "Epic", 
         offense: 22, attackRange: 2, value: 130, spriteId: "pitchfork_spear",

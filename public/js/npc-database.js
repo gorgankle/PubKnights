@@ -4,10 +4,10 @@
 
 const NpcDatabase = {
     // Wilderness
-    "wild_ravager": { name: "Wild Ravager", type: "MELEE", hp: 45, maxHp: 45, attackRange: 1, offense: 10, defense: 5, speed: 2, icon: "👾", size: 1 },
-    "publing": { name: "Wild Publing", type: "MELEE", hp: 65, maxHp: 65, attackRange: 1, offense: 15, defense: 8, speed: 2, icon: "🐻", size: 1 },
-    "alpha_poacher": { name: "Wilderness Alpha-Poacher", type: "RANGED", hp: 110, maxHp: 110, attackRange: 3, offense: 25, defense: 10, speed: 1, icon: "🏹", size: 1 },
-    "wilderness_overlord": { name: "Wilderness Apex Overlord (BOSS)", type: "MELEE", hp: 650, maxHp: 650, attackRange: 1, offense: 45, defense: 30, speed: 3, icon: "🐗", size: 2 },
+    "wild_ravager": { name: "Wild Ravager", type: "MELEE", hp: 15, maxHp: 15, attackRange: 1, offense: 1, defense: 1, speed: 1, icon: "👾", size: 1 },
+    "publing": { name: "Wild Publing", type: "MELEE", hp: 50, maxHp: 50, attackRange: 1, offense: 1, defense: 1, speed: 1, icon: "🐻", size: 1 },
+    "alpha_poacher": { name: "Wilderness Alpha-Poacher", type: "RANGED", hp: 75, maxHp: 75, attackRange: 10, offense: 2, defense: 1, speed: 2, icon: "🏹", size: 1 },
+    "wilderness_overlord": { name: "Wilderness Apex Overlord (BOSS)", type: "MELEE", hp: 150, maxHp: 150, attackRange: 2, offense: 5, defense: 5, speed: 5, icon: "🐗", size: 2 },
     
     // Cellars
     "corrupted_cask": { name: "Corrupted Wine-Cask", type: "MELEE", hp: 250, maxHp: 250, attackRange: 1, offense: 30, defense: 15, speed: 3, icon: "🛢️", size: 1 },
