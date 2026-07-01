@@ -302,7 +302,8 @@ renderGridHealthBar(player.visualX, player.visualY - (playerHopY / currentTileSi
     }
 
     // --- INTERPOLATION ENGINE: ENEMIES ---
-   if (e.alive) {
+    enemies.forEach(e => {
+        if (e.alive) {
             let sSize = e.size || 1;
 
             // === NEW: ENEMY ATB VISUAL MATH ===
