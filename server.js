@@ -230,8 +230,8 @@ if (data.saveData) {
 
                 // === PHASE 0: RECONNECT SAFETY NET ===
                 // Recalculate true maxes to heal them instantly upon logging into the hub
-                pd.hp = (pd.vitality || 1) * 10;
-                pd.stamina = (pd.maxStamina || 1) * 5;
+                pd.hp = (pd.vitality || 1) * 25;
+                pd.stamina = (pd.maxStamina || 1) * 25;
                 // =====================================
 
                 activePlayers[socket.id] = pd;

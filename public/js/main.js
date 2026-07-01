@@ -352,7 +352,9 @@ socket.on('combatRewardsReceipt', (receipt) => {
             logMessage(`🎉 LEVEL UP! The Guild has verified you are now Level ${player.level}.`);
         }
         
-        // === NEW: Safely transition to town now that the server gave us our new map levels! ===
+        // === THE FIX: FORCE A DATABASE COMMIT BEFORE LEAVING THE ARENA ===
+        if (typeof saveGame === 'function') saveGame();
+        
         transitionToTown(); 
     }
 });
