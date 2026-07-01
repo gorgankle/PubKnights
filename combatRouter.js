@@ -546,11 +546,12 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         if (zone === 'WILDERNESS') runLvl = Math.min(requestedLvl, p.wildernessLevel || 1);
         if (zone === 'CELLARS') runLvl = Math.min(requestedLvl, p.cellarLevel || 1);
 
-        let combatState = {
+       let combatState = {
             zone: zone, activeLevel: runLvl, 
             turn: 'PLAYER', phase: 'MOVE',
             gridSize: 8, tileSize: 60,
-            player: { x: 1, y: 1 }, enemies: [], obstacles: []
+            player: { x: 1, y: 1, atbCharge: 0 }, enemies: [], obstacles: [],
+            atbPaused: false // <--- THE WAIT MODE LOCK
         };
 
         let baitMultiplier = (zone === 'WILDERNESS' && p.mapBaited) ? 1.4 : 1.0;
@@ -654,7 +655,10 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             }
         }
 
-        combatState.enemies.forEach((e, idx) => { e.uid = `mob_${idx}`; });
+        combatState.enemies.forEach((e, idx) => { 
+            e.uid = `mob_${idx}`; 
+            e.atbCharge = 0; // <--- ENEMY ATB
+        });
         activeCombats[socket.id] = combatState;
         socket.emit('combatDeployed', combatState);
     });
@@ -994,4 +998,44 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
 
         socket.emit('combatRewardsReceipt', { updatedPlayer: p });
     });
+	
+// === SINGLETON ATB HEARTBEAT ===
+        if (!global.atbEngineStarted) {
+            global.atbEngineStarted = true;
+            
+            setInterval(() => {
+                for (let socketId in activeCombats) {
+                    let combat = activeCombats[socketId];
+                    let p = activePlayers[socketId];
+
+                    if (!p || !combat || combat.atbPaused) continue;
+
+                    let playerSpeed = getEffectiveStat(p, 'speed');
+                    combat.player.atbCharge = Math.min(100, (combat.player.atbCharge || 0) + playerSpeed);
+
+                    combat.enemies.forEach(e => {
+                        if (e.alive) e.atbCharge = Math.min(100, (e.atbCharge || 0) + (e.speed || 1));
+                    });
+
+                    let playerReady = combat.player.atbCharge >= 100;
+                    let readyEnemies = combat.enemies.filter(e => e.alive && e.atbCharge >= 100);
+
+                    if (playerReady && readyEnemies.length > 0) {
+                        if (Math.random() > 0.5) readyEnemies = []; else playerReady = false; 
+                    }
+
+                    if (playerReady) {
+                        combat.atbPaused = true; 
+                        io.to(socketId).emit('ATB_READY'); 
+                    } 
+                    else if (readyEnemies.length > 0) {
+                        let activeEnemy = readyEnemies[0];
+                        activeEnemy.atbCharge = 0; 
+                        executeEnemyTurn(socketId, combat, p, activeEnemy);
+                    }
+                }
+            }, 200);
+        }
+
+	
 };

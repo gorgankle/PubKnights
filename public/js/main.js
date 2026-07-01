@@ -238,6 +238,16 @@ socket.on('moveReceipt', (receipt) => {
     }
 });
 
+socket.on('ATB_READY', () => {
+    if (gameState !== 'COMBAT') return;
+    combatPhase = 'PHASE_1'; // The exact start of your tactical phase!
+    currentTurn = 'PLAYER';
+    logMessage("⚡ ATB Gauge Full! Your tactical turn begins.");
+    if (typeof playRetroSound === 'function') playRetroSound('equip');
+    refreshSystemUI();
+    if (typeof drawGrid === 'function') drawGrid();
+});
+
 
 
 // === SERVER-AUTHORITATIVE ECONOMY RECEIPT ===
@@ -355,9 +365,9 @@ socket.on('combatDeployed', (serverCombatState) => {
     // Sync browser state to the Server's command
     player.idleJob = 'NONE';
     gameState = 'COMBAT'; 
-    currentTurn = serverCombatState.turn; 
-    combatPhase = serverCombatState.phase;
-    activeCombatZone = serverCombatState.zone; 
+    currentTurn = 'ENEMY';             // <--- THE LOCK
+    combatPhase = 'WAITING_FOR_ATB';   // <--- THE LOCK
+    player.visualAtb = 0;              // <--- START EMPTY
     pendingMove = null;
     player.pendingXp = 0;
     

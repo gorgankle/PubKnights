@@ -133,9 +133,10 @@ if (actionType !== 'end') combatPhase = 'WAITING_FOR_SERVER';
 
 function endPlayerTurn() { 
     currentTurn = 'ENEMY'; 
-    combatPhase = 'PHASE_1'; 
+    combatPhase = 'WAITING_FOR_ATB'; // <--- THE LOCK
     selectedEnemy = null; 
     pendingMove = null; 
+    player.visualAtb = 0;            // <--- RESET VISUAL BAR
     refreshSystemUI(); 
     
     // Pass control securely to the Server AI, and sync our final X/Y position!
