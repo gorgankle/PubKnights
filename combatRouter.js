@@ -809,7 +809,7 @@ else { // WILDERNESS
             }
 
             if (dist > e.attackRange || !hasLos) {
-                let steps = e.moveRange;
+                let steps = e.speed;
                 while (steps > 0) {
                     dist = getGridDistance(combat.player.x, combat.player.y, e.x, e.y, eSize);
                     hasLos = false;
@@ -856,19 +856,28 @@ else { // WILDERNESS
                 }
             }
 
-            if (dist <= e.attackRange && hasLos) {
+          if (dist <= e.attackRange && hasLos) {
                 let isPoacher = e.attackRange > 1;
-                let effectiveDeflect = isPoacher ? 0 : (p.resilience || 5);
+                
+                // STAGE 1: PLAYER EVASION (Enemy Offense vs Player Speed)
+                let enemyHitPower = (e.offense * 0.5) + (Math.random() * e.offense * 0.5);
+                let playerSpeedMitigation = Math.random() * getPlayerSwiftness();
 
-                if (!isPoacher && Math.random() * 100 <= effectiveDeflect) {
-                    turnEvents.push({ type: 'deflect', enemyName: e.name });
+                if ((enemyHitPower - playerSpeedMitigation) <= 0) {
+                    turnEvents.push({ type: 'deflect', enemyName: e.name }); // Player dodged!
                 } else {
-                    let minDmg = Math.floor(e.attack * 0.85); let maxDmg = Math.ceil(e.attack * 1.10);
-                    let variedDmg = Math.floor(Math.random() * (maxDmg - minDmg + 1)) + minDmg;
-                    let isCrit = variedDmg >= Math.floor(e.attack * 1.06);
+                    // STAGE 2: PLAYER ABSORPTION (Enemy Offense vs Player Defense)
+                    let rawDamageRoll = Math.sqrt(Math.random()) * e.offense;
+                    let playerAbsorption = Math.pow(Math.random(), 2) * getPlayerDeflectChance();
+                    
+                    let mitigatedDmg = Math.floor(rawDamageRoll - playerAbsorption);
 
-                    p.hp -= variedDmg;
-                    turnEvents.push({ type: 'hit', uid: e.uid, enemyName: e.name, damage: variedDmg, isCrit: isCrit, isPoacher: isPoacher, ex: e.x, ey: e.y });
+                    if (mitigatedDmg <= 0) {
+                        turnEvents.push({ type: 'deflect', enemyName: e.name }); // Player armor absorbed it!
+                    } else {
+                        let isCrit = mitigatedDmg >= Math.floor(e.offense * 0.90);
+                        p.hp -= mitigatedDmg;
+                        turnEvents.push({ type: 'hit', uid: e.uid, enemyName: e.name, damage: mitigatedDmg, isCrit: isCrit, isPoacher: isPoacher, ex: e.x, ey: e.y });
 
                     if (e.name.includes("Mimic")) {
                         let bIdx = p.inventory.findIndex(i => i.type === 'brew');
