@@ -176,7 +176,7 @@ const ItemDatabase = {
         desc: "A light, crisp lager brewed for agility. Grants +1 Tactical Stride range for the duration of the combat.",
         combat: { 
             actionType: "buff", staminaCost: 0, buffType: "LAGER", 
-            effectCategory: "swiftness", effectType: "flat", effectValue: 1, // <--- TARGETS 'swiftness' WITH FLAT BONUS
+            effectCategory: "Speed", effectType: "flat", effectValue: 1, // <--- TARGETS 'Speed' WITH FLAT BONUS
             msg: "🍺 Drank a Swift Lager! Stride movement capabilities expanded." 
         }
     },

@@ -264,7 +264,7 @@ if (data.action === 'equip') {
                 switch(data.statKey) {
                     case 'vitality': p.vitality += 10; p.hp += 10; break;
                     case 'maxStamina': p.maxStamina += 5; p.stamina += 5; break;
-                    case 'offense': p.offense += 2; break; // Merged Power & Accuracy scaling
+                    case 'offense': p.offense += 2; break; 
                     case 'defense': p.defense += 1; break; 
                     case 'speed': p.speed += 1; break; 
                 }

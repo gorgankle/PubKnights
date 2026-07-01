@@ -53,18 +53,20 @@ function calculateNextLevelXp(currentLevel) {
 
 // === UNIVERSAL STAT PARSERS (CLIENT-SIDE ENGINE) ===
 
+// === REPLACED ===
 function getEffectiveStat(targetPlayer, statKey) {
-    let base = targetPlayer[statKey] || 0;
+    let base = targetPlayer[statKey] || 1; // Default to Level 1
     let flatBonus = 0;
     let multiplier = 1.0;
 
     for (let slot in targetPlayer.equipment) {
         let item = targetPlayer.equipment[slot];
         if (item) {
-            if (statKey === 'power' && item.atkBonus) flatBonus += item.atkBonus;
-            if (statKey === 'accuracy' && item.accBonus) flatBonus += item.accBonus;
-            if (statKey === 'resilience' && item.deflectChance) flatBonus += item.deflectChance;
-            if (statKey === 'swiftness' && item.moveBonus) flatBonus += item.moveBonus;
+            if (statKey === 'offense' && item.offense) flatBonus += item.offense;
+            if (statKey === 'defense' && item.defense) flatBonus += item.defense;
+            if (statKey === 'speed' && item.speed) flatBonus += item.speed;
+            if (statKey === 'vitality' && item.vitality) flatBonus += item.vitality;
+            if (statKey === 'stamina' && item.stamina) flatBonus += item.stamina;
         }
     }
 
@@ -80,6 +82,7 @@ function getEffectiveStat(targetPlayer, statKey) {
     }
     return Math.floor((base + flatBonus) * multiplier);
 }
+// ============================================
 
 // === REPLACED / ADDED === (Inside player.js)
 // Ultra-clean 1-line getter functions for the UI!
@@ -135,20 +138,23 @@ function getPetTrainingCost() {
     };
 }
 
+// === REPLACED ===
 function saveGame(manualNotify = false) {
     // Failsafe: Don't try to save if they aren't fully logged in yet
     if (!currentUsername) return;
 
     const saveData = {
-        appearance: player.appearance,
         level: player.level || 1, xp: player.xp || 0, xpToNext: player.xpToNext || 100, skillPoints: player.skillPoints || 0,
         vitality: player.vitality || 70, hp: player.hp || 70, stamina: player.stamina || 50, maxStamina: player.maxStamina || 50,
-        power: player.power || 12, accuracy: player.accuracy || 85, resilience: player.resilience || 5, swiftness: player.swiftness || 3,
+        
+        // === THE NEW CORE 5 ===
+        offense: player.offense || 15, defense: player.defense || 5, speed: player.speed || 3, 
+        
         vaultSlots: player.vaultSlots, gold: player.gold, hops: player.hops, wood: player.wood, fish: player.fish, 
-		lumberPoints: player.lumberPoints, fishingPoints: player.fishingPoints, hopsPoints: player.hopsPoints,
+        lumberPoints: player.lumberPoints, fishingPoints: player.fishingPoints, hopsPoints: player.hopsPoints,
         wildernessLevel: player.wildernessLevel, cellarsUnlocked: player.cellarsUnlocked, cellarLevel: player.cellarLevel, 
         abyssUnlocked: player.abyssUnlocked, abyssDepth: player.abyssDepth,
-        appearance: player.appearance, // <--- CRITICAL FIX!
+        appearance: player.appearance, 
         equipment: player.equipment, inventory: player.inventory, stash: player.stash,
         buildings: player.buildings,
         workers: player.workers, supplyCart: player.supplyCart, mapBaited: player.mapBaited,
@@ -160,7 +166,7 @@ function saveGame(manualNotify = false) {
         tradeRoutesExpanded: player.tradeRoutesExpanded, monumentBuilt: player.monumentBuilt
     };
     
-    // NEW: Emit the save data directly to the Node server!
+    // Emit the save data directly to the Node server!
     socket.emit('saveGame', {
         username: currentUsername,
         saveData: saveData
@@ -168,4 +174,4 @@ function saveGame(manualNotify = false) {
     
     if (manualNotify) { logMessage(`💾 Profiles tracked under block "${currentUsername}".`); }
 }
-
+// ============================================

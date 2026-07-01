@@ -13,28 +13,51 @@ function getGridDistance(x1, y1, x2, y2, size2 = 1) {
 }
 
 // === UNIVERSAL LINE OF SIGHT ENGINE (Bresenham's Line Algorithm) ===
-    function checkLineOfSight(x1, y1, x2, y2, combatState) {
-        let dx = Math.abs(x2 - x1); let dy = Math.abs(y2 - y1);
-        let sx = (x1 < x2) ? 1 : -1; let sy = (y1 < y2) ? 1 : -1;
-        let err = dx - dy; let cx = x1; let cy = y1;
-        
-        while (true) {
-            if (cx === x2 && cy === y2) return true;
-            if (cx !== x1 || cy !== y1) {
-                // Check if the current tile contains a solid obstacle
-                if (combatState.obstacles.some(o => o.x === cx && o.y === cy)) return false;
-            }
-            let e2 = 2 * err;
-            if (e2 > -dy) { err -= dy; cx += sx; }
-            if (e2 < dx) { err += dx; cy += sy; }
+function checkLineOfSight(x1, y1, x2, y2, combatState) {
+    let dx = Math.abs(x2 - x1); let dy = Math.abs(y2 - y1);
+    let sx = (x1 < x2) ? 1 : -1; let sy = (y1 < y2) ? 1 : -1;
+    let err = dx - dy; let cx = x1; let cy = y1;
+    
+    while (true) {
+        if (cx === x2 && cy === y2) return true;
+        if (cx !== x1 || cy !== y1) {
+            // Check if the current tile contains a solid obstacle
+            if (combatState.obstacles.some(o => o.x === cx && o.y === cy)) return false;
         }
+        let e2 = 2 * err;
+        if (e2 > -dy) { err -= dy; cx += sx; }
+        if (e2 < dx) { err += dx; cy += sy; }
     }
+}
 	
-// === REPLACED ===
-    // Helper functions to keep the HP/Stamina math completely hidden from the client
-    function getMaxHp(player) { return getEffectiveStat(player, 'vitality') * 10; }
-    function getMaxStamina(player) { return getEffectiveStat(player, 'stamina') * 5; }
+// === UNIVERSAL LINE OF EFFECT (Bresenham Blast Path) ===
+function getLineOfEffectPath(x1, y1, x2, y2, maxRange, stopsAtWalls, combatState) {
+    let path = [];
+    let dx = Math.abs(x2 - x1); let dy = Math.abs(y2 - y1);
+    let sx = (x1 < x2) ? 1 : -1; let sy = (y1 < y2) ? 1 : -1;
+    let err = dx - dy; let cx = x1; let cy = y1;
+    let distanceTraveled = 0;
+    
+    while (distanceTraveled <= maxRange) {
+        if (cx !== x1 || cy !== y1) {
+            path.push({ x: cx, y: cy });
+            // If it hits a wall and doesn't ignore LoS, the beam stops here!
+            if (stopsAtWalls && combatState.obstacles.some(o => o.x === cx && o.y === cy)) break; 
+        }
+        if (cx === x2 && cy === y2) break; 
+        
+        let e2 = 2 * err;
+        if (e2 > -dy) { err -= dy; cx += sx; }
+        if (e2 < dx) { err += dx; cy += sy; }
+        distanceTraveled++;
+    }
+    return path;
+}
 
+
+module.exports = function(socket, io, activePlayers, activeCombats) {
+	
+	// === UNIVERSAL STAT ENGINE ===
     // Calculates the true level of any stat by combining Base + Gear + Buffs
     function getEffectiveStat(player, statKey) {
         let base = player[statKey] || 1; // Default to Level 1
@@ -50,42 +73,6 @@ function getGridDistance(x1, y1, x2, y2, size2 = 1) {
                 if (statKey === 'speed' && item.speed) flatBonus += item.speed;
                 if (statKey === 'vitality' && item.vitality) flatBonus += item.vitality;
                 if (statKey === 'stamina' && item.stamina) flatBonus += item.stamina;
-            }
-        }
-
-        // 2. Apply Active Buffs (Potions, Magic, etc.)
-        if (player.activeBuffs && player.activeBuffs.length > 0) {
-            player.activeBuffs.forEach(buffId => {
-                let buffData = ItemDatabase[buffId.toLowerCase()];
-                if (buffData && buffData.combat && buffData.combat.effectCategory === statKey) {
-                    if (buffData.combat.effectType === 'flat') flatBonus += buffData.combat.effectValue;
-                    else if (buffData.combat.effectType === 'multiplier') multiplier *= buffData.combat.effectValue;
-                }
-            });
-        }
-
-        return Math.floor((base + flatBonus) * multiplier);
-    }
-// ============================================
-
-
-module.exports = function(socket, io, activePlayers, activeCombats) {
-	
-	// === UNIVERSAL STAT ENGINE ===
-    // Calculates the true value of any stat by combining Base + Gear + Buffs
-    function getEffectiveStat(player, statKey) {
-        let base = player[statKey] || 0;
-        let flatBonus = 0;
-        let multiplier = 1.0;
-
-        // 1. Apply Equipment Modifiers dynamically
-        for (let slot in player.equipment) {
-            let item = player.equipment[slot];
-            if (item) {
-                if (statKey === 'power' && item.atkBonus) flatBonus += item.atkBonus;
-                if (statKey === 'accuracy' && item.accBonus) flatBonus += item.accBonus;
-                if (statKey === 'resilience' && item.deflectChance) flatBonus += item.deflectChance;
-                if (statKey === 'swiftness' && item.moveBonus) flatBonus += item.moveBonus;
             }
         }
 
@@ -105,7 +92,10 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
 
         return Math.floor((base + flatBonus) * multiplier);
     }
-	
+
+    // Helper functions to keep the HP/Stamina math completely hidden from the client
+    function getMaxHp(player) { return getEffectiveStat(player, 'vitality') * 10; }
+    function getMaxStamina(player) { return getEffectiveStat(player, 'stamina') * 5; }
 
     // --- SECURE KILL PROCESSOR ---
     function processSecureKill(socketId, serverEnemy) {
@@ -169,7 +159,8 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             delete activeCombats[socketId];
         }
     }
-// --- SERVER-AUTHORITATIVE COMBAT ENGINE (UNIFIED DISPATCHER) ---
+
+    // --- SERVER-AUTHORITATIVE COMBAT ENGINE (UNIFIED DISPATCHER) ---
     socket.on('dispatchCombatAction', (data) => {
         let p = activePlayers[socket.id];
         let combat = activeCombats[socket.id];
@@ -191,12 +182,13 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
 
         // === 1. PASS TURN LOGIC ===
         if (data.actionCategory === 'pass') {
-            let recover = Math.floor((p.maxStamina || 50) * 0.15); 
-            p.stamina = Math.min(p.maxStamina || 50, (p.stamina || 0) + recover);
+            let maxStam = getMaxStamina(p);
+            let recover = Math.floor(maxStam * 0.15); 
+            p.stamina = Math.min(maxStam, (p.stamina || 0) + recover);
             
-            // === THE FIX: Send updatedPlayer: p so the client syncs instantly! ===
             return socket.emit('combatResult', { type: 'pass', updatedPlayer: p, recovered: recover });
         }
+        
         // === 2. WEAPON ATTACK LOGIC ===
         if (data.actionCategory === 'weapon') {
             let weapon = p.equipment.weapon;
@@ -208,8 +200,6 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             let combatRules = data.subType === 'special' ? weapon.combat.special : weapon.combat.standard;
             if (!combatRules) return socket.emit('combatResult', { type: 'error', message: '❌ Server: Action not supported by weapon.', newStamina: p.stamina });
 
-   
-			
 			let staminaCost = combatRules.staminaCost;
             if (p.stamina < staminaCost) {
                 return socket.emit('combatResult', { type: 'error', message: `❌ Server: Insufficient stamina (${Math.floor(p.stamina)}/${staminaCost}).`, newStamina: p.stamina });
@@ -232,7 +222,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
 
                 p.stamina -= staminaCost;
                 
-                let serverPower = getEffectiveStat(p, 'power');
+                let serverPower = getEffectiveStat(p, 'offense');
                 let finalBaseDmg = Math.floor(serverPower * combatRules.multiplier);
                 let hitTargets = [];
 
@@ -269,7 +259,6 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 });
             }
             // ==========================================
-			
 
             // Secure Target Verification
             let serverEnemy = null;
@@ -281,7 +270,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 return socket.emit('combatResult', { type: 'error', message: '❌ Server: Target lost or already deceased.', newStamina: p.stamina });
             }
 
-       // Secure Range Verification
+            // Secure Range Verification
             let dist = getGridDistance(combat.player.x, combat.player.y, serverEnemy.x, serverEnemy.y, serverEnemy.size || 1);
             
             if (dist > combatRules.range) {
@@ -294,25 +283,22 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                     return socket.emit('combatResult', { type: 'error', message: '❌ Server: Target is obscured by an obstacle.', newStamina: p.stamina });
                 }
             }
-			
-            // === REPLACED ===
+
             // Execute resource burn
             p.stamina -= staminaCost; 
 
             // === THE DUAL-STAGE LEVEL-BASED HIT ALGORITHM ===
             let attackerOffense = getEffectiveStat(p, 'offense');
             let defenderSpeed = serverEnemy.speed || 1;
-            let defenderDefense = combatRules.ignoresResilience ? 0 : (serverEnemy.defense || 1);
+            let defenderDefense = combatRules.ignoresDefense ? 0 : (serverEnemy.defense || 1);
 
             // ---------------------------------------------------------
             // STAGE 1: EVASION (Offense vs. Speed)
             // ---------------------------------------------------------
-            // Favoritism to Offense: It retains at least 50% of its base level.
             let offenseHitPower = (attackerOffense * 0.5) + (Math.random() * attackerOffense * 0.5);
             let speedMitigation = Math.random() * defenderSpeed;
 
             if ((offenseHitPower - speedMitigation) <= 0) {
-                // Speed wins. The attack is entirely dodged.
                 socket.emit('combatResult', { type: 'miss', hitChance: 0, newStamina: p.stamina });
                 return;
             }
@@ -320,16 +306,12 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             // ---------------------------------------------------------
             // STAGE 2: ABSORPTION & DEFLECTION (Offense vs. Defense)
             // ---------------------------------------------------------
-            // Math.sqrt(random) skews Offense HIGH. (Attacker frequently hits near max potential).
-            // Math.pow(random, 2) skews Defense LOW. (Armor mostly absorbs moderate hits).
-            
             let rawDamageRoll = Math.sqrt(Math.random()) * attackerOffense;
             let armorAbsorption = Math.pow(Math.random(), 2) * defenderDefense;
             
             let mitigatedDmg = Math.floor(rawDamageRoll - armorAbsorption);
 
             if (mitigatedDmg <= 0) {
-                // Defense wins. The armor completely absorbed the remaining blow (Deflection).
                 socket.emit('combatResult', { type: 'miss', hitChance: 100, newStamina: p.stamina });
                 return;
             }
@@ -337,11 +319,9 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             // ---------------------------------------------------------
             // STAGE 3: THE DAMAGE DISPATCH
             // ---------------------------------------------------------
-            // A Crit is awarded if they pushed through armor and still landed in their top 10% damage bracket
             let isCrit = mitigatedDmg >= Math.floor(attackerOffense * 0.90); 
             let finalDmg = Math.floor(mitigatedDmg * combatRules.multiplier);
 
-            // Apply Damage
             serverEnemy.hp -= finalDmg;
             let killed = false;
             if (serverEnemy.hp <= 0) {
@@ -368,7 +348,6 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 updatedPlayer: p 
             });
             return;
-// ============================================
         } 
 
         // === 3. CONSUMABLE LOGIC (Brews & Bombs) ===
@@ -386,8 +365,9 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
 
             // Heal Parsing
             if (rules.actionType === 'heal') {
-                let healAmount = Math.floor(p.vitality * rules.healPercent);
-                p.hp = Math.min(p.vitality, p.hp + healAmount);
+                let maxVitalityCalc = getMaxHp(p);
+                let healAmount = Math.floor(maxVitalityCalc * rules.healPercent);
+                p.hp = Math.min(maxVitalityCalc, p.hp + healAmount);
                 p.inventory.splice(invIndex, 1);
                 p.stamina -= rules.staminaCost || 0;
                 return socket.emit('combatItemReceipt', { success: true, updatedPlayer: p, message: `🍺 Chugged ${item.name}. Restored ${healAmount} HP.` });
@@ -402,18 +382,16 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                     p.activeBuffs.push(buffName);
                     p.inventory.splice(invIndex, 1);
                     p.stamina -= rules.staminaCost || 0;
-                    
-                    // The server now reads the message directly from the Item Database!
                     return socket.emit('combatItemReceipt', { success: true, updatedPlayer: p, message: rules.msg });
                 } else {
                     return socket.emit('combatItemReceipt', { success: false, message: "❌ Buff already active." });
                 }
             }
+            
             // Throwable Parsing (Bombs)
             if (rules.actionType === 'throwable') {
                 if (data.tx === undefined || data.ty === undefined) return;
                 
-                // === THE FIX: Use combat.player instead of p ===
                 let throwDist = getGridDistance(combat.player.x, combat.player.y, data.tx, data.ty, 1);
                 let maxRange = rules.range || 4; 
                 
@@ -421,16 +399,13 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                     return socket.emit('combatItemReceipt', { success: false, message: '❌ Server: Target out of range.' });
                 }
                 
-                // === THE FIX: Use combat.player instead of p ===
                 if (!rules.ignoresLoS && !checkLineOfSight(combat.player.x, combat.player.y, data.tx, data.ty, combat)) {
                     return socket.emit('combatItemReceipt', { success: false, message: '❌ Server: No line of sight to target area.' });
                 }
-                // =========================================
 
                 p.inventory.splice(invIndex, 1);
                 p.stamina -= rules.staminaCost || 0;
 
-                // === THE UNIVERSAL DAMAGE DISPATCH (THROWABLE) ===
                 let hitTargets = [];
                 if (combat) {
                     combat.enemies.forEach(e => {
@@ -441,13 +416,11 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                             let killed = false;
                             if (e.hp <= 0) { e.hp = 0; e.alive = false; killed = true; processSecureKill(socket.id, e); }
                             
-                            // Push the enemy data to the payload array
                             hitTargets.push({ uid: e.uid, damage: rules.damageFlat, isCrit: false, killed: killed });
                         }
                     });
                 }
                 
-                // Emitting the exact same 'combatResult' channel!
                 return socket.emit('combatResult', { 
                     type: 'hit',
                     source: 'throwable',
@@ -457,42 +430,34 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                     updatedPlayer: p 
                 });
             }
+            
 			// === NEW: MAGIC SPELL LOGIC (Permanent Scrolls) ===
             if (rules.actionType === 'spell') {
                 if (data.tx === undefined || data.ty === undefined) return;
 
-                // 1. Pull the master math from spells.js
-                // ---> DELETE THE REQUIRE LINE HERE! <---
                 let spellData = SpellDatabase[rules.spellId];
                 if (!spellData) return socket.emit('combatItemReceipt', { success: false, message: "❌ Server: Invalid spell logic." });
 
-                // 2. Validate Stamina & Range
                 if (p.stamina < spellData.cost) {
                     return socket.emit('combatItemReceipt', { success: false, message: '❌ Server: Insufficient stamina to cast.' });
                 }
                 
-                // === THE FIX: Use combat.player instead of p ===
                 let castDist = getGridDistance(combat.player.x, combat.player.y, data.tx, data.ty, 1);
                 
                 if (castDist > spellData.range) {
                     return socket.emit('combatItemReceipt', { success: false, message: '❌ Server: Target out of spell range.' });
                 }
 
-                // 3. Deduct Stamina (CRITICAL: Notice we DO NOT use p.inventory.splice here! The scroll survives!)
                 p.stamina -= spellData.cost;
 
-                // 4. Calculate the path of destruction
                 let hitTargets = [];
                 if (spellData.type === 'line') {
-                    
-                    // === THE FIX: Use combat.player instead of p ===
                     let blastPath = getLineOfEffectPath(combat.player.x, combat.player.y, data.tx, data.ty, spellData.range, !spellData.ignoresLoS, combat);
                     
                     if (combat) {
                         combat.enemies.forEach(e => {
                             if (!e.alive) return;
                             
-                            // Check if the enemy's coordinates exist anywhere in the line path
                             let isHit = false;
                             let s = e.size || 1;
                             for (let bx = e.x; bx < e.x + s; bx++) {
@@ -511,14 +476,11 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                     }
                 }
 
-                // 5. Emit the universal result to the client!
                 return socket.emit('combatResult', { 
                     type: 'hit',
                     source: 'spell', 
                     actionName: spellData.name, 
                     targets: hitTargets,
-                    
-                    // === THE FIX: Inject the specific spell's FX data into the payload! ===
                     fx: { 
                         type: spellData.fx ? spellData.fx.type : 'beam', 
                         style: spellData.fx ? spellData.fx.style : 'fire',
@@ -528,11 +490,9 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                         tx: data.tx, 
                         ty: data.ty 
                     }, 
-                    
                     updatedPlayer: p 
                 });
             }
-			
         } 
 
         // === 4. EQUIP LOGIC ===
@@ -557,8 +517,6 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         }
     });
 
-
-
     // --- SERVER-HOSTED MAP GENERATOR ---
     socket.on('deployToCombat', (data) => {
         let p = activePlayers[socket.id];
@@ -569,14 +527,13 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
 
         let zone = data.zoneChoice;
         
-        // === THE FIX: SERVER FORCES LEVEL VERIFICATION ===
         let requestedLvl = data.activeLevel || 1;
         let runLvl = 1;
         if (zone === 'WILDERNESS') runLvl = Math.min(requestedLvl, p.wildernessLevel || 1);
         if (zone === 'CELLARS') runLvl = Math.min(requestedLvl, p.cellarLevel || 1);
 
         let combatState = {
-            zone: zone, activeLevel: runLvl, // <--- Secured level saved to state!
+            zone: zone, activeLevel: runLvl, 
             turn: 'PLAYER', phase: 'MOVE',
             gridSize: 8, tileSize: 60,
             player: { x: 1, y: 1 }, enemies: [], obstacles: []
@@ -625,13 +582,12 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 } else if (runLvl >= 5) combatState.enemies.push(createEnemy("pub_crawl_mimic", 5, 6));
             }
         }
-else { // WILDERNESS
+        else { // WILDERNESS
             if (runLvl === 20) {
                 combatState.enemies.push(createEnemy("wilderness_overlord", 5, 4, prefixLabel, baitMultiplier));
             } else {
                 let swarmSize = Math.min(6, 1 + Math.floor(runLvl / 2)); 
                 
-                // PUBLING MILESTONE LOGIC
                 let publingsToSpawn = 0;
                 if (runLvl === 5) publingsToSpawn = 1;
                 else if (runLvl === 10) publingsToSpawn = 2;
@@ -689,12 +645,11 @@ else { // WILDERNESS
         socket.emit('combatDeployed', combatState);
     });
 
-// --- SERVER-AUTHORITATIVE ENEMY AI ---
+    // --- SERVER-AUTHORITATIVE ENEMY AI ---
     socket.on('endPlayerTurn', (data) => {
         let p = activePlayers[socket.id];
         let combat = activeCombats[socket.id];
         
-        // FIX: Prevent Silent Ghost Sockets
         if (!p || !combat) return socket.emit('combatResult', { type: 'error', message: '❌ Server connection lost. Please refresh the page.' });
 
         combat.turn = 'ENEMY';
@@ -793,6 +748,7 @@ else { // WILDERNESS
         }
 
         let activeEnemies = combat.enemies.filter(e => e.alive);
+        
         for (let e of activeEnemies) {
             if (!e.alive || p.hp <= 0) break;
             
@@ -856,102 +812,83 @@ else { // WILDERNESS
                 }
             }
 
-          if (dist <= e.attackRange && hasLos) {
+            if (dist <= e.attackRange && hasLos) {
                 let isPoacher = e.attackRange > 1;
                 
                 // STAGE 1: PLAYER EVASION (Enemy Offense vs Player Speed)
                 let enemyHitPower = (e.offense * 0.5) + (Math.random() * e.offense * 0.5);
-                let playerSpeedMitigation = Math.random() * getPlayerSwiftness();
+                
+                // Server-side evaluation instead of client functions
+                let playerSwift = Math.max(1, Math.min(12, getEffectiveStat(p, 'speed')));
+                let playerSpeedMitigation = Math.random() * playerSwift;
 
                 if ((enemyHitPower - playerSpeedMitigation) <= 0) {
-                    turnEvents.push({ type: 'deflect', enemyName: e.name }); // Player dodged!
+                    turnEvents.push({ type: 'deflect', enemyName: e.name }); 
                 } else {
                     // STAGE 2: PLAYER ABSORPTION (Enemy Offense vs Player Defense)
                     let rawDamageRoll = Math.sqrt(Math.random()) * e.offense;
-                    let playerAbsorption = Math.pow(Math.random(), 2) * getPlayerDeflectChance();
+                    
+                    // Server-side evaluation instead of client functions
+                    let playerDef = Math.max(0, Math.min(75, getEffectiveStat(p, 'defense')));
+                    let playerAbsorption = Math.pow(Math.random(), 2) * playerDef;
                     
                     let mitigatedDmg = Math.floor(rawDamageRoll - playerAbsorption);
 
                     if (mitigatedDmg <= 0) {
-                        turnEvents.push({ type: 'deflect', enemyName: e.name }); // Player armor absorbed it!
+                        turnEvents.push({ type: 'deflect', enemyName: e.name }); 
                     } else {
                         let isCrit = mitigatedDmg >= Math.floor(e.offense * 0.90);
                         p.hp -= mitigatedDmg;
                         turnEvents.push({ type: 'hit', uid: e.uid, enemyName: e.name, damage: mitigatedDmg, isCrit: isCrit, isPoacher: isPoacher, ex: e.x, ey: e.y });
 
-                    if (e.name.includes("Mimic")) {
-                        let bIdx = p.inventory.findIndex(i => i.type === 'brew');
-                        if (bIdx !== -1) { p.inventory.splice(bIdx, 1); turnEvents.push({ type: 'steal', enemyName: e.name }); }
-                    }
+                        if (e.name.includes("Mimic")) {
+                            let bIdx = p.inventory.findIndex(i => i.type === 'brew');
+                            if (bIdx !== -1) { p.inventory.splice(bIdx, 1); turnEvents.push({ type: 'steal', enemyName: e.name }); }
+                        }
 
-                    if (p.hp <= 0) {
-                        // === WAVE 6: FULL LOOT DEATH PENALTY ===
-                        p.inventory = []; // Obliterates the backpack
-                        
-                        // Wipes all equipped gear but maintains the strict object structure
-                        p.equipment = { 
-                            helmet: null, 
-                            armor: null, 
-                            weapon: null, 
-                            gloves: null, 
-                            boots: null 
-                        };
-                        
-                        // Rejuvenate the fallen Knight
-                        p.hp = p.vitality;
-                        p.stamina = p.maxStamina;
+                        if (p.hp <= 0) {
+                            // === WAVE 6: FULL LOOT DEATH PENALTY ===
+                            p.inventory = []; 
+                            p.equipment = { helmet: null, armor: null, weapon: null, gloves: null, boots: null };
+                            
+                            p.hp = getMaxHp(p);
+                            p.stamina = getMaxStamina(p);
 
-                        // Wipe Escrow (They lose all gathered gold/XP/Items from the map)
-                        p.pendingGold = 0;
-                        p.pendingXp = 0;
-                        p.pendingLoot = [];
-                        
-                        // Clear Combat Statuses
-                        p.activeBuffs = [];
-                        p.activeCombatBuff = null;
-                        p.mapBaited = false;
-                        p.cellarsChummed = false;
-                        
-                        delete activeCombats[socket.id]; // Failsafe memory wipe
-                        // ===========================================
-
-                        turnEvents.push({ type: 'death' });
-                        break; 
-                    }
-                }
-            }
-        }
+                            p.pendingGold = 0; p.pendingXp = 0; p.pendingLoot = [];
+                            p.activeBuffs = []; p.activeCombatBuff = null; p.mapBaited = false; p.cellarsChummed = false;
+                            
+                            delete activeCombats[socket.id]; 
+                            turnEvents.push({ type: 'death' });
+                            break; 
+                        }
+                    } // Ends Absorption Check
+                } // Ends Evasion Check
+            } // Ends Attack Execution
+        } // Ends For Loop
 
         combat.turn = 'PLAYER';
         socket.emit('enemyTurnReceipt', { events: turnEvents, updatedPlayer: p, updatedCombatState: combat });
     });
 
-// --- SERVER-AUTHORITATIVE MOVEMENT SYNC ---
+    // --- SERVER-AUTHORITATIVE MOVEMENT SYNC ---
     socket.on('combatMove', (data) => {
         let p = activePlayers[socket.id];
         let combat = activeCombats[socket.id];
         
-        // FIX 1: Prevent Silent Ghost Sockets
         if (!p || !combat) return socket.emit('moveReceipt', { success: false, message: '❌ Server connection lost. Please refresh the page.' });
 
-        // === NEW: THE BEAUTY OF THE UNIVERSAL STAT ENGINE ===
-        let swiftness = getEffectiveStat(p, 'swiftness');
-        swiftness = Math.max(1, Math.min(12, swiftness));
+        let speed = getEffectiveStat(p, 'speed');
+        speed = Math.max(1, Math.min(12, speed));
         
-        // Calculated exactly once!
         let dist = getGridDistance(combat.player.x, combat.player.y, data.tx, data.ty, 1);
         
-        // === NEW: SERVER-SIDE PHYSICAL REALITY CHECK (ANTI-CHEAT) ===
-        // 1. Prevent teleporting off the edge of the map
         if (data.tx < 0 || data.tx >= combat.gridSize || data.ty < 0 || data.ty >= combat.gridSize) {
             return socket.emit('moveReceipt', { success: false, message: '❌ Server: Coordinates out of bounds.', x: combat.player.x, y: combat.player.y });
         }
-        // 2. Prevent teleporting inside a rock/wall
         let hitWall = combat.obstacles.some(o => o.x === data.tx && o.y === data.ty);
         if (hitWall) {
             return socket.emit('moveReceipt', { success: false, message: '❌ Server: Obstacle collision detected.', x: combat.player.x, y: combat.player.y });
         }
-        // 3. Prevent stepping on an enemy's toes
         let hitEnemy = combat.enemies.some(e => {
             let s = e.size || 1;
             return e.alive && data.tx >= e.x && data.tx < e.x + s && data.ty >= e.y && data.ty < e.y + s;
@@ -959,10 +896,8 @@ else { // WILDERNESS
         if (hitEnemy) {
             return socket.emit('moveReceipt', { success: false, message: '❌ Server: Entity collision detected.', x: combat.player.x, y: combat.player.y });
         }
-        // ============================================================
 
-        // Calculated exactly once!
-        let moveStaminaCost = Math.floor((dist / swiftness) * 10);
+        let moveStaminaCost = Math.floor((dist / speed) * 10);
 
         if (p.stamina >= moveStaminaCost) {
             p.stamina -= moveStaminaCost;
@@ -998,8 +933,6 @@ else { // WILDERNESS
         socket.emit('inventoryReceipt', { success: true, action: 'sell', updatedPlayer: p, message: `💰 Sold dropped item for ${val}g.` });
     });
 
-    // THE VULNERABLE "socket.on('processCombatVictory')" WAS PERMANENTLY DELETED FROM HERE!
-
     socket.on('claimCombatRewards', () => {
         let p = activePlayers[socket.id];
         if (!p) return;
@@ -1014,7 +947,6 @@ else { // WILDERNESS
         if (p.pendingXp > 0) {
             p.xp += p.pendingXp;
             
-            // Cap leveling at 50 securely on the backend
             while (p.xp >= p.xpToNext && p.level < MAX_PLAYER_LEVEL) {
                 p.xp -= p.xpToNext; 
                 p.level += 1; 
@@ -1022,10 +954,11 @@ else { // WILDERNESS
                 
                 let base = 100; let multiplier = Math.pow(1.15, p.level - 1); let flatBump = p.level * 50;
                 p.xpToNext = Math.floor((base * multiplier) + flatBump);
-                p.hp = p.vitality; p.stamina = p.maxStamina;
+                
+                p.hp = getMaxHp(p);
+                p.stamina = getMaxStamina(p);
             }
             
-            // Hard cap the XP pool once they hit 50
             if (p.level >= MAX_PLAYER_LEVEL) {
                 p.xp = 0;
                 p.xpToNext = "MAX";
@@ -1034,12 +967,10 @@ else { // WILDERNESS
         
         p.pendingGold = 0; p.pendingXp = 0; p.pendingLoot = [];
         
-        // === NEW: CLEAR COMBAT STATUSES ON VICTORY ===
         p.activeBuffs = [];
         p.activeCombatBuff = null;
         p.mapBaited = false;
         p.cellarsChummed = false;
-        // =============================================
 
         socket.emit('combatRewardsReceipt', { updatedPlayer: p });
     });

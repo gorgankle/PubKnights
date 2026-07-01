@@ -4,19 +4,32 @@ let activeTargetIndex   = -1;
 let previousCombatPhase = 'PHASE_1';
 let pendingLoot = []; 
 
-function calculateHitResult(attackerAcc, defenderRes, attackerPower) {
-    let totalStatPool = attackerAcc + defenderRes;
-    let hitChance = attackerAcc / totalStatPool; 
-    let isHit = Math.random() < hitChance;
+// === REPLACED ===
+let activeTargetIndex   = -1;
+let previousCombatPhase = 'PHASE_1';
+let pendingLoot = []; 
 
-    if (!isHit) return { hit: false, damage: 0 };
+function calculateHitResult(attackerOffense, defenderDefense, defenderSpeed) {
+    // ---------------------------------------------------------
+    // STAGE 1: EVASION (Offense vs. Speed)
+    // ---------------------------------------------------------
+    let offenseHitPower = (attackerOffense * 0.5) + (Math.random() * attackerOffense * 0.5);
+    let speedMitigation = Math.random() * defenderSpeed;
 
-    let minDamage = Math.ceil(attackerPower * 0.2);
-    let maxDamage = attackerPower;
-    let varianceDamage = Math.floor(Math.random() * (maxDamage - minDamage + 1)) + minDamage;
+    if ((offenseHitPower - speedMitigation) <= 0) return { hit: false, damage: 0 };
 
-    return { hit: true, damage: varianceDamage };
+    // ---------------------------------------------------------
+    // STAGE 2: ABSORPTION & DEFLECTION (Offense vs. Defense)
+    // ---------------------------------------------------------
+    let rawDamageRoll = Math.sqrt(Math.random()) * attackerOffense;
+    let armorAbsorption = Math.pow(Math.random(), 2) * defenderDefense;
+    let mitigatedDmg = Math.floor(rawDamageRoll - armorAbsorption);
+
+    if (mitigatedDmg <= 0) return { hit: false, damage: 0 };
+
+    return { hit: true, damage: mitigatedDmg };
 }
+// ============================================
 
 // Data-Driven Special Descriptions
 function getWeaponSpecialDesc(item) {
@@ -332,12 +345,14 @@ function finishLooting() {
     // NOTE: We deleted transitionToTown() from here!
 }
 
+// === REPLACED ===
 // === NEW: TRUE PATHFINDING MOVEMENT VALIDATOR (OPTIMIZED CACHE) ===
 // A self-cleaning memory cache that prevents the browser from doing heavy math!
-let moveCache = { x: -1, y: -1, turn: '', swiftness: -1, buffs: '', tiles: new Set() };
+let moveCache = { x: -1, y: -1, turn: '', speed: -1, buffs: '', tiles: new Set() };
 
 function isValidPlayerMovePath(targetX, targetY) {
-    let currentSwiftness = getPlayerSwiftness();
+    let currentSpeed = getPlayerSwiftness(); // (Note: player.js securely routes this alias to the new 'speed' stat!)
+    
     // Convert the array into a flat string so the engine can easily detect changes
     let currentBuffs = (player.activeBuffs || []).join(',');
     
@@ -345,19 +360,20 @@ function isValidPlayerMovePath(targetX, targetY) {
     if (moveCache.x !== player.x || 
         moveCache.y !== player.y || 
         moveCache.turn !== currentTurn || 
-        moveCache.swiftness !== currentSwiftness ||
+        moveCache.speed !== currentSpeed ||
         moveCache.buffs !== currentBuffs) {
         
         moveCache.x = player.x;
         moveCache.y = player.y;
         moveCache.turn = currentTurn;
-        moveCache.swiftness = currentSwiftness; 
+        moveCache.speed = currentSpeed; 
         moveCache.buffs = currentBuffs; // <--- STORE THE NEW VISUAL STATE
         moveCache.tiles = new Set();
         
-        let maxRange = currentSwiftness; 
+        let maxRange = currentSpeed; 
         let queue = [{ x: player.x, y: player.y, dist: 0 }];
         let visited = new Set([`${player.x},${player.y}`]);
+// ============================================
         
         let dirs = [
             {x: 0, y: -1}, {x: 1, y: 0}, {x: 0, y: 1}, {x: -1, y: 0},

@@ -38,18 +38,19 @@ else if (item && item.slot === "consumable") {
     else if (type === 'craft_stout') {
         html = `<h3>🍺 Craft Combat Stout</h3>Hire the Brewmaster to ferment your hops into a vital healing action charge for battle maps.<br>⚖️ Requires: 1 Hops, 10 Gold Pieces`;
     }
+ // === REPLACED ===
     else if (type === 'ipa') {
-        html = `<h3>🔥 Furious IPA</h3>Concoct a strong, oak-aged specialty ale. Your <b>NEXT</b> expedition run gains a permanent <b>+10% Output Damage multiplier</b>.<br>⚖️ Requires: 1 Hops, 5 Timber`;
+        html = `<h3>🔥 Furious IPA</h3>Concoct a strong, oak-aged specialty ale. Your <b>NEXT</b> expedition run gains a permanent <b>1.10x Offense Multiplier</b>.<br>⚖️ Requires: 1 Hops, 5 Timber`;
     }
     else if (type === 'lager') {
-        html = `<h3>🏃 Swift Lager</h3>Ferment a light, refreshing utility lager. Your <b>NEXT</b> expedition run awards <b>+1 Tactical Move Range (Stride step)</b>.<br>⚖️ Requires: 2 Hops, 5 Fish`;
+        html = `<h3>🏃 Swift Lager</h3>Ferment a light, refreshing utility lager. Your <b>NEXT</b> expedition run awards <b>+1 Speed Level</b>.<br>⚖️ Requires: 2 Hops, 5 Fish`;
     }
 	else if (type === 'reserve') {
         html = `<h3>🍷 Grandmaster Reserve</h3>Ferment a legendary, ultra-dense vintage that heavily mends wounds in battle.<br>❤️ Restores: <b>25% Max HP</b><br>⚖️ Requires: 200 Hops, 50 Gold Pieces`;
     }
 	else if (type === 'gilded_tavern') {
-    html = `<h3>✨ Gilded Tavern Metamorphosis</h3>Pay the ultimate tribute to the Guild. Imbues the pub walls with gold filigree and automates supply clearing.<br>💰 Cost: <b>10,000 Gold</b>`;
-}
+        html = `<h3>✨ Gilded Tavern Metamorphosis</h3>Pay the ultimate tribute to the Guild. Imbues the pub walls with gold filigree and automates supply clearing.<br>💰 Cost: <b>10,000 Gold</b>`;
+    }
     else if (type === 'happy_hour') {
         html = `<h3>🎉 Host Happy Hour</h3>Throw a massive festival to double your team's morale! Woodcutters, Fishermen, and Farmers harvest at <b>2x speed vectors for the next 3 minutes</b>.<br>⚖️ Requires: 40 Hops, 100 Gold Pieces`;
     }
@@ -63,23 +64,21 @@ else if (item && item.slot === "consumable") {
         html = `<h3>🛢️ Chum Subterranean Vaults</h3>Dump 100 ground Fish down the drainage pipes. Your next Forbidden Cellars exploration run will draw out <b>5 additional treasure-bearing Mimics</b>.<br>⚠️ Danger: Grid matrix crowding scales up intensely.`;
     }
     else if (type === 'stat_vitality') {
-        html = `<h3>❤️ Vitality</h3>Increases your maximum health pool.<br>📈 Gain <b>+10 Max HP</b> per point.`;
+        html = `<h3>❤️ Vitality</h3>Increases your maximum health pool.<br>📈 Gain <b>+10 Max HP</b> per level.`;
     }
     else if (type === 'stat_stamina') {
-        html = `<h3>⚡ Stamina</h3>Expands your energy reserves for attacks and movement.<br>📈 Gain <b>+5 Max Stamina</b> per point.`;
+        html = `<h3>⚡ Stamina</h3>Expands your energy reserves for attacks and movement.<br>📈 Gain <b>+5 Max Stamina</b> per level.`;
     }
     else if (type === 'stat_power') {
-        html = `<h3>🗡️ Power</h3>Boosts the brute force of your physical strikes.<br>📈 Gain <b>+2 Base Damage</b> per point.`;
-    }
-    else if (type === 'stat_accuracy') {
-        html = `<h3>🎯 Accuracy</h3>Enhances your ability to pierce enemy defenses and hit targets.<br>📈 Gain <b>+2 Hit Chance</b> per point.`;
+        html = `<h3>💥 Offense</h3>Governs your hit chance and maximum damage potential.<br>📈 Pitted against Evasion (Speed) and Absorption (Defense).`;
     }
     else if (type === 'stat_resilience') {
-        html = `<h3>🛡️ Resilience</h3>Improves your natural ability to deflect incoming blows.<br>📈 Gain <b>+1% Passive Deflection</b> per point.`;
+        html = `<h3>🛡️ Defense</h3>Your ability to absorb and deflect incoming physical trauma.<br>📈 Drastically mitigates incoming Offense rolls.`;
     }
     else if (type === 'stat_swiftness') {
-        html = `<h3>🏃 Swiftness</h3>Increases your mobility across the tactical grid.<br>📈 Gain <b>+1 Tactical Stride</b> per point.`;
+        html = `<h3>🏃 Speed</h3>Increases your evasion and mobility across the tactical grid.<br>📈 Governs grid distance limits and dodge chances.`;
     }
+// ============================================
 	// === NEW: RESET TOOLTIP ===
     else if (type === 'stat_reset') {
         html = `<h3>🔄 Amnesia Draft</h3>Wipe your Knight's physical memory to reassign all previously spent Skill Points.<br>💰 Cost: 1000 Gold Pieces`;
@@ -142,13 +141,13 @@ function getItemTooltip(item) {
                `<span class='${rarityClass}' style='font-size: 12px;'><b>${item.name}</b></span><br>` +
                `<span style='font-size: 9px; color: #bbaaa0;'>Type: ${item.slot.toUpperCase()} [${item.rarity}]</span></div>`;
                
+    // === REPLACED ===
     if (item.slot !== "consumable") {
-        if (item.atkBonus) html += `💥 <b>Attack Modifier:</b> +${item.atkBonus} ATK<br>`;
-        if (item.deflectChance) {
-            html += `🛡️ <b>Deflection:</b> +${item.deflectChance}% Rate<br>`;
-            if (item.rarity === "Gorilla") html += `<span style="color: #ff3333; font-size: 9px;">⚠️ Deflection capped at 75%</span><br>`; 
+        if (item.offense) html += `💥 <b>Offense:</b> Lvl +${item.offense}<br>`;
+        if (item.defense) {
+            html += `🛡️ <b>Defense:</b> Lvl +${item.defense}<br>`;
         }
-        if (item.moveBonus) html += `👟 <b>Action Field Extension:</b> ${item.moveBonus > 0 ? '+' : ''}${item.moveBonus} Tile(s)<br>`;
+        if (item.speed) html += `🏃 <b>Speed:</b> Lvl ${item.speed > 0 ? '+' : ''}${item.speed}<br>`;
         
         // Dynamically pull range from the combat object
         if (item.combat && item.combat.standard) {
@@ -161,6 +160,7 @@ function getItemTooltip(item) {
                     `${getWeaponSpecialDesc(item)}</div>`;
         }
     } 
+// ============================================
     else if (item.slot === "consumable" && item.combat) {
         // Data-Driven Consumables parsing!
         if (item.combat.actionType === "throwable") {
@@ -269,23 +269,22 @@ function showItemTooltip(event, item, index, location) {
     if (item.rarity === 'Epic') rarityColor = "#9b59b6";
     if (item.rarity === 'Gorilla' || item.rarity === 'Jackpot' || item.rarity === 'Relic') rarityColor = "#f1c40f";
 
+    // === REPLACED ===
     // Build the dynamic stat block
     let statsHtml = "";
     if (item.slot !== "consumable") {
-        if (item.atkBonus) {
-            statsHtml += `💥 <b>Attack Modifier:</b> +${item.atkBonus} ATK<br>`;
+        if (item.offense) {
+            statsHtml += `💥 <b>Offense:</b> Lvl +${item.offense}<br>`;
         }
-        if (item.deflectChance) {
-            statsHtml += `🛡️ <b>Deflection:</b> +${item.deflectChance}% Rate<br>`;
-            if (item.rarity === "Gorilla") {
-                statsHtml += `<span style="color: #ff3333; font-size: 9px;">⚠️ Deflection capped at 75%</span><br>`; 
-            }
+        if (item.defense) {
+            statsHtml += `🛡️ <b>Defense:</b> Lvl +${item.defense}<br>`;
         }
-        if (item.moveBonus) {
-            statsHtml += `👟 <b>Action Field Extension:</b> ${item.moveBonus > 0 ? '+' : ''}${item.moveBonus} Tile(s)<br>`;
+        if (item.speed) {
+            statsHtml += `🏃 <b>Speed:</b> Lvl ${item.speed > 0 ? '+' : ''}${item.speed}<br>`;
         }
-        if (item.attackRange) {
-            statsHtml += `📏 <b>Weapon Strike Radius:</b> ${item.attackRange} Tile(s)<br>`;
+        if (item.attackRange || (item.combat && item.combat.standard && item.combat.standard.range)) {
+            let rng = item.attackRange || (item.combat && item.combat.standard && item.combat.standard.range) || 1;
+            statsHtml += `📏 <b>Weapon Strike Radius:</b> ${rng} Tile(s)<br>`;
         }
         
         // Append weapon skill descriptions if it is a weapon
@@ -295,15 +294,16 @@ function showItemTooltip(event, item, index, location) {
         }
     } else if (item.slot === "consumable") {
         if (item.type === "bomb") {
-            statsHtml += `🧨 <b>Explosive Yield:</b> ${item.damage} DMG<br>` +
+            statsHtml += `🧨 <b>Explosive Yield:</b> ${item.combat ? item.combat.damageFlat : item.damage} DMG<br>` +
                          `📏 <b>Blast Radius:</b> 3x3 Grid Area<br>`;
         } else if (item.type === "brew") {
-            if (item.id === 'ipa') statsHtml += `🍺 <b>Combat Effect:</b> +10% Damage Output for the duration of the battle.<br>`;
-            else if (item.id === 'lager') statsHtml += `🍺 <b>Combat Effect:</b> +1 Tactical Stride movement for the duration of the battle.<br>`;
+            if (item.id === 'ipa') statsHtml += `🍺 <b>Combat Effect:</b> +1.10x Offense Multiplier.<br>`;
+            else if (item.id === 'lager') statsHtml += `🍺 <b>Combat Effect:</b> +1 Speed Level for movement.<br>`;
             else if (item.id === 'reserve') statsHtml += `🍷 <b>Combat Effect:</b> Instantly restores 25% of Maximum Vitality.<br>`;
             else statsHtml += `🍺 <b>Combat Effect:</b> Instantly restores 10% of Maximum Vitality.<br>`;
         }
     }
+// ============================================
 
     let itemDesc = item.desc || item.description || "";
     let descHtml = itemDesc ? `<div style="margin-bottom: 8px; font-style: italic; color: #bbaaa0; line-height: 1.3;">${itemDesc}</div>` : "";
