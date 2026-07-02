@@ -484,7 +484,7 @@ const combatInvList = document.getElementById("combat-inventory-list");
             // ==================================
         }
     } // <--- MAKE SURE REFRESHSYSTEMUI ACTUALLY CLOSES!
-    } // <--- RESTORED BRACKET 2
+
         else { 
             // --- CONSOLIDATED TABBED VIEWS ---
             // We are out of combat, show the Nav Bar
