@@ -486,6 +486,23 @@ socket.on('enemyTurnReceipt', (receipt) => {
                 if (typeof playRetroSound === 'function') playRetroSound('death');
                 setTimeout(transitionToTown, 1500); 
             }
+			// === ADD INSIDE socket.on('enemyTurnReceipt') in main.js ===
+            else if (ev.type === 'tutorial_death') {
+                logMessage("💀 The Overlord crushed you... but you survived.");
+                if (typeof playRetroSound === 'function') playRetroSound('death');
+                
+                setTimeout(() => {
+                    transitionToTown();
+                    
+                    // Queue Kreg's Introduction!
+                    playDialogueSequence([
+                        { speaker: "Kreg", text: "Whoa there, buddy! You got absolutely clobbered out in the Wilds.", portraitId: "icon_stout" },
+                        { speaker: "Kreg", text: "When you fall in combat, you drop all the unbanked loot you were carrying. That shiny gem? Gone.", portraitId: "icon_stout" },
+                        { speaker: "Kreg", text: "I'm Kreg. My mom meant to name me Craig, but spelling is hard. Welcome to the Guild!", portraitId: "icon_stout" },
+                        { speaker: "Kreg", text: "Gather resources, upgrade the town, and trade for gear here. Get stronger, then go get your revenge!", portraitId: "icon_stout" }
+                    ]);
+                }, 1500); 
+            }
             refreshSystemUI();
         }, delay);
 
@@ -604,3 +621,43 @@ function skipTutorial() {
     transitionToTown();
 }
 // ====================================
+
+// === ADD TO BOTTOM OF main.js ===
+
+// 1. The Server Dialogue Trigger
+socket.on('serverDialogue', (sequence) => {
+    if (typeof playDialogueSequence === 'function') playDialogueSequence(sequence);
+});
+
+// 2. The Server Screen Shake Trigger
+socket.on('screenShake', () => {
+    const gameWrapper = document.getElementById('combat-screen');
+    if (gameWrapper) {
+        // Native Web Animations API (No CSS required!)
+        gameWrapper.animate([
+            { transform: 'translate(2px, 1px) rotate(0deg)' },
+            { transform: 'translate(-1px, -2px) rotate(-1deg)' },
+            { transform: 'translate(-3px, 0px) rotate(1deg)' },
+            { transform: 'translate(3px, 2px) rotate(0deg)' },
+            { transform: 'translate(1px, -1px) rotate(1deg)' },
+            { transform: 'translate(-1px, 2px) rotate(-1deg)' },
+            { transform: 'translate(-3px, 1px) rotate(0deg)' },
+            { transform: 'translate(3px, 1px) rotate(-1deg)' },
+            { transform: 'translate(-1px, -1px) rotate(1deg)' },
+            { transform: 'translate(1px, 2px) rotate(0deg)' },
+            { transform: 'translate(1px, -2px) rotate(-1deg)' }
+        ], { duration: 500, iterations: 1 });
+    }
+    if (typeof playRetroSound === 'function') playRetroSound('explosion');
+});
+
+// 3. The Server Music Override
+socket.on('playTrack', (trackName) => {
+    if (typeof musicTracks !== 'undefined') {
+        let trackIndex = musicTracks.findIndex(t => t.name === trackName);
+        if (trackIndex !== -1) {
+            activeTrackIndex = trackIndex - 1; // Offset so cycle hits it perfectly
+            if (typeof cycleMusicTrack === 'function') cycleMusicTrack();
+        }
+    }
+});

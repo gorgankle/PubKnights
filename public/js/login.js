@@ -46,8 +46,17 @@ function finalizeCharacter() {
     // 1. Save the new appearance settings to the database
     if (typeof saveGame === 'function') saveGame(true); 
     
-    // 2. Transition from the Character Creator screen to the Main Game UI
-    enterGameUI();
+    // 2. THE TUTORIAL HIJACK
+    if (player.tutorialCompleted === false) {
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('char-creation-screen').style.display = 'none';
+        document.getElementById('main-game-container').style.display = 'flex';
+        
+        // Bypass the Town completely and tell the server to spawn the tutorial
+        transitionToCombat('TUTORIAL');
+    } else {
+        enterGameUI();
+    }
 }
 
 // === SOCKET LISTENERS (Catching Server Responses) ===
