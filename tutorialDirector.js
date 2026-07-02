@@ -45,7 +45,7 @@ module.exports = {
             setTimeout(() => {
                 io.to(socketId).emit('serverDialogue', [
                     { speaker: "PLAYER", text: "Phew... all this traveling got me beat.", portraitId: "player" },
-                    { speaker: "Tutorial", text: "Click the orange ⌛ PASS TURN button below to catch your breath and recover Stamina!", portraitId: "icon_stout" }
+                    { speaker: "Tutorial", text: "Click the orange ⌛ PASS TURN button below to catch your breath and recover Stamina!", portraitId: "npc_kreg" }
                 ]);
             }, 1000);
         }
@@ -79,8 +79,16 @@ module.exports = {
             combat.tutorialStep = 2;
             combat.atbPaused = false;
             combat.player.atbCharge = 0;
+            
+            // FIX: Blast the updated authoritative state back to the client to unlock the UI
+            io.to(socketId).emit('combatDeployed', combat);
+
             setTimeout(() => {
-                io.to(socketId).emit('serverDialogue', [{ speaker: "Tutorial", text: "Great! Now open your 🎒 BACKPACK and click the 🍺 STOUT to heal!", portraitId: "icon_stout" }]);
+                io.to(socketId).emit('serverDialogue', [{ 
+                    speaker: "Kreg", 
+                    text: "Great! Now open your 🎒 BACKPACK and click the 🍺 STOUT to heal!", 
+                    portraitId: "npc_kreg" // Updated to use the new sprite hook
+                }]);
             }, 500);
         }
     },
@@ -95,7 +103,7 @@ module.exports = {
 
             setTimeout(() => {
                 io.to(socketId).emit('combatDeployed', combat); 
-                io.to(socketId).emit('serverDialogue', [{ speaker: "Tutorial", text: "A Wild Publing appeared! Click a green tile to move close, then use Standard Attack!", portraitId: "publing" }]);
+                io.to(socketId).emit('serverDialogue', [{ speaker: "Tutorial", text: "A Wild Publing appeared! Click a green tile to move close, then use Standard Attack!", portraitId: "npc_kreg" }]);
             }, 800);
         }
     },
