@@ -141,13 +141,21 @@ const defaultTemplate = {
             });
 
             await newPlayer.save();
+
+            // === THE FIX: LOG THE PLAYER INTO RAM IMMEDIATELY ===
+            // This ensures the server knows who they are when they click "Begin Adventure"
+            let pd = newPlayer.saveData;
+            pd.hp = (pd.vitality || 1) * 25;
+            pd.stamina = (pd.maxStamina || 1) * 25;
+            activePlayers[socket.id] = pd;
+            // ====================================================
+
             socket.emit('registerSuccess');
         } catch (err) {
             console.error(err);
             socket.emit('loginError', 'Server error during registration.');
         }
     });
-    
 // --- SECURE GAME STATE SAVING ---
     socket.on('saveGame', async (data) => {
         try {
