@@ -138,7 +138,25 @@ socket.on('combatResult', (result) => {
             if (enemies.every(e => !e.alive)) {
                 logMessage("🏆 VICTORY Conditions verified.");
                 if (typeof playRetroSound === 'function') playRetroSound('victory');
-                setTimeout(showLootScreen, 1200); 
+                
+                // === THE FIX: SELECTIVELY BYPASS LOOT SCREEN IN TUTORIAL ===
+                if (activeCombatZone === 'TUTORIAL') {
+                    if (currentTutorialStep === 3) {
+                        // The bomb just went off. Show the Loot Screen so they can see the Gem!
+                        // Hide the "Return to Tavern" button so they can't escape the ambush.
+                        let retBtn = document.querySelector("#loot-screen button");
+                        if (retBtn) retBtn.style.display = 'none';
+                        
+                        setTimeout(showLootScreen, 1200);
+                    }
+                    // For Step 2 (single publing), do absolutely nothing. The server handles it.
+                } else {
+                    // Normal Game: Restore the Return button
+                    let retBtn = document.querySelector("#loot-screen button");
+                    if (retBtn) retBtn.style.display = 'block';
+                    setTimeout(showLootScreen, 1200); 
+                }
+                // =======================================================
             } else {
                 advancePhase(); // Unlocks the Phase safely!
             }
@@ -407,6 +425,15 @@ socket.on('combatDeployed', (serverCombatState) => {
     mapObstacles = serverCombatState.obstacles;
     selectedEnemy = null;
     
+    // === NEW: TUTORIAL TRACKING & LOOT TEASE TRAP ===
+    activeCombatZone = serverCombatState.zone;
+    currentTutorialStep = serverCombatState.tutorialStep || 0;
+    
+    // Automatically rip the loot screen away if it's open (used for the Boss ambush!)
+    const lootOverlay = document.getElementById("loot-screen");
+    if (lootOverlay) lootOverlay.style.display = "none";
+    // ================================================
+    
     if (typeof playRetroSound === 'function') playRetroSound('combatStart');
     
     // Display context messages based on zone
@@ -543,6 +570,7 @@ let gameState = 'KNIGHT';
 let currentTurn = 'PLAYER';
 let combatPhase = 'MOVE'; 
 let activeCombatZone = 'WILDERNESS'; 
+let currentTutorialStep = 0;
 
 // Target Tracking
 let pendingMove = null;

@@ -418,11 +418,44 @@ const combatInvList = document.getElementById("combat-inventory-list");
                 let cancelBtn = document.createElement("button");
                 cancelBtn.innerText = "✖ Cancel Action";
                 cancelBtn.style.background = "#443a32"; 
-                cancelBtn.style.gridColumn = "span 2"; // <--- THE FIX: Spans across the 2-column grid
+                cancelBtn.style.gridColumn = "span 2"; 
                 cancelBtn.style.padding = "10px";
                 cancelBtn.onclick = () => cancelTarget();
                 combatInvList.appendChild(cancelBtn);
             }
+            
+            // === NEW: TUTORIAL UI DOM LOCKS ===
+            if (typeof activeCombatZone !== 'undefined' && activeCombatZone === 'TUTORIAL') {
+                if (typeof currentTutorialStep !== 'undefined') {
+                    // Lock EVERYTHING by default
+                    if (slashBtn) slashBtn.disabled = true;
+                    if (heavyBtn) heavyBtn.disabled = true;
+                    if (endBtn) endBtn.disabled = true;
+                    if (fleeBtn) fleeBtn.disabled = true;
+                    bagBtn.disabled = true;
+                    spellBtn.disabled = true;
+                    
+                    if (currentTutorialStep === 1) {
+                        bagBtn.disabled = false;
+                        bagBtn.style.boxShadow = "0 0 15px #2ecc71";
+                        bagBtn.style.border = "2px solid #2ecc71";
+                    } 
+                    else if (currentTutorialStep === 2) {
+                        let hasTarget = selectedEnemy && selectedEnemy.alive;
+                        if (slashBtn) {
+                            slashBtn.disabled = !(hasTarget && combatPhase === 'PHASE_2');
+                            slashBtn.style.boxShadow = "0 0 15px #2ecc71";
+                            slashBtn.style.border = "2px solid #2ecc71";
+                        }
+                    }
+                    else if (currentTutorialStep === 3) {
+                        bagBtn.disabled = false;
+                        bagBtn.style.boxShadow = "0 0 15px #2ecc71";
+                        bagBtn.style.border = "2px solid #2ecc71";
+                    }
+                }
+            }
+            // ==================================
         }
         } // <--- RESTORED BRACKET 1
     } // <--- RESTORED BRACKET 2
@@ -1214,11 +1247,33 @@ function renderCombatModal(filter = 'DRINK') {
 
         if (!showItem) continue; 
 
-        foundAny = true; // We found at least one valid item for this tab
+        foundAny = true; 
         let slotDiv = document.createElement('div');
         let rc = item.rarity === "Gorilla" ? "slot-jackpot" : (item.rarity ? `slot-${item.rarity.toLowerCase()}` : 'slot-common');
         slotDiv.className = `item-slot ${rc}`;
         
+        // === NEW: TUTORIAL INVENTORY LOCKS ===
+        if (typeof activeCombatZone !== 'undefined' && activeCombatZone === 'TUTORIAL') {
+            let isTutorialLocked = true;
+            if (typeof currentTutorialStep !== 'undefined') {
+                if (currentTutorialStep === 1 && item.name.includes("Stout")) isTutorialLocked = false;
+                if (currentTutorialStep === 3 && item.name.includes("Bomb")) isTutorialLocked = false;
+            }
+            
+            if (isTutorialLocked) {
+                slotDiv.style.pointerEvents = 'none';
+                slotDiv.style.opacity = '0.3';
+                slotDiv.style.filter = 'grayscale(100%)';
+            } else {
+                slotDiv.style.boxShadow = "0 0 15px #2ecc71";
+                slotDiv.style.border = "2px solid #2ecc71";
+            }
+            
+            let filters = document.getElementById('combat-modal-filters');
+            if (filters) filters.style.pointerEvents = 'none'; // Lock the tabs
+        }
+        // =====================================
+
         slotDiv.onmouseenter = (e) => { if (typeof showItemTooltip === 'function') showItemTooltip(e, item, idx, 'combat'); };
         slotDiv.onmouseleave = typeof hideTooltip === 'function' ? hideTooltip : null;
 

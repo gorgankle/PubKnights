@@ -14,6 +14,7 @@ module.exports = {
             combatState.player.x = 1;
             combatState.player.y = 2;
             combatState.tutorialStep = 1;
+			p.hp = 20;
 
             // Give the player "OP" Temporary Gear to make the first kill satisfying
             p.equipment = {
