@@ -760,6 +760,38 @@
     }
 </script>
 
+
+<!-- === NEW: ROULETTE UNBOXING OVERLAY === -->
+<div id="unboxing-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.9); z-index: 10000; flex-direction: column; align-items: center; justify-content: center;">
+    
+    <div style="width: 90%; max-width: 600px; background: #221a14; border: 3px solid #f1c40f; border-radius: 8px; padding: 20px; box-shadow: 0 10px 40px rgba(0,0,0,1); text-align: center;">
+        <h2 id="unboxing-title" style="color: #f1c40f; margin-top: 0; text-transform: uppercase;">Unlocking Crate...</h2>
+
+        <div style="font-size: 11px; color: #bbaaa0; margin-bottom: 15px;">Double-click anywhere to skip animation</div>
+
+        <!-- The Clipping Window (Hides the overflow of the sliding track) -->
+        <div id="roulette-window" style="width: 100%; height: 120px; background: #0a0806; border: 2px inset #4a3b2c; border-radius: 4px; overflow: hidden; position: relative; display: flex; align-items: center;">
+            
+            <!-- The Center Selector Line (The "Needle") -->
+            <div style="position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; background: #e74c3c; z-index: 10; transform: translateX(-50%); box-shadow: 0 0 10px #e74c3c, 0 0 20px #e74c3c;"></div>
+
+            <!-- The Sliding Track -->
+            <div id="roulette-track" style="display: flex; height: 100px; align-items: center;"></div>
+            
+        </div>
+
+        <!-- The Loot Reveal Area -->
+        <div id="unboxing-loot-reveal" style="display: none; margin-top: 20px;">
+            <h3 id="unboxing-rarity-text" style="margin: 0 0 10px 0; font-size: 22px; text-transform: uppercase;">Loot Acquired!</h3>
+            <div id="unboxing-loot-desc" style="font-size: 16px; color: #fff; font-weight: bold; padding: 15px; background: #1a1512; border: 1px dashed #634e3d; border-radius: 4px;"></div>
+            <button onclick="closeUnboxing()" style="margin-top: 20px; background: #27ae60; border: 2px solid #2ecc71; padding: 10px 30px; font-size: 16px; font-weight: bold; cursor: pointer;">Claim Loot</button>
+        </div>
+    </div>
+    
+</div>
+
+
+
     <script src="js/audio.js"></script>
 	
 
