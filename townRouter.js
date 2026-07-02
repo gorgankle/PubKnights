@@ -395,27 +395,29 @@ if (data.action === 'equip') {
                 socket.emit('townReceipt', { success: true, action: 'sellFishBulk', updatedPlayer: p, message: "🚢 Exported 1,000 Fish to distant lands for 1,500 Gold." });
             } else socket.emit('townReceipt', { success: false, message: "❌ Not enough stock. The merchant ships require exactly 1,000 Fish." });
         }
+// === REPLACED ===
         // 19. MINIGAME PAYOUT SECURE HANDLER
         else if (data.action === 'claimLumberMinigame') {
-            if (data.points >= 0 && data.woodChopped >= 0 && data.woodChopped < 300) { 
-                p.lumberPoints = (p.lumberPoints || 0) + data.points; p.wood = (p.wood || 0) + data.woodChopped;
-                socket.emit('townReceipt', { success: true, action: 'minigameWin', updatedPlayer: p, message: `🌲 Timber Camp Complete! Secured ${data.woodChopped} Wood and ${data.points} Pts.` });
+            if (data.points >= 0) { 
+                p.lumberPoints = (p.lumberPoints || 0) + data.points; 
+                socket.emit('townReceipt', { success: true, action: 'minigameWin', updatedPlayer: p, message: `🌲 Timber Camp Complete! Secured ${data.points} Quartermaster Pts.` });
             }
         }
         // 20. FISHING POND SECURE HANDLER
         else if (data.action === 'claimFishingMinigame') {
-            if (data.points >= 0 && data.fishCaught >= 0 && data.fishCaught < 300) { 
-                p.fishingPoints = (p.fishingPoints || 0) + data.points; p.fish = (p.fish || 0) + data.fishCaught;
-                socket.emit('townReceipt', { success: true, action: 'minigameWin', updatedPlayer: p, message: `🐟 Fishing Complete! Secured ${data.fishCaught} Fish and ${data.points} Pts.` });
+            if (data.points >= 0) { 
+                p.fishingPoints = (p.fishingPoints || 0) + data.points; 
+                socket.emit('townReceipt', { success: true, action: 'minigameWin', updatedPlayer: p, message: `🐟 Fishing Complete! Secured ${data.points} Quartermaster Pts.` });
             }
         }
         // 21. HOPS HARVESTING SECURE HANDLER
         else if (data.action === 'claimHopsMinigame') {
-            if (data.points >= 0 && data.hopsHarvested >= 0 && data.hopsHarvested < 300) { 
-                p.hopsPoints = (p.hopsPoints || 0) + data.points; p.hops = (p.hops || 0) + data.hopsHarvested;
-                socket.emit('townReceipt', { success: true, action: 'minigameWin', updatedPlayer: p, message: `🌾 Harvest Complete! Secured ${data.hopsHarvested} Hops and ${data.points} Pts.` });
+            if (data.points >= 0) { 
+                p.hopsPoints = (p.hopsPoints || 0) + data.points; 
+                socket.emit('townReceipt', { success: true, action: 'minigameWin', updatedPlayer: p, message: `🌾 Harvest Complete! Secured ${data.points} Quartermaster Pts.` });
             }
         }
+// ============================================
         // 22. QUARTERMASTER POINT EXCHANGE
         else if (data.action === 'exchangePoints') {
             const type = data.exchangeType; const tier = data.tier;         

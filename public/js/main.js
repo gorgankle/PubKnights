@@ -354,10 +354,22 @@ if (data.item) {
     }
 });
 
+// === REPLACED ===
 socket.on('combatRewardsReceipt', (receipt) => {
     if (receipt.updatedPlayer) {
         let oldLevel = player.level;
+        
+        // === THE FIX: AUTO-SNAP ZONE UI ===
+        // Track the old maximum levels before the magic sync
+        let oldWild = player.wildernessLevel || 1;
+        let oldCellar = player.cellarLevel || 1;
+
         Object.assign(player, receipt.updatedPlayer); // Magic bullet sync!
+        
+        // If the server pushed your max level forward, snap the UI selector to match!
+        if (player.wildernessLevel > oldWild) player.selectedWildernessLevel = player.wildernessLevel;
+        if (player.cellarLevel > oldCellar) player.selectedCellarLevel = player.cellarLevel;
+        // ==================================
         
         if (player.level > oldLevel) {
             if (typeof playRetroSound === 'function') playRetroSound('heavyAttack'); 
@@ -370,6 +382,7 @@ socket.on('combatRewardsReceipt', (receipt) => {
         transitionToTown(); 
     }
 });
+// ============================================
 
 // === SERVER-AUTHORITATIVE MAP DEPLOYMENT ===
 socket.on('combatDeployed', (serverCombatState) => {

@@ -528,6 +528,7 @@ function updateFishingUI() {
     document.getElementById("fishing-points").innerText = fishingPoints;
 }
 
+// === REPLACED ===
 function endFishingSession() {
     fishingGameActive = false;
     clearInterval(fishingInterval);
@@ -543,7 +544,8 @@ function endFishingSession() {
     let fb = document.getElementById("fishing-feedback");
     
     if (fishingScore > 0) {
-        fb.innerHTML = `<span style="color:#2ecc71;">Session Ended! Secured ${fishingScore} Fish and ${fishingPoints} Pts!</span>`;
+        // THE FIX: Removed the raw fish text!
+        fb.innerHTML = `<span style="color:#2ecc71;">Session Ended! Secured ${fishingPoints} Pts!</span>`;
         if (typeof playRetroSound === 'function') playRetroSound('victory');
         socket.emit('townAction', { action: 'claimFishingMinigame', points: fishingPoints, fishCaught: fishingScore });
     } else {
@@ -551,6 +553,7 @@ function endFishingSession() {
         if (typeof playRetroSound === 'function') playRetroSound('error');
     }
 }
+// ============================================
 
 // === REPLACED ===
 function leaveFishingMinigame() {
@@ -738,6 +741,7 @@ function updateHopsUI() {
     document.getElementById("hops-points").innerText = hopsPoints;
 }
 
+// === REPLACED ===
 function endHopsSession() {
     hopsGameActive = false;
     clearInterval(hopsInterval);
@@ -753,7 +757,8 @@ function endHopsSession() {
     let fb = document.getElementById("hops-feedback");
     
     if (hopsScore > 0) {
-        fb.innerHTML = `<span style="color:#2ecc71;">Harvest Ended! Secured ${hopsScore} Hops and ${hopsPoints} Pts!</span>`;
+        // THE FIX: Removed the raw hops text!
+        fb.innerHTML = `<span style="color:#2ecc71;">Harvest Ended! Secured ${hopsPoints} Pts!</span>`;
         if (typeof playRetroSound === 'function') playRetroSound('victory');
         socket.emit('townAction', { action: 'claimHopsMinigame', points: hopsPoints, hopsHarvested: hopsScore });
     } else {
@@ -761,6 +766,7 @@ function endHopsSession() {
         if (typeof playRetroSound === 'function') playRetroSound('error');
     }
 }
+// ============================================
 
 // === REPLACED ===
 function leaveHopsMinigame() {
