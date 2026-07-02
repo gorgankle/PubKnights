@@ -433,46 +433,56 @@ const combatInvList = document.getElementById("combat-inventory-list");
                 combatInvList.appendChild(cancelBtn);
             }
             
-            // === NEW: TUTORIAL UI DOM LOCKS ===
+// === NEW: TUTORIAL UI DOM LOCKS ===
             if (typeof activeCombatZone !== 'undefined' && activeCombatZone === 'TUTORIAL') {
                 if (typeof currentTutorialStep !== 'undefined') {
+                    // THE FIX: Safely grab the buttons directly from the DOM for this specific block!
+                    let tSlash = document.getElementById("slash-btn");
+                    let tHeavy = document.getElementById("heavy-btn");
+                    let tEnd = document.getElementById("end-btn");
+                    let tFlee = document.getElementById("flee-btn");
+
                     // Lock EVERYTHING by default
-                    if (slashBtn) slashBtn.disabled = true;
-                    if (heavyBtn) heavyBtn.disabled = true;
-                    if (endBtn) endBtn.disabled = true;
-                    if (fleeBtn) fleeBtn.disabled = true;
-                    bagBtn.disabled = true;
-                    spellBtn.disabled = true;
+                    if (tSlash) tSlash.disabled = true;
+                    if (tHeavy) tHeavy.disabled = true;
+                    if (tEnd) tEnd.disabled = true;
+                    if (tFlee) tFlee.disabled = true;
+                    if (bagBtn) bagBtn.disabled = true;
+                    if (spellBtn) spellBtn.disabled = true;
                     
                     if (currentTutorialStep === 1) { // Force Pass Turn
-                        if (endBtn) {
-                            endBtn.disabled = false;
-                            endBtn.style.boxShadow = "0 0 15px #e67e22"; // Orange pulse
-                            endBtn.style.border = "2px solid #e67e22";
+                        if (tEnd) {
+                            tEnd.disabled = false;
+                            tEnd.style.boxShadow = "0 0 15px #e67e22"; // Orange pulse
+                            tEnd.style.border = "2px solid #e67e22";
                         }
                     } 
                     else if (currentTutorialStep === 2) { // Force Bag (Stout)
-                        bagBtn.disabled = false;
-                        bagBtn.style.boxShadow = "0 0 15px #2ecc71";
-                        bagBtn.style.border = "2px solid #2ecc71";
+                        if (bagBtn) {
+                            bagBtn.disabled = false;
+                            bagBtn.style.boxShadow = "0 0 15px #2ecc71";
+                            bagBtn.style.border = "2px solid #2ecc71";
+                        }
                     }
                     else if (currentTutorialStep === 3) { // Force Attack
                         let hasTarget = selectedEnemy && selectedEnemy.alive;
-                        if (slashBtn) {
-                            slashBtn.disabled = !(hasTarget && combatPhase === 'PHASE_2');
-                            slashBtn.style.boxShadow = "0 0 15px #2ecc71";
-                            slashBtn.style.border = "2px solid #2ecc71";
+                        if (tSlash) {
+                            tSlash.disabled = !(hasTarget && combatPhase === 'PHASE_2');
+                            tSlash.style.boxShadow = "0 0 15px #2ecc71";
+                            tSlash.style.border = "2px solid #2ecc71";
                         }
                     }
                     else if (currentTutorialStep === 4) { // Force Bag (Bomb)
-                        bagBtn.disabled = false;
-                        bagBtn.style.boxShadow = "0 0 15px #2ecc71";
-                        bagBtn.style.border = "2px solid #2ecc71";
+                        if (bagBtn) {
+                            bagBtn.disabled = false;
+                            bagBtn.style.boxShadow = "0 0 15px #2ecc71";
+                            bagBtn.style.border = "2px solid #2ecc71";
+                        }
                     }
                 }
             }
             // ==================================
-        }
+        
         } // <--- RESTORED BRACKET 1
     } // <--- RESTORED BRACKET 2
         else { 
@@ -1277,19 +1287,26 @@ function renderCombatModal(filter = 'DRINK') {
         let rc = item.rarity === "Gorilla" ? "slot-jackpot" : (item.rarity ? `slot-${item.rarity.toLowerCase()}` : 'slot-common');
         slotDiv.className = `item-slot ${rc}`;
         
-        // === TUTORIAL ITEM LOCKS ===
+// === TUTORIAL ITEM LOCKS ===
         if (typeof activeCombatZone !== 'undefined' && activeCombatZone === 'TUTORIAL') {
             let isTutorialLocked = true;
             if (typeof currentTutorialStep !== 'undefined') {
-                if (currentTutorialStep === 2 && item.name.includes("Stout")) isTutorialLocked = false;
-                if (currentTutorialStep === 4 && item.name.includes("Heavy Keg Bomb")) isTutorialLocked = false;
+                // THE FIX: Check the mechanical actionType instead of the string name!
+                if (currentTutorialStep === 2 && item.combat && item.combat.actionType === 'heal') isTutorialLocked = false;
+                if (currentTutorialStep === 4 && item.combat && item.combat.actionType === 'throwable') isTutorialLocked = false;
             }
             
             if (isTutorialLocked) {
                 slotDiv.style.pointerEvents = 'none';
                 slotDiv.style.opacity = '0.3';
                 slotDiv.style.filter = 'grayscale(100%)';
+                slotDiv.style.boxShadow = "none";
+                slotDiv.style.border = "none";
             } else {
+                // Ensure the correct item is fully interactive and glowing
+                slotDiv.style.pointerEvents = 'auto';
+                slotDiv.style.opacity = '1.0';
+                slotDiv.style.filter = 'none';
                 slotDiv.style.boxShadow = "0 0 15px #2ecc71";
                 slotDiv.style.border = "2px solid #2ecc71";
             }
