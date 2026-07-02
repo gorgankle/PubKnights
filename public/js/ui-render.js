@@ -433,7 +433,8 @@ const combatInvList = document.getElementById("combat-inventory-list");
                 combatInvList.appendChild(cancelBtn);
             }
             
-// === NEW: TUTORIAL UI DOM LOCKS ===
+// === REPLACED in ui-render.js ===
+            // === NEW: TUTORIAL UI DOM LOCKS ===
             if (typeof activeCombatZone !== 'undefined' && activeCombatZone === 'TUTORIAL') {
                 if (typeof currentTutorialStep !== 'undefined') {
                     // THE FIX: Safely grab the buttons directly from the DOM for this specific block!
@@ -482,7 +483,6 @@ const combatInvList = document.getElementById("combat-inventory-list");
                 }
             }
             // ==================================
-        
         } // <--- RESTORED BRACKET 1
     } // <--- RESTORED BRACKET 2
         else { 
@@ -1286,8 +1286,9 @@ function renderCombatModal(filter = 'DRINK') {
         let slotDiv = document.createElement('div');
         let rc = item.rarity === "Gorilla" ? "slot-jackpot" : (item.rarity ? `slot-${item.rarity.toLowerCase()}` : 'slot-common');
         slotDiv.className = `item-slot ${rc}`;
-        
-// === TUTORIAL ITEM LOCKS ===
+  
+  // === REPLACED in ui-render.js ===
+        // === TUTORIAL ITEM LOCKS ===
         if (typeof activeCombatZone !== 'undefined' && activeCombatZone === 'TUTORIAL') {
             let isTutorialLocked = true;
             if (typeof currentTutorialStep !== 'undefined') {
