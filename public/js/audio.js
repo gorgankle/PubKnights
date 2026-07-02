@@ -45,7 +45,7 @@ function initAudio() {
 // === NEW: MULTI-TRACK 32-STEP SEQUENCER PLAYLIST ===
 const musicTracks = [
     {
-        name: "Tavern Grind (Remastered)",
+        name: "Tavern Grind",
         tempo: 80,
         arrangement: ["A", "A", "B", "A"], // Shifts to the cozy 'busy' variation on the 3rd loop!
         phrases: {
@@ -70,7 +70,7 @@ const musicTracks = [
         }
     },
     {
-        name: "Wilderness March (Reimagined)",
+        name: "Off on an adventure",
         tempo: 80,
         arrangement: ["A", "A", "B", "B"], 
         phrases: {
@@ -119,7 +119,7 @@ const musicTracks = [
         }
     },
     {
-        name: "Midnight Grind (Remastered)",
+        name: "Midnight Quest",
         tempo: 75,
         arrangement: ["A", "A", "B", "A"], 
         phrases: {
@@ -171,6 +171,30 @@ const musicTracks = [
                 "pluck": { vol: 0.7, pan: 0.4, sequence: ["D4", "F4", "A4", "D5", "A4", "F4", "E4", "G4", "B4", "E5", "B4", "G4", "A4", "C5", "E5", "A5", "E5", "C5", "F4", "A4", "C5", "F5", "C5", "A4", "E4", "G4", "B4", "E5", "B4", "G4", "E4", "C4"] },
                 // THE FIX: Replaced 'Rhine' with '-'
                 "melody": { vol: 0.9, pan: -0.2, sequence: ["D5", "-", "-", "-", "F5", "-", "E5", "-", "E5", "-", "-", "-", "G5", "-", "F5", "-", "A5", "-", "-", "-", "B5", "-", "A5", "-", "F5", "-", "G5", "-", "E5", "-", "-", "-"] }
+            }
+        }
+    },
+	{
+        name: "The Overlord's Arrival",
+        tempo: 60,
+        arrangement: ["A", "A", "B", "A"], // Slowly builds dread, explodes, then fades back to shadow
+        phrases: {
+            "A": {
+                "amb_vinyl": { vol: 0.8, pan: 0, sequence: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+                "fx_impact": { vol: 1.0, pan: 0, sequence: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+                "kick": { vol: 0.9, pan: 0, sequence: [1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0] },
+                "bass": { vol: 0.8, pan: 0, sequence: ["D2", "-", "-", "-", "-", "-", "-", "-", "D2", "-", "-", "-", "-", "-", "-", "-", "D#2", "-", "-", "-", "-", "-", "-", "-", "D#2", "-", "-", "-", "-", "-", "-", "-"] },
+                "violin": { vol: 0.9, pan: 0.2, sequence: ["D3", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "D#3", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-"] },
+                "pad": { vol: 0.4, pan: -0.2, sequence: [0, 0, 0, 0, 0, 0, 0, 0, "A3", "-", "-", "-", "-", "-", "-", "-", 0, 0, 0, 0, 0, 0, 0, 0, "A#3", "-", "-", "-", "-", "-", "-", "-"] }
+            },
+            "B": {
+                "fx_impact": { vol: 1.0, pan: 0, sequence: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+                "kick": { vol: 1.0, pan: 0, sequence: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0] },
+                "tom": { vol: 1.0, pan: 0, sequence: [1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1] },
+                "fx_sweep": { vol: 0.5, pan: 0, sequence: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+                "saw": { vol: 0.8, pan: 0, sequence: ["D2", "-", "-", "-", "A2", "-", "-", "-", "G2", "-", "-", "-", "F2", "-", "D#2", "-", "D2", "-", "-", "-", "A2", "-", "-", "-", "A#2", "-", "-", "-", "A2", "-", "G2", "-"] },
+                "violin": { vol: 1.0, pan: 0.3, sequence: ["D5", "-", "-", "-", "A4", "-", "-", "-", "A#4", "-", "-", "-", "G4", "-", "-", "-", "D5", "-", "-", "-", "A4", "-", "-", "-", "C5", "-", "-", "-", "A#4", "-", "A4", "-"] },
+                "pad": { vol: 0.6, pan: -0.3, sequence: ["D3", "-", "-", "-", "F3", "-", "-", "-", "D#3", "-", "-", "-", "C3", "-", "-", "-", "D3", "-", "-", "-", "F3", "-", "-", "-", "G3", "-", "-", "-", "D#3", "-", "-", "-"] }
             }
         }
     }
@@ -295,6 +319,7 @@ function playSoundEvent(instId, note, time, vol, pan, duration) {
     else if (instId === 'openhat') playHihat(time, duration || 0.3, vol, pan);
     else if (instId === 'tom') playTom(time, vol, pan);
     else if (instId === 'clap') playClap(time, vol, pan);
+	else if (instId === 'violin') playViolin(freq, time, vol, pan, duration || 0.5);
     else if (instId === 'fx_sweep') playSweep(time, vol, pan, duration || 2.0);
     else if (instId === 'fx_impact') playImpact(time, vol, pan);
     else if (instId === 'amb_vinyl') playVinyl(time, vol, pan, duration || 2.0);
@@ -360,6 +385,50 @@ function playClap(time, vol, pan) {
         noise.connect(filter); noise.start(time + offset); noise.stop(time + offset + 0.1);
     });
 }
+
+// === ADD TO audio.js ===
+function playViolin(freq, time, vol, pan, duration) {
+    if (!freq) return;
+    let trackOut = buildTrackRouting(vol, pan);
+    
+    // 1. The Bow (Sawtooth wave)
+    let osc = audioCtx.createOscillator(); 
+    osc.type = 'sawtooth';
+    
+    // 2. The Vibrato (LFO)
+    let lfo = audioCtx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.value = 5.5; // Wobble speed (5.5 times per second)
+    
+    let lfoGain = audioCtx.createGain();
+    lfoGain.gain.value = freq * 0.015; // Pitch bend depth (1.5% of the target frequency)
+    lfo.connect(lfoGain);
+    lfoGain.connect(osc.frequency);
+
+    // 3. The Body (Lowpass filter to remove the harsh digital buzz)
+    let filter = audioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(freq * 2.5, time); 
+    filter.frequency.linearRampToValueAtTime(freq * 1.5, time + duration);
+
+    // 4. The Envelope (Slow volume swell and release)
+    let gain = audioCtx.createGain();
+    let safeDuration = Math.max(0.4, duration); // Force at least a tiny sustain
+    gain.gain.setValueAtTime(0.01, time);
+    gain.gain.linearRampToValueAtTime(0.6, time + 0.3); // Bow drag
+    gain.gain.setValueAtTime(0.6, time + safeDuration - 0.3); // Hold
+    gain.gain.linearRampToValueAtTime(0.01, time + safeDuration); // Release
+
+    // Connect the chain
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(trackOut);
+
+    // Play
+    osc.start(time); osc.stop(time + safeDuration);
+    lfo.start(time); lfo.stop(time + safeDuration);
+}
+// ============================================
 
 function playTone(freq, time, type, duration, slowAttack=false, fastDecay=false, vol, pan) {
     if (!freq) return;
