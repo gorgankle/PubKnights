@@ -9,11 +9,14 @@ let lookahead = 25.0;
 let scheduleAheadTime = 0.1; 
 let timerID;
 
+// === THE FIX: ARRANGEMENT STATE POINTERS ===
+let currentPhraseIndex = 0; 
+let currentLoopCount = 0;   
+
 let musicVolume = 1.0;
 let sfxVolume = 1.0;
 let noiseBuffer = null; 
 
-// === THE FIX: GLOBAL FREQUENCY DICTIONARY ===
 const NOTES = {
     "C5": 523.25, "B4": 493.88, "A4": 440.00, "G4": 392.00, "F4": 349.23, "E4": 329.63, "D4": 293.66, "C4": 261.63,
     "B3": 246.94, "A3": 220.00, "G3": 196.00, "F3": 174.61, "E3": 164.81, "D3": 146.83, "C3": 130.81, 
@@ -70,49 +73,30 @@ const musicTracks = [
         drums: [ 'k', 'h', 'h', 'h', 's', 'h', 'h', 'h', 'k', 'h', 'h', 'h', 's', 'h', 'h', 'h', 'k', 'h', 'h', 'h', 's', 'h', 'h', 'h', 'k', 'h', 'h', 'h', 's', 'h', 'h', 'h' ],
         ambience: [ 164.81, null, null, null, null, null, null, null, 130.81, null, null, null, null, null, null, null, 196.00, null, null, null, null, null, null, null, 130.81, null, null, null, null, null, null, null ]
     },
-	{
+        {
         name: "DOOM OF THE OVERLORD",
         tempo: 140,
-        tracks: {
-            "fx_impact": {
-                vol: 1,
-                pan: 0,
-                sequence: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        arrangement: ["A", "A", "A", "B"], // Plays Phrase A three times, then shifts into the B breakdown!
+        phrases: {
+            "A": {
+                "fx_impact": { vol: 1, pan: 0, sequence: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+                "kick": { vol: 1, pan: 0, sequence: [1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0] },
+                "snare": { vol: 0.8, pan: 0, sequence: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1] },
+                "hihat": { vol: 0.5, pan: 0, sequence: [0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0] },
+                "tom": { vol: 0.9, pan: 0, sequence: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1] },
+                "saw": { vol: 0.9, pan: 0, sequence: ["A2", 0, "A2", "C3", "A2", 0, "A2", "D3", "A2", 0, "A2", "E3", "F3", "-", "E3", "-", "A2", 0, "A2", "C3", "A2", 0, "A2", "G2", "F2", "-", 0, "G2", "E2", "-", "-", "-"] },
+                "pluck": { vol: 0.6, pan: -0.4, sequence: ["A3", "C4", "E4", "A4", "E4", "C4", "A3", "C4", "A3", "D4", "F4", "A4", "F4", "D4", "A3", "D4", "F3", "A3", "C4", "F4", "C4", "A3", "F3", "A3", "E3", "G3", "B3", "E4", "B3", "G3", "E3", "G3"] },
+                "melody": { vol: 0.85, pan: 0.3, sequence: ["A4", "-", "-", Rhine, "-", "-", "G4", "-", "A4", "-", "-", "-", "C5", "-", "B4", "-", "A4", "-", "-", "-", "-", "-", "F4", "-", "E4", "-", "-", "-", "-", "-", "-", "-"] }
             },
-            "kick": {
-                vol: 1,
-                pan: 0,
-                sequence: [1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0]
-            },
-            "snare": {
-                vol: 0.8,
-                pan: 0,
-                sequence: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1]
-            },
-            "hihat": {
-                vol: 0.5,
-                pan: 0,
-                sequence: [0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0]
-            },
-            "tom": {
-                vol: 0.9,
-                pan: 0,
-                sequence: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1]
-            },
-            "saw": {
-                vol: 0.9,
-                pan: 0,
-                sequence: ["A2", 0, "A2", "C3", "A2", 0, "A2", "D3", "A2", 0, "A2", "E3", "F3", "-", "E3", "-", "A2", 0, "A2", "C3", "A2", 0, "A2", "G2", "F2", "-", 0, "G2", "E2", "-", "-", "-"]
-            },
-            "pluck": {
-                vol: 0.6,
-                pan: -0.4,
-                sequence: ["A3", "C4", "E4", "A4", "E4", "C4", "A3", "C4", "A3", "D4", "F4", "A4", "F4", "D4", "A3", "D4", "F3", "A3", "C4", "F4", "C4", "A3", "F3", "A3", "E3", "G3", "B3", "E4", "B3", "G3", "E3", "G3"]
-            },
-            "melody": {
-                vol: 0.85,
-                pan: 0.3,
-                sequence: ["A4", "-", "-", "-", "-", "-", "G4", "-", "A4", "-", "-", "-", "C5", "-", "B4", "-", "A4", "-", "-", "-", "-", "-", "F4", "-", "E4", "-", "-", "-", "-", "-", "-", "-"]
+            "B": {
+                "fx_impact": { vol: 1, pan: 0, sequence: [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+                "kick": { vol: 1, pan: 0, sequence: [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1] },
+                "snare": { vol: 0.8, pan: 0, sequence: [0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1] },
+                "hihat": { vol: 0.6, pan: 0.2, sequence: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0] },
+                "tom": { vol: 0.0, pan: 0, sequence: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+                "saw": { vol: 0.9, pan: 0, sequence: ["D3", "-", "D3", "-", "F3", "-", "D3", "-", "E3", "-", "E3", "-", "G3", "-", "E3", "-", "A3", "-", "A3", "-", "C4", "-", "B3", "-", "F3", "-", "G3", "-", "E3", "-", "-", "-"] },
+                "pluck": { vol: 0.7, pan: 0.4, sequence: ["D4", "F4", "A4", "D5", "A4", "F4", "E4", "G4", "B4", "E5", "B4", "G4", "A4", "C5", "E5", "A5", "E5", "C5", "F4", "A4", "C5", "F5", "C5", "A4", "E4", "G4", "B4", "E5", "B4", "G4", "E4", "C4"] },
+                "melody": { vol: 0.9, pan: -0.2, sequence: ["D5", "-", "-", "-", "F5", "-", "E5", "-", "E5", "-", "-", "-", "G5", "-", "F5", "-", "A5", "-", "-", "-", "B5", "-", "A5", "-", "F5", "-", "G5", "-", "E5", "-", "-", Rhine] }
             }
         }
     }
@@ -126,7 +110,11 @@ function cycleMusicTrack() {
     if (activeTrackIndex >= musicTracks.length) activeTrackIndex = 0;
     
     tempo = musicTracks[activeTrackIndex].tempo;
+    
+    // THE FIX: Reset arrangement timeline pointers on track swap
     currentNote = 0; 
+    currentPhraseIndex = 0;
+    currentLoopCount = 0;
     
     let trackNameDisplay = document.getElementById("current-track-name");
     if (trackNameDisplay) {
@@ -139,7 +127,22 @@ function nextMusicNote() {
     const secondsPerBeat = 60.0 / tempo;
     nextNoteTime += 0.25 * secondsPerBeat; 
     currentNote++;
-    if (currentNote >= 32) currentNote = 0; 
+    
+    if (currentNote >= 32) {
+        currentNote = 0; 
+        
+        let currentSong = musicTracks[activeTrackIndex];
+        // THE FIX: Advance the timeline array if a multi-phrase arrangement exists
+        if (currentSong.arrangement && currentSong.arrangement.length > 0) {
+            currentPhraseIndex++;
+            if (currentPhraseIndex >= currentSong.arrangement.length) {
+                currentPhraseIndex = 0;
+                currentLoopCount++; // Full song loop completed
+            }
+        } else {
+            currentLoopCount++;
+        }
+    } 
 }
 
 function buildTrackRouting(vol, pan) {
@@ -150,14 +153,36 @@ function buildTrackRouting(vol, pan) {
     return masterGain; 
 }
 
+// === REPLACED ===
 function scheduleNote(stepNum, time) {
     if (musicVolume <= 0) return;
     
     let currentSong = musicTracks[activeTrackIndex];
     const secondsPerStep = (60.0 / currentSong.tempo) / 4;
 
-    // --- NEW FORMAT: DYNAMIC TRACKS ---
-    if (currentSong.tracks) {
+    // --- NEW FORMAT: DYNAMIC TRACK PHRASES & ARRANGEMENTS ---
+    if (currentSong.arrangement && currentSong.phrases) {
+        // Find out if we should play phrase 'A' or 'B' right now
+        let activePhraseKey = currentSong.arrangement[currentPhraseIndex];
+        let trackSource = currentSong.phrases[activePhraseKey];
+        
+        if (trackSource) {
+            Object.keys(trackSource).forEach(instId => {
+                let track = trackSource[instId];
+                if (!track.sequence || track.sequence[stepNum] === 0 || track.sequence[stepNum] === '-') return;
+                
+                let sustainBlocks = 1;
+                for (let k = stepNum + 1; k < track.sequence.length; k++) {
+                    if (track.sequence[k] === '-') sustainBlocks++;
+                    else break;
+                }
+                let totalDuration = sustainBlocks * secondsPerStep;
+                playSoundEvent(instId, track.sequence[stepNum], time, track.vol * musicVolume, track.pan, totalDuration);
+            });
+        }
+    } 
+    // Single static track data format configuration (for newly uploaded or export items)
+    else if (currentSong.tracks) {
         Object.keys(currentSong.tracks).forEach(instId => {
             let track = currentSong.tracks[instId];
             if (!track.sequence || track.sequence[stepNum] === 0 || track.sequence[stepNum] === '-') return;
@@ -174,6 +199,7 @@ function scheduleNote(stepNum, time) {
     // --- LEGACY FORMAT BACKWARD COMPATIBILITY ---
     else {
         if (currentSong.melody && currentSong.melody[stepNum]) playSoundEvent('melody', currentSong.melody[stepNum], time, 1.0 * musicVolume, 0, secondsPerStep);
+// ============================================
         if (currentSong.harmony && currentSong.harmony[stepNum]) playSoundEvent('melody', currentSong.harmony[stepNum], time, 0.6 * musicVolume, 0, secondsPerStep);
         if (currentSong.bass && currentSong.bass[stepNum]) playSoundEvent('bass', currentSong.bass[stepNum], time, 1.0 * musicVolume, 0, secondsPerStep);
         if (currentSong.ambience && currentSong.ambience[stepNum]) playSoundEvent('pad', currentSong.ambience[stepNum], time, 1.0 * musicVolume, 0, secondsPerStep * 4);
