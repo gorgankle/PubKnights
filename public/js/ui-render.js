@@ -478,14 +478,16 @@ const combatInvList = document.getElementById("combat-inventory-list");
                             bagBtn.disabled = false;
                             bagBtn.style.boxShadow = "0 0 15px #2ecc71";
                             bagBtn.style.border = "2px solid #2ecc71";
-                   }
+                        }
+                    }
                 }
             }
             // ==================================
         }
-    } // <--- MAKE SURE REFRESHSYSTEMUI ACTUALLY CLOSES!
+    }
+}
 
-        else { 
+        else {
             // --- CONSOLIDATED TABBED VIEWS ---
             // We are out of combat, show the Nav Bar
             if (topNavBar) topNavBar.style.display = "flex";
