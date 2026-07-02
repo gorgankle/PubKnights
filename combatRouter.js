@@ -216,7 +216,12 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
             let recover = Math.floor(maxStam * 0.15); 
             p.stamina = Math.min(maxStam, (p.stamina || 0) + recover);
             
-            return socket.emit('combatResult', { type: 'pass', updatedPlayer: p, recovered: recover });
+            socket.emit('combatResult', { type: 'pass', updatedPlayer: p, recovered: recover });
+            
+            // === NEW: TUTORIAL DIRECTOR HOOK ===
+            TutorialDirector.handlePassStep(combat, io, socket.id);
+            // ===================================
+            return;
         }
         
 // === 2. WEAPON ATTACK LOGIC ===

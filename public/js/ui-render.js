@@ -409,8 +409,8 @@ const combatInvList = document.getElementById("combat-inventory-list");
             // Actions
             bagBtn.onclick = () => {
                 if (typeof activeCombatZone !== 'undefined' && activeCombatZone === 'TUTORIAL') {
-                    // Auto-open the THROW tab on Step 3, otherwise default to DRINK
-                    renderCombatModal(currentTutorialStep === 3 ? 'THROW' : 'DRINK');
+                    // THE FIX: Auto-open the THROW tab on Step 4 (Bomb phase)
+                    renderCombatModal(currentTutorialStep === 4 ? 'THROW' : 'DRINK');
                 } else {
                     renderCombatModal();
                 }
@@ -444,12 +444,19 @@ const combatInvList = document.getElementById("combat-inventory-list");
                     bagBtn.disabled = true;
                     spellBtn.disabled = true;
                     
-                    if (currentTutorialStep === 1) {
+                    if (currentTutorialStep === 1) { // Force Pass Turn
+                        if (endBtn) {
+                            endBtn.disabled = false;
+                            endBtn.style.boxShadow = "0 0 15px #e67e22"; // Orange pulse
+                            endBtn.style.border = "2px solid #e67e22";
+                        }
+                    } 
+                    else if (currentTutorialStep === 2) { // Force Bag (Stout)
                         bagBtn.disabled = false;
                         bagBtn.style.boxShadow = "0 0 15px #2ecc71";
                         bagBtn.style.border = "2px solid #2ecc71";
-                    } 
-                    else if (currentTutorialStep === 2) {
+                    }
+                    else if (currentTutorialStep === 3) { // Force Attack
                         let hasTarget = selectedEnemy && selectedEnemy.alive;
                         if (slashBtn) {
                             slashBtn.disabled = !(hasTarget && combatPhase === 'PHASE_2');
@@ -457,7 +464,7 @@ const combatInvList = document.getElementById("combat-inventory-list");
                             slashBtn.style.border = "2px solid #2ecc71";
                         }
                     }
-                    else if (currentTutorialStep === 3) {
+                    else if (currentTutorialStep === 4) { // Force Bag (Bomb)
                         bagBtn.disabled = false;
                         bagBtn.style.boxShadow = "0 0 15px #2ecc71";
                         bagBtn.style.border = "2px solid #2ecc71";
@@ -1288,6 +1295,15 @@ function renderCombatModal(filter = 'DRINK') {
             }
         }
         // ===========================
+		
+// === THE FIX: ALLOW ITEMS TO BE CLICKED ===
+        slotDiv.onclick = () => {
+            closeCombatModal();
+            if (typeof selectCombatItem === 'function') {
+                selectCombatItem(idx); // Standard UI targeting hook
+            }
+        };
+        // ==========================================
 
         slotDiv.onmouseenter = (e) => { if (typeof showItemTooltip === 'function') showItemTooltip(e, item, idx, 'combat'); };
         slotDiv.onmouseleave = typeof hideTooltip === 'function' ? hideTooltip : null;
