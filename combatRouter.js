@@ -831,6 +831,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 let playerAbsorption = Math.pow(Math.random(), 2) * playerDef;
                 let mitigatedDmg = Math.floor(rawDamageRoll - playerAbsorption);
 
+                // === REPLACED ===
                 if (mitigatedDmg <= 0) turnEvents.push({ type: 'deflect', enemyName: e.name }); 
                 else {
                     let isCrit = mitigatedDmg >= Math.floor(eOffense * 0.90);
@@ -840,7 +841,9 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 } 
             } 
         } 
-        io.to(socketId).emit('enemyTurnReceipt', { events: turnEvents, updatedPlayer: p, updatedCombatState: combat });
+        
+        // THE FIX: Return the events so the Mega-Batch loop can compile them!
+        return turnEvents;
     }
 // ===================================
 
@@ -983,32 +986,38 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                         }
                     });
 
-                    // 3. THE D100 INITIATIVE ROLL (Tie-Breaker)
-                    let contested = [];
+                    // 3. MEGA-BATCH PROCESSOR & PLAYER PRIORITY
                     if (combat.player.atbCharge >= 100) {
-                        contested.push({ type: 'player', entity: combat.player, roll: Math.random() * 100 });
-                    }
-                    
-                    combat.enemies.forEach(e => {
-                        if (e.alive && e.atbCharge >= 100) {
-                            contested.push({ type: 'enemy', entity: e, roll: Math.random() * 100 });
-                        }
-                    });
-
-                    // 4. Execute the Winner
-                    if (contested.length > 0) {
-                        // Sort highest roll to the top
-                        contested.sort((a, b) => b.roll - a.roll);
-                        let winner = contested[0];
-
-                        if (winner.type === 'player') {
-                            combat.atbPaused = true; 
-                            io.to(socketId).emit('ATB_READY'); 
-                        } 
-                        else {
-                            let activeEnemy = winner.entity;
-                            activeEnemy.atbCharge = 0; 
-                            executeEnemyTurn(socketId, combat, p, activeEnemy);
+                        // Player absolute priority lock
+                        combat.atbPaused = true; 
+                        io.to(socketId).emit('ATB_READY'); 
+                    } else {
+                        // Gather ALL enemies that hit 100 ATB on this exact 200ms tick
+                        let readyEnemies = combat.enemies.filter(e => e.alive && e.atbCharge >= 100);
+                        
+                        if (readyEnemies.length > 0) {
+                            let masterEventList = [];
+                            
+                            readyEnemies.forEach(e => {
+                                e.atbCharge = 0; // Reset ATB immediately
+                                let events = executeEnemyTurn(socketId, combat, p, e);
+                                if (events && events.length > 0) {
+                                    masterEventList.push(...events); // Compress all events into one array
+                                }
+                            });
+                            
+                            // 4. THE EMPTY TURN BYPASS
+                            if (masterEventList.length > 0) {
+                                // At least one entity physically moved or attacked. Lock the client!
+                                combat.playbackLock = true; 
+                                io.to(socketId).emit('enemyTurnReceipt', { 
+                                    events: masterEventList, 
+                                    updatedPlayer: p, 
+                                    updatedCombatState: combat 
+                                });
+                            }
+                            // If masterEventList is empty, all ready gorillas were boxed in.
+                            // The engine skips the socket emit, avoids the handshake, and keeps ticking!
                         }
                     }
                 }

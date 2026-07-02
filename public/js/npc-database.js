@@ -4,9 +4,9 @@
 
 const NpcDatabase = {
     // Wilderness
-    "wild_ravager": { name: "Wild Ravager", type: "MELEE", hp: 15, maxHp: 15, attackRange: 1, offense: 1, defense: 1, speed: 1, icon: "👾", size: 1 },
-    "publing": { name: "Wild Publing", type: "MELEE", hp: 50, maxHp: 50, attackRange: 1, offense: 1, defense: 1, speed: 1, icon: "🐻", size: 1 },
-    "alpha_poacher": { name: "Wilderness Alpha-Poacher", type: "RANGED", hp: 75, maxHp: 75, attackRange: 10, offense: 2, defense: 1, speed: 2, icon: "🏹", size: 1 },
+    "wild_ravager": { name: "Wild Ravager", type: "MELEE", hp: 15, maxHp: 15, attackRange: 1, offense: 1, defense: 1, speed: 3, icon: "👾", size: 1 },
+    "publing": { name: "Wild Publing", type: "MELEE", hp: 50, maxHp: 50, attackRange: 1, offense: 2, defense: 2, speed: 3, icon: "🐻", size: 1 },
+    "alpha_poacher": { name: "Wilderness Alpha-Poacher", type: "RANGED", hp: 75, maxHp: 75, attackRange: 10, offense: 2, defense: 1, speed: 3, icon: "🏹", size: 1 },
     "wilderness_overlord": { name: "Wilderness Apex Overlord (BOSS)", type: "MELEE", hp: 150, maxHp: 150, attackRange: 2, offense: 5, defense: 5, speed: 5, icon: "🐗", size: 2 },
     
     // Cellars
