@@ -22,11 +22,9 @@ function playDialogueSequence(sequence) {
 }
 
 function showNextDialoguePage() {
-    // If we've reached the end of the sequence, close the box!
     if (currentDialoguePage >= dialogueSequence.length) {
         document.getElementById('dialogue-overlay').style.display = 'none';
         
-        // Notify the server we finished reading so it can trigger the next event (like a Boss Fight!)
         if (dialogueSequence.questId) {
             socket.emit('dialogueComplete', { questId: dialogueSequence.questId });
         }
@@ -35,20 +33,25 @@ function showNextDialoguePage() {
     
     let page = dialogueSequence[currentDialoguePage];
     
-    document.getElementById('dialogue-speaker-name').innerText = page.speaker || "Unknown";
+    // --- THE FIX: DYNAMIC PLAYER NAME ---
+    let displaySpeaker = page.speaker || "Unknown";
+    // If this is the player talking, automatically grab their actual login name!
+    if (page.portraitId === 'player' || displaySpeaker === 'PLAYER') {
+        displaySpeaker = typeof currentUsername !== 'undefined' ? currentUsername : "Knight";
+    }
+    
+    document.getElementById('dialogue-speaker-name').innerText = displaySpeaker;
     document.getElementById('dialogue-text-content').innerHTML = "";
     document.getElementById('dialogue-next-indicator').style.display = 'none';
     
-    // Draw the Portrait!
     renderDialoguePortrait(page.portraitId);
     
-    // Setup the Typewriter
     currentDialogueText = page.text || "...";
     typeIndex = 0;
     isTyping = true;
     
     clearInterval(typeTimer);
-    typeTimer = setInterval(typewriterTick, 35); // 35ms delay per letter
+    typeTimer = setInterval(typewriterTick, 35); 
 }
 
 function typewriterTick() {
@@ -90,10 +93,10 @@ function renderDialoguePortrait(portraitId) {
     pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
     
     if (portraitId === 'player') {
-        // --- THE PROCEDURAL ZOOM & CROP ---
-        const zoomSize = 192; // 8x scale of a 24x24 sprite
-        const ox = -48; // Shift left to center the 192px sprite inside the 96px canvas
-        const oy = -28; // Shift up to crop out the legs and focus on the helmet/face
+        // --- THE FIX: BETTER ZOOM & CENTERING ---
+        const zoomSize = 144; // 6x scale of a 24x24 sprite (gives breathing room!)
+        const ox = -24;       // Perfect horizontal center
+        const oy = -12;       // Crops just the legs out, keeping shoulders and head
         
         let bodySprite = player.appearance.gender === 'female' ? 'body_female' : 'body_male';
         if (SpriteMatrices[bodySprite]) drawOptimizedSprite(pCtx, bodySprite, SpriteMatrices[bodySprite], ox, oy, zoomSize);
@@ -113,14 +116,11 @@ function renderDialoguePortrait(portraitId) {
             else if (SpriteMatrices[eq.armor.spriteId]) drawOptimizedSprite(pCtx, eq.armor.spriteId, SpriteMatrices[eq.armor.spriteId], ox, oy, zoomSize);
         }
         
-        // We draw the helmet last so it overlays the hair/face properly
         if (eq.helmet && eq.helmet.spriteId && SpriteMatrices[eq.helmet.spriteId]) {
             drawOptimizedSprite(pCtx, eq.helmet.spriteId, SpriteMatrices[eq.helmet.spriteId], ox, oy, zoomSize);
         }
         
     } else if (portraitId) {
-        // It's an NPC or a Monster! Just draw their normal sprite centered and scaled up.
-        // If it's Kreg, we might pass 'icon_stout' for now if he doesn't have a sprite yet!
         if (SpriteMatrices[portraitId]) {
             drawOptimizedSprite(pCtx, portraitId, SpriteMatrices[portraitId], 0, 0, 96);
         }
