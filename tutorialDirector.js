@@ -16,7 +16,7 @@ module.exports = {
             combatState.tutorialStep = 1;
 
             p.hp = 5; 
-            p.stamina = 0; // THE FIX: Start with 0 stamina to force a Pass Turn!
+            p.stamina = 0; 
 
             p.equipment = {
                 helmet: { name: "Initiate Helm", slot: "helmet", defense: 10, spriteId: "icon_iron_helm" },
@@ -36,17 +36,24 @@ module.exports = {
 
             p.inventory = [];
             if (stout) p.inventory.push(JSON.parse(JSON.stringify(stout)));
-            if (bomb) p.inventory.push(JSON.parse(JSON.stringify(bomb))); // Gives the massive bomb!
+            if (bomb) p.inventory.push(JSON.parse(JSON.stringify(bomb))); 
             
             p.pendingLoot = []; p.pendingGold = 0; p.pendingXp = 0;
+            
+            // FIX: Pre-pause the ATB so it doesn't tick during the intro dialogue!
+            combatState.atbPaused = true;
 
             io.to(socketId).emit('inventoryReceipt', { success: true, updatedPlayer: p });
 
             setTimeout(() => {
                 io.to(socketId).emit('serverDialogue', [
                     { speaker: "PLAYER", text: "Phew... all this traveling got me beat.", portraitId: "player" },
-                    { speaker: "Tutorial", text: "Click the orange ⌛ PASS TURN button below to catch your breath and recover Stamina!", portraitId: "npc_kreg" }
+                    { speaker: "Kreg", text: "Click the orange ⌛ PASS TURN button below to catch your breath and recover Stamina!", portraitId: "npc_kreg" }
                 ]);
+                
+                // Only let them tick ATB once the cinematic is finished!
+                combatState.atbPaused = false;
+                combatState.player.atbCharge = 0;
             }, 1000);
         }
     },
@@ -56,7 +63,6 @@ module.exports = {
             if (data.actionCategory === 'flee') return "🗣️ Director: 'There is no escape...'";
             if (data.actionCategory === 'equip') return "🗣️ Director: 'Focus on the battle, not your wardrobe!'";
 
-            // UPDATED STEP LOCKS
             if (combat.tutorialStep === 1 && data.actionCategory !== 'pass') {
                 return "🗣️ Director: 'Click the ⌛ PASS TURN button to recover Stamina!'";
             }
@@ -73,56 +79,66 @@ module.exports = {
         return null; 
     },
 
-    // NEW STEP: Triggered when they click Pass Turn on Step 1
+    // Triggered when they click Pass Turn on Step 1
     handlePassStep: function(combat, io, socketId) {
         if (combat && combat.zone === 'TUTORIAL' && combat.tutorialStep === 1) {
             combat.tutorialStep = 2;
-            combat.atbPaused = false;
-            combat.player.atbCharge = 0;
             
-            // FIX: Blast the updated authoritative state back to the client to unlock the UI
-            io.to(socketId).emit('combatDeployed', combat);
-
             setTimeout(() => {
+                io.to(socketId).emit('combatDeployed', combat);
                 io.to(socketId).emit('serverDialogue', [{ 
                     speaker: "Kreg", 
                     text: "Great! Now open your 🎒 BACKPACK and click the 🍺 STOUT to heal!", 
-                    portraitId: "npc_kreg" // Updated to use the new sprite hook
+                    portraitId: "npc_kreg" 
                 }]);
+                
+                // FIX: Unpause ATB *AFTER* the client has fully locked onto the new cinematic state!
+                combat.atbPaused = false;
+                combat.player.atbCharge = 0;
             }, 500);
         }
     },
 
+    // Triggered when they drink the Stout on Step 2
     handleConsumableStep: function(combat, io, socketId) {
         if (combat && combat.zone === 'TUTORIAL' && combat.tutorialStep === 2) {
             combat.tutorialStep = 3;
-            combat.enemies.push(createEnemy("publing", 2, 0, "Tutorial "));
             
-            combat.atbPaused = false;
-            combat.player.atbCharge = 0;
+            // FIX: Dynamically generated enemies MUST have UIDs or targeting/animations break!
+            let publing = createEnemy("publing", 2, 0, "Tutorial ");
+            publing.uid = "mob_tut_1";
+            publing.atbCharge = 0;
+            combat.enemies.push(publing);
 
             setTimeout(() => {
                 io.to(socketId).emit('combatDeployed', combat); 
-                io.to(socketId).emit('serverDialogue', [{ speaker: "Tutorial", text: "A Wild Publing appeared! Click a green tile to move close, then use Standard Attack!", portraitId: "npc_kreg" }]);
+                io.to(socketId).emit('serverDialogue', [{ speaker: "Kreg", text: "A Wild Publing appeared! Click a green tile to move close, then use Standard Attack!", portraitId: "npc_kreg" }]);
+                
+                // FIX: Unpause ATB *AFTER* the cinematic delay to prevent race conditions!
+                combat.atbPaused = false;
+                combat.player.atbCharge = 0;
             }, 800);
         }
     },
 
+    // Triggered on Kills
     handleVictoryStep: function(p, combat, io, socketId) {
         if (combat.tutorialStep === 3) {
             combat.tutorialStep = 4;
-            combat.enemies = [
-                createEnemy("publing", 0, 0, "Tutorial "),
-                createEnemy("publing", 2, 0, "Tutorial "),
-                createEnemy("publing", 3, 0, "Tutorial ")
-            ];
-
-            combat.atbPaused = false;
-            combat.player.atbCharge = 0;
+            
+            // FIX: Ensure all swarm members have unique IDs!
+            let p1 = createEnemy("publing", 0, 0, "Tutorial "); p1.uid = "mob_tut_2"; p1.atbCharge = 0;
+            let p2 = createEnemy("publing", 2, 0, "Tutorial "); p2.uid = "mob_tut_3"; p2.atbCharge = 0;
+            let p3 = createEnemy("publing", 3, 0, "Tutorial "); p3.uid = "mob_tut_4"; p3.atbCharge = 0;
+            
+            combat.enemies = [p1, p2, p3];
 
             setTimeout(() => {
                 io.to(socketId).emit('combatDeployed', combat);
-                io.to(socketId).emit('serverDialogue', [{ speaker: "Tutorial", text: "Three more! Click a tile to back away, then open your Backpack and use the 💣 HEAVY KEG BOMB!", portraitId: "npc_kreg" }]);
+                io.to(socketId).emit('serverDialogue', [{ speaker: "Kreg", text: "Three more! Click a tile to back away, then open your Backpack and use the 💣 HEAVY KEG BOMB!", portraitId: "npc_kreg" }]);
+                
+                combat.atbPaused = false;
+                combat.player.atbCharge = 0;
             }, 1500);
             return true; 
         }
@@ -137,18 +153,22 @@ module.exports = {
             p.pendingLoot.push(shinyLoot);
             io.to(socketId).emit('killConfirmed', { gold: 500, xp: 100, item: shinyLoot, isPet: false, enemyName: "Publing Swarm" });
 
-            combat.atbPaused = false;
-            combat.player.atbCharge = 0;
-
             setTimeout(() => {
                 io.to(socketId).emit('screenShake');
+                
+                // FIX: Boss needs a UID too!
                 let boss = createEnemy("wilderness_overlord", 1, 0, "True ");
+                boss.uid = "mob_tut_boss"; 
                 boss.offense = 9999; boss.speed = 999; boss.hp = 99999;
+                boss.atbCharge = 0;
                 combat.enemies = [boss];
 
                 io.to(socketId).emit('combatDeployed', combat);
                 io.to(socketId).emit('serverDialogue', [{ speaker: "Overlord", text: "FOOLISH MORTAL... YOU DARE TOUCH MY GEMS?", portraitId: "wilderness_overlord" }]);
                 io.to(socketId).emit('playTrack', "The True Overlord"); 
+                
+                combat.atbPaused = false;
+                combat.player.atbCharge = 0;
             }, 2500);
             
             return true; 
