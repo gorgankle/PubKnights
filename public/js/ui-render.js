@@ -1281,8 +1281,8 @@ function renderCombatModal(filter = 'DRINK') {
         if (typeof activeCombatZone !== 'undefined' && activeCombatZone === 'TUTORIAL') {
             let isTutorialLocked = true;
             if (typeof currentTutorialStep !== 'undefined') {
-                if (currentTutorialStep === 1 && item.name.includes("Stout")) isTutorialLocked = false;
-                if (currentTutorialStep === 3 && item.name.includes("Heavy Keg Bomb")) isTutorialLocked = false;
+                if (currentTutorialStep === 2 && item.name.includes("Stout")) isTutorialLocked = false;
+                if (currentTutorialStep === 4 && item.name.includes("Heavy Keg Bomb")) isTutorialLocked = false;
             }
             
             if (isTutorialLocked) {
