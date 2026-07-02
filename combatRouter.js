@@ -573,9 +573,14 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 let sx, sy;
                 if (Math.random() > 0.5) { sx = Math.random() > 0.5 ? 0 : 13; sy = Math.floor(Math.random() * 14); } 
                 else { sx = Math.floor(Math.random() * 14); sy = Math.random() > 0.5 ? 0 : 13; }
-                combatState.enemies.push({ id: "enraged_gorilla", name: `Enraged Gorilla #${i+1}`, type: "MELEE", hp: 12000, maxHp: 12000, moveRange: 2, attackRange: 1, attack: 180, resilience: 30, accuracy: 120, alive: true, icon: "🦍", x: sx, y: sy, size: 1 });
+                
+                // THE FIX: Route through the NpcDatabase factory function!
+                let newGorilla = createEnemy("enraged_gorilla", sx, sy);
+                newGorilla.name = `Enraged Gorilla #${i+1}`; // Append the swarm number dynamically
+                
+                combatState.enemies.push(newGorilla);
             }
-        } 
+        }
         else if (zone === 'ABYSS') {
             combatState.gridSize = 12; combatState.tileSize = 40; combatState.player.x = 0; combatState.player.y = 11;
             let depth = p.abyssDepth || 1;
