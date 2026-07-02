@@ -144,7 +144,7 @@ const musicTracks = [
                 "melody": { vol: 0.0, pan: 0, sequence: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }
             }
         }
-    }
+    },
 	{
         name: "DOOM OF THE OVERLORD",
         tempo: 140,
