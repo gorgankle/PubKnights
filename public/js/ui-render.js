@@ -405,8 +405,17 @@ const combatInvList = document.getElementById("combat-inventory-list");
                 spellBtn.disabled = true;
             }
         
+    
             // Actions
-            bagBtn.onclick = () => renderCombatModal();
+            bagBtn.onclick = () => {
+                if (typeof activeCombatZone !== 'undefined' && activeCombatZone === 'TUTORIAL') {
+                    // Auto-open the THROW tab on Step 3, otherwise default to DRINK
+                    renderCombatModal(currentTutorialStep === 3 ? 'THROW' : 'DRINK');
+                } else {
+                    renderCombatModal();
+                }
+            };
+			
             spellBtn.onclick = () => renderSpellbookModal();
         
             // === NEW: APPEND DIRECTLY TO THE GRID ===
@@ -1191,11 +1200,9 @@ function renderCombatModal(filter = 'DRINK') {
     const modal = document.getElementById('combat-backpack-modal');
     let grid = document.getElementById('combat-modal-grid');
     
-    // === THE FIX: Reset the title back to Backpack! ===
     let title = document.getElementById('combat-modal-title');
     if (title) title.innerText = "🎒 Combat Backpack";
     
-    // --- 1. DYNAMIC FILTER TABS ---
     let filterContainer = document.getElementById('combat-modal-filters');
     if (!filterContainer) {
         filterContainer = document.createElement('div');
@@ -1207,7 +1214,6 @@ function renderCombatModal(filter = 'DRINK') {
     }
     filterContainer.innerHTML = ''; 
 
-    // The 'ALL' tab is completely removed from the array
     const filters = [
         { id: 'DRINK', icon: '🍺', text: 'Drinks' },
         { id: 'THROW', icon: '💣', text: 'Throw' },
@@ -1221,25 +1227,37 @@ function renderCombatModal(filter = 'DRINK') {
         btn.style.padding = "6px 2px";
         btn.style.fontSize = "11px";
         btn.style.fontWeight = "bold";
-        btn.style.background = filter === f.id ? "#27ae60" : "#443a32"; // Highlight active tab green
+        btn.style.background = filter === f.id ? "#27ae60" : "#443a32"; 
         btn.style.border = "1px solid #111";
         btn.style.color = "#fff";
         btn.onclick = () => renderCombatModal(f.id); 
+        
+        // === THE FIX: TUTORIAL FILTER LOCKS ===
+        if (typeof activeCombatZone !== 'undefined' && activeCombatZone === 'TUTORIAL') {
+            if (typeof currentTutorialStep !== 'undefined') {
+                if (currentTutorialStep === 1 && f.id !== 'DRINK') {
+                    btn.disabled = true;
+                    btn.style.opacity = '0.3';
+                }
+                if (currentTutorialStep === 3 && f.id !== 'THROW') {
+                    btn.disabled = true;
+                    btn.style.opacity = '0.3';
+                }
+            }
+        }
+        // ======================================
+
         filterContainer.appendChild(btn);
     });
 
-    // --- 2. GRID RENDERING ---
     grid.innerHTML = ''; 
     let maxSlots = player.maxInventorySlots || 5;
-    let foundAny = false; // Tracks if the current tab is completely empty
+    let foundAny = false; 
 
     for (let idx = 0; idx < maxSlots; idx++) {
         let item = player.inventory[idx];
+        if (!item) continue; 
         
-        if (!item) continue; // We no longer render empty slots in the filtered views!
-        
-
-        // Apply the active category filter
         let showItem = false;
         if (filter === 'DRINK' && item.slot === 'consumable' && item.combat && (item.combat.actionType === 'heal' || item.combat.actionType === 'buff')) showItem = true;
         else if (filter === 'THROW' && item.slot === 'consumable' && item.combat && item.combat.actionType === 'throwable') showItem = true;
@@ -1252,7 +1270,7 @@ function renderCombatModal(filter = 'DRINK') {
         let rc = item.rarity === "Gorilla" ? "slot-jackpot" : (item.rarity ? `slot-${item.rarity.toLowerCase()}` : 'slot-common');
         slotDiv.className = `item-slot ${rc}`;
         
-        // === NEW: TUTORIAL INVENTORY LOCKS ===
+        // === TUTORIAL ITEM LOCKS ===
         if (typeof activeCombatZone !== 'undefined' && activeCombatZone === 'TUTORIAL') {
             let isTutorialLocked = true;
             if (typeof currentTutorialStep !== 'undefined') {
@@ -1268,11 +1286,8 @@ function renderCombatModal(filter = 'DRINK') {
                 slotDiv.style.boxShadow = "0 0 15px #2ecc71";
                 slotDiv.style.border = "2px solid #2ecc71";
             }
-            
-            let filters = document.getElementById('combat-modal-filters');
-            if (filters) filters.style.pointerEvents = 'none'; // Lock the tabs
         }
-        // =====================================
+        // ===========================
 
         slotDiv.onmouseenter = (e) => { if (typeof showItemTooltip === 'function') showItemTooltip(e, item, idx, 'combat'); };
         slotDiv.onmouseleave = typeof hideTooltip === 'function' ? hideTooltip : null;
@@ -1286,12 +1301,10 @@ function renderCombatModal(filter = 'DRINK') {
         grid.appendChild(slotDiv);
     }
     
-    // --- 3. EMPTY STATE FALLBACK ---
     if (!foundAny) {
         grid.innerHTML = `<div style="color: #bbaaa0; text-align: center; padding: 25px 15px; font-size: 12px; font-style: italic; width: 100%;">No items of this type in your bag.</div>`;
     }
     
-    // Play the bag rustle sound only when first opening the modal
     if (modal.style.display !== 'block' && typeof playRetroSound === 'function') playRetroSound('menu');
     modal.style.display = 'block';
 }

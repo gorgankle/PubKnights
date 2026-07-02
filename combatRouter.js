@@ -855,7 +855,8 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
             let enemyHitPower = (eOffense * 0.5) + (Math.random() * eOffense * 0.5);
             let playerSpeedMitigation = Math.random() * playerSpeed;
 
-            if ((enemyHitPower - playerSpeedMitigation) <= 0) {
+            // THE FIX: Forcibly deflect all Publing damage during the tutorial to prevent premature deaths!
+            if ((enemyHitPower - playerSpeedMitigation) <= 0 || (combat.zone === 'TUTORIAL' && e.id === 'publing')) {
                 turnEvents.push({ type: 'deflect', enemyName: e.name }); 
             } else {
                 let rawDamageRoll = Math.sqrt(Math.random()) * eOffense;

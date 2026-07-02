@@ -10,16 +10,17 @@ module.exports = {
     handleDeployment: function(p, combatState, zone, io, socketId) {
         if (zone === 'TUTORIAL') {
             combatState.gridSize = 4;
-            combatState.tileSize = 90; // Bigger tiles for a smaller map
+            combatState.tileSize = 90; 
             combatState.player.x = 1;
             combatState.player.y = 2;
             combatState.tutorialStep = 1;
-			p.hp = 20;
 
-            // Give the player "OP" Temporary Gear to make the first kill satisfying
+            p.hp = 5; // Start heavily wounded!
+
+            // THE FIX: Added massive stamina to the armor so they never run out during the tutorial!
             p.equipment = {
                 helmet: { name: "Initiate Helm", slot: "helmet", defense: 10, spriteId: "icon_iron_helm" },
-                armor: { name: "Initiate Plate", slot: "armor", defense: 15, spriteId: "icon_iron_armor" },
+                armor: { name: "Initiate Plate", slot: "armor", defense: 15, stamina: 100, spriteId: "icon_iron_armor" },
                 weapon: {
                     name: "Initiate Broadsword", slot: "weapon", offense: 30, spriteId: "icon_iron_sword",
                     combat: {
@@ -27,8 +28,7 @@ module.exports = {
                         special: { name: "Heavy Slash", range: 1, staminaCost: 10, multiplier: 1.5, animType: 'lunge_slash' }
                     }
                 },
-                gloves: null,
-                boots: null
+                gloves: null, boots: null
             };
 
             let stout = ItemDatabase["stout"] || Object.values(ItemDatabase).find(i => i && i.name && i.name.includes("Stout"));
@@ -40,10 +40,8 @@ module.exports = {
             
             p.pendingLoot = []; p.pendingGold = 0; p.pendingXp = 0;
 
-            // Push the UI update so they see the gear and backpack contents immediately
             io.to(socketId).emit('inventoryReceipt', { success: true, updatedPlayer: p });
 
-            // Explicit UI Guidance
             setTimeout(() => {
                 io.to(socketId).emit('serverDialogue', [
                     { speaker: "PLAYER", text: "Phew... all this traveling got me beat. I need to recover.", portraitId: "player" },
@@ -57,12 +55,10 @@ module.exports = {
     checkActionLock: function(combat, data) {
         if (combat && combat.zone === 'TUTORIAL') {
             
-            // GLOBAL TUTORIAL LOCKS
             if (data.actionCategory === 'flee') return "🗣️ Director: 'There is no escape...'";
             if (data.actionCategory === 'pass') return "🗣️ Director: 'Now is not the time to rest!'";
             if (data.actionCategory === 'equip') return "🗣️ Director: 'Focus on the battle, not your wardrobe!'";
 
-            // STEP SPECIFIC LOCKS
             if (combat.tutorialStep === 1 && data.actionCategory !== 'consumable') {
                 return "🗣️ Director: 'Click the 🎒 BACKPACK button below and drink the 🍺 STOUT to recover!'";
             }
@@ -87,7 +83,8 @@ module.exports = {
 
             setTimeout(() => {
                 io.to(socketId).emit('combatDeployed', combat); 
-                io.to(socketId).emit('serverDialogue', [{ speaker: "Tutorial", text: "A Wild Publing appeared! Select the Standard Attack to strike it!", portraitId: "publing" }]);
+                // THE FIX: Explicit movement guidance
+                io.to(socketId).emit('serverDialogue', [{ speaker: "Tutorial", text: "A Wild Publing appeared! Click a green tile to move close, then use Standard Attack!", portraitId: "publing" }]);
             }, 800);
         }
     },
@@ -107,7 +104,8 @@ module.exports = {
 
             setTimeout(() => {
                 io.to(socketId).emit('combatDeployed', combat);
-                io.to(socketId).emit('serverDialogue', [{ speaker: "Tutorial", text: "Three more appeared! Open your 🎒 BACKPACK and throw the 💣 KEG BOMB into the center of them!", portraitId: "icon_bomb_small" }]);
+                // THE FIX: Explicit movement and tab guidance
+                io.to(socketId).emit('serverDialogue', [{ speaker: "Tutorial", text: "Three more appeared! Click a tile to back away, then open your Backpack and use the 💣 KEG BOMB!", portraitId: "icon_bomb_small" }]);
             }, 1500);
             return true; 
         }
