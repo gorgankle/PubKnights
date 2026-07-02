@@ -81,5 +81,17 @@ socket.on('loginSuccess', (serverSaveData) => {
     
     // Merge the database save over our local variables
     Object.assign(player, serverSaveData);
-    enterGameUI();
+    
+    // === THE FIX: PREVENT REFRESH EXPLOITS ===
+    if (!player.tutorialCompleted) {
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('char-creation-screen').style.display = 'none';
+        document.getElementById('main-game-container').style.display = 'flex';
+        
+        // Throw them right back into the tutorial!
+        transitionToCombat('TUTORIAL');
+    } else {
+        enterGameUI();
+    }
+    // =========================================
 });

@@ -615,8 +615,8 @@ function skipTutorial() {
     // Force the player object flag
     player.tutorialCompleted = true;
     
-    // Tell the server we skipped it, so it can save the database and pull us out of the map
-    socket.emit('townAction', { action: 'skipTutorial' });
+    // THE FIX: Emit the dedicated wipe command
+    socket.emit('skipTutorial');
     
     // Fallback UI transition just in case
     transitionToTown();

@@ -874,6 +874,16 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
                         if (combat.zone === 'TUTORIAL') {
                             p.hp = 1;
                             p.tutorialCompleted = true; // They survived the trial!
+
+                            // THE FIX: Destroy their OP gear and hand them the Rusty Mace
+                            p.equipment = {
+                                helmet: null,
+                                armor: null,
+                                weapon: JSON.parse(JSON.stringify(ItemDatabase["rusty_mace"])),
+                                gloves: null,
+                                boots: null
+                            };
+
                             delete activeCombats[socketId];
                             turnEvents.push({ type: 'tutorial_death' });
                         } else {
@@ -958,6 +968,34 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
         p.gold += val;
         
         socket.emit('inventoryReceipt', { success: true, action: 'sell', updatedPlayer: p, message: `💰 Sold dropped item for ${val}g.` });
+    });
+	
+	// === NEW: SECURE TUTORIAL SKIP HANDLER ===
+    socket.on('skipTutorial', () => {
+        let p = activePlayers[socket.id];
+        if (!p) return;
+
+        p.tutorialCompleted = true;
+        
+        // Strip the OP Gear and Tutorial items
+        p.equipment = {
+            helmet: null, armor: null, gloves: null, boots: null,
+            weapon: JSON.parse(JSON.stringify(ItemDatabase["rusty_mace"]))
+        };
+        p.inventory = [];
+        p.pendingLoot = [];
+        p.pendingGold = 0;
+        p.pendingXp = 0;
+
+        // Fully heal them for the real game
+        p.hp = getEffectiveStat(p, 'vitality') * 25;
+        p.stamina = getEffectiveStat(p, 'maxStamina') * 25;
+
+        // Erase the combat instance so they aren't trapped
+        delete activeCombats[socket.id];
+        
+        // Push the sanitized UI back to the browser
+        socket.emit('townReceipt', { success: true, updatedPlayer: p, message: "Tutorial skipped. Gear reset." });
     });
 
     socket.on('claimCombatRewards', () => {
