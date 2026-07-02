@@ -61,7 +61,54 @@ const musicTracks = [
         bass: [ 82.41, null, null, null, null, null, null, null, 65.41, null, null, null, null, null, null, null, 98.00, null, null, null, null, null, null, null, 65.41, null, null, null, null, null, null, null ],
         drums: [ 'k', 'h', 'h', 'h', 's', 'h', 'h', 'h', 'k', 'h', 'h', 'h', 's', 'h', 'h', 'h', 'k', 'h', 'h', 'h', 's', 'h', 'h', 'h', 'k', 'h', 'h', 'h', 's', 'h', 'h', 'h' ],
         ambience: [ 164.81, null, null, null, null, null, null, null, 130.81, null, null, null, null, null, null, null, 196.00, null, null, null, null, null, null, null, 130.81, null, null, null, null, null, null, null ]
+    },
+	{
+        name: "DOOM OF THE OVERLORD",
+        tempo: 140,
+        tracks: {
+            "fx_impact": {
+                vol: 1,
+                pan: 0,
+                sequence: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            },
+            "kick": {
+                vol: 1,
+                pan: 0,
+                sequence: [1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0]
+            },
+            "snare": {
+                vol: 0.8,
+                pan: 0,
+                sequence: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1]
+            },
+            "hihat": {
+                vol: 0.5,
+                pan: 0,
+                sequence: [0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0]
+            },
+            "tom": {
+                vol: 0.9,
+                pan: 0,
+                sequence: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1]
+            },
+            "saw": {
+                vol: 0.9,
+                pan: 0,
+                sequence: ["A2", 0, "A2", "C3", "A2", 0, "A2", "D3", "A2", 0, "A2", "E3", "F3", "-", "E3", "-", "A2", 0, "A2", "C3", "A2", 0, "A2", "G2", "F2", "-", 0, "G2", "E2", "-", "-", "-"]
+            },
+            "pluck": {
+                vol: 0.6,
+                pan: -0.4,
+                sequence: ["A3", "C4", "E4", "A4", "E4", "C4", "A3", "C4", "A3", "D4", "F4", "A4", "F4", "D4", "A3", "D4", "F3", "A3", "C4", "F4", "C4", "A3", "F3", "A3", "E3", "G3", "B3", "E4", "B3", "G3", "E3", "G3"]
+            },
+            "melody": {
+                vol: 0.85,
+                pan: 0.3,
+                sequence: ["A4", "-", "-", "-", "-", "-", "G4", "-", "A4", "-", "-", "-", "C5", "-", "B4", "-", "A4", "-", "-", "-", "-", "-", "F4", "-", "E4", "-", "-", "-", "-", "-", "-", "-"]
+            }
+        }
     }
+	
 ];
 
 let activeTrackIndex = 0;
