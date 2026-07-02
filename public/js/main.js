@@ -159,7 +159,7 @@ socket.on('combatResult', (result) => {
        } else if (result.source === 'throwable' && fx && fx.spriteId) {
             FXEngine.spawnProjectile(player.x, player.y, fx.tx, fx.ty, fx.spriteId, animOptions);
             
-        // === NEW: ROUTE RANGED WEAPONS (BOWS/CROSSBOWS) ===
+       // === NEW: ROUTE RANGED WEAPONS (BOWS/CROSSBOWS) ===
         } else if (result.source === 'weapon' && fx && fx.isProjectile) {
             
             animOptions.arc = 0;         // Flat trajectory
@@ -173,8 +173,20 @@ socket.on('combatResult', (result) => {
             // 1. Determine if they used 'standard' or 'special'
             let profileKey = result.actionName === 'special' ? 'special' : 'standard';
             
-            // 2. Fetch the exact animation profile you wrote in items.js!
-            let weaponProfile = player.equipment.weapon.combat[profileKey];
+            // === THE FIX: UNARMED ANIMATION FALLBACK ===
+            // Inject a mock weapon profile so the client doesn't crash when bare-handed!
+            let weapon = player.equipment.weapon;
+            if (!weapon || !weapon.combat) {
+                weapon = { 
+                    combat: { 
+                        standard: { animType: 'lunge_bash' }, 
+                        special: { animType: 'lunge_bash' } 
+                    } 
+                };
+            }
+            
+            // 2. Fetch the exact animation profile
+            let weaponProfile = weapon.combat[profileKey];
             let animType = weaponProfile && weaponProfile.animType ? weaponProfile.animType : 'lunge_slash';
             
             // 3. Trigger the lunge, and ONLY execute the damage math when the strike physically connects!
