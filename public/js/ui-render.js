@@ -1282,7 +1282,7 @@ function renderCombatModal(filter = 'DRINK') {
             let isTutorialLocked = true;
             if (typeof currentTutorialStep !== 'undefined') {
                 if (currentTutorialStep === 1 && item.name.includes("Stout")) isTutorialLocked = false;
-                if (currentTutorialStep === 3 && item.name.includes("bomb_heavy")) isTutorialLocked = false;
+                if (currentTutorialStep === 3 && item.name.includes("Heavy Keg Bomb")) isTutorialLocked = false;
             }
             
             if (isTutorialLocked) {
