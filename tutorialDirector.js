@@ -6,7 +6,7 @@ const { createEnemy } = require('./public/js/npc-database.js');
 
 module.exports = {
     
-   // 1. Setup the Tiny Map and give the player their gear
+    // 1. Setup the Tiny Map and give the player their gear
     handleDeployment: function(p, combatState, zone, io, socketId) {
         if (zone === 'TUTORIAL') {
             combatState.gridSize = 4;
@@ -15,7 +15,6 @@ module.exports = {
             combatState.player.y = 2;
             combatState.tutorialStep = 1;
 
-            // THE FIX: Fuzzy search to prevent JSON parse crashes!
             let stout = ItemDatabase["stout"] || Object.values(ItemDatabase).find(i => i && i.name && i.name.includes("Stout"));
             let bomb = ItemDatabase["bomb_small"] || ItemDatabase["keg_bomb_1"] || Object.values(ItemDatabase).find(i => i && i.name && i.name.includes("Bomb"));
 
@@ -24,6 +23,13 @@ module.exports = {
             if (bomb) p.inventory.push(JSON.parse(JSON.stringify(bomb)));
             
             p.pendingLoot = []; p.pendingGold = 0; p.pendingXp = 0;
+
+            // === THE FIX 1: PUSH THE INVENTORY TO THE BROWSER UI ===
+            io.to(socketId).emit('inventoryReceipt', { 
+                success: true, 
+                updatedPlayer: p 
+            });
+            // ========================================================
 
             // Trigger the opening text
             setTimeout(() => {
@@ -59,6 +65,12 @@ module.exports = {
             combat.tutorialStep = 2;
             combat.enemies.push(createEnemy("publing", 2, 0, "Tutorial "));
             
+            // === THE FIX 2: UNFREEZE THE SERVER ATB ENGINE ===
+            // Since the server restarts the map mid-turn, we must unpause the battle manually!
+            combat.atbPaused = false;
+            combat.player.atbCharge = 0;
+            // =================================================
+
             setTimeout(() => {
                 io.to(socketId).emit('combatDeployed', combat); // Force client to redraw
                 io.to(socketId).emit('serverDialogue', [{ speaker: "Tutorial", text: "A Wild Publing appeared! Select the Standard Attack to strike it!", portraitId: "publing" }]);
@@ -75,6 +87,11 @@ module.exports = {
                 createEnemy("publing", 2, 0, "Tutorial "),
                 createEnemy("publing", 3, 0, "Tutorial ")
             ];
+
+            // === THE FIX 2: UNFREEZE THE SERVER ATB ENGINE ===
+            combat.atbPaused = false;
+            combat.player.atbCharge = 0;
+
             setTimeout(() => {
                 io.to(socketId).emit('combatDeployed', combat);
                 io.to(socketId).emit('serverDialogue', [{ speaker: "Tutorial", text: "Three more appeared! Back up and throw your bomb into the center!", portraitId: "icon_bomb_small" }]);
@@ -92,6 +109,10 @@ module.exports = {
             shinyLoot.spriteId = "icon_reserve";
             p.pendingLoot.push(shinyLoot);
             io.to(socketId).emit('killConfirmed', { gold: 500, xp: 100, item: shinyLoot, isPet: false, enemyName: "Publing Swarm" });
+
+            // === THE FIX 2: UNFREEZE THE SERVER ATB ENGINE ===
+            combat.atbPaused = false;
+            combat.player.atbCharge = 0;
 
             // Launch the Unbeatable Boss Phase
             setTimeout(() => {
