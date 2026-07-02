@@ -584,3 +584,23 @@ document.addEventListener("click", function startMusicOnce() {
 setInterval(() => {
     fetch('/').catch(err => console.log('Heartbeat skipped.'));
 }, 10 * 60 * 1000);
+
+
+// === NEW: TUTORIAL DIRECTOR LOGIC ===
+function skipTutorial() {
+    // Play a click sound
+    if (typeof playRetroSound === 'function') playRetroSound('step');
+    
+    // Immediately hide the HUD
+    document.getElementById('tutorial-hud').style.display = 'none';
+    
+    // Force the player object flag
+    player.tutorialCompleted = true;
+    
+    // Tell the server we skipped it, so it can save the database and pull us out of the map
+    socket.emit('townAction', { action: 'skipTutorial' });
+    
+    // Fallback UI transition just in case
+    transitionToTown();
+}
+// ====================================
