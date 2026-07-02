@@ -76,7 +76,7 @@ const musicTracks = [
 	{
         name: "DOOM OF THE OVERLORD",
         tempo: 140,
-        arrangement: ["A", "A", "A", "B"], // Plays Phrase A three times, then shifts into the B breakdown!
+        arrangement: ["B", "A", "A", "A"], // Plays Phrase A three times, then shifts into the B breakdown!
         phrases: {
             "A": {
                 "fx_impact": { vol: 1, pan: 0, sequence: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
