@@ -122,7 +122,7 @@ module.exports = {
 
             setTimeout(() => {
                 io.to(socketId).emit('combatDeployed', combat);
-                io.to(socketId).emit('serverDialogue', [{ speaker: "Tutorial", text: "Three more! Click a tile to back away, then open your Backpack and use the 💣 HEAVY KEG BOMB!", portraitId: "icon_bomb_heavy" }]);
+                io.to(socketId).emit('serverDialogue', [{ speaker: "Tutorial", text: "Three more! Click a tile to back away, then open your Backpack and use the 💣 HEAVY KEG BOMB!", portraitId: "npc_kreg" }]);
             }, 1500);
             return true; 
         }
