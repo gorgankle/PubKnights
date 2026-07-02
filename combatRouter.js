@@ -880,6 +880,8 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
                         // ===================================
                     }
                 }
+            } // <--- RESTORED BRACE 1
+        } // <--- RESTORED BRACE 2
         
         // THE FIX: Return the events so the Mega-Batch loop can compile them!
         return turnEvents;
