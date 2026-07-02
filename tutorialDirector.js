@@ -15,6 +15,21 @@ module.exports = {
             combatState.player.y = 2;
             combatState.tutorialStep = 1;
 
+            // Give the player "OP" Temporary Gear to make the first kill satisfying
+            p.equipment = {
+                helmet: { name: "Initiate Helm", slot: "helmet", defense: 10, spriteId: "icon_iron_helm" },
+                armor: { name: "Initiate Plate", slot: "armor", defense: 15, spriteId: "icon_iron_armor" },
+                weapon: {
+                    name: "Initiate Broadsword", slot: "weapon", offense: 30, spriteId: "icon_iron_sword",
+                    combat: {
+                        standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: 'lunge_slash' },
+                        special: { name: "Heavy Slash", range: 1, staminaCost: 10, multiplier: 1.5, animType: 'lunge_slash' }
+                    }
+                },
+                gloves: null,
+                boots: null
+            };
+
             let stout = ItemDatabase["stout"] || Object.values(ItemDatabase).find(i => i && i.name && i.name.includes("Stout"));
             let bomb = ItemDatabase["bomb_small"] || ItemDatabase["keg_bomb_1"] || Object.values(ItemDatabase).find(i => i && i.name && i.name.includes("Bomb"));
 
@@ -24,17 +39,14 @@ module.exports = {
             
             p.pendingLoot = []; p.pendingGold = 0; p.pendingXp = 0;
 
-            // === THE FIX 1: PUSH THE INVENTORY TO THE BROWSER UI ===
-            io.to(socketId).emit('inventoryReceipt', { 
-                success: true, 
-                updatedPlayer: p 
-            });
-            // ========================================================
+            // Push the UI update so they see the gear and backpack contents immediately
+            io.to(socketId).emit('inventoryReceipt', { success: true, updatedPlayer: p });
 
-            // Trigger the opening text
+            // Explicit UI Guidance
             setTimeout(() => {
                 io.to(socketId).emit('serverDialogue', [
-                    { speaker: "PLAYER", text: "Phew... all this traveling got me beat. I need to recover.", portraitId: "player" }
+                    { speaker: "PLAYER", text: "Phew... all this traveling got me beat. I need to recover.", portraitId: "player" },
+                    { speaker: "Tutorial", text: "Click the 🎒 BACKPACK button below, then click the 🍺 STOUT to drink it!", portraitId: "icon_stout" }
                 ]);
             }, 1000);
         }
@@ -43,17 +55,21 @@ module.exports = {
     // 2. Prevent the player from doing anything except what we want them to do
     checkActionLock: function(combat, data) {
         if (combat && combat.zone === 'TUTORIAL') {
+            
+            // GLOBAL TUTORIAL LOCKS
+            if (data.actionCategory === 'flee') return "🗣️ Director: 'There is no escape...'";
+            if (data.actionCategory === 'pass') return "🗣️ Director: 'Now is not the time to rest!'";
+            if (data.actionCategory === 'equip') return "🗣️ Director: 'Focus on the battle, not your wardrobe!'";
+
+            // STEP SPECIFIC LOCKS
             if (combat.tutorialStep === 1 && data.actionCategory !== 'consumable') {
-                return "🗣️ Director: 'Open your Backpack and drink the Stout to recover!'";
+                return "🗣️ Director: 'Click the 🎒 BACKPACK button below and drink the 🍺 STOUT to recover!'";
             }
             if (combat.tutorialStep === 2 && data.actionCategory !== 'weapon') {
                 return "🗣️ Director: 'Use your Standard Attack to defeat the Publing!'";
             }
             if (combat.tutorialStep === 3 && data.actionCategory !== 'consumable') {
-                return "🗣️ Director: 'Too many! Throw your Keg Bomb into the center of them!'";
-            }
-            if (combat.tutorialStep === 4 && data.actionCategory === 'flee') {
-                return "🗣️ Director: 'There is no escape...'";
+                return "🗣️ Director: 'Too many! Open your Backpack and throw the Keg Bomb!'";
             }
         }
         return null; 
@@ -65,14 +81,11 @@ module.exports = {
             combat.tutorialStep = 2;
             combat.enemies.push(createEnemy("publing", 2, 0, "Tutorial "));
             
-            // === THE FIX 2: UNFREEZE THE SERVER ATB ENGINE ===
-            // Since the server restarts the map mid-turn, we must unpause the battle manually!
             combat.atbPaused = false;
             combat.player.atbCharge = 0;
-            // =================================================
 
             setTimeout(() => {
-                io.to(socketId).emit('combatDeployed', combat); // Force client to redraw
+                io.to(socketId).emit('combatDeployed', combat); 
                 io.to(socketId).emit('serverDialogue', [{ speaker: "Tutorial", text: "A Wild Publing appeared! Select the Standard Attack to strike it!", portraitId: "publing" }]);
             }, 800);
         }
@@ -88,21 +101,19 @@ module.exports = {
                 createEnemy("publing", 3, 0, "Tutorial ")
             ];
 
-            // === THE FIX 2: UNFREEZE THE SERVER ATB ENGINE ===
             combat.atbPaused = false;
             combat.player.atbCharge = 0;
 
             setTimeout(() => {
                 io.to(socketId).emit('combatDeployed', combat);
-                io.to(socketId).emit('serverDialogue', [{ speaker: "Tutorial", text: "Three more appeared! Back up and throw your bomb into the center!", portraitId: "icon_bomb_small" }]);
+                io.to(socketId).emit('serverDialogue', [{ speaker: "Tutorial", text: "Three more appeared! Open your 🎒 BACKPACK and throw the 💣 KEG BOMB into the center of them!", portraitId: "icon_bomb_small" }]);
             }, 1500);
-            return true; // Tells the combatRouter to keep the battle going
+            return true; 
         }
         
         if (combat.tutorialStep === 3) {
             combat.tutorialStep = 4;
 
-            // Spawn the Shiny Loot Tease
             let shinyLoot = JSON.parse(JSON.stringify(ItemDatabase["stout"])); 
             shinyLoot.name = "Flawless Sapphire";
             shinyLoot.rarity = "Gorilla";
@@ -110,11 +121,9 @@ module.exports = {
             p.pendingLoot.push(shinyLoot);
             io.to(socketId).emit('killConfirmed', { gold: 500, xp: 100, item: shinyLoot, isPet: false, enemyName: "Publing Swarm" });
 
-            // === THE FIX 2: UNFREEZE THE SERVER ATB ENGINE ===
             combat.atbPaused = false;
             combat.player.atbCharge = 0;
 
-            // Launch the Unbeatable Boss Phase
             setTimeout(() => {
                 io.to(socketId).emit('screenShake');
 
@@ -126,10 +135,10 @@ module.exports = {
 
                 io.to(socketId).emit('combatDeployed', combat);
                 io.to(socketId).emit('serverDialogue', [{ speaker: "Overlord", text: "FOOLISH MORTAL... YOU DARE TOUCH MY GEMS?", portraitId: "wilderness_overlord" }]);
-                io.to(socketId).emit('playTrack', "The True Overlord"); // Cue the dreadful music
+                io.to(socketId).emit('playTrack', "The True Overlord"); 
             }, 2500);
             
-            return true; // Keep the battle going
+            return true; 
         }
         return false;
     }

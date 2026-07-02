@@ -498,6 +498,7 @@ socket.on('enemyTurnReceipt', (receipt) => {
                     playDialogueSequence([
                         { speaker: "Kreg", text: "Whoa there, buddy! You got absolutely clobbered out in the Wilds.", portraitId: "icon_stout" },
                         { speaker: "Kreg", text: "When you fall in combat, you drop all the unbanked loot you were carrying. That shiny gem? Gone.", portraitId: "icon_stout" },
+                        { speaker: "Kreg", text: "Even worse, your gear was destroyed. I managed to scrounge up this Rusty Mace for you.", portraitId: "icon_stout" },
                         { speaker: "Kreg", text: "I'm Kreg. My mom meant to name me Craig, but spelling is hard. Welcome to the Guild!", portraitId: "icon_stout" },
                         { speaker: "Kreg", text: "Gather resources, upgrade the town, and trade for gear here. Get stronger, then go get your revenge!", portraitId: "icon_stout" }
                     ]);
