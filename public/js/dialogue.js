@@ -94,8 +94,8 @@ function renderDialoguePortrait(portraitId) {
     
     if (portraitId === 'player') {
         // --- THE FIX: BETTER ZOOM & CENTERING ---
-        const zoomSize = 192; // 6x scale of a 24x24 sprite (gives breathing room!)
-        const ox = -40;       // Perfect horizontal center
+        const zoomSize = 180; // 6x scale of a 24x24 sprite (gives breathing room!)
+        const ox = -30;       // Perfect horizontal center
         const oy = -20;       // Crops just the legs out, keeping shoulders and head
         
         let bodySprite = player.appearance.gender === 'female' ? 'body_female' : 'body_male';
