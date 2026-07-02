@@ -178,7 +178,7 @@ const musicTracks = [
     {
         name: "The True Overlord",
         tempo: 55, // Slowed down for maximum dramatic weight
-        arrangement: ["A", "B", "C", "C"], // The dread builds, explodes, and then leaves you in the cold.
+        arrangement: ["A", "B", "C", "B"], // The dread builds, explodes, and then leaves you in the cold.
         phrases: {
             "A": {
                 "amb_vinyl": { vol: 0.8, pan: 0, sequence: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
