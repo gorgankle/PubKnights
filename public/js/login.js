@@ -47,7 +47,7 @@ function finalizeCharacter() {
     if (typeof saveGame === 'function') saveGame(true); 
     
     // 2. THE TUTORIAL HIJACK
-    if (player.tutorialCompleted === false) {
+    if (!player.tutorialCompleted) {
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('char-creation-screen').style.display = 'none';
         document.getElementById('main-game-container').style.display = 'flex';

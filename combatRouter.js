@@ -621,6 +621,7 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
                 else combatState.enemies.push(createEnemy("eldritch_keg", ex, ey, "", statMult));
             }
         }
+
         else if (zone === 'CELLARS') {
             if (runLvl === 20) {
                 combatState.enemies.push(createEnemy("vintage_behemoth", 5, 4));
@@ -634,6 +635,9 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
                     for (let i = 0; i < 5; i++) combatState.enemies.push(createEnemy("pub_crawl_mimic", 2 + i, 5, "Chummed "));
                 } else if (runLvl >= 5) combatState.enemies.push(createEnemy("pub_crawl_mimic", 5, 6));
             }
+        }
+        else if (zone === 'TUTORIAL') {
+            // THE FIX: DO NOTHING! The Director already handled the enemies!
         }
         else { // WILDERNESS
             if (runLvl === 20) {
@@ -661,7 +665,7 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
         }
 
         let obsIcon = "🪨"; let obsSprite = "map_boulder";
-        if (zone === 'WILDERNESS') { obsIcon = "🌲"; obsSprite = "map_tree"; } 
+        if (zone === 'WILDERNESS' || zone === 'TUTORIAL') { obsIcon = "🌲"; obsSprite = "map_tree"; } 
         else if (zone === 'CELLARS') { obsIcon = "🛢️"; obsSprite = "map_broken_cask"; }
         else if (zone === 'ABYSS') { obsIcon = "🔮"; obsSprite = "map_pillar"; }
         
@@ -679,8 +683,8 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
                     if (bossLayout[y][x] === 1) combatState.obstacles.push({ x: x, y: y, icon: obsIcon, spriteId: obsSprite });
                 }
             }
-        } else {
-            let obsCount = (zone === 'ABYSS') ? 25 : 12; 
+        } else if (zone !== 'TUTORIAL') { // THE FIX: Prevent random obstacles in the Tutorial!
+            let obsCount = (zone === 'ABYSS') ? 25 : 12;
             for (let i = 0; i < obsCount; i++) {
                 let ox = Math.floor(Math.random() * combatState.gridSize); 
                 let oy = Math.floor(Math.random() * combatState.gridSize);

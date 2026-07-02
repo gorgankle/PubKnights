@@ -6,7 +6,7 @@ const { createEnemy } = require('./public/js/npc-database.js');
 
 module.exports = {
     
-    // 1. Setup the Tiny Map and give the player their gear
+   // 1. Setup the Tiny Map and give the player their gear
     handleDeployment: function(p, combatState, zone, io, socketId) {
         if (zone === 'TUTORIAL') {
             combatState.gridSize = 4;
@@ -15,11 +15,14 @@ module.exports = {
             combatState.player.y = 2;
             combatState.tutorialStep = 1;
 
-            // Wipe inventory, forcefully inject the required items
-            p.inventory = [
-                JSON.parse(JSON.stringify(ItemDatabase["stout"])),
-                JSON.parse(JSON.stringify(ItemDatabase["bomb_small"]))
-            ];
+            // THE FIX: Fuzzy search to prevent JSON parse crashes!
+            let stout = ItemDatabase["stout"] || Object.values(ItemDatabase).find(i => i && i.name && i.name.includes("Stout"));
+            let bomb = ItemDatabase["bomb_small"] || ItemDatabase["keg_bomb_1"] || Object.values(ItemDatabase).find(i => i && i.name && i.name.includes("Bomb"));
+
+            p.inventory = [];
+            if (stout) p.inventory.push(JSON.parse(JSON.stringify(stout)));
+            if (bomb) p.inventory.push(JSON.parse(JSON.stringify(bomb)));
+            
             p.pendingLoot = []; p.pendingGold = 0; p.pendingXp = 0;
 
             // Trigger the opening text
