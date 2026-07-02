@@ -1,3 +1,4 @@
+// === REPLACED ===
 // --- COZY RETRO AUDIO SYNTH MATRIX (REMASTERED) ---
 let audioCtx; 
 let musicPlaying = false;
@@ -11,6 +12,13 @@ let timerID;
 let musicVolume = 1.0;
 let sfxVolume = 1.0;
 let noiseBuffer = null; 
+
+// === THE FIX: GLOBAL FREQUENCY DICTIONARY ===
+const NOTES = {
+    "C5": 523.25, "B4": 493.88, "A4": 440.00, "G4": 392.00, "F4": 349.23, "E4": 329.63, "D4": 293.66, "C4": 261.63,
+    "B3": 246.94, "A3": 220.00, "G3": 196.00, "F3": 174.61, "E3": 164.81, "D3": 146.83, "C3": 130.81, 
+    "B2": 123.47, "A2": 110.00, "G2": 98.00, "F2": 87.31, "E2": 82.41, "D2": 73.42, "C2": 65.41
+};
 
 function updateMusicVolume(val) { musicVolume = parseFloat(val); }
 function updateSfxVolume(val) { sfxVolume = parseFloat(val); }
