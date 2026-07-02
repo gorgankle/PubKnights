@@ -71,7 +71,7 @@ const musicTracks = [
     },
     {
         name: "Wilderness March (Reimagined)",
-        tempo: 100,
+        tempo: 80,
         arrangement: ["A", "A", "B", "B"], 
         phrases: {
             "A": {
