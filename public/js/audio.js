@@ -73,7 +73,7 @@ const musicTracks = [
         drums: [ 'k', 'h', 'h', 'h', 's', 'h', 'h', 'h', 'k', 'h', 'h', 'h', 's', 'h', 'h', 'h', 'k', 'h', 'h', 'h', 's', 'h', 'h', 'h', 'k', 'h', 'h', 'h', 's', 'h', 'h', 'h' ],
         ambience: [ 164.81, null, null, null, null, null, null, null, 130.81, null, null, null, null, null, null, null, 196.00, null, null, null, null, null, null, null, 130.81, null, null, null, null, null, null, null ]
     },
-        {
+	{
         name: "DOOM OF THE OVERLORD",
         tempo: 140,
         arrangement: ["A", "A", "A", "B"], // Plays Phrase A three times, then shifts into the B breakdown!
