@@ -1,9 +1,11 @@
+// === REPLACED ===
 // --- minigames.js ---
 let lumberGameActive = false;
 let lumberTimer = 90;
 let lumberInterval = null;
 let lumberPoints = 0;
 let lumberCombo = 1;
+let lumberScore = 0; // THE FIX: Track actual wood chopped!
 
 let lCanvas, lCtx;
 let indicatorPos = 0;
@@ -32,8 +34,10 @@ function startLumberMinigame() {
     lumberTimer = 90;
     lumberPoints = 0;
     lumberCombo = 1;
+    lumberScore = 0; // THE FIX: Reset wood tracking
     currentSpeed = baseSpeed;
     indicatorPos = 0;
+// ============================================
     
     document.getElementById("lumber-start-btn").style.display = "none";
     document.getElementById("lumber-chop-btn").style.display = "block";
@@ -129,14 +133,17 @@ function executeChop() {
     let hit = (indRight >= tgtLeft && indLeft <= tgtRight);
     let feedbackEl = document.getElementById("lumber-feedback");
 
+// === REPLACED ===
     if (hit) {
         if (typeof playRetroSound === 'function') playRetroSound('heavyAttack');
         let pointsEarned = 10 * lumberCombo;
         lumberPoints += pointsEarned;
+        lumberScore++; // THE FIX: Log the actual wood piece
         lumberCombo++;
         currentSpeed = baseSpeed * Math.pow(1.05, lumberCombo - 1);
         feedbackEl.innerHTML = `<span style="color:#2ecc71;">PERFECT CHOP! +${pointsEarned} Pts</span>`;
     } else {
+// ============================================
         if (typeof playRetroSound === 'function') playRetroSound('error');
         lumberCombo = 1;
         currentSpeed = baseSpeed; 
@@ -158,6 +165,7 @@ function updateLumberUI() {
     document.getElementById("lumber-combo-display").innerText = lumberCombo + "x";
 }
 
+// === REPLACED ===
 function endLumberMinigame() {
     lumberGameActive = false;
     clearInterval(lumberInterval);
@@ -170,7 +178,9 @@ function endLumberMinigame() {
     feedbackEl.innerHTML = `<span style="color:#f1c40f;">ROUND OVER! Final Score: ${lumberPoints}</span>`;
     
     if (typeof playRetroSound === 'function') playRetroSound('victory');
-    socket.emit('townAction', { action: 'claimLumberMinigame', points: lumberPoints });
+    
+    // THE FIX: Sent woodChopped to the server so it doesn't get rejected!
+    socket.emit('townAction', { action: 'claimLumberMinigame', points: lumberPoints, woodChopped: lumberScore });
 
     setTimeout(() => {
         document.getElementById("lumber-start-btn").style.display = "block";
@@ -179,9 +189,10 @@ function endLumberMinigame() {
 }
 
 function leaveMinigame() {
-    if (lumberGameActive) {
-        let confirmLeave = confirm("Abandon current round? You will lose these points!");
-        if (!confirmLeave) return;
+    // THE FIX: Remove the confirm dialogue and silently bank whatever they earned!
+    if (lumberGameActive && (lumberPoints > 0 || lumberScore > 0)) {
+        socket.emit('townAction', { action: 'claimLumberMinigame', points: lumberPoints, woodChopped: lumberScore });
+        if (typeof playRetroSound === 'function') playRetroSound('victory');
     }
     
     lumberGameActive = false;
@@ -194,6 +205,7 @@ function leaveMinigame() {
     
     setGameState('ADVENTURES');
 }
+// ============================================
 
 // ==========================================
 // --- 2D POOL TENSION FISHING MINIGAME ---
@@ -540,10 +552,14 @@ function endFishingSession() {
     }
 }
 
+// === REPLACED ===
 function leaveFishingMinigame() {
-    if (fishingGameActive) {
-        if (!confirm("Abandon current session? You will lose any un-beamed catches!")) return;
+    // THE FIX: Remove the confirm dialogue and silently bank whatever they earned!
+    if (fishingGameActive && (fishingPoints > 0 || fishingScore > 0)) {
+        socket.emit('townAction', { action: 'claimFishingMinigame', points: fishingPoints, fishCaught: fishingScore });
+        if (typeof playRetroSound === 'function') playRetroSound('victory');
     }
+    
     fishingGameActive = false;
     clearInterval(fishingInterval);
     cancelAnimationFrame(fishingAnimFrameId);
@@ -551,6 +567,7 @@ function leaveFishingMinigame() {
     document.getElementById("fishing-start-btn").style.display = "block";
     setGameState('ADVENTURES');
 }
+// ============================================
 
 // ==========================================
 // --- 2D RIPEN & PICK HOPS MINIGAME ---
@@ -745,10 +762,14 @@ function endHopsSession() {
     }
 }
 
+// === REPLACED ===
 function leaveHopsMinigame() {
-    if (hopsGameActive) {
-        if (!confirm("Abandon current harvest? You will lose any un-beamed crops!")) return;
+    // THE FIX: Remove the confirm dialogue and silently bank whatever they earned!
+    if (hopsGameActive && (hopsPoints > 0 || hopsScore > 0)) {
+        socket.emit('townAction', { action: 'claimHopsMinigame', points: hopsPoints, hopsHarvested: hopsScore });
+        if (typeof playRetroSound === 'function') playRetroSound('victory');
     }
+    
     hopsGameActive = false;
     clearInterval(hopsInterval);
     cancelAnimationFrame(hopsAnimFrameId);
@@ -756,3 +777,4 @@ function leaveHopsMinigame() {
     document.getElementById("hops-start-btn").style.display = "block";
     setGameState('ADVENTURES');
 }
+// ============================================
