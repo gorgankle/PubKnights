@@ -311,6 +311,7 @@ function scheduleNote(stepNum, time) {
     }
 }
 
+
 // Router for triggering the correct Web Audio API math
 function playSoundEvent(instId, note, time, vol, pan, duration) {
     if (instId === 'kick') playKick(time, vol, pan);
@@ -319,14 +320,16 @@ function playSoundEvent(instId, note, time, vol, pan, duration) {
     else if (instId === 'openhat') playHihat(time, duration || 0.3, vol, pan);
     else if (instId === 'tom') playTom(time, vol, pan);
     else if (instId === 'clap') playClap(time, vol, pan);
-	else if (instId === 'violin') playViolin(freq, time, vol, pan, duration || 0.5);
     else if (instId === 'fx_sweep') playSweep(time, vol, pan, duration || 2.0);
     else if (instId === 'fx_impact') playImpact(time, vol, pan);
     else if (instId === 'amb_vinyl') playVinyl(time, vol, pan, duration || 2.0);
     else {
         // It's a Synth, use frequency mapping
         let freq = typeof note === 'number' ? note : (NOTES[note] || 440);
-        if (instId === 'bass') playTone(freq, time, 'triangle', duration || 0.2, false, false, vol, pan);
+        
+        // THE FIX: Violin moved here, where 'freq' actually exists!
+        if (instId === 'violin') playViolin(freq, time, vol, pan, duration || 0.5);
+        else if (instId === 'bass') playTone(freq, time, 'triangle', duration || 0.2, false, false, vol, pan);
         else if (instId === 'saw') playTone(freq, time, 'sawtooth', duration || 0.2, false, false, vol, pan);
         else if (instId === 'pad') playTone(freq, time, 'sine', duration || 0.5, true, false, vol, pan);
         else if (instId === 'pluck') playTone(freq, time, 'triangle', duration || 0.1, false, true, vol, pan);
