@@ -1216,12 +1216,6 @@ function renderCombatModal(filter = 'DRINK') {
         btn.style.border = "1px solid #111";
         btn.style.color = "#fff";
         btn.onclick = () => renderCombatModal(f.id); 
-        
-       // === DELEGATE TO THE CLIENT DIRECTOR ===
-        if (typeof ClientDirector !== 'undefined') {
-            ClientDirector.applyModalLocks(item, slotDiv, filter);
-        }
-        // =======================================
 
         filterContainer.appendChild(btn);
     });
@@ -1246,34 +1240,17 @@ function renderCombatModal(filter = 'DRINK') {
         let rc = item.rarity === "Gorilla" ? "slot-jackpot" : (item.rarity ? `slot-${item.rarity.toLowerCase()}` : 'slot-common');
         slotDiv.className = `item-slot ${rc}`;
   
-  // === REPLACED in ui-render.js ===
-        // === TUTORIAL ITEM LOCKS ===
-        if (typeof activeCombatZone !== 'undefined' && activeCombatZone === 'TUTORIAL') {
-            let isTutorialLocked = true;
-            if (typeof currentTutorialStep !== 'undefined') {
-                // THE FIX: Check the mechanical actionType instead of the string name!
-                if (currentTutorialStep === 2 && item.combat && item.combat.actionType === 'heal') isTutorialLocked = false;
-                if (currentTutorialStep === 4 && item.combat && item.combat.actionType === 'throwable') isTutorialLocked = false;
-            }
-            
-            if (isTutorialLocked) {
-                slotDiv.style.pointerEvents = 'none';
-                slotDiv.style.opacity = '0.3';
-                slotDiv.style.filter = 'grayscale(100%)';
-                slotDiv.style.boxShadow = "none";
-                slotDiv.style.border = "none";
-            } else {
-                // Ensure the correct item is fully interactive and glowing
-                slotDiv.style.pointerEvents = 'auto';
-                slotDiv.style.opacity = '1.0';
-                slotDiv.style.filter = 'none';
-                slotDiv.style.boxShadow = "0 0 15px #2ecc71";
-                slotDiv.style.border = "2px solid #2ecc71";
-            }
+let slotDiv = document.createElement('div');
+        let rc = item.rarity === "Gorilla" ? "slot-jackpot" : (item.rarity ? `slot-${item.rarity.toLowerCase()}` : 'slot-common');
+        slotDiv.className = `item-slot ${rc}`;
+  
+        // === DELEGATE TO THE CLIENT DIRECTOR ===
+        if (typeof ClientDirector !== 'undefined') {
+            ClientDirector.applyModalLocks(item, slotDiv, filter);
         }
-        // ===========================
+        // =======================================
 		
-// === THE FIX: ALLOW ITEMS TO BE CLICKED ===
+        // === THE FIX: ALLOW ITEMS TO BE CLICKED ===
         slotDiv.onclick = () => {
             closeCombatModal();
             if (typeof selectCombatItem === 'function') {
