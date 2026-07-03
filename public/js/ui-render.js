@@ -555,42 +555,49 @@ if (hopsScreen) hopsScreen.style.display = "none";
             };
 
             slots.forEach(slotKey => {
-                const el = document.getElementById(`slot-${slotKey}`);
-                if (el) {
-                    // Universal drop hooks for empty or full slots
-                    el.ondragover = handleItemDragOver;
-                    el.ondrop = (e) => handleItemDrop(e, slotKey, 'equipment');
+                // Fetch BOTH the Knight tab slot and the Vault tab slot
+                const domElements = [
+                    document.getElementById(`slot-${slotKey}`),
+                    document.getElementById(`vault-slot-${slotKey}`)
+                ];
 
-                    const item = player.equipment[slotKey];
-                    if (item) {
-                        // Activate drag-away for equipped items
-                        el.draggable = true;
-                        el.ondragstart = (e) => handleItemDragStart(e, slotKey, 'equipment');
+                domElements.forEach(el => {
+                    if (el) {
+                        // Universal drop hooks for empty or full slots
+                        el.ondragover = handleItemDragOver;
+                        el.ondrop = (e) => handleItemDrop(e, slotKey, 'equipment');
 
-                        // Apply standard or Gorilla rarity borders
-                        let rc = item.rarity === "Gorilla" ? "slot-jackpot" : (item.rarity ? `slot-${item.rarity.toLowerCase()}` : 'slot-common');
-                        el.className = `equip-slot ${rc}`;
+                        const item = player.equipment[slotKey];
+                        if (item) {
+                            // Activate drag-away for equipped items
+                            el.draggable = true;
+                            el.ondragstart = (e) => handleItemDragStart(e, slotKey, 'equipment');
 
-                        // Extract and render the 24x24 procedural sprite
-                        let imgUrl = getItemSpriteURL(item);
-                        let imgHtml = imgUrl ? `<img src="${imgUrl}" style="width:32px;height:32px;image-rendering:pixelated;pointer-events:none;">` : ``;
-                        
-                        // Clear the placeholder letter and inject the image
-                        el.innerHTML = imgHtml;
-                        
-                        // Re-hook the tooltip logic
-                        el.onmouseenter = (e) => showItemTooltip(e, item, slotKey, 'equipment');
-                        el.onmouseleave = hideTooltip;
-                    } else {
-                        // Slot is empty - restore the vanilla placeholder state
-                        el.draggable = false;
-                        el.ondragstart = null;
-                        el.className = 'equip-slot'; 
-                        el.innerHTML = slotPlaceholders[slotKey]; // Injects H, A, W, G, or B
-                        el.onmouseenter = null;
-                        el.onmouseleave = null;
+                            // Apply standard or Gorilla rarity borders
+                            let rc = item.rarity === "Gorilla" ? "slot-jackpot" : (item.rarity ? `slot-${item.rarity.toLowerCase()}` : 'slot-common');
+                            el.className = `equip-slot ${rc}`;
+
+                            // Extract and render the 24x24 procedural sprite
+                            let imgUrl = getItemSpriteURL(item);
+                            let imgHtml = imgUrl ? `<img src="${imgUrl}" style="width:32px;height:32px;image-rendering:pixelated;pointer-events:none;">` : ``;
+                            
+                            // Clear the placeholder letter and inject the image
+                            el.innerHTML = imgHtml;
+                            
+                            // Re-hook the tooltip logic
+                            el.onmouseenter = (e) => showItemTooltip(e, item, slotKey, 'equipment');
+                            el.onmouseleave = hideTooltip;
+                        } else {
+                            // Slot is empty - restore the vanilla placeholder state
+                            el.draggable = false;
+                            el.ondragstart = null;
+                            el.className = 'equip-slot'; 
+                            el.innerHTML = slotPlaceholders[slotKey]; // Injects H, A, W, G, or B
+                            el.onmouseenter = null;
+                            el.onmouseleave = null;
+                        }
                     }
-                }
+                });
             });
 
 
