@@ -193,7 +193,7 @@ module.exports = {
                 { speaker: "Overlord", text: "FOOLISH MORTAL... YOU DARE TOUCH MY GEMS?", portraitId: "wilderness_overlord" },
                 { speaker: "Kreg", text: "Oh no... It's the Overlord! Try to hit it, run, do something!!", portraitId: "npc_kreg" }
             ]);
-            io.to(socketId).emit('playTrack', "The True Overlord"); 
+            io.to(socketId).emit('playTrack', "DOOM OF THE OVERLORD"); 
             
             // Instantly hand the player a turn so they can fight back!
             combat.atbPaused = false;

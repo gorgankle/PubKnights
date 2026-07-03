@@ -480,11 +480,28 @@ const combatInvList = document.getElementById("combat-inventory-list");
                             bagBtn.style.border = "2px solid #2ecc71";
                         }
                     }
+                    
+                    // === THE FIX: UNLOCK CONTROLS FOR THE BOSS ===
+                    else if (currentTutorialStep >= 5) { 
+                        let hasTarget = selectedEnemy && selectedEnemy.alive;
+                        let isAttackPhase = (combatPhase === 'PHASE_2');
+                        
+                        if (tSlash) {
+                            tSlash.disabled = !(hasTarget && isAttackPhase);
+                            if (!tSlash.disabled) {
+                                // Give it an angry red glow so they know they can fight!
+                                tSlash.style.boxShadow = "0 0 15px #e74c3c";
+                                tSlash.style.border = "2px solid #e74c3c";
+                            }
+                        }
+                        
+                        if (tHeavy) tHeavy.disabled = !(hasTarget && isAttackPhase);
+                        if (tEnd) tEnd.disabled = false;
+                        if (bagBtn) bagBtn.disabled = false;
+                    }
+                    // =============================================
                 }
             }
-            // ==================================
-        }
-    }
 }
 
         else {
