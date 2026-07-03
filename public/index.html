@@ -279,25 +279,20 @@
 <div id="town-vault-view" class="columns-container">
             
 <div id="knight-screen" class="panel column-left" style="display: none; width: 100%; max-width: 100%;">
-                <div id="profile-management-panel" class="panel" style="margin-bottom: 0;">
-                    
-<div id="level-up-panel" style="margin-bottom: 0;">
-                        </div>
-						
-<!-- === NEW: KNIGHT AND PET DASHBOARD PANEL === -->
-<div class="dashboard-panel" style="display: flex; gap: 10px; background: #1a1512; justify-content: center; padding: 10px; border: 1px dashed #4a3b2c;">
     
-    <!-- LEFT SIDE: KNIGHT -->
-    <div style="width: 50%; display: flex; flex-direction: column; align-items: center; border-right: 1px dashed #4a3b2c; padding-right: 10px;">
-        <h4 id="knight-header-name" style="margin: 0 0 5px 0; font-size: 11px; color: #ffcc66; border-bottom: 1px solid #3a2f26; padding-bottom: 4px; text-transform: uppercase; width: 100%; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">Your Knight</h4>
+    <!-- LEVEL UP / STATS BANNER (Full Width) -->
+    <div id="level-up-panel" style="margin-bottom: 0;"></div>
+    
+    <!-- THE NEW DASHBOARD GRID -->
+    <div class="modular-grid">
         
-        <div style="display: flex; justify-content: center; align-items: center; gap: 15px; width: 100%; margin-top: 5px;">
+        <!-- MODULE 1: THE KNIGHT -->
+        <div class="dashboard-module">
+            <h3 id="knight-header-name" style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">Your Knight</h3>
             
-            <div style="display: flex; flex-direction: column; align-items: center;">
-                <canvas id="main-player-canvas" width="96" height="96" style="background: #221a14; border: 1px solid #4a3b2c; border-radius: 4px; image-rendering: pixelated; width: 144px; height: 144px; box-shadow: inset 0 0 10px rgba(0,0,0,0.8);"></canvas>
-            </div>
-
-            <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+            <div style="display: flex; justify-content: center; align-items: center; gap: 15px; width: 100%;">
+                <canvas id="main-player-canvas" width="96" height="96" style="background: #221a14; border: 1px solid #4a3b2c; border-radius: 4px; image-rendering: pixelated; width: 120px; height: 120px; box-shadow: inset 0 0 10px rgba(0,0,0,0.8);"></canvas>
+                
                 <div class="paper-doll-grid">
                     <div class="equip-slot empty-cell"></div>
                     <div class="equip-slot" id="slot-helmet">H</div>
@@ -312,62 +307,71 @@
                     <div class="equip-slot empty-cell"></div>
                 </div>
             </div>
-            
-        </div>
 
-        <button id="knight-wardrobe-btn" onclick="toggleWardrobe()" style="width: 90%; background: #2c3e50; border-color: #34495e; font-size: 11px; padding: 6px; margin-top: 12px;">🪞 Wardrobe</button>
+            <button id="knight-wardrobe-btn" onclick="toggleWardrobe()" style="width: 100%; background: #2c3e50; border-color: #34495e; font-size: 11px; padding: 6px; margin-top: 12px;">🪞 Wardrobe</button>
 
-        <div id="knight-wardrobe-ui" style="display: none; width: 100%; margin-top: 10px;">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
-                <button onclick="cycleTownAppearance('gender')" style="font-size: 9px; padding: 4px;">Gender</button>
-                <button onclick="cycleTownAppearance('skin')" style="font-size: 9px; padding: 4px;">Skin</button>
-                <button onclick="cycleTownAppearance('hair')" style="font-size: 9px; padding: 4px;">Hair</button>
-                <button onclick="cycleTownAppearance('hairColor')" style="font-size: 9px; padding: 4px;">Hair Color</button>
-                <button onclick="cycleTownAppearance('eyes')" style="font-size: 9px; padding: 4px;">Eyes</button>
-                <button onclick="cycleTownAppearance('shirtColor')" style="font-size: 9px; padding: 4px;">Shirt</button>
-                <button onclick="cycleTownAppearance('pantsColor')" style="font-size: 9px; padding: 4px;">Pants</button>
-                <button onclick="cycleTownAppearance('bootsColor')" style="font-size: 9px; padding: 4px;">Boots</button>
-                <button onclick="toggleWardrobe()" style="grid-column: span 2; background: #c0392b; font-size: 10px; padding: 6px; margin-top: 4px;">Close Wardrobe</button>
-            </div>
-        </div>
-
-        <div id="knight-town-stats" style="margin-top: 8px; font-size: 10px; text-align: left; background: #110d0a; padding: 6px; border-radius: 4px; border: 1px solid #3a2f26; width: 100%; box-sizing: border-box;">
-            </div>
-    </div>
-
-    <!-- RIGHT SIDE: PET -->
-<div style="text-align: center; width: 50%; display: flex; flex-direction: column; align-items: center;">
-        <h4 id="pet-header-name" style="margin: 0 0 5px 0; font-size: 11px; color: #bbaaa0; border-bottom: 1px solid #3a2f26; padding-bottom: 4px; text-transform: uppercase; width: 100%;">Companion</h4>
-        
-        <button id="open-adoption-btn" onclick="openAdoptionMenu()" style="width: 90%; background: #27ae60; border-color: #2ecc71; margin-top: 15px; font-size: 11px; padding: 8px;">🐕 Adopt a Pet</button>
-        
-        <canvas id="main-pet-canvas" width="96" height="96" style="display: none; background: #221a14; border: 1px solid #4a3b2c; border-radius: 4px; image-rendering: pixelated; width: 120px; height: 120px; margin-top: 5px;"></canvas>
-
-        <button id="edit-pet-btn" onclick="editPetMenu()" style="display: none; width: 90%; background: #2c3e50; border-color: #34495e; margin-top: 5px; font-size: 10px; padding: 4px;">✏️ Edit Pet</button>
-        
-        <button id="train-pet-btn" onclick="trainPet()" style="display: none; width: 90%; background: #8e44ad; border-color: #9b59b6; margin-top: 5px; font-size: 10px; padding: 4px;" onmouseenter="showSystemTooltip('pet_train', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🦴 Feed Kibble</button>
-        
-        <div id="pet-adoption-ui" style="display: none; width: 100%; margin-top: 5px;">
-            <input type="text" id="pet-name-input" value="Name your pet" maxlength="10" style="background:#110d0a; color:#f1c40f; border:1px solid #4a3b2c; padding:4px; font-family:monospace; width:90%; text-align:center; font-size: 10px; margin-bottom: 4px; border-radius: 3px;">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin-bottom: 4px;">
-                <button onclick="cyclePetAppearance('type')" style="font-size: 9px; padding: 2px; margin: 0;">Type</button>
-                <button onclick="cyclePetAppearance('furColor')" style="font-size: 9px; padding: 2px; margin: 0;">Fur</button>
-                <button onclick="cyclePetAppearance('collarColor')" style="font-size: 9px; padding: 2px; margin: 0; grid-column: span 2;">Collar</button>
-            </div>
-            <button id="confirm-pet-btn" onclick="adoptPet()" style="background: #27ae60; border-color: #2ecc71; font-size: 10px; padding: 4px; width: 100%; margin: 0;">Adopt (10g)</button>
-        </div>
-    </div>
-</div>
-
-            
-
-                    <div class="dashboard-panel" id="main-backpack-panel">
-                        <h3>🎒 Knight's Backpack (<span id="inv-count">0</span>/5 Slots)</h3>
-                        <div id="inventory-list" style="background: #1a1512; padding: 6px; border-radius: 4px; border: 1px solid #4a3b2c;"></div>
-                    </div>
-
+            <!-- HIDDEN WARDROBE UI -->
+            <div id="knight-wardrobe-ui" style="display: none; width: 100%; margin-top: 10px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                    <button onclick="cycleTownAppearance('gender')" style="font-size: 9px; padding: 4px;">Gender</button>
+                    <button onclick="cycleTownAppearance('skin')" style="font-size: 9px; padding: 4px;">Skin</button>
+                    <button onclick="cycleTownAppearance('hair')" style="font-size: 9px; padding: 4px;">Hair</button>
+                    <button onclick="cycleTownAppearance('hairColor')" style="font-size: 9px; padding: 4px;">Hair Color</button>
+                    <button onclick="cycleTownAppearance('eyes')" style="font-size: 9px; padding: 4px;">Eyes</button>
+                    <button onclick="cycleTownAppearance('shirtColor')" style="font-size: 9px; padding: 4px;">Shirt</button>
+                    <button onclick="cycleTownAppearance('pantsColor')" style="font-size: 9px; padding: 4px;">Pants</button>
+                    <button onclick="cycleTownAppearance('bootsColor')" style="font-size: 9px; padding: 4px;">Boots</button>
+                    <button onclick="toggleWardrobe()" style="grid-column: span 2; background: #c0392b; font-size: 10px; padding: 6px; margin-top: 4px;">Close Wardrobe</button>
                 </div>
             </div>
+
+            <div id="knight-town-stats" style="margin-top: 12px; font-size: 10px; text-align: left; background: #110d0a; padding: 8px; border-radius: 4px; border: 1px solid #3a2f26; width: 100%; box-sizing: border-box;">
+                <!-- Injected via ui-render.js -->
+            </div>
+        </div>
+
+        <!-- MODULE 2: COMPANION -->
+        <div class="dashboard-module">
+            <h3 id="pet-header-name" style="color: #bbaaa0;">Companion</h3>
+            
+            <button id="open-adoption-btn" onclick="openAdoptionMenu()" style="width: 100%; background: #27ae60; border-color: #2ecc71; margin-top: auto; margin-bottom: auto; font-size: 13px; padding: 12px;">🐕 Adopt a Pet</button>
+            
+            <canvas id="main-pet-canvas" width="96" height="96" style="display: none; background: #221a14; border: 1px solid #4a3b2c; border-radius: 4px; image-rendering: pixelated; width: 120px; height: 120px; margin-top: 5px; box-shadow: inset 0 0 10px rgba(0,0,0,0.8);"></canvas>
+
+            <button id="edit-pet-btn" onclick="editPetMenu()" style="display: none; width: 100%; background: #2c3e50; border-color: #34495e; margin-top: 12px; font-size: 11px; padding: 6px;">✏️ Edit Pet</button>
+            
+            <button id="train-pet-btn" onclick="trainPet()" style="display: none; width: 100%; background: #8e44ad; border-color: #9b59b6; margin-top: 6px; font-size: 11px; padding: 6px;" onmouseenter="showSystemTooltip('pet_train', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🦴 Feed Kibble</button>
+            
+            <!-- HIDDEN ADOPTION UI -->
+            <div id="pet-adoption-ui" style="display: none; width: 100%; margin-top: 10px;">
+                <input type="text" id="pet-name-input" value="Name your pet" maxlength="10" style="background:#110d0a; color:#f1c40f; border:1px solid #4a3b2c; padding:6px; font-family:monospace; width:100%; box-sizing:border-box; text-align:center; font-size: 11px; margin-bottom: 6px; border-radius: 3px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 6px;">
+                    <button onclick="cyclePetAppearance('type')" style="font-size: 10px; padding: 4px; margin: 0;">Type</button>
+                    <button onclick="cyclePetAppearance('furColor')" style="font-size: 10px; padding: 4px; margin: 0;">Fur</button>
+                    <button onclick="cyclePetAppearance('collarColor')" style="font-size: 10px; padding: 4px; margin: 0; grid-column: span 2;">Collar</button>
+                </div>
+                <button id="confirm-pet-btn" onclick="adoptPet()" style="background: #27ae60; border-color: #2ecc71; font-size: 12px; padding: 6px; width: 100%; margin: 0;">Adopt (10g)</button>
+            </div>
+        </div>
+
+        <!-- MODULE 3: BACKPACK -->
+        <!-- Note: ui-render.js specifically queries the h3 tag in this div to inject the Expand/Sort buttons -->
+        <div class="dashboard-module" id="main-backpack-panel" style="justify-content: flex-start;">
+            <h3>🎒 Knight's Backpack (<span id="inv-count">0</span>/5 Slots)</h3>
+            <div id="inventory-list" style="background: #1a1512; padding: 6px; border-radius: 4px; border: 1px solid #4a3b2c; width: 100%; box-sizing: border-box;"></div>
+        </div>
+
+        <!-- MODULE 4: MOUNTS & VEHICLES (UNDER CONSTRUCTION) -->
+        <div class="dashboard-module uc-module">
+            <h3>🐎 Stables</h3>
+            <div style="font-size: 11px; color: #7f8c8d; margin-bottom: 15px; padding: 10px; background: #111; border-radius: 4px; width: 100%; box-sizing: border-box;">
+                Stables are currently under construction. Future updates will allow you to assign mounts to increase Guild Expedition yields.
+            </div>
+            <button class="uc-button" disabled>Unlocks at Lvl 10</button>
+        </div>
+
+    </div> <!-- End Modular Grid -->
+</div>
 
 
 
