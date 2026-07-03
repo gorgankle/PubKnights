@@ -519,7 +519,13 @@ socket.on('enemyTurnReceipt', (receipt) => {
                 
                 setTimeout(() => {
                     transitionToTown();
-					setMusicTrack("Tavern Grind");
+                    
+                    // === THE FIX: RESET THE MUSIC TO THE FIRST TRACK ===
+                    if (typeof musicTracks !== 'undefined' && typeof cycleMusicTrack === 'function') {
+                        activeTrackIndex = -1; // Offsets the index so it perfectly lands on track 0!
+                        cycleMusicTrack();
+                    }
+                    // ===================================================
                     
                     // Queue Kreg's Introduction!
                     playDialogueSequence([
