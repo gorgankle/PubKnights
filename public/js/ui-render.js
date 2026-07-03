@@ -1236,11 +1236,7 @@ function renderCombatModal(filter = 'DRINK') {
         if (!showItem) continue; 
 
         foundAny = true; 
-        let slotDiv = document.createElement('div');
-        let rc = item.rarity === "Gorilla" ? "slot-jackpot" : (item.rarity ? `slot-${item.rarity.toLowerCase()}` : 'slot-common');
-        slotDiv.className = `item-slot ${rc}`;
-  
-let slotDiv = document.createElement('div');
+       let slotDiv = document.createElement('div');
         let rc = item.rarity === "Gorilla" ? "slot-jackpot" : (item.rarity ? `slot-${item.rarity.toLowerCase()}` : 'slot-common');
         slotDiv.className = `item-slot ${rc}`;
   
