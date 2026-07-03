@@ -101,5 +101,23 @@ window.ClientDirector = {
             slotDiv.style.border = "2px solid #2ecc71";
         }
         return true; // Tells the UI loop that the Director handled the styling
+    },
+	// 4. Hook into the Loot Screen to hide the Sell buttons
+    applyLootScreenLocks: function() {
+        if (typeof activeCombatZone === 'undefined' || activeCombatZone !== 'TUTORIAL') return;
+        
+        const lootScreen = document.getElementById("loot-screen");
+        if (lootScreen) {
+            // Find every button inside the loot screen
+            const buttons = lootScreen.querySelectorAll("button");
+            buttons.forEach(btn => {
+                // If the button says "Sell", completely hide it from the DOM
+                if (btn.innerText.toLowerCase().includes("sell")) {
+                    btn.style.display = "none";
+                }
+            });
+        }
     }
+	
 };
+

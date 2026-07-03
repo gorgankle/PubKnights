@@ -324,6 +324,7 @@ function refreshLootUI() {
             </div>
         `;
     });
+	if (typeof ClientDirector !== 'undefined') ClientDirector.applyLootScreenLocks();
 }
 function takeLoot(idx) {
     if (player.inventory.length >= (player.maxInventorySlots || 5)) {

@@ -99,7 +99,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
     function getMaxStamina(player) { return getEffectiveStat(player, 'maxStamina') * 25; }// <--- FIXED: Now looks at maxStamina
 // ============================================
 
-    // --- SECURE KILL PROCESSOR ---
+   // --- SECURE KILL PROCESSOR ---
     function processSecureKill(socketId, serverEnemy) {
         let p = activePlayers[socketId];
         let combat = activeCombats[socketId];
@@ -109,39 +109,46 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         let isGorilla = (combat.zone === 'GORILLA_ARENA'); 
         let isBaited = (combat.zone === 'WILDERNESS' && p.mapBaited);
 
-        let goldReward = ((isGorilla ? 500 : (isBaited ? 60 : 25)) * multiplier);
+        let goldReward = 0;
         let xpReward = 0;
-
         let droppedItemObj = null;
-        let table = LootTables[serverEnemy.id];
-        
-        if (table) {
-            xpReward = (table.xpDrop || 0) * multiplier;
-            if (Math.random() <= table.dropChance) {
-                let totalWeight = table.pools.reduce((sum, entry) => sum + entry.weight, 0);
-                let roll = Math.random() * totalWeight;
-                let droppedItemId = null;
-                for (let entry of table.pools) {
-                    if (roll < entry.weight) { droppedItemId = entry.itemId; break; }
-                    roll -= entry.weight;
-                }
-                if (droppedItemId && ItemDatabase[droppedItemId]) {
-                    droppedItemObj = JSON.parse(JSON.stringify(ItemDatabase[droppedItemId]));
+
+        // === THE FIX: DISABLE RANDOM LOOT IN THE TUTORIAL ===
+        // Only run standard loot tables if we are in a real map!
+        if (combat.zone !== 'TUTORIAL') {
+            goldReward = ((isGorilla ? 500 : (isBaited ? 60 : 25)) * multiplier);
+            let table = LootTables[serverEnemy.id];
+            
+            if (table) {
+                xpReward = (table.xpDrop || 0) * multiplier;
+                if (Math.random() <= table.dropChance) {
+                    let totalWeight = table.pools.reduce((sum, entry) => sum + entry.weight, 0);
+                    let roll = Math.random() * totalWeight;
+                    let droppedItemId = null;
+                    for (let entry of table.pools) {
+                        if (roll < entry.weight) { droppedItemId = entry.itemId; break; }
+                        roll -= entry.weight;
+                    }
+                    if (droppedItemId && ItemDatabase[droppedItemId]) {
+                        droppedItemObj = JSON.parse(JSON.stringify(ItemDatabase[droppedItemId]));
+                    }
                 }
             }
+
+            p.pendingGold = (p.pendingGold || 0) + goldReward;
+            p.pendingXp = (p.pendingXp || 0) + xpReward;
+            p.pendingLoot = p.pendingLoot || [];
+            if (droppedItemObj) p.pendingLoot.push(droppedItemObj);
+
+            io.to(socketId).emit('killConfirmed', { 
+                gold: goldReward, xp: xpReward, item: droppedItemObj, isPet: false, enemyName: serverEnemy.name 
+            });
         }
+        // ====================================================
 
-        p.pendingGold = (p.pendingGold || 0) + goldReward;
-        p.pendingXp = (p.pendingXp || 0) + xpReward;
-        p.pendingLoot = p.pendingLoot || [];
-        if (droppedItemObj) p.pendingLoot.push(droppedItemObj);
-
-        io.to(socketId).emit('killConfirmed', { 
-            gold: goldReward, xp: xpReward, item: droppedItemObj, isPet: false, enemyName: serverEnemy.name 
-        });
-
-  // === SERVER AUTOMATICALLY DETECTS VICTORY ===
+        // === SERVER AUTOMATICALLY DETECTS VICTORY ===
         let allDead = combat.enemies.every(e => !e.alive);
+        // ... [The rest of the victory logic remains exactly the same]
         if (allDead) {
             
             // === NEW: TUTORIAL DIRECTOR HOOK ===
