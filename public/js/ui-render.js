@@ -449,6 +449,8 @@ const combatInvList = document.getElementById("combat-inventory-list");
             if (typeof ClientDirector !== 'undefined') {
                 ClientDirector.applyCombatLocks(bagBtn, spellBtn);
             }
+        } // Closes the combatInvList check
+    } // Closes the gameState === 'COMBAT' check
 } // Closes the exclusive full-screen views check
 
         else {
