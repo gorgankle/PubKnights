@@ -519,6 +519,7 @@ socket.on('enemyTurnReceipt', (receipt) => {
                 
                 setTimeout(() => {
                     transitionToTown();
+					setMusicTrack("Tavern Grind");
                     
                     // Queue Kreg's Introduction!
                     playDialogueSequence([
