@@ -1017,6 +1017,13 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
         let p = activePlayers[socket.id];
         if (!p || !p.pendingLoot || !p.pendingLoot[idx]) return;
 
+        // === THE FIX: PREVENT TUTORIAL SELLING ===
+        let combat = activeCombats[socket.id];
+        if (combat && combat.zone === 'TUTORIAL') {
+            return socket.emit('inventoryReceipt', { success: false, message: "🗣️ Director: 'There are no merchants out here! Just take it!'" });
+        }
+        // =========================================
+
         let itemToSell = p.pendingLoot.splice(idx, 1)[0];
         let val = itemToSell.value || (itemToSell.rarity === "Gorilla" ? 500 : 15);
         p.gold += val;

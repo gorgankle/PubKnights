@@ -445,77 +445,10 @@ const combatInvList = document.getElementById("combat-inventory-list");
                 combatInvList.appendChild(cancelBtn);
             }
             
-// === REPLACED in ui-render.js ===
-            // === NEW: TUTORIAL UI DOM LOCKS ===
-            if (typeof activeCombatZone !== 'undefined' && activeCombatZone === 'TUTORIAL') {
-                if (typeof currentTutorialStep !== 'undefined') {
-                    // THE FIX: Safely grab the buttons directly from the DOM for this specific block!
-                    let tSlash = document.getElementById("slash-btn");
-                    let tHeavy = document.getElementById("heavy-btn");
-                    let tEnd = document.getElementById("end-btn");
-                    let tFlee = document.getElementById("flee-btn");
-
-                    // Lock EVERYTHING by default
-                    if (tSlash) tSlash.disabled = true;
-                    if (tHeavy) tHeavy.disabled = true;
-                    if (tEnd) tEnd.disabled = true;
-                    if (tFlee) tFlee.disabled = true;
-                    if (bagBtn) bagBtn.disabled = true;
-                    if (spellBtn) spellBtn.disabled = true;
-                    
-                    if (currentTutorialStep === 1) { // Force Pass Turn
-                        if (tEnd) {
-                            tEnd.disabled = false;
-                            tEnd.style.boxShadow = "0 0 15px #e67e22"; // Orange pulse
-                            tEnd.style.border = "2px solid #e67e22";
-                        }
-                    } 
-                    else if (currentTutorialStep === 2) { // Force Bag (Stout)
-                        if (bagBtn) {
-                            bagBtn.disabled = false;
-                            bagBtn.style.boxShadow = "0 0 15px #2ecc71";
-                            bagBtn.style.border = "2px solid #2ecc71";
-                        }
-                    }
-                    else if (currentTutorialStep === 3) { // Force Attack
-                        let hasTarget = selectedEnemy && selectedEnemy.alive;
-                        if (tSlash) {
-                            tSlash.disabled = !(hasTarget && combatPhase === 'PHASE_2');
-                            tSlash.style.boxShadow = "0 0 15px #2ecc71";
-                            tSlash.style.border = "2px solid #2ecc71";
-                        }
-                    }
-                    else if (currentTutorialStep === 4) { // Force Bag (Bomb)
-                        if (bagBtn) {
-                            bagBtn.disabled = false;
-                            bagBtn.style.boxShadow = "0 0 15px #2ecc71";
-                            bagBtn.style.border = "2px solid #2ecc71";
-                        }
-                    }
-                    
-                   // === THE FIX: UNLOCK CONTROLS FOR THE BOSS ===
-                    else if (currentTutorialStep >= 5) { 
-                        let hasTarget = selectedEnemy && selectedEnemy.alive;
-                        let isAttackPhase = (combatPhase === 'PHASE_2');
-                        
-                        if (tSlash) {
-                            tSlash.disabled = !(hasTarget && isAttackPhase);
-                            if (!tSlash.disabled) {
-                                // Give it an angry red glow so they know they can fight!
-                                tSlash.style.boxShadow = "0 0 15px #e74c3c";
-                                tSlash.style.border = "2px solid #e74c3c";
-                            }
-                        }
-                        
-                        if (tHeavy) tHeavy.disabled = !(hasTarget && isAttackPhase);
-                        if (tEnd) tEnd.disabled = false;
-                        if (bagBtn) bagBtn.disabled = false;
-                    }
-                    // =============================================
-                } // Closes the currentTutorialStep check
-            } // Closes the activeCombatZone check
-        } // Closes the combatInvList check
-    } // Closes the gameState === 'COMBAT' check
+// === DELEGATE TO THE CLIENT DIRECTOR ===
+            if (typeof ClientDirector !== 'undefined') {
+                ClientDirector.applyCombatLocks(bagBtn, spellBtn);
+            }
 } // Closes the exclusive full-screen views check
 
         else {
@@ -1282,20 +1215,11 @@ function renderCombatModal(filter = 'DRINK') {
         btn.style.color = "#fff";
         btn.onclick = () => renderCombatModal(f.id); 
         
-        // === THE FIX: TUTORIAL FILTER LOCKS ===
-        if (typeof activeCombatZone !== 'undefined' && activeCombatZone === 'TUTORIAL') {
-            if (typeof currentTutorialStep !== 'undefined') {
-                if (currentTutorialStep === 1 && f.id !== 'DRINK') {
-                    btn.disabled = true;
-                    btn.style.opacity = '0.3';
-                }
-                if (currentTutorialStep === 3 && f.id !== 'THROW') {
-                    btn.disabled = true;
-                    btn.style.opacity = '0.3';
-                }
-            }
+       // === DELEGATE TO THE CLIENT DIRECTOR ===
+        if (typeof ClientDirector !== 'undefined') {
+            ClientDirector.applyModalLocks(item, slotDiv, filter);
         }
-        // ======================================
+        // =======================================
 
         filterContainer.appendChild(btn);
     });

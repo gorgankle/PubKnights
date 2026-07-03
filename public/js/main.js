@@ -699,33 +699,3 @@ socket.on('playTrack', (trackName) => {
     }
 });
 
-// === NEW: TUTORIAL CANVAS HIGHLIGHTS ===
-window.drawTutorialHighlights = function() {
-    if (activeCombatZone !== 'TUTORIAL' || gameState !== 'COMBAT') return;
-    
-    ctx.save();
-    ctx.lineWidth = 4;
-    ctx.setLineDash([5, 5]); // Creates a tactical dashed border
-    ctx.strokeStyle = "rgba(46, 204, 113, 1.0)"; // Solid Green
-    ctx.fillStyle = "rgba(46, 204, 113, 0.3)";   // Semi-transparent Green
-    
-    let targetX = -1, targetY = -1;
-
-    // Step 3: Move in to attack the Publing
-    if (currentTutorialStep === 3 && combatPhase === 'PHASE_1') {
-        targetX = 1; targetY = 1; // Directly in front of the Publing
-    } 
-    // Step 4: Run away before bombing
-    else if (currentTutorialStep === 4 && combatPhase === 'PHASE_1') {
-        targetX = 1; targetY = 2; // Safe tile in the back corner
-    }
-
-    if (targetX !== -1 && targetY !== -1) {
-        ctx.beginPath();
-        ctx.rect(targetX * currentTileSize, targetY * currentTileSize, currentTileSize, currentTileSize);
-        ctx.fill();
-        ctx.stroke();
-    }
-    
-    ctx.restore();
-};

@@ -428,7 +428,7 @@ if (SpriteMatrices[e.id]) {
     // =============================
 
     // === THE FIX: DRAW TUTORIAL HIGHLIGHTS ===
-    if (typeof drawTutorialHighlights === 'function') drawTutorialHighlights();
+ if (typeof ClientDirector !== 'undefined') ClientDirector.drawTacticalHighlights(ctx);
 
 } // <--- This bracket closes drawGrid()!
 
