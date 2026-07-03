@@ -481,7 +481,7 @@ const combatInvList = document.getElementById("combat-inventory-list");
                         }
                     }
                     
-                    // === THE FIX: UNLOCK CONTROLS FOR THE BOSS ===
+                   // === THE FIX: UNLOCK CONTROLS FOR THE BOSS ===
                     else if (currentTutorialStep >= 5) { 
                         let hasTarget = selectedEnemy && selectedEnemy.alive;
                         let isAttackPhase = (combatPhase === 'PHASE_2');
@@ -500,9 +500,11 @@ const combatInvList = document.getElementById("combat-inventory-list");
                         if (bagBtn) bagBtn.disabled = false;
                     }
                     // =============================================
-                }
-            }
-}
+                } // Closes the currentTutorialStep check
+            } // Closes the activeCombatZone check
+        } // Closes the combatInvList check
+    } // Closes the gameState === 'COMBAT' check
+} // Closes the exclusive full-screen views check
 
         else {
             // --- CONSOLIDATED TABBED VIEWS ---

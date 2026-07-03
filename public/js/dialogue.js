@@ -122,7 +122,18 @@ function renderDialoguePortrait(portraitId) {
         
     } else if (portraitId) {
         if (SpriteMatrices[portraitId]) {
-            drawOptimizedSprite(pCtx, portraitId, SpriteMatrices[portraitId], 0, 0, 96);
+            // === THE FIX: ZOOM IN ON NPCs ===
+            if (portraitId.startsWith('npc_')) {
+                // Apply the exact same zoom and cropping coordinates as the player!
+                const zoomSize = 180; 
+                const ox = -30;       
+                const oy = -20;
+                drawOptimizedSprite(pCtx, portraitId, SpriteMatrices[portraitId], ox, oy, zoomSize);
+            } else {
+                // Standard items and monsters render fully centered and uncropped
+                drawOptimizedSprite(pCtx, portraitId, SpriteMatrices[portraitId], 0, 0, 96);
+            }
+            // ================================
         }
     }
 }
