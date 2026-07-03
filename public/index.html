@@ -449,43 +449,76 @@
                 
 </div> 
 </div>
+<!-- === DEDICATED ADVENTURES SCREEN (GRID REFACTOR) === -->
+<div id="adventures-screen" class="panel" style="display: none; width: 100%; margin-bottom: 0; min-height: 486px; flex-direction: column; gap: 10px;">
+    
+    <!-- Header -->
+    <div class="dashboard-panel" style="background: #1a1512; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; margin-bottom: 5px; border: 1px solid #4a3b2c;">
+        <span style="color: #ffcc66; font-weight: bold; font-size:15px;">⚔️ Adventure Board</span>
+        <button onclick="setGameState('TOWN')" style="background: #c0392b; margin:0; padding:6px 14px; font-size: 12px;">↩ Return to Town</button>
+    </div>
 
-                <!-- === NEW: DEDICATED ADVENTURES SCREEN === -->
-		<div id="adventures-screen" class="panel" style="display: none; width: 100%; margin-bottom: 0; min-height: 486px; flex-direction: column; gap: 10px;">
-                    <div class="dashboard-panel" style="background: #1a1512; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; margin-bottom: 5px; border: 1px solid #4a3b2c;">
-                        <span style="color: #ffcc66; font-weight: bold; font-size:15px;">⚔️ Adventure Board</span>
-                        <button onclick="setGameState('TOWN')" style="background: #c0392b; margin:0; padding:6px 14px;">↩ Return to Town</button>
-                    </div>
+    <!-- Responsive Grid Layout Container -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px; align-items: start;">
+        
+        <!-- MODULE 1: Combat Deployments -->
+        <div class="dashboard-panel" style="margin-bottom: 0;">
+            <h3 style="color: #e74c3c; border-bottom: 1px dashed #c0392b;">⚔️ Combat Deployments</h3>
+            
+            <!-- Wilderness Grid -->
+            <div style="display: grid; grid-template-columns: 30px 1fr 30px 60px; gap: 4px; margin-bottom: 4px;">
+                <button onclick="changeZoneLevel('WILDERNESS', -1)" style="margin: 0; background: #4a3b2c; padding: 6px 0;">◀</button>
+                <button id="gate-btn" onclick="transitionToCombat('WILDERNESS')" style="margin: 0; padding: 6px 0;">Deploy to Wilds (Lvl 1)</button>
+                <button onclick="changeZoneLevel('WILDERNESS', 1)" style="margin: 0; background: #4a3b2c; padding: 6px 0;">▶</button>
+                <button id="bait-btn" onclick="baitWildernessMap()" style="font-size: 10px; margin: 0; padding: 6px 0;" onmouseenter="showSystemTooltip('bait_wilds', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🎣 Bait</button>
+            </div>
+            
+            <!-- Tracking Banner -->
+            <div id="bait-status-banner" style="font-size: 9px; text-align: center; color: #bbaaa0; margin-bottom: 8px; font-weight: bold; border: 1px solid #443a32; padding: 4px; background: #1a1512; border-radius: 3px;">
+                TRACKING SIGNAL: NORMAL
+            </div>
 
-                    <div class="dashboard-panel">
-                        <h3>⚔️ Combat Adventures</h3>
-                        <div style="margin-bottom: 6px; display: flex; gap: 4px; align-items: center;">
-                            <button onclick="changeZoneLevel('WILDERNESS', -1)" style="padding: 4px 8px; margin: 0; background: #4a3b2c;">◀</button>
-                            <button id="gate-btn" onclick="transitionToCombat('WILDERNESS')" style="flex-grow: 1; margin: 0;">Deploy to Wilds (Lvl 1)</button>
-                            <button onclick="changeZoneLevel('WILDERNESS', 1)" style="padding: 4px 8px; margin: 0; background: #4a3b2c;">▶</button>
-                            <button id="bait-btn" onclick="baitWildernessMap()" style="font-size: 10px; margin: 0;" onmouseenter="showSystemTooltip('bait_wilds', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🎣 Bait</button>
-                        </div>
-                        <div id="bait-status-banner" style="font-size: 9px; text-align: center; color: #bbaaa0; margin-bottom: 6px; font-weight: bold; border: 1px solid #443a32; padding: 2px; background: #1a1512; border-radius: 3px;">
-                            TRACKING SIGNAL: NORMAL
-                        </div>
-                        <div style="display: flex; gap: 4px; width: 98%; align-items: center;">
-                            <button onclick="changeZoneLevel('CELLARS', -1)" style="padding: 4px 8px; margin: 0; background: #4a3b2c;">◀</button>
-                            <button id="cellar-gate-btn" onclick="transitionToCombat('CELLARS')" style="flex-grow: 1; margin: 0;">🔒 Forbidden Cellars</button>
-                            <button onclick="changeZoneLevel('CELLARS', 1)" style="padding: 4px 8px; margin: 0; background: #4a3b2c;">▶</button>
-                            <button id="chum-btn" onclick="chumForbiddenCellars()" style="font-size: 10px; width: 80px; margin: 0;" onmouseenter="showSystemTooltip('chum_cellars', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🛢️ Chum</button>
-                        </div>
-                        <button id="gorilla-btn" onclick="transitionToCombat('GORILLA_ARENA')" style="background: #c0392b; border-color: #ff3333; width: 98%; margin-top: 4px;">🦍 EVENT: Gorilla Pit</button>
-						<!-- === NEW: PROCEDURAL ABYSS DEPLOYMENT === -->
-<button id="abyss-btn" onclick="transitionToCombat('ABYSS')" style="background: #190a2e; border-color: #5b2c6f; color: #d7bde2; width: 98%; margin-top: 8px; border-style: dashed;">🌌 Descend into the Procedural Abyss (Depth <span id="abyss-depth-indicator">1</span>)</button>
-                    </div>
+            <!-- Cellars Grid -->
+            <div style="display: grid; grid-template-columns: 30px 1fr 30px 60px; gap: 4px; margin-bottom: 8px;">
+                <button onclick="changeZoneLevel('CELLARS', -1)" style="margin: 0; background: #4a3b2c; padding: 6px 0;">◀</button>
+                <button id="cellar-gate-btn" onclick="transitionToCombat('CELLARS')" style="margin: 0; padding: 6px 0;">🔒 Forbidden Cellars</button>
+                <button onclick="changeZoneLevel('CELLARS', 1)" style="margin: 0; background: #4a3b2c; padding: 6px 0;">▶</button>
+                <button id="chum-btn" onclick="chumForbiddenCellars()" style="font-size: 10px; margin: 0; padding: 6px 0;" onmouseenter="showSystemTooltip('chum_cellars', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🛢️ Chum</button>
+			    <button id="abyss-btn" onclick="transitionToCombat('ABYSS')" style="background: #190a2e; border-color: #5b2c6f; color: #d7bde2; margin: 0; padding: 8px; border-style: dashed;">🌌 Descend into Procedural Abyss (Depth <span id="abyss-depth-indicator">1</span>)</button>
+				
+            </div>
 
-                    <div class="dashboard-panel" style="border: 2px dashed #27ae60; background: #1a251e; margin-top: 15px;">
-                        <h3 style="color: #2ecc71;">🪓 Guild Expeditions</h3>
-                        <button onclick="setGameState('MINIGAME_LUMBER')" style="background: #27ae60; border-color: #2ecc71; width: 100%; padding: 10px; margin-bottom: 8px;">🌲 Timber Camp (Active Chopping)</button>
-                        <button onclick="setGameState('MINIGAME_FISHING')" style="background: #2980b9; border-color: #3498db; width: 100%; padding: 10px; margin-bottom: 8px;">🐟 The Fishing Pond (Active Angling)</button>
-                        <button onclick="setGameState('MINIGAME_HOPS')" style="background: #8e44ad; border-color: #9b59b6; width: 100%; padding: 10px;">🌾 Hops Farm (Active Picking)</button>
-                    </div>
-                </div>
+            <!-- Special Events & Procedural Modes -->
+            <div style="display: grid; grid-template-columns: 1fr; gap: 6px;">
+                <button id="gorilla-btn" onclick="transitionToCombat('GORILLA_ARENA')" style="background: #c0392b; border-color: #ff3333; margin: 0; padding: 8px;">🦍 EVENT: Gorilla Pit</button>
+
+            </div>
+        </div>
+
+        <!-- MODULE 2: Guild Expeditions (Minigames) -->
+        <div class="dashboard-panel" style="border: 2px dashed #27ae60; background: #1a251e; margin-bottom: 0;">
+            <h3 style="color: #2ecc71; border-bottom: 1px dashed #27ae60;">🪓 Guild Expeditions</h3>
+            <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
+                <button onclick="setGameState('MINIGAME_LUMBER')" style="background: #27ae60; border-color: #2ecc71; padding: 10px; margin: 0;">🌲 Timber Camp (Active Chopping)</button>
+                <button onclick="setGameState('MINIGAME_FISHING')" style="background: #2980b9; border-color: #3498db; padding: 10px; margin: 0;">🐟 The Fishing Pond (Active Angling)</button>
+                <button onclick="setGameState('MINIGAME_HOPS')" style="background: #8e44ad; border-color: #9b59b6; padding: 10px; margin: 0;">🌾 Hops Farm (Active Picking)</button>
+            </div>
+        </div>
+
+        <!-- MODULE 3: Under Construction (Bounty Board) -->
+        <div class="dashboard-panel" style="border: 1px dashed #7f8c8d; background: #2c3e50; margin-bottom: 0; opacity: 0.85;">
+            <h3 style="color: #bdc3c7; border-bottom: 1px dashed #7f8c8d;">📜 Bounty Board</h3>
+            <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
+                <button disabled style="background: #34495e; border-color: #7f8c8d; color: #95a5a6; padding: 10px; margin: 0; cursor: not-allowed; text-decoration: line-through;">🐺 Hunt: The Dire Wolf (Coming Soon)</button>
+                <button disabled style="background: #34495e; border-color: #7f8c8d; color: #95a5a6; padding: 10px; margin: 0; cursor: not-allowed; text-decoration: line-through;">👑 Raid: Goblin King's Hoard (Coming Soon)</button>
+            </div>
+            <div style="font-size: 10px; color: #bdc3c7; text-align: center; margin-top: 15px; font-style: italic;">
+                Guild architects are currently constructing this facility.
+            </div>
+        </div>
+
+    </div> <!-- End Grid Container -->
+</div>
 				
 
 <!-- === NEW: DEDICATED UPGRADES SCREEN === -->
