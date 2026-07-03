@@ -278,88 +278,96 @@
 
 <div id="town-vault-view" class="columns-container">
             
-<!-- === PACKED KNIGHT AND PET DASHBOARD PANEL === -->
-<div class="dashboard-panel" style="display: flex; gap: 15px; background: #1a1512; padding: 15px; border: 1px dashed #4a3b2c;">
+<div id="knight-screen" class="panel column-left" style="display: none; width: 100%; max-width: 100%;">
+                <div id="profile-management-panel" class="panel" style="margin-bottom: 0;">
+                    
+<div id="level-up-panel" style="margin-bottom: 0;">
+                        </div>
+						
+<!-- === NEW: KNIGHT AND PET DASHBOARD PANEL === -->
+<div class="dashboard-panel" style="display: flex; gap: 10px; background: #1a1512; justify-content: center; padding: 10px; border: 1px dashed #4a3b2c;">
     
-    <!-- LEFT SIDE: KNIGHT (60% Width) -->
-    <div style="width: 60%; display: flex; flex-direction: column; border-right: 1px dashed #4a3b2c; padding-right: 15px;">
+    <!-- LEFT SIDE: KNIGHT -->
+    <div style="width: 50%; display: flex; flex-direction: column; align-items: center; border-right: 1px dashed #4a3b2c; padding-right: 10px;">
+        <h4 id="knight-header-name" style="margin: 0 0 5px 0; font-size: 11px; color: #ffcc66; border-bottom: 1px solid #3a2f26; padding-bottom: 4px; text-transform: uppercase; width: 100%; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">Your Knight</h4>
         
-        <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 1px solid #3a2f26; padding-bottom: 4px; margin-bottom: 10px;">
-            <h4 id="knight-header-name" style="margin: 0; font-size: 14px; color: #ffcc66; text-transform: uppercase;">Your Knight</h4>
-            <button id="knight-wardrobe-btn" onclick="toggleWardrobe()" style="margin: 0; background: #2c3e50; border-color: #34495e; font-size: 9px; padding: 4px 8px;">🪞 Wardrobe</button>
-        </div>
-        
-        <!-- PACKING: Canvas and Gear Side-by-Side -->
-        <div style="display: flex; gap: 15px; align-items: flex-start; margin-bottom: 10px;">
-            <!-- Avatar Left -->
-            <canvas id="main-player-canvas" width="96" height="96" style="background: #221a14; border: 1px solid #4a3b2c; border-radius: 4px; image-rendering: pixelated; width: 120px; height: 120px; box-shadow: inset 0 0 10px rgba(0,0,0,0.8); flex-shrink: 0;"></canvas>
+        <div style="display: flex; justify-content: center; align-items: center; gap: 15px; width: 100%; margin-top: 5px;">
             
-            <!-- Gear Right -->
-            <div class="paper-doll-grid" style="margin: 0;">
-                <div class="equip-slot empty-cell"></div>
-                <div class="equip-slot" id="slot-helmet">H</div>
-                <div class="equip-slot empty-cell"></div>
-
-                <div class="equip-slot" id="slot-gloves">G</div>
-                <div class="equip-slot" id="slot-armor">A</div>
-                <div class="equip-slot" id="slot-weapon">W</div>
-
-                <div class="equip-slot empty-cell"></div>
-                <div class="equip-slot" id="slot-boots">B</div>
-                <div class="equip-slot empty-cell"></div>
+            <div style="display: flex; flex-direction: column; align-items: center;">
+                <canvas id="main-player-canvas" width="96" height="96" style="background: #221a14; border: 1px solid #4a3b2c; border-radius: 4px; image-rendering: pixelated; width: 144px; height: 144px; box-shadow: inset 0 0 10px rgba(0,0,0,0.8);"></canvas>
             </div>
+
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                <div class="paper-doll-grid">
+                    <div class="equip-slot empty-cell"></div>
+                    <div class="equip-slot" id="slot-helmet">H</div>
+                    <div class="equip-slot empty-cell"></div>
+
+                    <div class="equip-slot" id="slot-gloves">G</div>
+                    <div class="equip-slot" id="slot-armor">A</div>
+                    <div class="equip-slot" id="slot-weapon">W</div>
+
+                    <div class="equip-slot empty-cell"></div>
+                    <div class="equip-slot" id="slot-boots">B</div>
+                    <div class="equip-slot empty-cell"></div>
+                </div>
+            </div>
+            
         </div>
 
-        <div id="knight-town-stats" style="font-size: 10px; text-align: left; background: #110d0a; padding: 8px; border-radius: 4px; border: 1px solid #3a2f26; width: 100%; box-sizing: border-box;">
-            <!-- Injected via ui-render.js -->
-        </div>
+        <button id="knight-wardrobe-btn" onclick="toggleWardrobe()" style="width: 90%; background: #2c3e50; border-color: #34495e; font-size: 11px; padding: 6px; margin-top: 12px;">🪞 Wardrobe</button>
 
-        <!-- WARDROBE UI -->
         <div id="knight-wardrobe-ui" style="display: none; width: 100%; margin-top: 10px;">
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
                 <button onclick="cycleTownAppearance('gender')" style="font-size: 9px; padding: 4px;">Gender</button>
                 <button onclick="cycleTownAppearance('skin')" style="font-size: 9px; padding: 4px;">Skin</button>
                 <button onclick="cycleTownAppearance('hair')" style="font-size: 9px; padding: 4px;">Hair</button>
-                <button onclick="cycleTownAppearance('hairColor')" style="font-size: 9px; padding: 4px;">Color</button>
+                <button onclick="cycleTownAppearance('hairColor')" style="font-size: 9px; padding: 4px;">Hair Color</button>
                 <button onclick="cycleTownAppearance('eyes')" style="font-size: 9px; padding: 4px;">Eyes</button>
                 <button onclick="cycleTownAppearance('shirtColor')" style="font-size: 9px; padding: 4px;">Shirt</button>
                 <button onclick="cycleTownAppearance('pantsColor')" style="font-size: 9px; padding: 4px;">Pants</button>
                 <button onclick="cycleTownAppearance('bootsColor')" style="font-size: 9px; padding: 4px;">Boots</button>
-                <button onclick="toggleWardrobe()" style="grid-column: span 4; background: #c0392b; font-size: 10px; padding: 6px; margin-top: 2px;">Close</button>
+                <button onclick="toggleWardrobe()" style="grid-column: span 2; background: #c0392b; font-size: 10px; padding: 6px; margin-top: 4px;">Close Wardrobe</button>
             </div>
         </div>
+
+        <div id="knight-town-stats" style="margin-top: 8px; font-size: 10px; text-align: left; background: #110d0a; padding: 6px; border-radius: 4px; border: 1px solid #3a2f26; width: 100%; box-sizing: border-box;">
+            </div>
     </div>
 
-    <!-- RIGHT SIDE: PET (40% Width) -->
-    <div style="width: 40%; display: flex; flex-direction: column;">
+    <!-- RIGHT SIDE: PET -->
+<div style="text-align: center; width: 50%; display: flex; flex-direction: column; align-items: center;">
+        <h4 id="pet-header-name" style="margin: 0 0 5px 0; font-size: 11px; color: #bbaaa0; border-bottom: 1px solid #3a2f26; padding-bottom: 4px; text-transform: uppercase; width: 100%;">Companion</h4>
         
-        <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 1px solid #3a2f26; padding-bottom: 4px; margin-bottom: 10px;">
-            <h4 id="pet-header-name" style="margin: 0; font-size: 12px; color: #bbaaa0; text-transform: uppercase;">Companion</h4>
-            <button id="edit-pet-btn" onclick="editPetMenu()" style="display: none; margin: 0; background: #2c3e50; border-color: #34495e; font-size: 9px; padding: 4px 8px;">✏️ Edit</button>
-        </div>
+        <button id="open-adoption-btn" onclick="openAdoptionMenu()" style="width: 90%; background: #27ae60; border-color: #2ecc71; margin-top: 15px; font-size: 11px; padding: 8px;">🐕 Adopt a Pet</button>
         
-        <!-- PACKING: Canvas and Actions Side-by-Side -->
-        <div style="display: flex; gap: 10px; align-items: flex-start;">
-            <canvas id="main-pet-canvas" width="96" height="96" style="display: none; background: #221a14; border: 1px solid #4a3b2c; border-radius: 4px; image-rendering: pixelated; width: 96px; height: 96px; box-shadow: inset 0 0 10px rgba(0,0,0,0.8); flex-shrink: 0;"></canvas>
-            
-            <div style="display: flex; flex-direction: column; gap: 6px; flex-grow: 1;">
-                <button id="open-adoption-btn" onclick="openAdoptionMenu()" style="width: 100%; background: #27ae60; border-color: #2ecc71; font-size: 11px; padding: 8px;">🐕 Adopt</button>
-                <button id="train-pet-btn" onclick="trainPet()" style="display: none; width: 100%; background: #8e44ad; border-color: #9b59b6; font-size: 10px; padding: 6px;" onmouseenter="showSystemTooltip('pet_train', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🦴 Feed</button>
+        <canvas id="main-pet-canvas" width="96" height="96" style="display: none; background: #221a14; border: 1px solid #4a3b2c; border-radius: 4px; image-rendering: pixelated; width: 120px; height: 120px; margin-top: 5px;"></canvas>
+
+        <button id="edit-pet-btn" onclick="editPetMenu()" style="display: none; width: 90%; background: #2c3e50; border-color: #34495e; margin-top: 5px; font-size: 10px; padding: 4px;">✏️ Edit Pet</button>
+        
+        <button id="train-pet-btn" onclick="trainPet()" style="display: none; width: 90%; background: #8e44ad; border-color: #9b59b6; margin-top: 5px; font-size: 10px; padding: 4px;" onmouseenter="showSystemTooltip('pet_train', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🦴 Feed Kibble</button>
+        
+        <div id="pet-adoption-ui" style="display: none; width: 100%; margin-top: 5px;">
+            <input type="text" id="pet-name-input" value="Name your pet" maxlength="10" style="background:#110d0a; color:#f1c40f; border:1px solid #4a3b2c; padding:4px; font-family:monospace; width:90%; text-align:center; font-size: 10px; margin-bottom: 4px; border-radius: 3px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin-bottom: 4px;">
+                <button onclick="cyclePetAppearance('type')" style="font-size: 9px; padding: 2px; margin: 0;">Type</button>
+                <button onclick="cyclePetAppearance('furColor')" style="font-size: 9px; padding: 2px; margin: 0;">Fur</button>
+                <button onclick="cyclePetAppearance('collarColor')" style="font-size: 9px; padding: 2px; margin: 0; grid-column: span 2;">Collar</button>
             </div>
-        </div>
-        
-        <!-- ADOPTION UI -->
-        <div id="pet-adoption-ui" style="display: none; width: 100%; margin-top: 10px;">
-            <input type="text" id="pet-name-input" value="Name your pet" maxlength="10" style="background:#110d0a; color:#f1c40f; border:1px solid #4a3b2c; padding:4px; font-family:monospace; width:100%; box-sizing:border-box; text-align:center; font-size: 10px; margin-bottom: 4px; border-radius: 3px;">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 4px;">
-                <button onclick="cyclePetAppearance('type')" style="font-size: 9px; padding: 4px; margin: 0;">Type</button>
-                <button onclick="cyclePetAppearance('furColor')" style="font-size: 9px; padding: 4px; margin: 0;">Fur</button>
-                <button onclick="cyclePetAppearance('collarColor')" style="font-size: 9px; padding: 4px; margin: 0; grid-column: span 2;">Collar</button>
-            </div>
-            <button id="confirm-pet-btn" onclick="adoptPet()" style="background: #27ae60; border-color: #2ecc71; font-size: 10px; padding: 6px; width: 100%; margin: 0;">Adopt (10g)</button>
+            <button id="confirm-pet-btn" onclick="adoptPet()" style="background: #27ae60; border-color: #2ecc71; font-size: 10px; padding: 4px; width: 100%; margin: 0;">Adopt (10g)</button>
         </div>
     </div>
 </div>
+
+            
+
+                    <div class="dashboard-panel" id="main-backpack-panel">
+                        <h3>🎒 Knight's Backpack (<span id="inv-count">0</span>/5 Slots)</h3>
+                        <div id="inventory-list" style="background: #1a1512; padding: 6px; border-radius: 4px; border: 1px solid #4a3b2c;"></div>
+                    </div>
+
+                </div>
+            </div>
 
 
 
