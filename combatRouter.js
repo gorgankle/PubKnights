@@ -952,7 +952,7 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
         }
     });
 
-    // --- SERVER-AUTHORITATIVE COMBAT ESCROW ---
+// --- SERVER-AUTHORITATIVE COMBAT ESCROW ---
     socket.on('takePendingLoot', (idx) => {
         let p = activePlayers[socket.id];
         if (!p || !p.pendingLoot || !p.pendingLoot[idx]) return;
@@ -962,6 +962,13 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
             let securedItem = p.pendingLoot.splice(idx, 1)[0];
             p.inventory.push(securedItem);
             socket.emit('inventoryReceipt', { success: true, action: 'takeLoot', updatedPlayer: p, message: `🎒 Secured ${securedItem.name} in backpack.` });
+            
+            // === NEW: TRIGGER BOSS SPAWN ===
+            let combat = activeCombats[socket.id];
+            if (combat && combat.zone === 'TUTORIAL' && combat.tutorialStep === 5) {
+                TutorialDirector.handleBossSpawn(p, combat, io, socket.id);
+            }
+            // ===============================
         } else socket.emit('inventoryReceipt', { success: false, message: "❌ Backpack is full!" });
     });
 
@@ -974,6 +981,13 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
         p.gold += val;
         
         socket.emit('inventoryReceipt', { success: true, action: 'sell', updatedPlayer: p, message: `💰 Sold dropped item for ${val}g.` });
+        
+        // === NEW: TRIGGER BOSS SPAWN ===
+        let combat = activeCombats[socket.id];
+        if (combat && combat.zone === 'TUTORIAL' && combat.tutorialStep === 5) {
+            TutorialDirector.handleBossSpawn(p, combat, io, socket.id);
+        }
+        // ===============================
     });
 	
 	// === NEW: SECURE TUTORIAL SKIP HANDLER ===

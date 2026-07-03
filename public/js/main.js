@@ -141,7 +141,7 @@ socket.on('combatResult', (result) => {
                 
                 // === THE FIX: SELECTIVELY BYPASS LOOT SCREEN IN TUTORIAL ===
                 if (activeCombatZone === 'TUTORIAL') {
-                    if (currentTutorialStep === 3) {
+                    if (currentTutorialStep === 4) { // <--- CHANGE THIS FROM 3 TO 4!
                         // The bomb just went off. Show the Loot Screen so they can see the Gem!
                         // Hide the "Return to Tavern" button so they can't escape the ambush.
                         let retBtn = document.querySelector("#loot-screen button");
@@ -149,7 +149,6 @@ socket.on('combatResult', (result) => {
                         
                         setTimeout(showLootScreen, 1200);
                     }
-                    // For Step 2 (single publing), do absolutely nothing. The server handles it.
                 } else {
                     // Normal Game: Restore the Return button
                     let retBtn = document.querySelector("#loot-screen button");

@@ -121,12 +121,12 @@ module.exports = {
         }
     },
 
-    // Triggered on Kills
+// Triggered on Kills
     handleVictoryStep: function(p, combat, io, socketId) {
         if (combat.tutorialStep === 3) {
+            // ... [Keep Step 3 EXACTLY as it is currently] ...
             combat.tutorialStep = 4;
             
-            // FIX: Ensure all swarm members have unique IDs!
             let p1 = createEnemy("publing", 0, 0, "Tutorial "); p1.uid = "mob_tut_2"; p1.atbCharge = 0;
             let p2 = createEnemy("publing", 2, 0, "Tutorial "); p2.uid = "mob_tut_3"; p2.atbCharge = 0;
             let p3 = createEnemy("publing", 3, 0, "Tutorial "); p3.uid = "mob_tut_4"; p3.atbCharge = 0;
@@ -153,26 +153,52 @@ module.exports = {
             p.pendingLoot.push(shinyLoot);
             io.to(socketId).emit('killConfirmed', { gold: 500, xp: 100, item: shinyLoot, isPet: false, enemyName: "Publing Swarm" });
 
+            // FIX: Just prompt them to loot it. The boss will spawn when they click it!
             setTimeout(() => {
-                io.to(socketId).emit('screenShake');
-                
-                // FIX: Boss needs a UID too!
-                let boss = createEnemy("wilderness_overlord", 1, 0, "True ");
-                boss.uid = "mob_tut_boss"; 
-                boss.offense = 9999; boss.speed = 999; boss.hp = 99999;
-                boss.atbCharge = 0;
-                combat.enemies = [boss];
-
-                io.to(socketId).emit('combatDeployed', combat);
-                io.to(socketId).emit('serverDialogue', [{ speaker: "Overlord", text: "FOOLISH MORTAL... YOU DARE TOUCH MY GEMS?", portraitId: "wilderness_overlord" }]);
-                io.to(socketId).emit('playTrack', "The True Overlord"); 
-                
-                combat.atbPaused = false;
-                combat.player.atbCharge = 0;
-            }, 2500);
+                io.to(socketId).emit('serverDialogue', [{ 
+                    speaker: "Kreg", 
+                    text: "Whoa, look at the size of that gem! Click it to stash it in your backpack!", 
+                    portraitId: "npc_kreg" 
+                }]);
+            }, 1000);
             
             return true; 
         }
         return false;
+    },
+
+    // === NEW: STANDALONE BOSS DEPLOYMENT ===
+    handleBossSpawn: function(p, combat, io, socketId) {
+        combat.tutorialStep = 6; // Move to final step
+        combat.atbPaused = true; // Pause time while deploying
+
+        io.to(socketId).emit('screenShake');
+        
+        let boss = createEnemy("wilderness_overlord", 1, 0, "True ");
+        boss.uid = "mob_tut_boss"; 
+        boss.offense = 9999; 
+        boss.hp = 99999;
+        
+        // FIX: Make the boss insanely slow so the player gets the first few turns!
+        boss.speed = 1; 
+        boss.atbCharge = -200; 
+        
+        combat.enemies = [boss];
+
+        // This emit will automatically rip the Loot Screen away on the client!
+        io.to(socketId).emit('combatDeployed', combat);
+        
+        setTimeout(() => {
+            io.to(socketId).emit('serverDialogue', [
+                { speaker: "Overlord", text: "FOOLISH MORTAL... YOU DARE TOUCH MY GEMS?", portraitId: "wilderness_overlord" },
+                { speaker: "Kreg", text: "Oh no... It's the Overlord! Try to hit it, run, do something!!", portraitId: "npc_kreg" }
+            ]);
+            io.to(socketId).emit('playTrack', "The True Overlord"); 
+            
+            // Instantly hand the player a turn so they can fight back!
+            combat.atbPaused = false;
+            combat.player.atbCharge = 100;
+            io.to(socketId).emit('ATB_READY');
+        }, 1500);
     }
 };
