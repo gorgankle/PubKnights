@@ -468,10 +468,14 @@ button:hover:not(:disabled) { background: #a06d3b; }
 /* --- MODULAR GRID SYSTEM (UI OVERHAUL) --- */
 .modular-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    grid-template-columns: repeat(2, 1fr); /* Explicitly force 2 columns on desktop */
     gap: 15px;
     width: 100%;
     margin-top: 10px;
+}
+
+.module-full {
+    grid-column: span 2; /* Forces the Backpack & Stables to take the full bottom row */
 }
 
 .dashboard-module {
@@ -497,6 +501,14 @@ button:hover:not(:disabled) { background: #a06d3b; }
     text-align: center;
 }
 
+/* Constrain the main action buttons so they don't stretch */
+.dashboard-module > button {
+    width: 80%;
+    max-width: 200px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
 /* Under Construction Styles */
 .uc-module {
     border-color: #7f8c8d;
@@ -514,7 +526,18 @@ button:hover:not(:disabled) { background: #a06d3b; }
     border-color: #34495e !important;
     color: #7f8c8d !important;
     cursor: not-allowed !important;
-    width: 100%;
+    width: 100% !important; /* This one can stretch */
+    max-width: none !important;
     margin-top: auto;
     font-style: italic;
+}
+
+/* Mobile Fallback: Only collapse on screens smaller than 768px */
+@media (max-width: 768px) {
+    .modular-grid {
+        grid-template-columns: 1fr;
+    }
+    .module-full {
+        grid-column: span 1;
+    }
 }
