@@ -950,7 +950,7 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
                 });
             }
             // Step 4: Prevent them from running into the swarm of 3 publings
-            if (combat.tutorialStep === 4 && (data.tx !== 1 || data.ty !== 3)) {
+            if (combat.tutorialStep === 4 && (data.tx !== 1 || data.ty !== 2)) {
                 return socket.emit('moveReceipt', { 
                     success: false, 
                     message: "🗣️ Director: 'Get back! Move to the highlighted safe tile in the corner!'", 

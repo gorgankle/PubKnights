@@ -129,8 +129,8 @@ module.exports = {
             // === THE FIX: TIGHTLY CLUSTER THE PUBLINGS ===
             // We moved them to (1,0), (2,0), and (1,1) and set HP to 1
             let p1 = createEnemy("publing", 1, 0, "Tutorial "); p1.uid = "mob_tut_2"; p1.atbCharge = 0; p1.hp = 1;
-            let p2 = createEnemy("publing", 3, 0, "Tutorial "); p2.uid = "mob_tut_3"; p2.atbCharge = 0; p2.hp = 1;
-            let p3 = createEnemy("publing", 1, 1, "Tutorial "); p3.uid = "mob_tut_4"; p3.atbCharge = 0; p3.hp = 1;
+            let p2 = createEnemy("publing", 2, 0, "Tutorial "); p2.uid = "mob_tut_3"; p2.atbCharge = 0; p2.hp = 1;
+            let p3 = createEnemy("publing", 3, 0, "Tutorial "); p3.uid = "mob_tut_4"; p3.atbCharge = 0; p3.hp = 1;
             
             combat.enemies = [p1, p2, p3];
             // =============================================
