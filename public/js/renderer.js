@@ -105,6 +105,7 @@ function drawGrid() {
                 currentIgnoresLoS = activeItem.combat.ignoresLoS || false;
             }
         }
+
     }
 
 
@@ -425,6 +426,9 @@ if (SpriteMatrices[e.id]) {
         FXEngine.render(ctx, currentTileSize);
     }
     // =============================
+
+    // === THE FIX: DRAW TUTORIAL HIGHLIGHTS ===
+    if (typeof drawTutorialHighlights === 'function') drawTutorialHighlights();
 
 } // <--- This bracket closes drawGrid()!
 

@@ -928,6 +928,29 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
             return socket.emit('moveReceipt', { success: false, message: '❌ Tactical Error: Cannot move out of turn.', x: combat.player.x, y: combat.player.y });
         }
 
+        // === NEW: TUTORIAL MOVEMENT RESTRICTIONS ===
+        if (combat.zone === 'TUTORIAL') {
+            // Step 3: Prevent them from running away from the single publing
+            if (combat.tutorialStep === 3 && (data.tx !== 1 || data.ty !== 1)) {
+                return socket.emit('moveReceipt', { 
+                    success: false, 
+                    message: "🗣️ Director: 'No, move TOWARDS the Publing! Click the highlighted tile!'", 
+                    x: combat.player.x, 
+                    y: combat.player.y 
+                });
+            }
+            // Step 4: Prevent them from running into the swarm of 3 publings
+            if (combat.tutorialStep === 4 && (data.tx !== 1 || data.ty !== 3)) {
+                return socket.emit('moveReceipt', { 
+                    success: false, 
+                    message: "🗣️ Director: 'Get back! Move to the highlighted safe tile in the corner!'", 
+                    x: combat.player.x, 
+                    y: combat.player.y 
+                });
+            }
+        }
+        // ============================================
+
         let speed = getEffectiveStat(p, 'speed');
         speed = Math.max(1, Math.min(12, speed));
         
