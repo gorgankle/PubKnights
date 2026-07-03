@@ -489,8 +489,9 @@
 
             <!-- Special Events & Procedural Modes -->
             <div style="display: grid; grid-template-columns: 1fr; gap: 6px;">
-                <button id="gorilla-btn" onclick="transitionToCombat('GORILLA_ARENA')" style="background: #c0392b; border-color: #ff3333; margin: 0; padding: 8px;">🦍 EVENT: Gorilla Pit</button>
-				<button id="abyss-btn" onclick="transitionToCombat('ABYSS')" style="background: #190a2e; border-color: #5b2c6f; color: #d7bde2; margin: 0; padding: 8px; border-style: dashed;">🌌 Descend into Procedural Abyss (Depth <span id="abyss-depth-indicator">1</span>)</button>
+			<button id="abyss-btn" onclick="transitionToCombat('ABYSS')" style="background: #190a2e; border-color: #5b2c6f; color: #d7bde2; margin: 0; padding: 8px; border-style: dashed;">🌌 Descend into Procedural Abyss (Depth <span id="abyss-depth-indicator">1</span>)</button>
+            <button id="gorilla-btn" onclick="transitionToCombat('GORILLA_ARENA')" style="background: #c0392b; border-color: #ff3333; margin: 0; padding: 8px;">🦍Gorilla Pit (STRESS TEST MAP YOU WILL DIE!!!) </button>
+				
 
             </div>
         </div>
@@ -509,8 +510,8 @@
         <div class="dashboard-panel" style="border: 1px dashed #7f8c8d; background: #2c3e50; margin-bottom: 0; opacity: 0.85;">
             <h3 style="color: #bdc3c7; border-bottom: 1px dashed #7f8c8d;">📜 Bounty Board</h3>
             <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
-                <button disabled style="background: #34495e; border-color: #7f8c8d; color: #95a5a6; padding: 10px; margin: 0; cursor: not-allowed; text-decoration: line-through;">🐺 Hunt: The Dire Wolf (Coming Soon)</button>
-                <button disabled style="background: #34495e; border-color: #7f8c8d; color: #95a5a6; padding: 10px; margin: 0; cursor: not-allowed; text-decoration: line-through;">👑 Raid: Goblin King's Hoard (Coming Soon)</button>
+                <button disabled style="background: #34495e; border-color: #7f8c8d; color: #95a5a6; padding: 10px; margin: 0; cursor: not-allowed; text-decoration: line-through;">🐺 Hunt: (Coming Soon)</button>
+                <button disabled style="background: #34495e; border-color: #7f8c8d; color: #95a5a6; padding: 10px; margin: 0; cursor: not-allowed; text-decoration: line-through;">👑 Raid: (Coming Soon)</button>
             </div>
             <div style="font-size: 10px; color: #bdc3c7; text-align: center; margin-top: 15px; font-style: italic;">
                 Guild architects are currently constructing this facility.
@@ -549,66 +550,94 @@
 					
 					<!-- ========================================== -->
 
-                <!-- === NEW: DEDICATED MERCHANT SCREEN === -->
+<!-- === DEDICATED MERCHANT SCREEN (GRID REFACTOR) === -->
 <div id="merchant-screen" class="panel" style="display: none; width: 100%; margin-bottom: 0; min-height: 486px; flex-direction: column; gap: 10px;">
-                    <div class="dashboard-panel" style="background: #1a1512; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; margin-bottom: 5px; border: 1px solid #4a3b2c;">
-                        <span style="color: #ffcc66; font-weight: bold; font-size:15px;">🤝 The Exchange</span>
-                        <button onclick="setGameState('TOWN')" style="background: #c0392b; margin:0; padding:6px 14px;">↩ Return to Town</button>
-                    </div>
-                    
-						<div class="dashboard-panel">
-                        <h3>🛍️ Provisioner Counter</h3>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 4px;">
-                            <button id="craft-bomb-1-btn" onclick="craftKegBomb(1)" onmouseenter="showSystemTooltip('bomb_small', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Small Keg Bomb (10W, 100H)</button>
-                            <button id="craft-bomb-2-btn" onclick="craftKegBomb(2)" onmouseenter="showSystemTooltip('bomb_heavy', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Heavy Keg Bomb (25W, 250H)</button>
-                            <button id="market-trader-btn" onclick="tradeHopsForGear()" onmouseenter="showSystemTooltip('black_market', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🪙 Black Market (50 Hops)</button>
-                            <button id="wholesale-btn" onclick="exportFishWholesale()" style="grid-column: span 2; width: 99%;" onmouseenter="showSystemTooltip('fish_wholesale', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🐟 Wholesale Export (Sell 100 Fish ➔ 120g)</button>
-							<button id="btn-sell-fish-bulk" onclick="sellFishBulk()" style="display: none; width: 100%; margin-top: 5px; font-size: 11px;">🚢 Bulk Export Fish (-1000 🐟 / +1200g)</button>
-                        </div>
-                    </div>
-                    
-                    <div class="dashboard-panel">
-                        <h3>🍺 Brewmaster</h3>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 4px;">
-                            <button id="brewmaster-btn" onclick="hireBrewmasterServices()" onmouseenter="showSystemTooltip('craft_stout', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🍺 Craft Stout (1H+10g)</button>
-                            <button id="ipa-btn" onclick="craftSpecialtyBrew('IPA')" onmouseenter="showSystemTooltip('ipa', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🍺 IPA (1H, 5W)</button>
-                            <button id="lager-btn" onclick="craftSpecialtyBrew('LAGER')" onmouseenter="showSystemTooltip('lager', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🍺 Lager (2H, 5F)</button>
-                            <button id="reserve-btn" onclick="craftReserveBrew()" style="background: #8e44ad; border-color: #9b59b6; grid-column: span 2;" onmouseenter="showSystemTooltip('reserve', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🍷 Grandmaster Reserve (200H, 50g)</button>
-                        </div>
-                    </div>
-					<div class="dashboard-panel" style="border: 2px dashed #f39c12; background: #2a221a; margin-top: 15px;">
-    <h3 style="color: #f1c40f;">🤝 Guild Quartermaster (Point Exchange)</h3>
     
-    <div style="background: #1e271e; border: 1px solid #27ae60; padding: 8px; margin-bottom: 8px; border-radius: 4px;">
-        <span style="color: #2ecc71; font-weight: bold;">🌲 Timber Exchange (Pts: <span id="ui-timber-pts">0</span>)</span>
-        <div style="display: flex; gap: 5px; margin-top: 5px;">
-            <button onclick="exchangePoints('lumber', 'low')" style="flex: 1; background: #27ae60;">100 Pts ➔ 100 Wood</button>
-            <button onclick="exchangePoints('lumber', 'mid')" style="flex: 1; background: #27ae60;">1k Pts ➔ 1k Wood</button>
-            <button onclick="exchangePoints('lumber', 'gamble')" style="flex: 1; background: #d35400;">2.5k ➔ Timber Crate</button>
-            <button disabled style="flex: 1; background: #7f8c8d;">25k ➔ ???</button>
-        </div>
+    <!-- Header -->
+    <div class="dashboard-panel" style="background: #1a1512; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; margin-bottom: 5px; border: 1px solid #4a3b2c;">
+        <span style="color: #ffcc66; font-weight: bold; font-size:15px;">🤝 The Exchange</span>
+        <button onclick="setGameState('TOWN')" style="background: #c0392b; margin:0; padding:6px 14px; font-size: 12px;">↩ Return to Town</button>
     </div>
 
-    <div style="background: #1a242f; border: 1px solid #2980b9; padding: 8px; margin-bottom: 8px; border-radius: 4px;">
-        <span style="color: #3498db; font-weight: bold;">🐟 Angler's Exchange (Pts: <span id="ui-fish-pts">0</span>)</span>
-        <div style="display: flex; gap: 5px; margin-top: 5px;">
-            <button onclick="exchangePoints('fish', 'low')" style="flex: 1; background: #2980b9;">100 Pts ➔ 100 Fish</button>
-            <button onclick="exchangePoints('fish', 'mid')" style="flex: 1; background: #2980b9;">1k Pts ➔ 1k Fish</button>
-            <button onclick="exchangePoints('fish', 'gamble')" style="flex: 1; background: #d35400;">2.5k ➔ Angler Crate</button>
-            <button disabled style="flex: 1; background: #7f8c8d;">25k ➔ ???</button>
-        </div>
-    </div>
+    <!-- Responsive Grid Layout Container -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px; align-items: start;">
 
-    <div style="background: #2c1a35; border: 1px solid #8e44ad; padding: 8px; border-radius: 4px;">
-        <span style="color: #9b59b6; font-weight: bold;">🌾 Harvest Exchange (Pts: <span id="ui-hops-pts">0</span>)</span>
-        <div style="display: flex; gap: 5px; margin-top: 5px;">
-            <button onclick="exchangePoints('hops', 'low')" style="flex: 1; background: #8e44ad;">100 Pts ➔ 100 Hops</button>
-            <button onclick="exchangePoints('hops', 'mid')" style="flex: 1; background: #8e44ad;">1k Pts ➔ 1k Hops</button>
-            <button onclick="exchangePoints('hops', 'gamble')" style="flex: 1; background: #d35400;">2.5k ➔ Harvest Crate</button>
-            <button disabled style="flex: 1; background: #7f8c8d;">25k ➔ ???</button>
+        <!-- MODULE 1: Provisioner Counter -->
+        <div class="dashboard-panel" style="margin-bottom: 0;">
+            <h3 style="color: #3498db; border-bottom: 1px dashed #2980b9;">🛍️ Provisioner Counter</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px;">
+                <button id="craft-bomb-1-btn" onclick="craftKegBomb(1)" style="margin: 0; padding: 8px;" onmouseenter="showSystemTooltip('bomb_small', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Small Keg Bomb<br><span style="font-size: 9px; color: #bbaaa0;">10W, 100H</span></button>
+                <button id="craft-bomb-2-btn" onclick="craftKegBomb(2)" style="margin: 0; padding: 8px;" onmouseenter="showSystemTooltip('bomb_heavy', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Heavy Keg Bomb<br><span style="font-size: 9px; color: #bbaaa0;">25W, 250H</span></button>
+                <button id="market-trader-btn" onclick="tradeHopsForGear()" style="grid-column: span 2; margin: 0; padding: 8px; background: #2c3e50; border-color: #34495e;" onmouseenter="showSystemTooltip('black_market', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🪙 Black Market Gear (50 Hops)</button>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr; gap: 6px;">
+                <button id="wholesale-btn" onclick="exportFishWholesale()" style="margin: 0; padding: 10px; background: #2980b9; border-color: #3498db;" onmouseenter="showSystemTooltip('fish_wholesale', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🐟 Export Fish (Sell 100 ➔ 120g)</button>
+                <button id="btn-sell-fish-bulk" onclick="sellFishBulk()" style="display: none; margin: 0; padding: 10px; background: #8e44ad; border-color: #9b59b6;">🚢 Bulk Export (-1000 🐟 ➔ 1200g)</button>
+            </div>
         </div>
-    </div>
-				</div>
+
+        <!-- MODULE 2: Brewmaster -->
+        <div class="dashboard-panel" style="margin-bottom: 0;">
+            <h3 style="color: #f39c12; border-bottom: 1px dashed #e67e22;">🍺 Brewmaster Services</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                <button id="brewmaster-btn" onclick="hireBrewmasterServices()" style="margin: 0; padding: 8px;" onmouseenter="showSystemTooltip('craft_stout', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🍺 Craft Stout<br><span style="font-size: 9px; color: #bbaaa0;">1H, 10g</span></button>
+                <button id="ipa-btn" onclick="craftSpecialtyBrew('IPA')" style="margin: 0; padding: 8px;" onmouseenter="showSystemTooltip('ipa', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🍺 Furious IPA<br><span style="font-size: 9px; color: #bbaaa0;">1H, 5W</span></button>
+                <button id="lager-btn" onclick="craftSpecialtyBrew('LAGER')" style="margin: 0; padding: 8px;" onmouseenter="showSystemTooltip('lager', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🍺 Swift Lager<br><span style="font-size: 9px; color: #bbaaa0;">2H, 5F</span></button>
+                <button id="reserve-btn" onclick="craftReserveBrew()" style="grid-column: span 2; margin: 0; padding: 10px; background: #8e44ad; border-color: #9b59b6;" onmouseenter="showSystemTooltip('reserve', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🍷 Grandmaster Reserve (200H, 50g)</button>
+            </div>
+        </div>
+
+        <!-- MODULE 3: Guild Quartermaster (Point Exchange) -->
+        <div class="dashboard-panel" style="border: 2px dashed #f39c12; background: #2a221a; margin-bottom: 0;">
+            <h3 style="color: #f1c40f; border-bottom: 1px dashed #f39c12;">🤝 Guild Quartermaster</h3>
+            
+            <div style="background: #1e271e; border: 1px solid #27ae60; padding: 8px; margin-bottom: 8px; border-radius: 4px;">
+                <span style="color: #2ecc71; font-weight: bold; font-size: 11px;">🌲 Timber Exchange (Pts: <span id="ui-timber-pts">0</span>)</span>
+                <!-- Converted to 2x2 Grid -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 6px;">
+                    <button onclick="exchangePoints('lumber', 'low')" style="margin: 0; padding: 6px 2px; font-size: 10px; background: #27ae60;">100 Pts ➔ 100 Wood</button>
+                    <button onclick="exchangePoints('lumber', 'mid')" style="margin: 0; padding: 6px 2px; font-size: 10px; background: #27ae60;">1k Pts ➔ 1k Wood</button>
+                    <button onclick="exchangePoints('lumber', 'gamble')" style="margin: 0; padding: 6px 2px; font-size: 10px; background: #d35400;">2.5k ➔ Timber Crate</button>
+                    <button disabled style="margin: 0; padding: 6px 2px; font-size: 10px; background: #7f8c8d;">25k ➔ ???</button>
+                </div>
+            </div>
+
+            <div style="background: #1a242f; border: 1px solid #2980b9; padding: 8px; margin-bottom: 8px; border-radius: 4px;">
+                <span style="color: #3498db; font-weight: bold; font-size: 11px;">🐟 Angler's Exchange (Pts: <span id="ui-fish-pts">0</span>)</span>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 6px;">
+                    <button onclick="exchangePoints('fish', 'low')" style="margin: 0; padding: 6px 2px; font-size: 10px; background: #2980b9;">100 Pts ➔ 100 Fish</button>
+                    <button onclick="exchangePoints('fish', 'mid')" style="margin: 0; padding: 6px 2px; font-size: 10px; background: #2980b9;">1k Pts ➔ 1k Fish</button>
+                    <button onclick="exchangePoints('fish', 'gamble')" style="margin: 0; padding: 6px 2px; font-size: 10px; background: #d35400;">2.5k ➔ Angler Crate</button>
+                    <button disabled style="margin: 0; padding: 6px 2px; font-size: 10px; background: #7f8c8d;">25k ➔ ???</button>
+                </div>
+            </div>
+
+            <div style="background: #2c1a35; border: 1px solid #8e44ad; padding: 8px; border-radius: 4px;">
+                <span style="color: #9b59b6; font-weight: bold; font-size: 11px;">🌾 Harvest Exchange (Pts: <span id="ui-hops-pts">0</span>)</span>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 6px;">
+                    <button onclick="exchangePoints('hops', 'low')" style="margin: 0; padding: 6px 2px; font-size: 10px; background: #8e44ad;">100 Pts ➔ 100 Hops</button>
+                    <button onclick="exchangePoints('hops', 'mid')" style="margin: 0; padding: 6px 2px; font-size: 10px; background: #8e44ad;">1k Pts ➔ 1k Hops</button>
+                    <button onclick="exchangePoints('hops', 'gamble')" style="margin: 0; padding: 6px 2px; font-size: 10px; background: #d35400;">2.5k ➔ Harvest Crate</button>
+                    <button disabled style="margin: 0; padding: 6px 2px; font-size: 10px; background: #7f8c8d;">25k ➔ ???</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODULE 4: Under Construction (Blacksmith) -->
+        <div class="dashboard-panel" style="border: 1px dashed #7f8c8d; background: #2c3e50; margin-bottom: 0; opacity: 0.85;">
+            <h3 style="color: #bdc3c7; border-bottom: 1px dashed #7f8c8d;">🔨 Blacksmith Forge</h3>
+            <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
+                <button disabled style="background: #34495e; border-color: #7f8c8d; color: #95a5a6; padding: 10px; margin: 0; cursor: not-allowed; text-decoration: line-through;">⚔️ Sharpen Weapon (Coming Soon)</button>
+                <button disabled style="background: #34495e; border-color: #7f8c8d; color: #95a5a6; padding: 10px; margin: 0; cursor: not-allowed; text-decoration: line-through;">🛡️ Reinforce Armor (Coming Soon)</button>
+                <button disabled style="background: #34495e; border-color: #7f8c8d; color: #95a5a6; padding: 10px; margin: 0; cursor: not-allowed; text-decoration: line-through;">💍 Socket Gemstone (Coming Soon)</button>
+            </div>
+            <div style="font-size: 10px; color: #bdc3c7; text-align: center; margin-top: 15px; font-style: italic;">
+                The furnace is cold. Check back in a future update.
+            </div>
+        </div>
+
+    </div> <!-- End Grid Container -->
 </div>
 				
 	<div id="studio-screen" class="panel" style="display: none; width: 100%; margin-bottom: 0; height: 80vh; padding: 0; overflow: hidden; border: 2px solid #8e44ad;">
