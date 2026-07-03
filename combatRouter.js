@@ -444,6 +444,14 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
                 let throwDist = getGridDistance(combat.player.x, combat.player.y, data.tx, data.ty, 1);
                 let maxRange = rules.range || 4; 
                 
+                // === THE FIX: TUTORIAL BOMB OVERRIDE ===
+                // Expands the blast radius to map-wiping proportions so they can't miss!
+                if (combat && combat.zone === 'TUTORIAL' && combat.tutorialStep === 4) {
+                    rules.aoeRadius = 5; 
+                    rules.damageFlat = 999;
+                }
+                // =======================================
+
                 if (throwDist > maxRange) {
                     return socket.emit('combatItemReceipt', { success: false, message: '❌ Server: Target out of range.' });
                 }

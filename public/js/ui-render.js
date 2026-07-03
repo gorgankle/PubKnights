@@ -310,6 +310,18 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
                     let phaseLabel = combatPhase.replace('_', ' '); 
                     let instructions = (combatPhase === 'PHASE_2') ? "Select Target or Bomb" : "Select Tile to Stride";
                     
+                    // === THE FIX: EXPLICIT PHASE INSTRUCTIONS ===
+                    if (activeCombatZone === 'TUTORIAL') {
+                        if (currentTutorialStep === 3) {
+                            if (combatPhase === 'PHASE_1') instructions = "PHASE 1 (MOVE): Click the highlighted tile to approach!";
+                            else if (combatPhase === 'PHASE_2') instructions = "PHASE 2 (ACTION): Click your Attack button to strike!";
+                        } else if (currentTutorialStep === 4) {
+                            if (combatPhase === 'PHASE_1') instructions = "PHASE 1 (MOVE): Click the highlighted tile to retreat!";
+                            else if (combatPhase === 'PHASE_2') instructions = "PHASE 2 (ACTION): Select your Backpack and throw the Bomb!";
+                        }
+                    }
+                    // ============================================
+                    
                     if (uiHeader) {
                         if (pendingMove) {
                             uiHeader.innerHTML = `🏃 CONFIRM MOVE - Click green highlighted tile to jump`;
