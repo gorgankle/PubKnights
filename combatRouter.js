@@ -886,10 +886,13 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
                     if (p.hp <= 0) { 
                         // === NEW: TUTORIAL DIRECTOR HOOK ===
                         if (combat.zone === 'TUTORIAL') {
-                            p.hp = 1;
+                            // THE FIX: Fully heal the player for the real game instead of leaving them at 1 HP
+                            p.hp = getEffectiveStat(p, 'vitality') * 25;
+                            p.stamina = getEffectiveStat(p, 'maxStamina') * 25;
+                            
                             p.tutorialCompleted = true; // They survived the trial!
 
-                            // THE FIX: Destroy their OP gear and hand them the Rusty Mace
+                            // Destroy their OP gear and hand them the Rusty Mace
                             p.equipment = {
                                 helmet: null,
                                 armor: null,
@@ -897,6 +900,13 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
                                 gloves: null,
                                 boots: null
                             };
+                            
+                            // THE FIX: Completely wipe their backpack and pending escrow 
+                            // so they cannot smuggle the Flawless Sapphire into the main game!
+                            p.inventory = [];
+                            p.pendingLoot = [];
+                            p.pendingGold = 0;
+                            p.pendingXp = 0;
 
                             delete activeCombats[socketId];
                             turnEvents.push({ type: 'tutorial_death' });

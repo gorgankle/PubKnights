@@ -717,7 +717,7 @@ window.drawTutorialHighlights = function() {
     } 
     // Step 4: Run away before bombing
     else if (currentTutorialStep === 4 && combatPhase === 'PHASE_1') {
-        targetX = 1; targetY = 3; // Safe tile in the back corner
+        targetX = 1; targetY = 2; // Safe tile in the back corner
     }
 
     if (targetX !== -1 && targetY !== -1) {
