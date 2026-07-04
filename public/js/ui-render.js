@@ -1112,11 +1112,14 @@ function cycleTownAppearance(part) {
     if (typeof cycleAppearance === 'function') {
         cycleAppearance(part); // This automatically edits player.appearance
     }
+    
+    // === THE FIX: FLUSH THE GPU CACHE SO NEW COLORS BAKE ===
+    if (typeof clearSpriteCache === 'function') clearSpriteCache(); 
+    
     if (typeof renderMainScreenSprites === 'function') renderMainScreenSprites();
     saveGame();
     if (typeof playRetroSound === 'function') playRetroSound('menu');
 }
-
 function editPetMenu() {
     document.getElementById('edit-pet-btn').style.display = "none";
     document.getElementById('pet-adoption-ui').style.display = "block";

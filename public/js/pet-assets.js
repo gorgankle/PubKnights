@@ -120,29 +120,15 @@ function adoptPet() {
     // Prevent double adoption
     if (player.pet && player.pet.adopted) return;
     
-    if (player.gold >= 10) {
-        player.gold -= 10;
-        player.pet.adopted = true;
-        
-        let nameInput = document.getElementById('pet-name-input');
-        if (nameInput && nameInput.value.trim() !== "") {
-            player.pet.name = nameInput.value.trim();
-        }
-        
-        // --- THE CRITICAL FIX: Close the adoption panel! ---
-        let adoptionUI = document.getElementById('pet-adoption-ui');
-        if (adoptionUI) adoptionUI.style.display = "none";
-        // ---------------------------------------------------
-        
-        logMessage(`🐕 You have officially adopted ${player.pet.name}!`);
-        if (typeof playRetroSound === 'function') playRetroSound('coin');
-        
-        saveGame();
-        
-        // Now that the panel is closed, this will properly trigger the Edit & Train buttons!
-        refreshSystemUI(); 
-    } else {
-        logMessage("❌ Insufficient funds to adopt a companion (Requires 10 Gold).");
-        if (typeof playRetroSound === 'function') playRetroSound('error');
-    }
+    let nameInput = document.getElementById('pet-name-input');
+    let chosenName = nameInput && nameInput.value.trim() !== "" ? nameInput.value.trim() : "Companion";
+    
+    // Send a secure purchase request to the server
+    socket.emit('townAction', {
+        action: 'adoptPet',
+        name: chosenName,
+        type: player.pet.type,
+        furColor: player.pet.furColor,
+        collarColor: player.pet.collarColor
+    });
 }

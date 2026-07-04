@@ -298,13 +298,17 @@ socket.on('townReceipt', (receipt) => {
         if (typeof playRetroSound === 'function') playRetroSound('victory');
     } else if (receipt.action === 'trainPet' || receipt.action === 'resetStats' || receipt.action === 'allocateStat') {
         if (typeof playRetroSound === 'function') playRetroSound('statUp');
-	} else if (receipt.action === 'claimCart') {
-        // Only play the sound if the player manually clicked the button
+    } else if (receipt.action === 'claimCart') {
         if (!receipt.isAuto && typeof playRetroSound === 'function') playRetroSound('claim');
     } else if (receipt.action === 'baitWilds' || receipt.action === 'chumCellars') {
         if (typeof playRetroSound === 'function') playRetroSound('splat');
     } else if (receipt.action === 'drinkBrew') {
         if (typeof playRetroSound === 'function') playRetroSound('chug');
+    } else if (receipt.action === 'adoptPet') {
+        // === HIDE THE MENU UPON SUCCESSFUL SERVER PURCHASE ===
+        if (typeof playRetroSound === 'function') playRetroSound('coin');
+        let adoptionUI = document.getElementById('pet-adoption-ui');
+        if (adoptionUI) adoptionUI.style.display = "none";
     } else {
         if (typeof playRetroSound === 'function') playRetroSound('coin');
     }

@@ -138,6 +138,26 @@ if (data.action === 'equip') {
                 socket.emit('townReceipt', { success: true, action: 'monument', updatedPlayer: p, message: "🏆 ACHIEVEMENT UNLOCKED: The Golden Monument!" });
             } else socket.emit('townReceipt', { success: false, message: "❌ Insufficient funds. A million gold pieces are required." });
         }
+		// 3.5 ADOPT PET SECURELY
+        else if (data.action === 'adoptPet') {
+            if (p.pet && p.pet.adopted) return socket.emit('townReceipt', { success: false, message: "❌ You already have a companion." });
+            
+            if (p.gold >= 10) {
+                p.gold -= 10;
+                p.pet = {
+                    adopted: true,
+                    level: 1,
+                    name: data.name || "Companion",
+                    type: data.type || "dog",
+                    furColor: data.furColor || "brown",
+                    collarColor: data.collarColor || "red"
+                };
+                socket.emit('townReceipt', { success: true, action: 'adoptPet', updatedPlayer: p, message: `🐕 You have officially adopted ${p.pet.name}!` });
+            } else {
+                socket.emit('townReceipt', { success: false, message: "❌ Insufficient funds to adopt a companion (Requires 10 Gold)." });
+            }
+        }
+		
         // 4. PET TRAINING
         else if (data.action === 'trainPet') {
             p.pet = p.pet || { adopted: false, level: 1 };
