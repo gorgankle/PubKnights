@@ -101,16 +101,29 @@
 <!-- === GLOBAL WALLET (Always Visible) === -->
         <div id="wallet-display" style="width: 100%; box-sizing: border-box;">Synchronizing UI elements...</div>
 
-        <!-- === TOP NAVIGATION TABS === -->
-        <div id="top-nav-bar" class="nav-bar" style="display: none;">
-            <button id="nav-knight" onclick="setGameState('KNIGHT')">🛡️ Knight</button>
-            <button id="nav-town" onclick="setGameState('TOWN')">🏕️ Town</button>
-            <button id="nav-tavern" onclick="setGameState('MERCHANT')">🤝 Exchange </button>
-            <button id="nav-adventures" onclick="setGameState('ADVENTURES')">⚔️ Adventures</button>
-            <button id="nav-vault" onclick="setGameState('VAULT')">🏦 Vault</button>
-			<button id="tab-social" onclick="switchTab('social-view'); joinMultiplayerZone('ZONE_HUB');">🏰 Community</button>
-        </div>
-
+        <style>
+    /* 1. Tell the flex container it is allowed to wrap */
+    .nav-bar {
+        flex-wrap: wrap; 
+    }
+    
+    /* 2. On mobile screens, force a 3x2 grid layout */
+    @media (max-width: 650px) {
+        .nav-bar button {
+            flex: 1 1 30%; /* Forces 3 buttons per row */
+            font-size: 11px; /* Scales text down to prevent clipping */
+            padding: 8px 2px;
+        }
+    }
+</style>
+<div id="top-nav-bar" class="nav-bar" style="display: none;">
+    <button id="nav-knight" onclick="setGameState('KNIGHT')">🛡️ Knight</button>
+    <button id="nav-town" onclick="setGameState('TOWN')">🏕️ Town</button>
+    <button id="nav-tavern" onclick="setGameState('MERCHANT')">🤝 Exchange </button>
+    <button id="nav-adventures" onclick="setGameState('ADVENTURES')">⚔️ Adventures</button>
+    <button id="nav-vault" onclick="setGameState('VAULT')">🏦 Vault</button>
+    <button id="tab-social" onclick="switchTab('social-view'); joinMultiplayerZone('ZONE_HUB');">🏰 Community</button>
+</div>
         
         <div id="combat-screen" class="panel" style="display: none; width: 1035px; margin: 0 auto;">
             <div style="display: flex; gap: 15px; align-items: flex-start;">
