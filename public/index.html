@@ -201,14 +201,13 @@
     <!-- Responsive Grid Layout Container -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; align-items: start;">
 
-        <!-- MODULE 1: Vault Infrastructure -->
-        <div class="dashboard-panel" style="margin-bottom: 0;">
-            <h3 style="color: #e67e22; border-bottom: 1px dashed #d35400;">⚒️ Vault Infrastructure</h3>
-            <button id="upgrade-vault-btn" onclick="upgradeVaultCapacity()" style="width: 100%; background: #e67e22; padding: 10px;" onmouseenter="showSystemTooltip('vault_up', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Expand Vault Slots (+5 Slots)</button>
-            <div style="font-size: 10px; color: #bbaaa0; text-align: center; margin-top: 10px; font-style: italic;">
-                Expand your vault to securely store rare loot and crafting materials.
-            </div>
+        <!-- MODULE 1:Quick Backpack  -->
+		
+		 <div class="dashboard-panel" style="margin-bottom: 0;">
+            <h3 style="color: #3498db; border-bottom: 1px dashed #2980b9;">🎒 Quick Backpack (<span id="vault-inv-count">0</span>/5 Slots)</h3>
+            <div id="vault-inventory-list" style="background: #1a1512; padding: 6px; border-radius: 4px; border: 1px solid #4a3b2c; min-height: 74px;"></div>
         </div>
+       
 
         <!-- MODULE 2: Active Loadout (Vault Paper Doll) -->
         <div class="dashboard-panel" style="margin-bottom: 0; display: flex; flex-direction: column; align-items: center;">
@@ -228,15 +227,31 @@
             </div>
         </div>
 
-        <!-- MODULE 3: Quick Backpack -->
-        <div class="dashboard-panel" style="margin-bottom: 0;">
-            <h3 style="color: #3498db; border-bottom: 1px dashed #2980b9;">🎒 Quick Backpack (<span id="vault-inv-count">0</span>/5 Slots)</h3>
-            <div id="vault-inventory-list" style="background: #1a1512; padding: 6px; border-radius: 4px; border: 1px solid #4a3b2c; min-height: 74px;"></div>
+        <!-- MODULE 3:Financial Services (Replaced Infrastructure)  -->
+       
+		
+		 <div class="dashboard-panel" style="margin-bottom: 0; border: 1px dashed #7f8c8d; background: #2c3e50; opacity: 0.85;">
+            <h3 style="color: #bdc3c7; border-bottom: 1px dashed #7f8c8d;">📈 Financial Services</h3>
+            <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
+                <button disabled style="background: #34495e; border-color: #7f8c8d; color: #95a5a6; padding: 10px; margin: 0; cursor: not-allowed; text-decoration: line-through;">💰 Investment Ledger (Coming Soon)</button>
+                <button disabled style="background: #34495e; border-color: #7f8c8d; color: #95a5a6; padding: 10px; margin: 0; cursor: not-allowed; text-decoration: line-through;">🤝 Clan Shared Stash (Coming Soon)</button>
+            </div>
+            <div style="font-size: 10px; color: #bdc3c7; text-align: center; margin-top: 15px; font-style: italic;">
+                The Guild Bankers are currently auditing these features for a future update.
+            </div>
         </div>
+		
+		
 
         <!-- MODULE 4: The Vault Core (Spans Full Width at Bottom) -->
         <div class="dashboard-panel" style="margin-bottom: 0; grid-column: 1 / -1;">
-            <h3 style="color: #f1c40f; border-bottom: 1px dashed #f39c12;">🔒 Vault Core Allocation (<span id="vault-screen-count">0</span> / <span id="vault-screen-max">10</span> Capacity)</h3>
+            
+            <!-- THE MOVED BUTTON IS INJECTED HERE -->
+            <h3 style="color: #f1c40f; border-bottom: 1px dashed #f39c12; display: flex; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <span>🔒 Vault Core Allocation (<span id="vault-screen-count">0</span> / <span id="vault-screen-max">10</span> Capacity)</span>
+                <button id="upgrade-vault-btn" onclick="upgradeVaultCapacity()" style="font-size: 9px; padding: 4px 8px; margin: 0; background: #e67e22; border-color: #d35400;" onmouseenter="showSystemTooltip('vault_up', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Expand Vault Slots (+5 Slots)</button>
+            </h3>
+            
             <div id="vault-screen-list" class="scroll-panel" style="max-height: 350px; height: auto; min-height: 206px;"></div>
         </div>
 
