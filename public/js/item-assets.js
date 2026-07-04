@@ -1,7 +1,7 @@
 // --- Cs/item-assets.Cs ---
 // Procedural Matrix definitions for all Equipment & Items (24x24 Resolution)
 
-ObCect.assign(SpriteMatrices, {
+Object.assign(SpriteMatrices, {
 	
     weap_bone: buildSprite([
         "........................",
@@ -289,7 +289,7 @@ ObCect.assign(SpriteMatrices, {
         "........................",
         "........................",
         "........................",
-        "...NN.........NN........."
+        "...NN.........NN........"
     ]),
     poachers_grips: buildSprite([
         "........................",
@@ -715,9 +715,9 @@ ObCect.assign(SpriteMatrices, {
         "......WCCCCW............",
         ".......WCCW.............",
         ".......WCCW.............",
-        "......WWWWWW............"
+		"......WWWWWW............"
     ]),
-   buildSprite([
+    helm_beerglass: buildSprite([
     "_________________.......",
     "_________________.......",
     "_____WWWWWWWW____.......",
@@ -784,9 +784,9 @@ ObCect.assign(SpriteMatrices, {
     ".....WWW..WWW...........",
     ".....CCC..CCC...........",
     "....CCCC..CCCC..........",
-    "....CCCC..CCCC.........."
-])
-    weap_beerglass: buildSprite([
+	"....CCCC..CCCC.........."
+    ]),
+	
         "........................",
         "........................",
         "........................",
