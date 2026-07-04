@@ -506,10 +506,11 @@ if (hopsScreen) hopsScreen.style.display = "none";
                 document.getElementById("vault-screen-max").innerText = player.vaultSlots;
                 document.getElementById("vault-inv-count").innerText = player.inventory.length;
 
-				let vaultCost = getVaultUpgradeCost();
+                let vaultCost = getVaultUpgradeCost();
                 let vaultBtn = document.getElementById("upgrade-vault-btn");
                 if (vaultBtn) {
-                    vaultBtn.innerText = `Expand Vault Slots (+5 Slots) (Costs ${vaultCost.gold}g, ${vaultCost.wood}W)`;
+                    // === THE FIX: Condense the text so it fits beautifully in the header ===
+                    vaultBtn.innerText = `➕ Expand (+5: ${vaultCost.gold}g, ${vaultCost.wood}W)`;
                     vaultBtn.disabled = (player.gold < vaultCost.gold || player.wood < vaultCost.wood);
                 }
 
