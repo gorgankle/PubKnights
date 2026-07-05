@@ -599,9 +599,9 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
        let combatState = {
             zone: zone, activeLevel: runLvl, 
             turn: 'PLAYER', phase: 'MOVE',
-            gridSize: 8, tileSize: 60,
-            player: { x: 1, y: 1, atbCharge: 0 }, enemies: [], obstacles: [],
-            atbPaused: false // <--- THE WAIT MODE LOCK
+            gridSize: { cols: 16, rows: 10 }, tileSize: 60, // <-- 16x10 JSON OBJECT
+            player: { x: 1, y: 4, atbCharge: 0 }, enemies: [], obstacles: [],
+            atbPaused: false 
         };
 
         // === NEW: TUTORIAL DIRECTOR HOOK ===
@@ -611,67 +611,62 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
         let prefixLabel = (zone === 'WILDERNESS' && p.mapBaited) ? "Frenzied " : "";
 
         if (zone === 'GORILLA_ARENA') {
-            combatState.gridSize = 14; combatState.tileSize = 34; combatState.player.x = 7; combatState.player.y = 7;
+            combatState.player.x = 2; combatState.player.y = 4;
             for (let i = 0; i < 100; i++) {
                 let sx, sy;
-                if (Math.random() > 0.5) { sx = Math.random() > 0.5 ? 0 : 13; sy = Math.floor(Math.random() * 14); } 
-                else { sx = Math.floor(Math.random() * 14); sy = Math.random() > 0.5 ? 0 : 13; }
+                // Spawn strictly on the outer rim of the 16x10 grid
+                if (Math.random() > 0.5) { sx = Math.random() > 0.5 ? 0 : 15; sy = Math.floor(Math.random() * 10); } 
+                else { sx = Math.floor(Math.random() * 16); sy = Math.random() > 0.5 ? 0 : 9; }
                 
-                // THE FIX: Route through the NpcDatabase factory function!
                 let newGorilla = createEnemy("enraged_gorilla", sx, sy);
-                newGorilla.name = `Enraged Gorilla #${i+1}`; // Append the swarm number dynamically
-                
+                newGorilla.name = `Enraged Gorilla #${i+1}`; 
                 combatState.enemies.push(newGorilla);
             }
         }
         else if (zone === 'ABYSS') {
-            combatState.gridSize = 12; combatState.tileSize = 40; combatState.player.x = 0; combatState.player.y = 11;
+            combatState.player.x = 0; combatState.player.y = 4; // Start safe on the left
             let depth = p.abyssDepth || 1;
             let statMult = 1 + (depth * 0.15) + (Math.pow(depth, 2) * 0.005);
             let enemyCount = Math.min(12, 3 + Math.floor(depth / 3));
 
             for (let i = 0; i < enemyCount; i++) {
                 let rng = Math.random();
-                let ex = Math.floor(Math.random() * 8) + 4; let ey = Math.floor(Math.random() * 12);
+                let ex = Math.floor(Math.random() * 10) + 5; // Spawn on right side (Cols 5-15)
+                let ey = Math.floor(Math.random() * 10);     // Any row (0-9)
                 while(combatState.enemies.some(e => e.x === ex && e.y === ey)) {
-                    ex = Math.floor(Math.random() * 8) + 4; ey = Math.floor(Math.random() * 12);
+                    ex = Math.floor(Math.random() * 10) + 5; ey = Math.floor(Math.random() * 10);
                 }
                 if (rng > 0.7) combatState.enemies.push(createEnemy("spectral_barfly", ex, ey, "", statMult));
                 else if (rng > 0.3) combatState.enemies.push(createEnemy("mash_crawler", ex, ey, "", statMult));
                 else combatState.enemies.push(createEnemy("eldritch_keg", ex, ey, "", statMult));
             }
         }
-
         else if (zone === 'CELLARS') {
             if (runLvl === 20) {
-                combatState.enemies.push(createEnemy("vintage_behemoth", 5, 4));
+                combatState.enemies.push(createEnemy("vintage_behemoth", 13, 4));
             } else {
                 let swarmSize = Math.min(6, 1 + Math.floor(runLvl / 2)); 
                 for (let i = 0; i < swarmSize; i++) {
-                    let spawnX = 7 - Math.floor(i / 3); let spawnY = 2 + (i % 3);
+                    let spawnX = 14 - Math.floor(i / 3); let spawnY = 3 + (i % 3);
                     combatState.enemies.push(createEnemy("corrupted_cask", spawnX, spawnY));
                 }
                 if (p.cellarsChummed) {
-                    for (let i = 0; i < 5; i++) combatState.enemies.push(createEnemy("pub_crawl_mimic", 2 + i, 5, "Chummed "));
-                } else if (runLvl >= 5) combatState.enemies.push(createEnemy("pub_crawl_mimic", 5, 6));
+                    for (let i = 0; i < 5; i++) combatState.enemies.push(createEnemy("pub_crawl_mimic", 8 + i, 5, "Chummed "));
+                } else if (runLvl >= 5) combatState.enemies.push(createEnemy("pub_crawl_mimic", 12, 6));
             }
         }
         else if (zone === 'TUTORIAL') {
-            // THE FIX: DO NOTHING! The Director already handled the enemies!
+            // DO NOTHING
         }
         else { // WILDERNESS
             if (runLvl === 20) {
-                combatState.enemies.push(createEnemy("wilderness_overlord", 5, 4, prefixLabel, baitMultiplier));
+                combatState.enemies.push(createEnemy("wilderness_overlord", 13, 4, prefixLabel, baitMultiplier));
             } else {
                 let swarmSize = Math.min(6, 1 + Math.floor(runLvl / 2)); 
-                
-                let publingsToSpawn = 0;
-                if (runLvl === 5) publingsToSpawn = 1;
-                else if (runLvl === 10) publingsToSpawn = 2;
-                else if (runLvl === 15) publingsToSpawn = 3;
+                let publingsToSpawn = (runLvl === 5) ? 1 : (runLvl === 10) ? 2 : (runLvl === 15) ? 3 : 0;
 
                 for (let i = 0; i < swarmSize; i++) {
-                    let spawnX = 7 - Math.floor(i / 3); let spawnY = 2 + (i % 3);           
+                    let spawnX = 14 - Math.floor(i / 3); let spawnY = 3 + (i % 3);           
                     
                     if (publingsToSpawn > 0) {
                         combatState.enemies.push(createEnemy("publing", spawnX, spawnY, prefixLabel, baitMultiplier));
@@ -680,7 +675,7 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
                         combatState.enemies.push(createEnemy("wild_ravager", spawnX, spawnY, prefixLabel, baitMultiplier));
                     }
                 }
-                if (p.mapBaited) combatState.enemies.push(createEnemy("alpha_poacher", 2, 5));
+                if (p.mapBaited) combatState.enemies.push(createEnemy("alpha_poacher", 6, 5));
             }
         }
 
@@ -690,24 +685,16 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
         else if (zone === 'ABYSS') { obsIcon = "🔮"; obsSprite = "map_pillar"; }
         
         if (zone === 'WILDERNESS' && runLvl === 20) {
-            combatState.player.x = 0; combatState.player.y = 7;
-            let boss = combatState.enemies.find(e => e.id === "wilderness_overlord");
-            if (boss) { boss.x = 6; boss.y = 0; }
-            const bossLayout = [
-                [1, 1, 1, 1, 1, 1, 0, 0], [1, 0, 0, 0, 1, 1, 0, 1], [1, 0, 1, 0, 0, 0, 0, 1],
-                [1, 0, 1, 1, 1, 1, 1, 1], [1, 0, 0, 0, 0, 0, 1, 1], [1, 1, 1, 1, 1, 0, 1, 1],
-                [0, 0, 0, 1, 1, 0, 0, 1], [0, 1, 0, 0, 0, 0, 1, 1]
-            ];
-            for (let y = 0; y < 8; y++) {
-                for (let x = 0; x < 8; x++) {
-                    if (bossLayout[y][x] === 1) combatState.obstacles.push({ x: x, y: y, icon: obsIcon, spriteId: obsSprite });
-                }
-            }
-        } else if (zone !== 'TUTORIAL') { // THE FIX: Prevent random obstacles in the Tutorial!
-            let obsCount = (zone === 'ABYSS') ? 25 : 12;
+            combatState.player.x = 1; combatState.player.y = 4;
+            // Removed the massive hardcoded 8x8 array. Just drop 4 corner pillars for the boss!
+            let pillars = [{x: 5, y: 1}, {x: 5, y: 8}, {x: 14, y: 1}, {x: 14, y: 8}];
+            pillars.forEach(p => combatState.obstacles.push({ x: p.x, y: p.y, icon: obsIcon, spriteId: obsSprite }));
+        } else if (zone !== 'TUTORIAL') { 
+            let obsCount = (zone === 'ABYSS') ? 20 : 10;
             for (let i = 0; i < obsCount; i++) {
-                let ox = Math.floor(Math.random() * combatState.gridSize); 
-                let oy = Math.floor(Math.random() * combatState.gridSize);
+                // THE FIX: Access combatState.gridSize.cols/rows directly
+                let ox = Math.floor(Math.random() * combatState.gridSize.cols); 
+                let oy = Math.floor(Math.random() * combatState.gridSize.rows);
                 let blocked = (ox === combatState.player.x && oy === combatState.player.y);
                 combatState.enemies.forEach(em => {
                     let s = em.size || 1;
@@ -749,24 +736,29 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
     });
 
     // --- STANDALONE AI PROCESSOR ---
-    function executeEnemyTurn(socketId, combat, p, e) {
+    ffunction executeEnemyTurn(socketId, combat, p, e) {
         if (!e.alive || p.hp <= 0) return;
         let turnEvents = [];
-        let collisionMatrix = Array(combat.gridSize).fill(null).map(() => Array(combat.gridSize).fill(0));
         
-        combat.obstacles.forEach(o => { if (o.x >= 0 && o.x < combat.gridSize && o.y >= 0 && o.y < combat.gridSize) collisionMatrix[o.x][o.y] = 1; });
+        // Extract the cols and rows safely
+        let cols = combat.gridSize.cols || 16;
+        let rows = combat.gridSize.rows || 10;
+
+        let collisionMatrix = Array(cols).fill(null).map(() => Array(rows).fill(0));
+        
+        combat.obstacles.forEach(o => { if (o.x >= 0 && o.x < cols && o.y >= 0 && o.y < rows) collisionMatrix[o.x][o.y] = 1; });
         combat.enemies.forEach(en => {
             if (en.alive) {
                 let enSize = en.size || 1;
                 for (let bx = en.x; bx < en.x + enSize; bx++) {
                     for (let by = en.y; by < en.y + enSize; by++) {
-                        if (bx >= 0 && bx < combat.gridSize && by >= 0 && by < combat.gridSize) collisionMatrix[bx][by] = 2;
+                        if (bx >= 0 && bx < cols && by >= 0 && by < rows) collisionMatrix[bx][by] = 2;
                     }
                 }
             }
         });
 
-        if (combat.player.x >= 0 && combat.player.x < combat.gridSize && combat.player.y >= 0 && combat.player.y < combat.gridSize) {
+        if (combat.player.x >= 0 && combat.player.x < cols && combat.player.y >= 0 && combat.player.y < rows) {
             collisionMatrix[combat.player.x][combat.player.y] = 2; 
         }
 
@@ -813,7 +805,7 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
                         visited.add(key); let blocked = false;
                         for (let bx = nx; bx < nx + eSize; bx++) {
                             for (let by = ny; by < ny + eSize; by++) {
-                                if (bx < 0 || bx >= combat.gridSize || by < 0 || by >= combat.gridSize) blocked = true; 
+                                if (bx < 0 || bx >= cols || by < 0 || by >= rows) blocked = true;
                                 else if (collisionMatrix[bx][by] === 2 && !(bx >= entity.x && bx < entity.x + eSize && by >= entity.y && by < entity.y + eSize)) blocked = true; 
                                 else if (collisionMatrix[bx][by] === 1 && eSize === 1) blocked = true; 
                             }
@@ -973,7 +965,7 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
         
         let dist = getGridDistance(combat.player.x, combat.player.y, data.tx, data.ty, 1);
         
-        if (data.tx < 0 || data.tx >= combat.gridSize || data.ty < 0 || data.ty >= combat.gridSize) {
+       if (data.tx < 0 || data.tx >= combat.gridSize.cols || data.ty < 0 || data.ty >= combat.gridSize.rows) {
             return socket.emit('moveReceipt', { success: false, message: '❌ Server: Coordinates out of bounds.', x: combat.player.x, y: combat.player.y });
         }
         let hitWall = combat.obstacles.some(o => o.x === data.tx && o.y === data.ty);
