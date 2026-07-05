@@ -472,23 +472,3 @@ button:hover:not(:disabled) { background: #a06d3b; }
 .paper-doll-grid .slot-title {
     display: none; 
 }
-
-/* === DESKTOP SIDE-BY-SIDE COMBAT GRID === */
-.combat-grid-container {
-    display: grid;
-    /* Lock the canvas to 960px, give the UI the rest of the room */
-    grid-template-columns: 960px minmax(320px, 420px);
-    gap: 20px;
-    justify-content: center;
-    align-items: start;
-    width: 100%;
-}
-
-/* Automatically stack into a vertical column on laptops/tablets/phones */
-@media (max-width: 1450px) {
-    .combat-grid-container {
-        grid-template-columns: 1fr;
-        max-width: 960px;
-        margin: 0 auto;
-    }
-}
