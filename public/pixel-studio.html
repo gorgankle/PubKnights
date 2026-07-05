@@ -46,7 +46,7 @@
         .controls {
             display: flex;
             flex-direction: column;
-            width: 300px;
+            width: 320px;
             gap: 15px;
         }
         button, textarea, select {
@@ -76,80 +76,92 @@
         #clear-btn { background: #c0392b; border-color: #e74c3c; }
         
         textarea {
-            height: 200px;
+            height: 120px;
             resize: none;
             white-space: pre;
             color: #bdc3c7;
         }
-        .swatch-preview {
+
+        /* === NEW: TOOLBAR STYLES === */
+        .toolbar {
             display: flex;
-            align-items: center;
-            gap: 10px;
+            gap: 5px;
             background: #1a1512;
             padding: 10px;
             border: 1px solid #4a3b2c;
             border-radius: 4px;
         }
-        #current-color-box {
-            width: 40px;
-            height: 40px;
-            border: 2px solid #fff;
-            border-radius: 4px;
+        .tool-btn {
+            flex: 1;
+            padding: 8px;
+            background: #2c2520;
+            border: 2px solid #4a3b2c;
+            color: #bbaaa0;
+            font-size: 16px;
+        }
+        .tool-btn.active {
+            background: #27ae60;
+            border-color: #2ecc71;
+            color: #fff;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
         }
 
-        /* CUSTOM DROPDOWN STYLES */
-        .custom-select-wrapper { position: relative; user-select: none; width: 100%; margin-top: 5px; }
-        .custom-select {
-            display: flex; align-items: center; justify-content: space-between;
-            background: #110d0a; color: #f1c40f; border: 2px solid #634e3d;
-            padding: 8px 10px; font-family: 'Courier New', monospace; font-size: 14px;
-            border-radius: 4px; cursor: pointer;
+        /* === NEW: SWATCH GRID STYLES === */
+        .palette-container {
+            background: #110d0a;
+            border: 2px solid #634e3d;
+            border-radius: 4px;
+            padding: 10px;
+            max-height: 250px;
+            overflow-y: auto;
         }
-        .custom-select.open { border-color: #ffcc66; }
-        .custom-options {
-            position: absolute; top: 100%; left: 0; right: 0;
-            background: #110d0a; border: 2px solid #634e3d; border-top: none;
-            border-radius: 0 0 4px 4px; max-height: 250px; overflow-y: auto;
-            z-index: 100; display: none; box-shadow: 0 5px 15px rgba(0,0,0,0.8);
+        .palette-section { margin-bottom: 10px; }
+        .palette-header {
+            color: #bbaaa0;
+            font-size: 11px;
+            font-weight: bold;
+            border-bottom: 1px dashed #4a3b2c;
+            margin-bottom: 8px;
+            padding-bottom: 4px;
         }
-        .custom-options.open { display: block; }
-        .custom-option {
-            display: flex; align-items: center; padding: 8px 10px;
-            cursor: pointer; border-bottom: 1px solid #2a221f;
+        .swatch-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(28px, 1fr));
+            gap: 4px;
         }
-        .custom-option:hover { background: #2a221f; }
-        .color-swatch-sm {
-            width: 20px; height: 20px; border: 1px solid #fff;
-            border-radius: 2px; margin-right: 10px; flex-shrink: 0;
+        .swatch {
+            width: 28px;
+            height: 28px;
+            border: 2px solid #110d0a;
+            border-radius: 4px;
+            cursor: pointer;
+            box-sizing: border-box;
+            transition: transform 0.1s;
         }
+        .swatch:hover {
+            transform: scale(1.1);
+            border-color: #ffcc66;
+            z-index: 10;
+        }
+        .swatch.active {
+            border-color: #2ecc71;
+            box-shadow: 0 0 8px #2ecc71;
+        }
+
         .checkerboard {
             background-color: #1a1512;
             background-image: linear-gradient(45deg, #333 25%, transparent 25%, transparent 75%, #333 75%, #333), 
                               linear-gradient(45deg, #333 25%, transparent 25%, transparent 75%, #333 75%, #333);
             background-size: 10px 10px; background-position: 0 0, 5px 5px;
         }
-		
-		/* === MOBILE RESPONSIVENESS === */
-@media (max-width: 800px) {
-    body { padding: 10px; }
-    .container { 
-        flex-direction: column; /* Stack canvas on top of controls */
-        align-items: center; 
-        padding: 10px; 
-    }
-    .controls { width: 100%; max-width: 480px; }
-    
-    /* Let the canvas shrink gracefully */
-    #paint-canvas { 
-        width: 100%; 
-        max-width: 480px; 
-        height: auto; 
-        aspect-ratio: 1 / 1; 
-    }
-}
-		
-		
-		
+        
+        /* Mobile Scaling */
+        @media (max-width: 800px) {
+            body { padding: 10px; }
+            .container { flex-direction: column; align-items: center; padding: 10px; }
+            .controls { width: 100%; max-width: 480px; }
+            #paint-canvas { width: 100%; max-width: 480px; height: auto; aspect-ratio: 1 / 1; }
+        }
     </style>
 </head>
 <body>
@@ -170,9 +182,29 @@
                 </div>
                 <div style="font-size: 10px; color: #bbaaa0; margin-top: 6px;">* Warning: This will overwrite your current canvas.</div>
             </div>
-            </div>
+        </div>
 
         <div class="controls">
+            
+            <!-- NEW: TOOLBAR -->
+            <div class="toolbar">
+                <button class="tool-btn active" id="btn-brush" onclick="setTool('brush')" title="Paint Brush">🖊️</button>
+                <button class="tool-btn" id="btn-fill" onclick="setTool('fill')" title="Bucket Fill">🪣</button>
+                <button class="tool-btn" id="btn-eye" onclick="setTool('eyedropper')" title="Eyedropper">💧</button>
+            </div>
+
+            <!-- VISUAL SWATCH GRID -->
+            <div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 5px;">
+                    <label style="color: #bbaaa0; font-size: 11px; font-weight: bold;">COLOR PALETTE:</label>
+                    <span id="active-color-name" style="color: #2ecc71; font-size: 10px; font-weight: bold;">[ . ] Eraser</span>
+                </div>
+                <div class="palette-container" id="palette-grid">
+                    <!-- Swatches injected via JS -->
+                </div>
+            </div>
+
+            <!-- OPTIONS -->
             <div style="display: flex; gap: 10px;">
                 <div style="flex: 1;">
                     <label style="color: #bbaaa0; font-size: 11px; font-weight: bold;">BACKGROUND:</label>
@@ -192,30 +224,11 @@
                 </div>
             </div>
 
-            <div>
-                <label style="color: #bbaaa0; font-size: 11px; font-weight: bold;">SELECT BRUSH (PULLED FROM PALETTE):</label>
-                <div class="custom-select-wrapper">
-                    <div class="custom-select" id="custom-select-trigger">
-                        <div style="display: flex; align-items: center;">
-                            <div id="trigger-swatch" class="color-swatch-sm checkerboard"></div>
-                            <span id="trigger-text">[ . ] Eraser (Transparent)</span>
-                        </div>
-                        <span>▼</span>
-                    </div>
-                    <div class="custom-options" id="custom-options-list"></div>
-                </div>
+            <div style="display: flex; gap: 10px;">
+                <button id="clear-btn" style="flex: 1;" onclick="clearCanvas()">🗑️ Wipe Matrix</button>
+                <button style="flex: 1; background: #c0392b; border-color: #e74c3c;" onclick="window.parent.postMessage('RETURN_TO_TOWN', '*')">↩ Town</button>
             </div>
-
-            <div class="swatch-preview">
-                <div id="current-color-box" class="checkerboard"></div>
-                <div style="display: flex; flex-direction: column;">
-                    <span style="color: #bbaaa0; font-size: 11px;">Active Character:</span>
-                    <strong id="current-char-display" style="font-size: 18px; color: #fff;">.</strong>
-                </div>
-            </div>
-
-            <button id="clear-btn" onclick="clearCanvas()">🗑️ Clear Matrix</button>
-			<button onclick="window.parent.postMessage('RETURN_TO_TOWN', '*')" style="background: #c0392b; border-color: #e74c3c;">↩ Back to Town</button>
+            
             <button id="export-btn" onclick="exportSprite()">💾 Export to Code</button>
 
             <div>
@@ -228,11 +241,10 @@
     <script>
         const canvas = document.getElementById('paint-canvas');
         const ctx = canvas.getContext('2d');
-        const colorBox = document.getElementById('current-color-box');
-        const charDisplay = document.getElementById('current-char-display');
         const exportOutput = document.getElementById('export-output');
         const bgSelect = document.getElementById('bg-model-select');
         const brushSelect = document.getElementById('brush-size-select');
+        const activeColorName = document.getElementById('active-color-name');
 
         const GRID_SIZE = 24;
         const CELL_SIZE = canvas.width / GRID_SIZE;
@@ -240,92 +252,106 @@
         let grid = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill('.'));
         let isDrawing = false;
         let activeChar = '.';
+        let currentTool = 'brush'; // 'brush', 'fill', 'eyedropper'
 
-        // Listen for template changes to redraw immediately
         bgSelect.addEventListener('change', drawGrid);
 
-        // --- CUSTOM DROPDOWN LOGIC ---
-        const trigger = document.getElementById('custom-select-trigger');
-        const optionsList = document.getElementById('custom-options-list');
-        const triggerText = document.getElementById('trigger-text');
-        const triggerSwatch = document.getElementById('trigger-swatch');
+        // --- NEW: TOOL MANAGEMENT ---
+        function setTool(tool) {
+            currentTool = tool;
+            document.getElementById('btn-brush').classList.remove('active');
+            document.getElementById('btn-fill').classList.remove('active');
+            document.getElementById('btn-eye').classList.remove('active');
 
-        trigger.addEventListener('click', function(e) {
-            e.stopPropagation();
-            optionsList.classList.toggle('open');
-            trigger.classList.toggle('open');
-        });
-
-        document.addEventListener('click', function() {
-            optionsList.classList.remove('open');
-            trigger.classList.remove('open');
-        });
-
-        function updateActiveBrush(char, hex, label) {
-            activeChar = char;
-            charDisplay.innerText = activeChar;
-            triggerText.innerText = label;
+            if (tool === 'brush') document.getElementById('btn-brush').classList.add('active');
+            if (tool === 'fill') document.getElementById('btn-fill').classList.add('active');
+            if (tool === 'eyedropper') document.getElementById('btn-eye').classList.add('active');
             
-            if (char === '.' || hex === 'transparent') {
-                triggerSwatch.style.background = '';
-                triggerSwatch.classList.add('checkerboard');
-                colorBox.style.background = '';
-                colorBox.classList.add('checkerboard');
-            } else {
-                triggerSwatch.style.background = hex;
-                triggerSwatch.classList.remove('checkerboard');
-                colorBox.style.background = hex;
-                colorBox.classList.remove('checkerboard');
-            }
+            if (tool === 'eyedropper') canvas.style.cursor = 'crosshair';
+            else if (tool === 'fill') canvas.style.cursor = 'cell';
+            else canvas.style.cursor = 'crosshair';
         }
 
+        // --- NEW: PALETTE GRID GENERATOR ---
         function initPalette() {
-            if (typeof PALETTE === 'undefined') {
-                alert("CRITICAL ERROR: PALETTE object not found! Ensure character-creator.js is loading correctly.");
-                return;
-            }
+            if (typeof PALETTE === 'undefined') return alert("CRITICAL ERROR: PALETTE object not found!");
 
-            optionsList.innerHTML = ''; 
+            const paletteGrid = document.getElementById('palette-grid');
+            paletteGrid.innerHTML = ''; 
 
-            for (let char in PALETTE) {
-                let hex = PALETTE[char];
-                let labelText = char === '.' ? `[ . ] Eraser (Transparent)` : `[ ${char} ] ${hex}`;
+            const systemTools = ['.', '_'];
+            const dynamicColors = {
+                'S': 'Skin Tone', 'H': 'Hair Tone', 'Z': 'Eye Color',
+                'U': 'Shirt Color', 'P': 'Pants Color', 'D': 'Boots Color'
+            };
+
+            const addSection = (title, chars) => {
+                let section = document.createElement('div');
+                section.className = 'palette-section';
                 
-                let optionRow = document.createElement('div');
-                optionRow.className = 'custom-option';
-                
-                let miniSwatch = document.createElement('div');
-                miniSwatch.className = 'color-swatch-sm';
-                if (char === '.' || hex === 'transparent') miniSwatch.classList.add('checkerboard');
-                else miniSwatch.style.backgroundColor = hex;
+                let header = document.createElement('div');
+                header.className = 'palette-header';
+                header.innerText = title;
+                section.appendChild(header);
 
-                let textSpan = document.createElement('span');
-                textSpan.innerText = labelText;
+                let gridDiv = document.createElement('div');
+                gridDiv.className = 'swatch-grid';
 
-                optionRow.appendChild(miniSwatch);
-                optionRow.appendChild(textSpan);
+                chars.forEach(char => {
+                    let hex = PALETTE[char];
+                    let swatch = document.createElement('div');
+                    swatch.className = 'swatch';
+                    swatch.id = `swatch-${char}`;
 
-                optionRow.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    updateActiveBrush(char, hex, labelText);
-                    optionsList.classList.remove('open');
-                    trigger.classList.remove('open');
+                    let label = `[ ${char} ] `;
+                    if (char === '.') label += "Eraser (Transparent)";
+                    else if (char === '_') label += "Hair Clipping Mask";
+                    else if (dynamicColors[char]) label += `Dynamic: ${dynamicColors[char]}`;
+                    else label += hex;
+                    
+                    swatch.title = label; // Native HTML tooltip
+
+                    if (char === '.') swatch.classList.add('checkerboard');
+                    else if (char === '_') {
+                        swatch.style.backgroundColor = 'rgba(231, 76, 60, 0.4)';
+                        swatch.classList.add('checkerboard');
+                    } else {
+                        swatch.style.backgroundColor = hex;
+                    }
+
+                    if (char === activeChar) swatch.classList.add('active');
+
+                    swatch.onclick = () => {
+                        document.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
+                        swatch.classList.add('active');
+                        activeChar = char;
+                        activeColorName.innerText = label;
+                        if (currentTool === 'eyedropper') setTool('brush'); // Auto-switch back to paint
+                    };
+
+                    gridDiv.appendChild(swatch);
                 });
+                
+                section.appendChild(gridDiv);
+                paletteGrid.appendChild(section);
+            };
 
-                optionsList.appendChild(optionRow);
-            }
+            // Gather character arrays for the grids
+            let staticChars = Object.keys(PALETTE).filter(c => !systemTools.includes(c) && !dynamicColors[c]);
+            
+            addSection('🛠️ SYSTEM TOOLS', systemTools);
+            addSection('🎭 DYNAMIC VARIABLES', Object.keys(dynamicColors).filter(c => PALETTE[c]));
+            addSection('🎨 STATIC COLORS', staticChars);
         }
 
-// --- RENDERING ENGINE WITH GHOST MANNEQUIN & MASKS ---
+        // --- GRID RENDERING ---
         function drawGrid() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // 1. Draw the Ghosted Background Template (if active)
+            // 1. Draw Ghost
             const bgModel = bgSelect.value;
             if (bgModel !== 'none' && typeof SpriteMatrices !== 'undefined' && SpriteMatrices[bgModel]) {
                 ctx.globalAlpha = 0.35; 
-                
-                // Helper to paint a specific matrix layer for the ghost
                 const drawGhostLayer = (matrixKey) => {
                     let matrix = SpriteMatrices[matrixKey];
                     if (!matrix) return;
@@ -339,7 +365,7 @@
                                 if (char === 'P') color = '#2c3e50'; 
                                 if (char === 'U') color = '#2980b9'; 
                                 if (char === 'D') color = '#3e2723'; 
-                                if (char === 'Z') color = '#ffffff'; // MAP THE EYE PIXEL!
+                                if (char === 'Z') color = '#ffffff'; 
                                 
                                 ctx.fillStyle = color;
                                 ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
@@ -347,19 +373,12 @@
                         }
                     }
                 };
-
-                // Draw the main body
                 drawGhostLayer(bgModel);
-                
-                // If it's a character base, overlay the eyes for reference
-                if (bgModel === 'body_male' || bgModel === 'body_female') {
-                    drawGhostLayer('eyes_blue');
-                }
-                
+                if (bgModel === 'body_male' || bgModel === 'body_female') drawGhostLayer('eyes_blue');
                 ctx.globalAlpha = 1.0; 
             }
 
-            // 2. Draw the Painted Pixels & Grid Outlines
+            // 2. Draw Pixels
             for (let y = 0; y < GRID_SIZE; y++) {
                 for (let x = 0; x < GRID_SIZE; x++) {
                     let char = grid[y][x];
@@ -368,10 +387,8 @@
                         ctx.strokeStyle = '#2a221f';
                         ctx.lineWidth = 1;
                         ctx.strokeRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
-                    } 
-                    // === NEW: VISUALIZE THE ERASER MASK ===
-                    else if (char === '_') {
-                        ctx.fillStyle = 'rgba(231, 76, 60, 0.4)'; // Translucent Red
+                    } else if (char === '_') {
+                        ctx.fillStyle = 'rgba(231, 76, 60, 0.4)';
                         ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
                         ctx.strokeStyle = '#e74c3c';
                         ctx.lineWidth = 1;
@@ -379,8 +396,7 @@
                         ctx.moveTo(x * CELL_SIZE, y * CELL_SIZE);
                         ctx.lineTo((x + 1) * CELL_SIZE, (y + 1) * CELL_SIZE);
                         ctx.stroke();
-                    } 
-                    else {
+                    } else {
                         ctx.fillStyle = PALETTE[char] || '#ff00ff'; 
                         ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
                     }
@@ -388,40 +404,73 @@
             }
         }
 
-        // --- MULTI-SIZE PAINTING LOGIC ---
-        function paintCell(event) {
-            if (!isDrawing) return;
-            
-            const rect = canvas.getBoundingClientRect();
-            
-            // === MOBILE SCALING MATH ===
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-            
-            const x = Math.floor(((event.clientX - rect.left) * scaleX) / CELL_SIZE);
-            const y = Math.floor(((event.clientY - rect.top) * scaleY) / CELL_SIZE);
-            // ===========================
-            
-            const size = parseInt(brushSelect.value);
+        // --- NEW: FLOOD FILL ALGORITHM (THE BUCKET) ---
+        function floodFill(startX, startY, targetChar) {
+            let targetColor = grid[startY][startX];
+            if (targetColor === targetChar) return; // Don't fill with the same color
 
-            // Center a 3x3 brush, but expand 2x2 downwards
-            const offset = size === 3 ? 1 : 0;
+            let queue = [{x: startX, y: startY}];
+            while(queue.length > 0) {
+                let {x, y} = queue.shift();
+                
+                if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) continue;
+                if (grid[y][x] !== targetColor) continue;
 
-            for (let sy = 0; sy < size; sy++) {
-                for (let sx = 0; sx < size; sx++) {
-                    let px = x + sx - offset;
-                    let py = y + sy - offset;
-
-                    if (px >= 0 && px < GRID_SIZE && py >= 0 && py < GRID_SIZE) {
-                        grid[py][px] = activeChar;
-                    }
-                }
+                grid[y][x] = targetChar;
+                
+                // Add adjacent pixels
+                queue.push({x: x + 1, y: y});
+                queue.push({x: x - 1, y: y});
+                queue.push({x: x, y: y + 1});
+                queue.push({x: x, y: y - 1});
             }
             drawGrid();
         }
 
-        canvas.addEventListener('mousedown', (e) => { isDrawing = true; paintCell(e); });
-        canvas.addEventListener('mousemove', paintCell);
+        // --- INTERACTION LOGIC ---
+        function handleCanvasAction(event, isClick) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = Math.floor(((event.clientX - rect.left) * scaleX) / CELL_SIZE);
+            const y = Math.floor(((event.clientY - rect.top) * scaleY) / CELL_SIZE);
+
+            if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) return;
+
+            // EYEDROPPER
+            if (currentTool === 'eyedropper' && isClick) {
+                let pickedChar = grid[y][x];
+                let swatch = document.getElementById(`swatch-${pickedChar}`);
+                if (swatch) swatch.click(); // Triggers the visual update & auto-reverts to brush
+                return;
+            }
+
+            // BUCKET FILL
+            if (currentTool === 'fill' && isClick) {
+                floodFill(x, y, activeChar);
+                return;
+            }
+
+            // BRUSH (Supports Click + Drag)
+            if (currentTool === 'brush' && (isDrawing || isClick)) {
+                const size = parseInt(brushSelect.value);
+                const offset = size === 3 ? 1 : 0;
+
+                for (let sy = 0; sy < size; sy++) {
+                    for (let sx = 0; sx < size; sx++) {
+                        let px = x + sx - offset;
+                        let py = y + sy - offset;
+                        if (px >= 0 && px < GRID_SIZE && py >= 0 && py < GRID_SIZE) {
+                            grid[py][px] = activeChar;
+                        }
+                    }
+                }
+                drawGrid();
+            }
+        }
+
+        canvas.addEventListener('mousedown', (e) => { isDrawing = true; handleCanvasAction(e, true); });
+        canvas.addEventListener('mousemove', (e) => { if (isDrawing) handleCanvasAction(e, false); });
         window.addEventListener('mouseup', () => isDrawing = false);
 
         function clearCanvas() {
@@ -431,15 +480,11 @@
                 exportOutput.value = "";
             }
         }
-		
-		// --- THE INJECTOR ---
+        
         function populateInjector() {
             const injectSelect = document.getElementById('inject-select');
             if (typeof SpriteMatrices === 'undefined') return;
-            
-            // Grab all keys, sort them alphabetically for easy hunting
             const keys = Object.keys(SpriteMatrices).sort();
-            
             keys.forEach(key => {
                 let opt = document.createElement('option');
                 opt.value = key;
@@ -449,56 +494,24 @@
         }
 
         function injectSprite() {
-            const injectSelect = document.getElementById('inject-select');
-            const spriteKey = injectSelect.value;
-            
-            if (!spriteKey) {
-                alert("Please select a sprite from the dropdown first.");
-                return;
-            }
-
-            if (typeof SpriteMatrices === 'undefined' || !SpriteMatrices[spriteKey]) {
-                alert("CRITICAL ERROR: Sprite matrix data not found.");
-                return;
-            }
-
-            // Confirm before wiping their current work
-            if (confirm(`Are you sure you want to overwrite the canvas with '${spriteKey}'?`)) {
+            const spriteKey = document.getElementById('inject-select').value;
+            if (!spriteKey || typeof SpriteMatrices === 'undefined' || !SpriteMatrices[spriteKey]) return alert("Please select a valid sprite.");
+            if (confirm(`Overwrite canvas with '${spriteKey}'?`)) {
                 const matrix = SpriteMatrices[spriteKey];
-                
-                // Deep copy the matrix data into the live grid state
                 for (let y = 0; y < GRID_SIZE; y++) {
                     for (let x = 0; x < GRID_SIZE; x++) {
-                        // Ensure we don't crash if a matrix is malformed or shorter than 24x24
-                        if (matrix[y] && matrix[y][x]) {
-                            grid[y][x] = matrix[y][x];
-                        } else {
-                            grid[y][x] = '.'; // Default to transparent/eraser
-                        }
+                        grid[y][x] = (matrix[y] && matrix[y][x]) ? matrix[y][x] : '.';
                     }
                 }
-                
                 drawGrid();
-                
-                // Optional: Wipe the export output box so they don't accidentally copy old code
                 exportOutput.value = ""; 
             }
         }
-		
 
-        // --- THE EXPORTER ---
         function exportSprite() {
             let output = "buildSprite([\n";
-            
             for (let y = 0; y < GRID_SIZE; y++) {
-                let rowString = grid[y].join('');
-                output += `    "${rowString}"`;
-                
-                if (y < GRID_SIZE - 1) {
-                    output += ",\n";
-                } else {
-                    output += "\n";
-                }
+                output += `    "${grid[y].join('')}"${y < GRID_SIZE - 1 ? ',' : ''}\n`;
             }
             output += "])";
             
@@ -514,7 +527,7 @@
 
         window.onload = () => {
             initPalette();
-			populateInjector();
+            populateInjector();
             drawGrid();
         };
     </script>
