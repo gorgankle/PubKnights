@@ -736,7 +736,7 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
     });
 
     // --- STANDALONE AI PROCESSOR ---
-    ffunction executeEnemyTurn(socketId, combat, p, e) {
+    function executeEnemyTurn(socketId, combat, p, e) {
         if (!e.alive || p.hp <= 0) return;
         let turnEvents = [];
         
