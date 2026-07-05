@@ -244,51 +244,33 @@ button:hover:not(:disabled) { background: #a06d3b; }
     display: inline-block; /* Required for transform scale to work on spans */
     animation: resourcePop 0.4s ease-out;
 }
-
-/* === NEW: MOBILE RESPONSIVENESS (PHASE 1) === */
+/* === NEW: MOBILE RESPONSIVENESS === */
 @media (max-width: 1080px) {
-    /* Stack the main town columns vertically */
-    .columns-container {
-        flex-direction: column;
-        align-items: center;
-    }
+    .columns-container { flex-direction: column; align-items: center; }
+    .column-left, .column-right { max-width: 100%; }
     
-    /* Allow the columns to expand slightly to fill the mobile screen */
-    .column-left, .column-right {
-        max-width: 100%;
-    }
-    
-    /* Force full width on screens to override hardcoded inline styles */
     #combat-screen, #vault-screen {
         width: 100% !important;
         padding: 10px;
         box-sizing: border-box;
     }
     
-    /* Stack the Combat and Vault sub-panels */
     #combat-screen > div, #vault-screen > div:nth-child(2) {
         flex-direction: column;
         align-items: center;
     }
     
-    /* Keep canvases and sidebars from overflowing */
-    #combat-screen > div > div:first-child, #vault-screen > div:nth-child(2) > div:first-child {
-        width: 100% !important;
-        max-width: 480px;
-    }
+    /* Allow the massive 960px canvas to scale down smoothly */
+    #combat-screen > div > div:first-child { max-width: 960px !important; }
+    #vault-screen > div:nth-child(2) > div:first-child { width: 100% !important; max-width: 480px; }
     
-    /* Make the canvas shrink to fit its container while maintaining aspect ratio */
-    #gameCanvas {
-        width: 100% !important;
-        height: auto !important; 
-    }
+    #gameCanvas { width: 100% !important; height: auto !important; }
     
-    /* Resize popups and login screens for smaller devices */
     #login-screen .dashboard-panel, #char-creation-screen, #loot-screen {
         width: 95% !important;
         max-width: 450px !important;
     }
-	/* Force the Studio Wrapper to maximize screen real estate */
+    
     #studio-screen {
         height: 88vh !important;
         border-radius: 0 !important;
@@ -296,6 +278,19 @@ button:hover:not(:disabled) { background: #a06d3b; }
         border-right: none !important;
         margin-top: 5px !important;
     }
+}
+
+/* Force the 2-column combat stats to stack vertically on small phones */
+@media (max-width: 600px) {
+    #combat-bottom-stats, .combat-grid-2-col {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+.combat-grid-2-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
 }
 
 /* --- TOP NAVIGATION BAR --- */

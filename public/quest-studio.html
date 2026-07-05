@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Pub Knights - Quest & Cinematic Studio</title>
+    
+    <script src="js/character-creator.js"></script>
+    <script src="js/item-assets.js"></script>
+    <script src="js/map-assets.js"></script>
+    <script src="js/npc-assets.js"></script>
+	<script src="js/audio.js"></script>
+	
+    <style>
+        body {
+            background-color: #2c2520; color: #f4ebd9; font-family: 'Courier New', monospace;
+            margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center;
+        }
+        h1 { color: #ffcc66; text-shadow: 0 2px 4px rgba(0,0,0,0.5); margin-bottom: 20px; }
+        
+        .container {
+            display: flex; gap: 20px; background: rgba(34, 26, 20, 0.95); padding: 20px;
+            border: 2px solid #634e3d; border-radius: 6px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
+            width: 100%; max-width: 1200px; box-sizing: border-box; align-items: stretch;
+        }
+        
+        .timeline-panel { flex: 1.5; background: #1a1512; padding: 15px; border: 2px solid #4a3b2c; border-radius: 4px; overflow-y: auto; max-height: 80vh; }
+        .right-panel { flex: 1; display: flex; flex-direction: column; gap: 15px; }
+        
+        .stage-panel { background: #110d0a; padding: 15px; border: 2px solid #3498db; border-radius: 4px; display: flex; flex-direction: column; align-items: center; }
+        #stage-canvas { background: #000; border: 4px solid #634e3d; width: 400px; height: 400px; image-rendering: pixelated; margin-bottom: 10px; box-shadow: inset 0 0 20px rgba(0,0,0,0.8); }
+        
+        .event-block {
+            background: #2b2118; border: 1px dashed #634e3d; padding: 10px; border-radius: 4px;
+            margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px; position: relative;
+        }
+        .event-header { display: flex; justify-content: space-between; align-items: center; font-weight: bold; color: #3498db; border-bottom: 1px solid #4a3b2c; padding-bottom: 5px;}
+        
+        button, textarea, select, input {
+            background: #110d0a; color: #f1c40f; border: 2px solid #634e3d;
+            padding: 8px; font-family: 'Courier New', monospace; font-size: 12px; border-radius: 4px;
+        }
+        button { background: #8b5a2b; color: white; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        button:hover { background: #a06d3b; }
+        
+        .btn-delete { background: #c0392b; border-color: #e74c3c; padding: 4px 8px; font-size: 11px; }
+        .btn-add { background: #27ae60; border-color: #2ecc71; width: 100%; margin: 0; font-size: 13px; }
+        
+        .dialogue-row { display: flex; gap: 10px; align-items: flex-start; background: #1a1512; padding: 10px; border: 1px solid #4a3b2c; }
+        .dialogue-row input { flex: 1; }
+        .dialogue-row textarea { flex: 3; height: 40px; }
+        
+        /* Mobile Scaling */
+        @media (max-width: 900px) {
+            .container { flex-direction: column; }
+            #stage-canvas { width: 100%; height: auto; aspect-ratio: 1/1; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🎬 Cinematic Quest Studio</h1>
+
+    <div class="container">
+        
+        <!-- THE TIMELINE (LEFT) -->
+        <div class="timeline-panel" id="timeline">
+            <h3 style="margin-top: 0; color: #f1c40f;">📜 Scene Timeline</h3>
+            <div id="event-container"></div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 20px; border-top: 2px dashed #4a3b2c; padding-top: 15px;">
+			    <button class="btn-add" onclick="addEvent('FADE')" style="background: #34495e; border-color: #2c3e50;">⬛ Screen Fade</button>
+				<button class="btn-add" onclick="addEvent('AUDIO')" style="background: #16a085; border-color: #1abc9c;">🎵 Audio Cue</button>
+				<button class="btn-add" onclick="addEvent('DELAY')" style="background: #7f8c8d; border-color: #95a5a6;">⏱️ Wait / Delay</button>
+                <button class="btn-add" onclick="addEvent('SET_SCENE')" style="background: #2c3e50; border-color: #34495e;">🗺️ Set Scene</button>
+                <button class="btn-add" onclick="addEvent('SPAWN_ACTOR')" style="background: #d35400; border-color: #e67e22;">🧍 Spawn Actor</button>
+                <button class="btn-add" onclick="addEvent('DIALOGUE')">💬 Add Dialogue</button>
+                <button class="btn-add" onclick="addEvent('PLAY_FX')" style="background: #e74c3c; border-color: #c0392b;">💥 Play FX</button>
+				
+                <button class="btn-add" style="background: #8e44ad; border-color: #9b59b6; grid-column: span 2;" onclick="addEvent('SHAKE')">📳 Add Screen Shake</button>
+            </div>
+        </div>
+
+        <!-- THE STAGE & EXPORT (RIGHT) -->
+        <div class="right-panel">
+            
+            <div class="stage-panel">
+                <h3 style="margin-top: 0; color: #3498db; width: 100%; display: flex; justify-content: space-between;">
+                    <span>🎭 Director's Stage</span>
+                    <span id="preview-status" style="color: #e74c3c; display: none;">🔴 REC</span>
+                </h3>
+                <canvas id="stage-canvas" width="480" height="480"></canvas>
+                <div style="display: flex; gap: 10px; width: 100%;">
+                    <button onclick="refreshStage()" style="flex: 1; background: #7f8c8d; border-color: #95a5a6;">🔄 Update Board</button>
+                    <button onclick="previewScene()" style="flex: 2; background: #27ae60; border-color: #2ecc71; font-size: 16px;">▶️ Play Preview</button>
+                </div>
+            </div>
+
+            <div style="background: #1a1512; padding: 15px; border: 2px solid #4a3b2c; border-radius: 4px; display: flex; flex-direction: column; gap: 10px;">
+                <div>
+                    <label style="color: #ffcc66; font-weight: bold; font-size: 12px;">Quest Variable Name:</label>
+                    <input type="text" id="quest-name" value="quest_intro_sequence" style="width: 100%; box-sizing: border-box; margin-top: 5px;">
+                </div>
+                <button onclick="exportScript()" style="background: #2980b9; border-color: #3498db; padding: 10px;">💾 Export Script</button>
+                <textarea id="export-output" readonly style="min-height: 100px; font-size: 11px;" placeholder="Exported code will appear here..."></textarea>
+                <button onclick="window.parent.postMessage('RETURN_TO_TOWN', '*')" style="background: #c0392b; border-color: #e74c3c;">↩ Back to Town</button>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+        let timelineEvents = [];
+        const stageCanvas = document.getElementById('stage-canvas');
+        const sCtx = stageCanvas.getContext('2d');
+        const TILE_SIZE = 60; // 480 / 8 grid
+
+        // Dummy player for preview purposes
+        player = { 
+            appearance: { 
+                gender: 'male', 
+                skin: 'light', 
+                hair: 'hair_messy', 
+                hairColor: 'brown', 
+                eyes: 'eyes_blue',
+                shirtColor: 'blue',
+                pantsColor: 'dark',
+                bootsColor: 'leather'
+            },
+            equipment: {} 
+        };
+
+        function getPortraitOptions() {
+            let html = `<option value="player">The Player</option>`;
+            if (typeof SpriteMatrices !== 'undefined') {
+                const keys = Object.keys(SpriteMatrices).filter(k => k.startsWith('npc_') || k.includes('overlord') || k.includes('mimic') || k.includes('publing') || k.includes('ravager') || k.includes('cask')).sort();
+                keys.forEach(k => { html += `<option value="${k}">${k}</option>`; });
+            }
+            return html;
+        }
+function getAudioTrackOptions(selectedTrack) {
+            let html = `<option value="">-- Select Audio Track --</option>`;
+            if (typeof musicTracks !== 'undefined') {
+                musicTracks.forEach(track => {
+                    let isSelected = (selectedTrack === track.name) ? 'selected' : '';
+                    html += `<option value="${track.name}" ${isSelected}>${track.name}</option>`;
+                });
+            }
+            return html;
+        }
+        function addEvent(type) {
+            const eventId = Date.now();
+            let newEvent = { id: eventId, type: type };
+            
+            if (type === 'DIALOGUE') {
+                newEvent.sequence = [{ speaker: "NPC Name", text: "Write something here...", portraitId: "npc_kreg" }];
+            } else if (type === 'SET_SCENE') {
+                newEvent.zone = 'WILDERNESS';
+            } else if (type === 'SPAWN_ACTOR') {
+                newEvent.actorId = 'player';
+                newEvent.uid = 'actor_' + Math.floor(Math.random() * 1000);
+                newEvent.x = 2; newEvent.y = 2;
+           } else if (type === 'PLAY_FX') {
+                newEvent.fxType = 'EXPLOSION';
+                newEvent.startX = 2; newEvent.startY = 2;
+                newEvent.targetX = 4; newEvent.targetY = 4;
+            } else if (type === 'FADE') {
+    newEvent.direction = 'OUT'; 
+    newEvent.duration = 1000;
+    newEvent.color = '#000000';
+} else if (type === 'AUDIO') {
+    newEvent.trackName = 'DOOM OF THE OVERLORD';
+    newEvent.action = 'PLAY'; 
+} else if (type === 'DELAY') {
+    newEvent.duration = 1000;
+}
+            
+            timelineEvents.push(newEvent);
+            renderTimeline();
+        }
+
+        function removeEvent(id) {
+            timelineEvents = timelineEvents.filter(e => e.id !== id);
+            renderTimeline();
+        }
+
+        function addDialogueLine(eventId) {
+            let ev = timelineEvents.find(e => e.id === eventId);
+            if (ev) ev.sequence.push({ speaker: "NPC Name", text: "...", portraitId: "npc_kreg" });
+            renderTimeline();
+        }
+
+        function syncDOMToMemory() {
+            timelineEvents.forEach(ev => {
+                const block = document.getElementById(`event-${ev.id}`);
+                if (!block) return;
+
+                if (ev.type === 'DIALOGUE') {
+                    const rows = block.querySelectorAll('.dialogue-row');
+                    ev.sequence = [];
+                    rows.forEach(row => {
+                        ev.sequence.push({
+                            speaker: row.querySelector('.inp-speaker').value,
+                            portraitId: row.querySelector('.inp-portrait').value,
+                            text: row.querySelector('.inp-text').value
+                        });
+                    });
+                } else if (ev.type === 'SET_SCENE') {
+                    ev.zone = block.querySelector('.inp-zone').value;
+                } else if (ev.type === 'SPAWN_ACTOR') {
+                    ev.actorId = block.querySelector('.inp-actor').value;
+                    ev.uid = block.querySelector('.inp-uid').value;
+                    ev.x = parseInt(block.querySelector('.inp-x').value) || 0;
+                    ev.y = parseInt(block.querySelector('.inp-y').value) || 0;
+                } else if (ev.type === 'PLAY_FX') {
+                    ev.fxType = block.querySelector('.inp-fxtype').value;
+                    ev.startX = parseInt(block.querySelector('.inp-sx').value) || 0;
+                    ev.startY = parseInt(block.querySelector('.inp-sy').value) || 0;
+                    ev.targetX = parseInt(block.querySelector('.inp-tx').value) || 0;
+                    ev.targetY = parseInt(block.querySelector('.inp-ty').value) || 0;
+                } else if (ev.type === 'FADE') {
+    ev.direction = block.querySelector('.inp-fade-dir').value;
+    ev.duration = parseInt(block.querySelector('.inp-fade-dur').value) || 1000;
+    ev.color = block.querySelector('.inp-fade-col').value;
+} else if (ev.type === 'AUDIO') {
+    ev.trackName = block.querySelector('.inp-audio-track').value;
+    ev.action = block.querySelector('.inp-audio-act').value;
+} else if (ev.type === 'DELAY') {
+    ev.duration = parseInt(block.querySelector('.inp-delay-dur').value) || 1000;
+}
+            });
+        }
+
+        function renderTimeline() {
+            syncDOMToMemory(); 
+            const container = document.getElementById('event-container');
+            container.innerHTML = '';
+            let portraitOptions = getPortraitOptions();
+
+            timelineEvents.forEach((ev, index) => {
+                let block = document.createElement('div');
+                block.className = 'event-block';
+                block.id = `event-${ev.id}`;
+
+                let headerColor = "#3498db";
+                if (ev.type === 'SET_SCENE') headerColor = "#34495e";
+                if (ev.type === 'SPAWN_ACTOR') headerColor = "#e67e22";
+                if (ev.type === 'PLAY_FX') headerColor = "#e74c3c";
+                if (ev.type === 'SHAKE') headerColor = "#9b59b6";
+				if (ev.type === 'FADE') headerColor = "#34495e";
+if (ev.type === 'AUDIO') headerColor = "#16a085";
+if (ev.type === 'DELAY') headerColor = "#7f8c8d";
+
+                let headerHtml = `
+                    <div class="event-header" style="color: ${headerColor};">
+                        <span>[Step ${index + 1}] - ${ev.type}</span>
+                        <button class="btn-delete" onclick="removeEvent(${ev.id})">✖ Remove</button>
+                    </div>
+                `;
+
+                let bodyHtml = '';
+				
+				if (ev.type === 'FADE') {
+    bodyHtml = `
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <select class="inp-fade-dir" style="flex: 1;" onchange="refreshStage()">
+                <option value="OUT" ${ev.direction==='OUT'?'selected':''}>⬛ Fade OUT (To Color)</option>
+                <option value="IN" ${ev.direction==='IN'?'selected':''}>👁️ Fade IN (To Scene)</option>
+            </select>
+            <input type="color" class="inp-fade-col" value="${ev.color}" style="width: 40px; padding: 0; cursor: pointer;">
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <label style="font-size: 9px; color: #bbaaa0;">Duration (ms):</label>
+                <input type="number" class="inp-fade-dur" value="${ev.duration}" style="width: 60px;">
+            </div>
+        </div>
+    `;
+}
+else if (ev.type === 'AUDIO') {
+    bodyHtml = `
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <select class="inp-audio-act" style="width: 80px;" onchange="refreshStage()">
+                <option value="PLAY" ${ev.action==='PLAY'?'selected':''}>▶ PLAY</option>
+                <option value="STOP" ${ev.action==='STOP'?'selected':''}>⏹ STOP</option>
+            </select>
+            <select class="inp-audio-track" style="flex: 1;" onchange="refreshStage()">
+                ${getAudioTrackOptions(ev.trackName)}
+            </select>
+        </div>
+    `;
+}
+else if (ev.type === 'DELAY') {
+    bodyHtml = `
+        <div style="display: flex; align-items: center; gap: 10px; background: #1a1512; padding: 5px; border-radius: 4px;">
+            <label style="font-size: 11px; color: #bbaaa0;">⏳ Pause Cinematic For (ms):</label>
+            <input type="number" class="inp-delay-dur" value="${ev.duration}" style="width: 80px;">
+        </div>
+    `;
+}
+                
+                else if (ev.type === 'SET_SCENE') {
+                    bodyHtml = `
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <label style="font-size: 11px; color: #bbaaa0;">Environment:</label>
+                            <select class="inp-zone" style="flex: 1;" onchange="refreshStage()">
+                                <option value="WILDERNESS" ${ev.zone==='WILDERNESS'?'selected':''}>🌲 Wilderness (Forest)</option>
+                                <option value="CELLARS" ${ev.zone==='CELLARS'?'selected':''}>🍷 Forbidden Cellars (Stone)</option>
+                                <option value="GORILLA_ARENA" ${ev.zone==='GORILLA_ARENA'?'selected':''}>🦍 Gorilla Pit (Dirt)</option>
+                                <option value="ABYSS" ${ev.zone==='ABYSS'?'selected':''}>🌌 Procedural Abyss (Void)</option>
+                            </select>
+                        </div>
+                    `;
+                } 
+                else if (ev.type === 'SPAWN_ACTOR') {
+                    bodyHtml = `
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <select class="inp-actor" style="flex: 2;" onchange="refreshStage()">${portraitOptions}</select>
+                            <div style="display: flex; flex-direction: column; gap: 2px;">
+                                <label style="font-size: 9px; color: #bbaaa0;">Grid X:</label>
+                                <input type="number" class="inp-x" value="${ev.x}" style="width: 40px;" onchange="refreshStage()">
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 2px;">
+                                <label style="font-size: 9px; color: #bbaaa0;">Grid Y:</label>
+                                <input type="number" class="inp-y" value="${ev.y}" style="width: 40px;" onchange="refreshStage()">
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 2px;">
+                                <label style="font-size: 9px; color: #bbaaa0;">UID:</label>
+                                <input type="text" class="inp-uid" value="${ev.uid}" style="width: 60px;">
+                            </div>
+                        </div>
+                    `;
+                    setTimeout(() => {
+                        let domBlock = document.getElementById(`event-${ev.id}`);
+                        if (domBlock) domBlock.querySelector('.inp-actor').value = ev.actorId || 'player';
+                    }, 10);
+                }
+                else if (ev.type === 'PLAY_FX') {
+                    bodyHtml = `
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <label style="font-size: 11px; color: #bbaaa0;">Effect Type:</label>
+                                <select class="inp-fxtype" style="flex: 1;" onchange="refreshStage()">
+                                    <option value="EXPLOSION" ${ev.fxType==='EXPLOSION'?'selected':''}>💥 Grid Explosion</option>
+                                    <option value="PROJECTILE" ${ev.fxType==='PROJECTILE'?'selected':''}>🏹 Fire Projectile</option>
+                                    <option value="BEAM" ${ev.fxType==='BEAM'?'selected':''}>⚡ Magic Beam</option>
+                                    <option value="MELEE" ${ev.fxType==='MELEE'?'selected':''}>⚔️ Melee Lunge</option>
+                                </select>
+                            </div>
+                            <div style="display: flex; gap: 10px; align-items: center; background: #1a1512; padding: 10px; border: 1px solid #4a3b2c;">
+                                <div style="display: flex; flex-direction: column; gap: 2px;"><label style="font-size: 9px; color: #bbaaa0;">Start X:</label><input type="number" class="inp-sx" value="${ev.startX}" style="width:40px;" onchange="refreshStage()"></div>
+                                <div style="display: flex; flex-direction: column; gap: 2px;"><label style="font-size: 9px; color: #bbaaa0;">Start Y:</label><input type="number" class="inp-sy" value="${ev.startY}" style="width:40px;" onchange="refreshStage()"></div>
+                                <span style="color: #7f8c8d; font-weight: bold;">➔</span>
+                                <div style="display: flex; flex-direction: column; gap: 2px;"><label style="font-size: 9px; color: #bbaaa0;">Target X:</label><input type="number" class="inp-tx" value="${ev.targetX}" style="width:40px;" onchange="refreshStage()"></div>
+                                <div style="display: flex; flex-direction: column; gap: 2px;"><label style="font-size: 9px; color: #bbaaa0;">Target Y:</label><input type="number" class="inp-ty" value="${ev.targetY}" style="width:40px;" onchange="refreshStage()"></div>
+                            </div>
+                        </div>
+                    `;
+                }
+                else if (ev.type === 'DIALOGUE') {
+                    ev.sequence.forEach((line, lineIdx) => {
+                        bodyHtml += `
+                            <div class="dialogue-row">
+                                <div style="display: flex; flex-direction: column; gap: 5px; flex: 1;">
+                                    <input type="text" class="inp-speaker" value="${line.speaker}" placeholder="Speaker Name">
+                                    <select class="inp-portrait">${portraitOptions}</select>
+                                </div>
+                                <textarea class="inp-text">${line.text}</textarea>
+                            </div>
+                        `;
+                    });
+                    setTimeout(() => {
+                        let domBlock = document.getElementById(`event-${ev.id}`);
+                        if (domBlock) {
+                            let selects = domBlock.querySelectorAll('.inp-portrait');
+                            ev.sequence.forEach((line, i) => { if (selects[i]) selects[i].value = line.portraitId; });
+                        }
+                    }, 10);
+                    bodyHtml += `<button style="background: #2980b9; border-color: #3498db; width: max-content; font-size: 11px;" onclick="addDialogueLine(${ev.id})">➕ Add Response</button>`;
+                } 
+                else if (ev.type === 'SHAKE') {
+                    bodyHtml = `<div style="color: #bbaaa0; font-size: 12px; font-style: italic;">The game screen will violently shake.</div>`;
+                }
+
+                block.innerHTML = headerHtml + bodyHtml;
+                container.appendChild(block);
+            });
+            refreshStage();
+        }
+
+        // ==========================================
+        // THE STAGE RENDERER & MOVIE PLAYER
+        // ==========================================
+        function drawStageState(eventSubset) {
+            sCtx.clearRect(0, 0, stageCanvas.width, stageCanvas.height);
+            
+            let currentZone = 'WILDERNESS';
+            let actors = [];
+
+            // Compile the timeline state
+            eventSubset.forEach(ev => {
+                if (ev.type === 'SET_SCENE') currentZone = ev.zone;
+                if (ev.type === 'SPAWN_ACTOR') {
+                    // Update if already exists, else push
+                    let existing = actors.find(a => a.uid === ev.uid);
+                    if (existing) { existing.x = ev.x; existing.y = ev.y; }
+                    else actors.push({ uid: ev.uid, id: ev.actorId, x: ev.x, y: ev.y });
+                }
+            });
+
+            // 1. Draw Map Floor
+            let bgSprite = 'ground_wilderness';
+            if (currentZone === 'CELLARS') bgSprite = 'ground_cellars';
+            if (currentZone === 'GORILLA_ARENA') bgSprite = 'ground_arena';
+            if (currentZone === 'ABYSS') bgSprite = 'ground_abyss';
+
+            for (let y = 0; y < 8; y++) {
+                for (let x = 0; x < 8; x++) {
+                    if (typeof SpriteMatrices !== 'undefined' && SpriteMatrices[bgSprite]) {
+                        drawProceduralSprite(sCtx, SpriteMatrices[bgSprite], x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE);
+                    } else {
+                        sCtx.fillStyle = '#273c24'; sCtx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                    }
+                    sCtx.strokeStyle = '#1a1512'; sCtx.lineWidth = 1;
+                    sCtx.strokeRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                }
+            }
+
+            // 2. Draw Actors
+            actors.forEach(act => {
+                let px = act.x * TILE_SIZE; let py = act.y * TILE_SIZE;
+                if (act.id === 'player') {
+                    drawProceduralSprite(sCtx, SpriteMatrices['body_male'], px, py, TILE_SIZE);
+                    drawProceduralSprite(sCtx, SpriteMatrices['eyes_blue'], px, py, TILE_SIZE);
+                    drawProceduralSprite(sCtx, SpriteMatrices['hair_messy'], px, py, TILE_SIZE);
+                } else if (SpriteMatrices[act.id]) {
+                    drawProceduralSprite(sCtx, SpriteMatrices[act.id], px, py, TILE_SIZE);
+                } else {
+                    sCtx.fillStyle = '#d35400'; sCtx.fillRect(px+5, py+5, TILE_SIZE-10, TILE_SIZE-10);
+                }
+            });
+        }
+
+        function refreshStage() {
+            syncDOMToMemory();
+            drawStageState(timelineEvents); // Draw full compiled state
+        }
+
+        async function previewScene() {
+            syncDOMToMemory();
+            const statusLabel = document.getElementById('preview-status');
+            statusLabel.style.display = 'block';
+
+            for (let i = 0; i <= timelineEvents.length; i++) {
+                let currentEvents = timelineEvents.slice(0, i);
+                drawStageState(currentEvents); // Render board state up to this exact moment
+
+                if (i > 0) {
+                    let lastEv = currentEvents[currentEvents.length - 1];
+                    let eventBlock = document.getElementById(`event-${lastEv.id}`);
+                    
+                    // Highlight the timeline block
+                    document.querySelectorAll('.event-block').forEach(b => b.style.borderColor = '#634e3d');
+                    if (eventBlock) eventBlock.style.borderColor = '#2ecc71';
+
+                    // Process dynamic FX over the static board
+                    if (lastEv.type === 'PLAY_FX') {
+                        sCtx.fillStyle = 'rgba(231, 76, 60, 0.5)';
+                        sCtx.strokeStyle = '#e74c3c'; sCtx.lineWidth = 4;
+                        
+                        let sx = (lastEv.startX * TILE_SIZE) + (TILE_SIZE/2);
+                        let sy = (lastEv.startY * TILE_SIZE) + (TILE_SIZE/2);
+                        let tx = (lastEv.targetX * TILE_SIZE) + (TILE_SIZE/2);
+                        let ty = (lastEv.targetY * TILE_SIZE) + (TILE_SIZE/2);
+
+                        if (lastEv.fxType === 'EXPLOSION') {
+                            sCtx.beginPath(); sCtx.arc(tx, ty, TILE_SIZE * 1.5, 0, Math.PI*2); sCtx.fill();
+                        } else if (lastEv.fxType === 'BEAM') {
+                            sCtx.beginPath(); sCtx.moveTo(sx, sy); sCtx.lineTo(tx, ty); sCtx.stroke();
+                        } else if (lastEv.fxType === 'PROJECTILE') {
+                            sCtx.beginPath(); sCtx.setLineDash([5, 5]); sCtx.moveTo(sx, sy); sCtx.lineTo(tx, ty); sCtx.stroke(); sCtx.setLineDash([]);
+                            sCtx.beginPath(); sCtx.arc(tx, ty, 10, 0, Math.PI*2); sCtx.fill();
+                        } else if (lastEv.fxType === 'MELEE') {
+                            sCtx.beginPath(); sCtx.moveTo(sx, sy); sCtx.lineTo(tx, ty); sCtx.stroke();
+                            sCtx.fillStyle = "rgba(255, 255, 255, 0.8)";
+                            sCtx.beginPath(); sCtx.arc(tx, ty, TILE_SIZE/2, 0, Math.PI*2); sCtx.fill();
+                        }
+                        await new Promise(r => setTimeout(r, 600)); // Pause to view FX
+                    } 
+					else if (lastEv.type === 'FADE') {
+    if (lastEv.direction === 'OUT') {
+        sCtx.fillStyle = lastEv.color;
+        sCtx.globalAlpha = 0.7; // Draw a heavy tint to simulate the fade
+        sCtx.fillRect(0, 0, 480, 480);
+        sCtx.globalAlpha = 1.0;
+    }
+    await new Promise(r => setTimeout(r, lastEv.duration)); 
+}
+else if (lastEv.type === 'AUDIO') {
+    // Flash a visual indicator on the canvas so you know the audio queued
+    sCtx.fillStyle = "rgba(22, 160, 133, 0.8)";
+    sCtx.fillRect(10, 10, 460, 40);
+    sCtx.fillStyle = "#fff"; sCtx.font = "bold 16px Courier New";
+    sCtx.fillText(`🎵 AUDIO ${lastEv.action}: ${lastEv.trackName}`, 20, 35);
+    await new Promise(r => setTimeout(r, 800));
+}
+else if (lastEv.type === 'DELAY') {
+    // Literally just wait to simulate the pacing
+    await new Promise(r => setTimeout(r, lastEv.duration));
+}
+                    else if (lastEv.type === 'SHAKE') {
+                        stageCanvas.style.transform = "translate(10px, 10px)";
+                        setTimeout(() => stageCanvas.style.transform = "translate(0, 0)", 100);
+                        await new Promise(r => setTimeout(r, 400));
+                    } 
+                    else if (lastEv.type === 'DIALOGUE') {
+                        sCtx.fillStyle = "rgba(10, 8, 6, 0.9)";
+                        sCtx.fillRect(10, 370, 460, 100);
+                        sCtx.strokeStyle = "#4a3b2c"; sCtx.lineWidth = 2; sCtx.strokeRect(10, 370, 460, 100);
+                        
+                        sCtx.fillStyle = "#f1c40f"; sCtx.font = "bold 14px Courier New";
+                        sCtx.fillText(lastEv.sequence[0].speaker.toUpperCase(), 20, 395);
+                        
+                        sCtx.fillStyle = "#ecf0f1"; sCtx.font = "13px Courier New";
+                        let text = lastEv.sequence[0].text;
+                        // Extremely basic word wrap for canvas preview
+                        if(text.length > 55) {
+                            sCtx.fillText(text.substring(0, 55), 20, 420);
+                            sCtx.fillText(text.substring(55, 110), 20, 440);
+                        } else {
+                            sCtx.fillText(text, 20, 420);
+                        }
+                        await new Promise(r => setTimeout(r, 1200)); // Longer pause for reading
+                    }
+                    else {
+                        await new Promise(r => setTimeout(r, 400)); // Normal step speed
+                    }
+                } else {
+                    await new Promise(r => setTimeout(r, 400)); 
+                }
+            }
+
+            statusLabel.style.display = 'none';
+            document.querySelectorAll('.event-block').forEach(b => b.style.borderColor = '#634e3d');
+            refreshStage(); // Reset to final state
+        }
+
+        // ==========================================
+
+        function exportScript() {
+            syncDOMToMemory();
+            let varName = document.getElementById('quest-name').value.trim().replace(/\s+/g, '_');
+            if (!varName) varName = "my_custom_sequence";
+            
+            let exportData = timelineEvents.map(ev => {
+                let cleanEv = { type: ev.type };
+                if (ev.type === 'DIALOGUE') cleanEv.sequence = ev.sequence;
+				else if (ev.type === 'FADE') { cleanEv.direction = ev.direction; cleanEv.duration = ev.duration; cleanEv.color = ev.color; }
+else if (ev.type === 'AUDIO') { cleanEv.trackName = ev.trackName; cleanEv.action = ev.action; }
+else if (ev.type === 'DELAY') { cleanEv.duration = ev.duration; }
+                else if (ev.type === 'SET_SCENE') cleanEv.zone = ev.zone;
+                else if (ev.type === 'SPAWN_ACTOR') { cleanEv.actorId = ev.actorId; cleanEv.uid = ev.uid; cleanEv.x = ev.x; cleanEv.y = ev.y; }
+                else if (ev.type === 'PLAY_FX') { cleanEv.fxType = ev.fxType; cleanEv.startX = ev.startX; cleanEv.startY = ev.startY; cleanEv.targetX = ev.targetX; cleanEv.targetY = ev.targetY; }
+                return cleanEv;
+            });
+
+            let jsonString = JSON.stringify(exportData, null, 4);
+            let finalCode = `const ${varName} = ${jsonString};`;
+            
+            const outBox = document.getElementById('export-output');
+            outBox.value = finalCode;
+            outBox.select();
+            document.execCommand('copy');
+        }
+
+        // Auto-render empty board on load
+        window.onload = () => { refreshStage(); };
+    </script>
+</body>
+</html>

@@ -95,10 +95,11 @@ function getItemSpriteURL(item) {
 }
 
 function refreshCombatSidebar() {
-    const sidebar = document.getElementById("combat-status-sidebar");
-    if (!sidebar) return;
+    const topBars = document.getElementById("combat-top-bars");
+    const bottomStats = document.getElementById("combat-bottom-stats");
+    if (!topBars || !bottomStats) return;
 
-	let maxHpCalc = getPlayerMaxHp();
+    let maxHpCalc = getPlayerMaxHp();
     let maxStamCalc = getPlayerMaxStamina();
 
     let hpPct = Math.max(0, Math.min(100, (player.hp / maxHpCalc) * 100));
@@ -116,55 +117,59 @@ function refreshCombatSidebar() {
     let gloveDesc = player.equipment.gloves ? `<img src="${gImg}" style="width:24px;height:24px;image-rendering:pixelated;vertical-align:middle;margin-right:4px;"> <span class="${player.equipment.gloves.rarity === 'Gorilla' ? 'GorillaTier' : player.equipment.gloves.rarity}">${player.equipment.gloves.name}</span>` : "<span style='color:#55443a;'>Bare Hands</span>";
     let bootDesc = player.equipment.boots ? `<img src="${bImg}" style="width:24px;height:24px;image-rendering:pixelated;vertical-align:middle;margin-right:4px;"> <span class="${player.equipment.boots.rarity === 'Gorilla' ? 'GorillaTier' : player.equipment.boots.rarity}">${player.equipment.boots.name}</span>` : "<span style='color:#55443a;'>Bare Feet</span>";
 
-    // === NEW: MULTI-BUFF TOOLTIP GENERATOR ===
     let buffHTML = '';
     if (player.activeBuffs && player.activeBuffs.length > 0) {
-        buffHTML += `<div style="margin-top: 6px; border-top:1px dashed #443a32; padding-top:4px; display: flex; flex-direction: column; gap: 4px;">`;
+        buffHTML += `<div style="margin-top: 10px; border-top:1px dashed #443a32; padding-top:8px; display: flex; flex-direction: column; gap: 6px;">`;
         player.activeBuffs.forEach(buff => {
             let tooltipDesc = buff === 'IPA' ? "<b>Furious IPA:</b> Amplifies damage multipliers (+10% ATK) for the remainder of this deployment." : "<b>Swift Lager:</b> Expands stride movement capabilities (+1 Stride) for the remainder of this deployment.";
-            buffHTML += `<div style="font-size: 10px; color:#2ecc71; cursor:help; width:max-content;" onmouseenter="showTooltip('${tooltipDesc}', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🌿 <b>ACTIVE BREW PERK:</b> ${buff}</div>`;
+            buffHTML += `<div style="font-size: 11px; color:#2ecc71; cursor:help; width:max-content;" onmouseenter="showTooltip('${tooltipDesc}', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🌿 <b>ACTIVE BREW PERK:</b> ${buff}</div>`;
         });
         buffHTML += `</div>`;
-    } else if (player.activeCombatBuff) {
-        // Fallback catch for legacy save files
-        buffHTML = `<div style="margin-top: 6px; font-size: 10px; color:#2ecc71; border-top:1px dashed #443a32; padding-top:4px;">🌿 <b>ACTIVE BREW PERK:</b> ${player.activeCombatBuff}</div>`;
     }
 
-    sidebar.innerHTML = `
-        <h3 style="font-size: 14px; margin-bottom: 12px; color: #ffcc66; text-transform: uppercase; border-bottom: 2px solid #634e3d; padding-bottom: 5px;">🛡️ Tactical Combat Monitor</h3>
-        <div style="background: #1a1512; padding: 10px; border-radius: 4px; border: 1px solid #4a3b2c; margin-bottom: 8px;">
-            <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; margin-bottom: 4px;">
-                <span style="color: #ffcc66;">VITALITY:</span>
-                <span style="color: #2ecc71;">${player.hp} / ${maxHpCalc} HP</span>
+    // 1. INJECT THE TOP BARS (HP & Stamina)
+    topBars.innerHTML = `
+        <div class="combat-grid-2-col">
+            <div style="background: #1a1512; padding: 12px; border-radius: 4px; border: 1px solid #4a3b2c;">
+                <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: bold; margin-bottom: 6px;">
+                    <span style="color: #ffcc66;">VITALITY:</span>
+                    <span style="color: #2ecc71;">${player.hp} / ${maxHpCalc} HP</span>
+                </div>
+                <div style="width: 100%; background: #110d0a; height: 16px; border-radius: 3px; overflow: hidden; border: 1px solid #55443a;">
+                    <div style="width: ${hpPct}%; background: ${hpPct > 45 ? '#27ae60' : '#c0392b'}; height: 100%; transition: width 0.2s;"></div>
+                </div>
             </div>
-            <div style="width: 100%; background: #110d0a; height: 12px; border-radius: 3px; overflow: hidden; border: 1px solid #55443a;">
-                <div style="width: ${hpPct}%; background: ${hpPct > 45 ? '#27ae60' : '#c0392b'}; height: 100%; transition: width 0.2s;"></div>
+            <div style="background: #1a1512; padding: 12px; border-radius: 4px; border: 1px solid #4a3b2c;">
+                <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: bold; margin-bottom: 6px;">
+                    <span style="color: #ffcc66;">STAMINA:</span>
+                    <span style="color: #f1c40f;">${Math.floor(player.stamina)} / ${maxStamCalc} STAM</span>
+                </div>
+                <div style="width: 100%; background: #110d0a; height: 16px; border-radius: 3px; overflow: hidden; border: 1px solid #55443a;">
+                    <div style="width: ${stPct}%; background: #e67e22; height: 100%; transition: width 0.2s;"></div>
+                </div>
             </div>
         </div>
-        <div style="background: #1a1512; padding: 10px; border-radius: 4px; border: 1px solid #4a3b2c; margin-bottom: 12px;">
-            <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; margin-bottom: 4px;">
-                <span style="color: #ffcc66;">STAMINA:</span>
-                <span style="color: #f1c40f;">${Math.floor(player.stamina)} / ${maxStamCalc} STAM</span>
-            </div>
-            <div style="width: 100%; background: #110d0a; height: 12px; border-radius: 3px; overflow: hidden; border: 1px solid #55443a;">
-                <div style="width: ${stPct}%; background: #e67e22; height: 100%; transition: width 0.2s;"></div>
-            </div>
-        </div>
-        <div style="background: #1a1512; padding: 12px; border-radius: 4px; border: 1px solid #4a3b2c; margin-bottom: 15px;">
-            <h4 style="margin: 0 0 8px 0; font-size: 11px; color: #ffcc66; text-transform: uppercase; border-bottom: 1px dashed #4a3b2c; padding-bottom: 4px;">Active Loadout Parameters</h4>
-            <div style="display: flex; flex-direction: column; gap: 8px; font-size: 11px; line-height: 1.4;">
+    `;
+
+    // 2. INJECT THE BOTTOM STATS (Loadout & Parameters)
+    bottomStats.innerHTML = `
+        <div style="background: #1a1512; padding: 12px; border-radius: 4px; border: 1px solid #4a3b2c;">
+            <h4 style="margin: 0 0 10px 0; font-size: 12px; color: #ffcc66; text-transform: uppercase; border-bottom: 1px dashed #4a3b2c; padding-bottom: 6px;">🛡️ Active Loadout</h4>
+            <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12px; line-height: 1.4;">
                 <div style="cursor:help; width:max-content;" onmouseenter="showTooltip(getItemTooltip(player.equipment.helmet), event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"><b>Helmet:</b> ${helmDesc}</div>
                 <div style="cursor:help; width:max-content;" onmouseenter="showTooltip(getItemTooltip(player.equipment.armor), event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"><b>Armor:</b> ${armDesc}</div>
                 <div style="cursor:help; width:max-content;" onmouseenter="showTooltip(getItemTooltip(player.equipment.weapon), event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"><b>Weapon:</b> ${weapDesc}</div>
                 <div style="cursor:help; width:max-content;" onmouseenter="showTooltip(getItemTooltip(player.equipment.gloves), event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"><b>Gloves:</b> ${gloveDesc}</div>
                 <div style="cursor:help; width:max-content;" onmouseenter="showTooltip(getItemTooltip(player.equipment.boots), event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"><b>Boots:</b>  ${bootDesc}</div>
             </div>
-            ${buffHTML}
         </div>
-        <div style="background: #1a1512; padding: 10px; border-radius: 4px; border: 1px solid #4a3b2c; font-size: 11px; color: #bbaaa0; line-height: 1.5;">
-            💥 <b>Power Output:</b> Lvl ${getPlayerTotalPower()} (Max ${getPlayerTotalPower() * 10} DMG)<br>
-            🛡️ <b>Defense (Absorption):</b> Lvl ${getPlayerDeflectChance()}<br>
-            🏃 <b>Speed (Evasion):</b> Lvl ${getPlayerSwiftness()}
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div style="background: #1a1512; padding: 12px; border-radius: 4px; border: 1px solid #4a3b2c; font-size: 12px; color: #bbaaa0; line-height: 1.6; height: 100%; box-sizing: border-box;">
+                💥 <b>Power Output:</b> Lvl ${getPlayerTotalPower()} (Max ${getPlayerTotalPower() * 10} DMG)<br>
+                🛡️ <b>Defense (Absorption):</b> Lvl ${getPlayerDeflectChance()}<br>
+                🏃 <b>Speed (Evasion):</b> Lvl ${getPlayerSwiftness()}
+            </div>
+            ${buffHTML}
         </div>
     `;
 }

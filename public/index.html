@@ -124,38 +124,36 @@
     <button id="tab-social" onclick="switchTab('social-view'); joinMultiplayerZone('ZONE_HUB');">🏰 Community</button>
 </div>
         
-        <div id="combat-screen" class="panel" style="display: none; width: 1035px; margin: 0 auto;">
-            <div style="display: flex; gap: 15px; align-items: flex-start;">
-                <div style="width: 480px; flex-shrink: 0;">
-                    <canvas id="gameCanvas" width="480" height="480"></canvas>
-				<div id="action-interface">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-        <span id="target-ui-header" style="font-size: 11px; font-weight: bold; color:#ffcc66;">INITIALIZING MATRIX</span>
-    </div>
-    
-	<div style="display:grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 4px;">
-        <button id="slash-btn" onclick="executeCombatAction('slash')" style="padding: 10px; font-size: 13px;" onmouseenter="showSystemTooltip('combat_slash', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Standard Attack</button>
-        <button id="heavy-btn" onclick="executeCombatAction('special')" style="padding: 10px; font-size: 13px;" onmouseenter="showSpecialSkillTooltip(event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Weapon Skill</button>
-    </div>
-    <style>
-        #combat-inventory-list > button {
-            width: 100%;
-            height: 100%;
-        }
-    </style>
-    <div id="combat-inventory-list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 8px;"></div>
-    
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
-        <button id="end-btn" onclick="executeCombatAction('end')" style="padding: 10px; font-size: 14px; background: #e67e22; border: 2px solid #d35400; font-weight: bold; text-shadow: 1px 1px 2px #000;" onmouseenter="showSystemTooltip('combat_pass', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">⌛ Pass Turn</button>
-        <button id="flee-btn" onclick="fleeCombat()" style="padding: 10px; font-size: 14px; background: #c0392b; border: 2px solid #e74c3c; font-weight: bold; text-shadow: 1px 1px 2px #000;">🏃 Flee</button>
-    </div>
-</div>
-</div>
-
-                <div id="combat-status-sidebar" style="flex-grow: 1; background: #221a14; padding: 12px; border-radius: 4px; border: 1px solid #634e3d; min-height: 546px; box-sizing: border-box; text-align: left;">
-                </div>
+        <div id="combat-screen" class="panel" style="display: none; width: 1000px; margin: 0 auto; padding: 15px; box-sizing: border-box;">
+    <div style="display: flex; flex-direction: column; gap: 15px; align-items: center; width: 100%;">
+        
+        <canvas id="gameCanvas" width="960" height="600" style="border: 4px solid #8b5a2b; border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.9); max-width: 100%; height: auto;"></canvas>
+        
+        <div id="action-interface" style="width: 100%; max-width: 960px; background: #221a14; padding: 15px; border-radius: 6px; border: 1px solid #634e3d; box-sizing: border-box;">
+            
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px dashed #4a3b2c; padding-bottom: 8px; margin-bottom: 12px;">
+                <span id="target-ui-header" style="font-size: 14px; font-weight: bold; color:#ffcc66; text-transform: uppercase;">INITIALIZING MATRIX</span>
             </div>
+            
+            <div id="combat-top-bars" style="margin-bottom: 12px;"></div>
+            
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+                <button id="slash-btn" onclick="executeCombatAction('slash')" style="padding: 12px; font-size: 15px;" onmouseenter="showSystemTooltip('combat_slash', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Standard Attack</button>
+                <button id="heavy-btn" onclick="executeCombatAction('special')" style="padding: 12px; font-size: 15px;" onmouseenter="showSpecialSkillTooltip(event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Weapon Skill</button>
+            </div>
+            
+            <div id="combat-inventory-list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;"></div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px;">
+                <button id="end-btn" onclick="executeCombatAction('end')" style="padding: 12px; font-size: 15px; background: #e67e22; border: 2px solid #d35400; font-weight: bold; text-shadow: 1px 1px 2px #000;" onmouseenter="showSystemTooltip('combat_pass', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">⌛ Pass Turn</button>
+                <button id="flee-btn" onclick="fleeCombat()" style="padding: 12px; font-size: 15px; background: #c0392b; border: 2px solid #e74c3c; font-weight: bold; text-shadow: 1px 1px 2px #000;">🏃 Flee</button>
+            </div>
+            
+            <div id="combat-bottom-stats" style="border-top: 1px dashed #4a3b2c; padding-top: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px;"></div>
+            
         </div>
+    </div>
+</div>
 
 <!-- === NEW: POST-COMBAT LOOT SCREEN === -->
 <div id="loot-screen" class="panel" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 600px; text-align: center; z-index: 9999; box-shadow: 0 0 0 9999px rgba(0,0,0,0.75);">
@@ -511,7 +509,6 @@
             <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
                 <button onclick="openStudioTool('pixel-studio.html')" style="background: #e67e22; border-color: #d35400; padding: 10px; font-size: 14px; margin: 0;">🎨 Art Studio</button>
                 <button onclick="openStudioTool('beat-studio.html')" style="background: #2980b9; border-color: #3498db; padding: 10px; font-size: 14px; margin: 0;">🎵 Music Studio</button>
-				<button onclick="openStudioTool('quest-studio.html')">🎬 Cinematic Studio</button>
             </div>
         </div>
 
