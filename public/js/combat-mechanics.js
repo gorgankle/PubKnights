@@ -386,11 +386,15 @@ function isValidPlayerMovePath(targetX, targetY) {
         let visited = new Set([`${player.x},${player.y}`]);
 // ============================================
         
-        let dirs = [
+       let dirs = [
             {x: 0, y: -1}, {x: 1, y: 0}, {x: 0, y: 1}, {x: -1, y: 0},
             {x: -1, y: -1}, {x: 1, y: -1}, {x: 1, y: 1}, {x: -1, y: 1} 
         ];
 
+        // === THE FIX: SAFELY EXTRACT BOUNDARIES ===
+        let cols = currentGridSize.cols || currentGridSize || 8;
+        let rows = currentGridSize.rows || currentGridSize || 8;
+		
         let blockedSet = new Set();
         mapObstacles.forEach(o => blockedSet.add(`${o.x},${o.y}`));
         enemies.forEach(e => {
@@ -413,7 +417,7 @@ function isValidPlayerMovePath(targetX, targetY) {
                 let ny = curr.y + d.y;
                 let key = `${nx},${ny}`;
 
-                if (!visited.has(key) && nx >= 0 && nx < currentGridSize && ny >= 0 && ny < currentGridSize) {
+                if (!visited.has(key) && nx >= 0 && nx < cols && ny >= 0 && ny < rows) {
                     if (!blockedSet.has(key)) {
                         visited.add(key);
                         queue.push({ x: nx, y: ny, dist: curr.dist + 1 });

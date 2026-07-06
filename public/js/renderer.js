@@ -141,11 +141,11 @@ function drawGrid() {
     let playerHopY = Math.abs(Math.sin(player.moveAnimTimer)) * 14; 
 
 // --- DRAW THE CORE TACTICAL GRID ---
-    
+    let cols = currentGridSize.cols || currentGridSize || 8;
+    let rows = currentGridSize.rows || currentGridSize || 8;
 
-
-    for (let x = 0; x < currentGridSize; x++) {
-        for (let y = 0; y < currentGridSize; y++) {
+    for (let x = 0; x < cols; x++) {
+        for (let y = 0; y < rows; y++) {
             
             let groundSprite = 'ground_wilderness';
             if (activeCombatZone === 'CELLARS') groundSprite = 'ground_cellars';
@@ -390,7 +390,7 @@ if (SpriteMatrices[e.id]) {
             let startX = hoverTile.x - 1; let startY = hoverTile.y - 1;
             for(let bx = startX; bx <= startX + 2; bx++) {
                 for(let by = startY; by <= startY + 2; by++) {
-                    if (bx >= 0 && bx < currentGridSize && by >= 0 && by < currentGridSize) {
+                    if (bx >= 0 && bx < cols && by >= 0 && by < rows) {
                         ctx.fillRect(bx * currentTileSize, by * currentTileSize, currentTileSize, currentTileSize);
                     }
                 }
@@ -472,7 +472,9 @@ canvas.addEventListener("mousemove", function(e) {
     const ty = Math.floor(((e.clientY - r.top) * scaleY) / currentTileSize);
     // ================================
 
-    if (tx < 0 || tx >= currentGridSize || ty < 0 || ty >= currentGridSize) return;
+   let cols = currentGridSize.cols || currentGridSize || 8;
+    let rows = currentGridSize.rows || currentGridSize || 8;
+    if (tx < 0 || tx >= cols || ty < 0 || ty >= rows) return;
 
     // === REPLACED: Enforce targeting bounds on hover ===
     if (combatPhase === 'TARGETING') { 
@@ -529,7 +531,9 @@ canvas.addEventListener("click", function(e) {
     const ty = Math.floor(((e.clientY - r.top) * scaleY) / currentTileSize);
     // ================================
 
-    if (tx < 0 || tx >= currentGridSize || ty < 0 || ty >= currentGridSize) return;
+    let cols = currentGridSize.cols || currentGridSize || 8;
+    let rows = currentGridSize.rows || currentGridSize || 8;
+    if (tx < 0 || tx >= cols || ty < 0 || ty >= rows) return;
 
     // === REPLACED: Client-side throw validation ===
     if (combatPhase === 'TARGETING') {

@@ -599,7 +599,7 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
        let combatState = {
             zone: zone, activeLevel: runLvl, 
             turn: 'PLAYER', phase: 'MOVE',
-            gridSize: { cols: 16, rows: 10 }, tileSize: 60, // <-- 16x10 JSON OBJECT
+            gridSize: { cols: 16, rows: 10 }, tileSize: 54, // <-- 16x10 JSON OBJECT
             player: { x: 1, y: 4, atbCharge: 0 }, enemies: [], obstacles: [],
             atbPaused: false 
         };
