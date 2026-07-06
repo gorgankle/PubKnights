@@ -5,15 +5,24 @@ module.exports = {
     // Triggered upon new account creation
     // ==========================================
     "tutorial_combat_intro": [
-        // 1. Blackout the screen immediately upon login
+       // 1. Blackout the screen immediately upon login
         { type: "FADE", direction: "OUT", duration: 500, color: "#000000" },
         
-        // 2. Force the client to load the Tutorial map in the background
-        { type: "SET_SCENE", zone: "TUTORIAL" },
-        { type: "DELAY", duration: 800 }, // Give the server a moment to build the map
-        
-        // 3. Fade back in to reveal the combat board
-        { type: "FADE", direction: "IN", duration: 500, color: "#000000" },
+        // 2. Server-side manipulation (QuestRouter handles this instantly)
+        { type: "MODIFY_PLAYER", 
+          stats: { hp: 5, stamina: 0 }, 
+          inventoryIds: ["stout", "bomb_heavy"],
+          equipmentOverrides: {
+              helmet: { name: "Initiate Helm", slot: "helmet", defense: 10, spriteId: "icon_iron_helm" },
+              armor: { name: "Initiate Plate", slot: "armor", defense: 15, stamina: 100, spriteId: "icon_iron_armor" },
+              weapon: { name: "Initiate Broadsword", slot: "weapon", offense: 30, spriteId: "icon_iron_sword", combat: { standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: 'lunge_slash' }, special: { name: "Heavy Slash", range: 1, staminaCost: 10, multiplier: 1.5, animType: 'lunge_slash' } } },
+              gloves: null, boots: null
+          }
+        },
+
+        // 3. Force the client to load a custom-sized empty map
+        { type: "SET_SCENE", zone: "CINEMATIC", cols: 5, rows: 5, tileSize: 80 },
+        { type: "DELAY", duration: 800 },
         
         // 4. The Arrival & Pass Turn
         { type: "DIALOGUE", sequence: [

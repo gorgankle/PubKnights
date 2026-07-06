@@ -69,12 +69,13 @@ window.ClientQuestDirector = {
             }
         } 
 		// --- SCENE ROUTING ---
-        else if (ev.type === 'SET_SCENE') {
-            if (typeof transitionToCombat === 'function') {
-                transitionToCombat(ev.zone); // Fires the server deployment request
-            }
-            
-            // Wait just a moment for the map to finish drawing before advancing the script
+       else if (ev.type === 'SET_SCENE') {
+            socket.emit('deployToCombat', { 
+                zoneChoice: ev.zone,
+                customCols: ev.cols,     // NEW: Pass custom dimensions
+                customRows: ev.rows,     // NEW
+                customTileSize: ev.tileSize // NEW
+            });
             setTimeout(() => socket.emit('questStepComplete'), 800);
         }
         

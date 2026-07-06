@@ -5,7 +5,7 @@ const { ItemDatabase } = require('./public/js/items.js');
 const { LootTables } = require('./public/js/lootTables.js');
 const { NpcDatabase, createEnemy } = require('./public/js/npc-database.js');
 const { SpellDatabase } = require('./public/js/spells.js');
-const TutorialDirector = require('./tutorialDirector.js');
+
 
 function getGridDistance(x1, y1, x2, y2, size2 = 1) {
     let closeX = Math.max(x2, Math.min(x1, x2 + size2 - 1));
@@ -146,18 +146,13 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         }
         // ====================================================
 
-        // === SERVER AUTOMATICALLY DETECTS VICTORY ===
+  // === SERVER AUTOMATICALLY DETECTS VICTORY ===
         let allDead = combat.enemies.every(e => !e.alive);
-        // ... [The rest of the victory logic remains exactly the same]
+        
         if (allDead) {
-            
-            // === NEW: TUTORIAL DIRECTOR HOOK ===
-            if (combat.zone === 'TUTORIAL') {
-                let keepFighting = TutorialDirector.handleVictoryStep(p, combat, io, socketId);
-                if (keepFighting) return; // Prevent combat deletion!
-            }
-            // ===================================
-            
+            // THE FIX: If the Quest Engine is active, ignore standard combat victory!
+            if (p.activeQuest) return; 
+
             let zoneGoldReward = 0;
             if (combat.zone === 'GORILLA_ARENA') zoneGoldReward += 5000;
             else if (combat.zone === 'ABYSS') {
@@ -192,10 +187,7 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
             return socket.emit('combatResult', { type: 'error', message: '❌ Tactical Error: It is not your turn.', newStamina: p.stamina });
         }
 
-        // === NEW: TUTORIAL DIRECTOR HOOK ===
-        let lockMsg = TutorialDirector.checkActionLock(combat, data);
-        if (lockMsg) return socket.emit('combatResult', { type: 'error', message: lockMsg, newStamina: p.stamina });
-        // ===================================
+
         
         if (data.actionCategory === 'flee') {
             // Erase any escrow/pending loot they gathered before fleeing
@@ -225,9 +217,7 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
             
             socket.emit('combatResult', { type: 'pass', updatedPlayer: p, recovered: recover });
             
-            // === NEW: TUTORIAL DIRECTOR HOOK ===
-            TutorialDirector.handlePassStep(combat, io, socket.id);
-            // ===================================
+     
             return;
         }
         
@@ -423,9 +413,7 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
                 
                 socket.emit('combatItemReceipt', { success: true, updatedPlayer: p, message: `🍺 Chugged ${item.name}. Restored ${healAmount} HP.` });
                 
-                // === NEW: TUTORIAL DIRECTOR HOOK ===
-                TutorialDirector.handleConsumableStep(combat, io, socket.id);
-                // ===================================
+            
                 return;
             }
 
@@ -599,13 +587,13 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
        let combatState = {
             zone: zone, activeLevel: runLvl, 
             turn: 'PLAYER', phase: 'MOVE',
-            gridSize: { cols: 16, rows: 10 }, tileSize: 54, // <-- 16x10 JSON OBJECT
+            gridSize: { cols: data.customCols || 16, rows: data.customRows || 10 }, // Dynamic!
+            tileSize: data.customTileSize || 54, // Dynamic!
             player: { x: 1, y: 4, atbCharge: 0 }, enemies: [], obstacles: [],
-            atbPaused: false 
+            atbPaused: (data.customCols !== undefined) // Auto-pause ATB if it's a cinematic map
         };
 
-        // === NEW: TUTORIAL DIRECTOR HOOK ===
-        TutorialDirector.handleDeployment(p, combatState, zone, io, socket.id);
+
 
         let baitMultiplier = (zone === 'WILDERNESS' && p.mapBaited) ? 1.4 : 1.0;
         let prefixLabel = (zone === 'WILDERNESS' && p.mapBaited) ? "Frenzied " : "";
@@ -1003,12 +991,7 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
             p.inventory.push(securedItem);
             socket.emit('inventoryReceipt', { success: true, action: 'takeLoot', updatedPlayer: p, message: `🎒 Secured ${securedItem.name} in backpack.` });
             
-            // === TRIGGER BOSS SPAWN ON TAKE ===
-            let combat = activeCombats[socket.id];
-            if (combat && combat.zone === 'TUTORIAL' && combat.tutorialStep === 5) {
-                TutorialDirector.handleBossSpawn(p, combat, io, socket.id);
-            }
-            // ==================================
+
         } else {
             socket.emit('inventoryReceipt', { success: false, message: "❌ Backpack is full!" });
         }
