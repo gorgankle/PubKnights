@@ -640,9 +640,4 @@ document.addEventListener("click", function startMusicOnce() {
 setInterval(() => {
     fetch('/').catch(err => console.log('Heartbeat skipped.'));
 }, 10 * 60 * 1000);
-
-
-
     
-});
-
