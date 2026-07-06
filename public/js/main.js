@@ -313,8 +313,8 @@ socket.on('townReceipt', (receipt) => {
         if (typeof playRetroSound === 'function') playRetroSound('coin');
     }
 
-    logMessage(receipt.message);
-    if (typeof saIf veGame === 'function') saveGame(); 
+   logMessage(receipt.message);
+    if (typeof saveGame === 'function') saveGame(); 
     refreshSystemUI(); 
 });
 
@@ -642,65 +642,7 @@ setInterval(() => {
 }, 10 * 60 * 1000);
 
 
-// === NEW: TUTORIAL DIRECTOR LOGIC ===
-function skipTutorial() {
-    // Play a click sound
-    if (typeof playRetroSound === 'function') playRetroSound('step');
+
     
-    // Immediately hide the HUD
-    document.getElementById('tutorial-hud').style.display = 'none';
-    
-    // Force the player object flag
-if (player.tutorialCompleted === false) {
-    player.tutorialCompleted = 'active';
-    
-    // THE FIX: Emit the dedicated wipe command
-    socket.emit('skipTutorial');
-    
-    // Fallback UI transition just in case
-    transitionToTown();
-}
-// ====================================
-
-// === ADD TO BOTTOM OF main.js ===
-
-// 1. The Server Dialogue Trigger
-socket.on('serverDialogue', (sequence) => {
-    if (typeof playDialogueSequence === 'function') playDialogueSequence(sequence);
-});
-
-// 2. The Server Screen Shake Trigger
-socket.on('screenShake', () => {
-    const gameWrapper = document.getElementById('combat-screen');
-    if (gameWrapper) {
-        // Native Web Animations API (No CSS required!)
-        gameWrapper.animate([
-            { transform: 'translate(2px, 1px) rotate(0deg)' },
-            { transform: 'translate(-1px, -2px) rotate(-1deg)' },
-            { transform: 'translate(-3px, 0px) rotate(1deg)' },
-            { transform: 'translate(3px, 2px) rotate(0deg)' },
-            { transform: 'translate(1px, -1px) rotate(1deg)' },
-            { transform: 'translate(-1px, 2px) rotate(-1deg)' },
-            { transform: 'translate(-3px, 1px) rotate(0deg)' },
-            { transform: 'translate(3px, 1px) rotate(-1deg)' },
-            { transform: 'translate(-1px, -1px) rotate(1deg)' },
-            { transform: 'translate(1px, 2px) rotate(0deg)' },
-            { transform: 'translate(1px, -2px) rotate(-1deg)' }
-        ], { duration: 500, iterations: 1 });
-    }
-    if (typeof playRetroSound === 'function') playRetroSound('explosion');
-});
-
-
-
-// 3. The Server Music Override
-socket.on('playTrack', (trackName) => {
-    if (typeof musicTracks !== 'undefined') {
-        let trackIndex = musicTracks.findIndex(t => t.name === trackName);
-        if (trackIndex !== -1) {
-            activeTrackIndex = trackIndex - 1; // Offset so cycle hits it perfectly
-            if (typeof cycleMusicTrack === 'function') cycleMusicTrack();
-        }
-    }
 });
 
