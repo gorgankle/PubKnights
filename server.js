@@ -9,6 +9,7 @@ const injectTownRouter = require('./townRouter.js');
 const injectCombatRouter = require('./combatRouter.js');
 const injectSocialRouter = require('./socialRouter.js');
 const { ItemDatabase } = require('./public/js/items.js');
+const injectQuestRouter = require('./QuestRouter.js');
 
 // Initialize the Express app and wrap it in an HTTP server for Socket.io
 const app = express();
@@ -42,6 +43,12 @@ const playerSchema = new mongoose.Schema({
     friends: { type: [String], default: [] },
     ignored: { type: [String], default: [] },
     // ==================================
+
+    // === NEW: CINEMATIC ENGINE STATE ===
+    activeQuest: { type: String, default: null }, // Maps to a key in questDatabase.js
+    questStep: { type: Number, default: 0 },      // Current index in the JSON array
+    completedQuests: { type: [String], default: [] } // Prevents re-triggering movies
+	
 }, { timestamps: true });
 
 // === NEW: CASE-INSENSITIVE COLLATION INDEX ===
@@ -255,6 +262,7 @@ if (data.saveData) {
         injectTownRouter(socket, io, activePlayers, activeCombats);
         injectCombatRouter(socket, io, activePlayers, activeCombats);
         injectSocialRouter(socket, io, activePlayers, activeCombats);
+		injectQuestRouter(socket, io, activePlayers);
 
         // === RESTORED: DISCONNECT HANDLER ===
         socket.on('disconnect', () => {

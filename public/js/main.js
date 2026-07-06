@@ -314,7 +314,7 @@ socket.on('townReceipt', (receipt) => {
     }
 
     logMessage(receipt.message);
-    if (typeof saveGame === 'function') saveGame(); 
+    if (typeof saIf veGame === 'function') saveGame(); 
     refreshSystemUI(); 
 });
 
@@ -651,7 +651,8 @@ function skipTutorial() {
     document.getElementById('tutorial-hud').style.display = 'none';
     
     // Force the player object flag
-    player.tutorialCompleted = true;
+if (player.tutorialCompleted === false) {
+    player.tutorialCompleted = 'active';
     
     // THE FIX: Emit the dedicated wipe command
     socket.emit('skipTutorial');

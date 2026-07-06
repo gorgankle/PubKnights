@@ -43,20 +43,13 @@ function startNewGame() {
 
 // Triggered after the player finishes customizing
 function finalizeCharacter() {
-    // 1. Save the new appearance settings to the database
     if (typeof saveGame === 'function') saveGame(true); 
     
-    // 2. THE TUTORIAL HIJACK
-    if (!player.tutorialCompleted) {
-        document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('char-creation-screen').style.display = 'none';
-        document.getElementById('main-game-container').style.display = 'flex';
-        
-        // Bypass the Town completely and tell the server to spawn the tutorial
-        transitionToCombat('TUTORIAL');
-    } else {
-        enterGameUI();
-    }
+    // Default to the normal Town UI
+    enterGameUI();
+    
+    // Let the Quest Engine decide what happens next!
+    socket.emit('checkQuestTriggers', { triggerType: 'LOGIN' });
 }
 
 // === SOCKET LISTENERS (Catching Server Responses) ===
@@ -76,22 +69,12 @@ socket.on('registerSuccess', () => {
 });
 
 socket.on('loginSuccess', (serverSaveData) => {
-    // Save the username they just logged in with
     currentUsername = document.getElementById("char-name-input").value.trim();
-    
-    // Merge the database save over our local variables
     Object.assign(player, serverSaveData);
     
-    // === THE FIX: PREVENT REFRESH EXPLOITS ===
-    if (!player.tutorialCompleted) {
-        document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('char-creation-screen').style.display = 'none';
-        document.getElementById('main-game-container').style.display = 'flex';
-        
-        // Throw them right back into the tutorial!
-        transitionToCombat('TUTORIAL');
-    } else {
-        enterGameUI();
-    }
-    // =========================================
+    // Default to the normal Town UI
+    enterGameUI();
+
+    // Let the Quest Engine decide what happens next!
+    socket.emit('checkQuestTriggers', { triggerType: 'LOGIN' });
 });
