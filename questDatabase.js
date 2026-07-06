@@ -4,7 +4,6 @@ module.exports = {
     // PART 1: THE COMBAT ONBOARDING
     // Triggered upon new account creation
     // ==========================================
-module.exports = {
     "tutorial_combat_intro": [
         // 1. Blackout the screen immediately upon login
         { type: "FADE", direction: "OUT", duration: 500, color: "#000000" },
