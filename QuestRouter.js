@@ -42,6 +42,31 @@ module.exports = function(socket, io, activePlayers) {
             return endQuest(socketId, p, currentEvent.action);
         }
 
+        // === THE FIX: PROPER PLACEMENT OF MODIFY_PLAYER ===
+        // Server-Side Event: Modify Player Stats/Gear silently
+        if (currentEvent.type === 'MODIFY_PLAYER') {
+            if (currentEvent.stats) {
+                if (currentEvent.stats.hp !== undefined) p.hp = currentEvent.stats.hp;
+                if (currentEvent.stats.stamina !== undefined) p.stamina = currentEvent.stats.stamina;
+            }
+            if (currentEvent.inventoryIds) {
+                p.inventory = [];
+                currentEvent.inventoryIds.forEach(id => {
+                    if (ItemDatabase[id]) p.inventory.push(JSON.parse(JSON.stringify(ItemDatabase[id])));
+                });
+            }
+            if (currentEvent.equipmentOverrides) {
+                p.equipment = currentEvent.equipmentOverrides; 
+            }
+            
+            // Force the client UI to sync with the new gear
+            io.to(socketId).emit('townReceipt', { success: true, updatedPlayer: p }); 
+            
+            p.questStep++;
+            return executeCurrentStep(socketId, p); // Move to the next event instantly
+        }
+
+        // For all other normal cinematic steps, send the instruction to the client
         io.to(socketId).emit('questEvent', currentEvent);
     }
 
@@ -66,27 +91,4 @@ module.exports = function(socket, io, activePlayers) {
         
         io.to(socketId).emit('questConcluded', { updatedPlayer: p, action: endAction });
     }
-	// Server-Side Event: Modify Player Stats/Gear silently
-        if (currentEvent.type === 'MODIFY_PLAYER') {
-            if (currentEvent.stats) {
-                if (currentEvent.stats.hp !== undefined) p.hp = currentEvent.stats.hp;
-                if (currentEvent.stats.stamina !== undefined) p.stamina = currentEvent.stats.stamina;
-            }
-            if (currentEvent.inventoryIds) {
-                p.inventory = [];
-                currentEvent.inventoryIds.forEach(id => {
-                    if (ItemDatabase[id]) p.inventory.push(JSON.parse(JSON.stringify(ItemDatabase[id])));
-                });
-            }
-            if (currentEvent.equipmentOverrides) {
-                p.equipment = currentEvent.equipmentOverrides; 
-            }
-            
-            // Force the client UI to sync with the new gear
-            io.to(socketId).emit('townReceipt', { success: true, updatedPlayer: p }); 
-            
-            p.questStep++;
-            return executeCurrentStep(socketId, p); // Move to the next event instantly
-        }
-	
 };
