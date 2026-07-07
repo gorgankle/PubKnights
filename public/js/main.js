@@ -139,23 +139,10 @@ socket.on('combatResult', (result) => {
                 logMessage("🏆 VICTORY Conditions verified.");
                 if (typeof playRetroSound === 'function') playRetroSound('victory');
                 
-                // === THE FIX: SELECTIVELY BYPASS LOOT SCREEN IN TUTORIAL ===
-                if (activeCombatZone === 'TUTORIAL') {
-                    if (currentTutorialStep === 4) { // <--- CHANGE THIS FROM 3 TO 4!
-                        // The bomb just went off. Show the Loot Screen so they can see the Gem!
-                        // Hide the "Return to Tavern" button so they can't escape the ambush.
-                        let retBtn = document.querySelector("#loot-screen button");
-                        if (retBtn) retBtn.style.display = 'none';
-                        
-                        setTimeout(showLootScreen, 1200);
-                    }
-                } else {
-                    // Normal Game: Restore the Return button
-                    let retBtn = document.querySelector("#loot-screen button");
-                    if (retBtn) retBtn.style.display = 'block';
-                    setTimeout(showLootScreen, 1200); 
-                }
-                // =======================================================
+                // Pure, standard game logic. No tutorial checks needed!
+                let retBtn = document.querySelector("#loot-screen button");
+                if (retBtn) retBtn.style.display = 'block';
+                setTimeout(showLootScreen, 1200); 
             } else {
                 advancePhase(); // Unlocks the Phase safely!
             }
@@ -511,34 +498,11 @@ socket.on('enemyTurnReceipt', (receipt) => {
             else if (ev.type === 'steal') {
                 logMessage(`🍺 The Mimic intercepts your gear inventory and chugs one of your Stouts!`);
             }
-            else if (ev.type === 'death') {
+      else if (ev.type === 'death') {
                 logMessage("💀 casualty verified. Transporting to safety structures.");
                 if (typeof playRetroSound === 'function') playRetroSound('death');
-                setTimeout(transitionToTown, 1500); 
-            }
-			// === ADD INSIDE socket.on('enemyTurnReceipt') in main.js ===
-            else if (ev.type === 'tutorial_death') {
-                logMessage("💀 The Overlord crushed you... but you survived.");
-                if (typeof playRetroSound === 'function') playRetroSound('death');
-                
                 setTimeout(() => {
                     transitionToTown();
-                    
-                    // === THE FIX: RESET THE MUSIC TO THE FIRST TRACK ===
-                    if (typeof musicTracks !== 'undefined' && typeof cycleMusicTrack === 'function') {
-                        activeTrackIndex = -1; // Offsets the index so it perfectly lands on track 0!
-                        cycleMusicTrack();
-                    }
-                    // ===================================================
-                    
-                    // Queue Kreg's Introduction!
-                    playDialogueSequence([
-                        { speaker: "Kreg", text: "Whoa there, buddy! You got absolutely clobbered out in the Wilds.", portraitId: "npc_kreg" },
-                        { speaker: "Kreg", text: "When you fall in combat, you drop all the unbanked loot you were carrying. That shiny gem? Gone.", portraitId: "npc_kreg" },
-                        { speaker: "Kreg", text: "Even worse, your gear was destroyed. I managed to scrounge up this Rusty Mace for you.", portraitId: "npc_kreg" },
-                        { speaker: "Kreg", text: "I'm Kreg. My mom meant to name me Craig, but spelling is hard. Welcome to the Guild!", portraitId: "npc_kreg" },
-                        { speaker: "Kreg", text: "Gather resources, upgrade the town, and trade for gear here. Get stronger, then go get your revenge!", portraitId: "npc_kreg" }
-                    ]);
                 }, 1500); 
             }
             refreshSystemUI();
@@ -580,7 +544,7 @@ let gameState = 'KNIGHT';
 let currentTurn = 'PLAYER';
 let combatPhase = 'MOVE'; 
 let activeCombatZone = 'WILDERNESS'; 
-let currentTutorialStep = 0;
+
 
 // Target Tracking
 let pendingMove = null;

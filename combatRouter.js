@@ -6,14 +6,12 @@ const { LootTables } = require('./public/js/lootTables.js');
 const { NpcDatabase, createEnemy } = require('./public/js/npc-database.js');
 const { SpellDatabase } = require('./public/js/spells.js');
 
-
 function getGridDistance(x1, y1, x2, y2, size2 = 1) {
     let closeX = Math.max(x2, Math.min(x1, x2 + size2 - 1));
     let closeY = Math.max(y2, Math.min(y1, y2 + size2 - 1));
     return Math.max(Math.abs(x1 - closeX), Math.abs(y1 - closeY));
 }
 
-// === UNIVERSAL LINE OF SIGHT ENGINE (Bresenham's Line Algorithm) ===
 function checkLineOfSight(x1, y1, x2, y2, combatState) {
     let dx = Math.abs(x2 - x1); let dy = Math.abs(y2 - y1);
     let sx = (x1 < x2) ? 1 : -1; let sy = (y1 < y2) ? 1 : -1;
@@ -22,7 +20,6 @@ function checkLineOfSight(x1, y1, x2, y2, combatState) {
     while (true) {
         if (cx === x2 && cy === y2) return true;
         if (cx !== x1 || cy !== y1) {
-            // Check if the current tile contains a solid obstacle
             if (combatState.obstacles.some(o => o.x === cx && o.y === cy)) return false;
         }
         let e2 = 2 * err;
@@ -31,7 +28,6 @@ function checkLineOfSight(x1, y1, x2, y2, combatState) {
     }
 }
 	
-// === UNIVERSAL LINE OF EFFECT (Bresenham Blast Path) ===
 function getLineOfEffectPath(x1, y1, x2, y2, maxRange, stopsAtWalls, combatState) {
     let path = [];
     let dx = Math.abs(x2 - x1); let dy = Math.abs(y2 - y1);
@@ -42,11 +38,9 @@ function getLineOfEffectPath(x1, y1, x2, y2, maxRange, stopsAtWalls, combatState
     while (distanceTraveled <= maxRange) {
         if (cx !== x1 || cy !== y1) {
             path.push({ x: cx, y: cy });
-            // If it hits a wall and doesn't ignore LoS, the beam stops here!
             if (stopsAtWalls && combatState.obstacles.some(o => o.x === cx && o.y === cy)) break; 
         }
         if (cx === x2 && cy === y2) break; 
-        
         let e2 = 2 * err;
         if (e2 > -dy) { err -= dy; cx += sx; }
         if (e2 < dx) { err += dx; cy += sy; }
@@ -55,11 +49,8 @@ function getLineOfEffectPath(x1, y1, x2, y2, maxRange, stopsAtWalls, combatState
     return path;
 }
 
-
 module.exports = function(socket, io, activePlayers, activeCombats) {
 	
-	// === UNIVERSAL STAT ENGINE ===
-    // Calculates the true level of any stat by combining Base + Gear + Buffs
     function getEffectiveStat(player, statKey) {
         let base = player[statKey] || 1; 
         let flatBonus = 0;
@@ -72,11 +63,10 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 if (statKey === 'defense' && item.defense) flatBonus += item.defense;
                 if (statKey === 'speed' && item.speed) flatBonus += item.speed;
                 if (statKey === 'vitality' && item.vitality) flatBonus += item.vitality;
-                if (statKey === 'maxStamina' && item.stamina) flatBonus += item.stamina; // <--- FIXED KEY MISMATCH
+                if (statKey === 'maxStamina' && item.stamina) flatBonus += item.stamina; 
             }
         }
 
-        // 2. Apply Active Buffs (Potions, Magic, etc.) from the Database
         if (player.activeBuffs && player.activeBuffs.length > 0) {
             player.activeBuffs.forEach(buffId => {
                 let buffData = ItemDatabase[buffId.toLowerCase()];
@@ -89,21 +79,19 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 }
             });
         }
-
         return Math.floor((base + flatBonus) * multiplier);
     }
 
-// === REPLACED ===
-    // Helper functions to keep the HP/Stamina math completely hidden from the client
     function getMaxHp(player) { return getEffectiveStat(player, 'vitality') * 25; }
-    function getMaxStamina(player) { return getEffectiveStat(player, 'maxStamina') * 25; }// <--- FIXED: Now looks at maxStamina
-// ============================================
+    function getMaxStamina(player) { return getEffectiveStat(player, 'maxStamina') * 25; }
 
-   // --- SECURE KILL PROCESSOR ---
     function processSecureKill(socketId, serverEnemy) {
         let p = activePlayers[socketId];
         let combat = activeCombats[socketId];
         if (!p || !combat) return;
+
+        // Ensure cinematic/quest enemies don't drop real gold or trigger normal victory math
+        if (combat.zone === 'CINEMATIC' || p.activeQuest) return;
 
         let multiplier = p.monumentBuilt ? 2 : 1;
         let isGorilla = (combat.zone === 'GORILLA_ARENA'); 
@@ -113,46 +101,38 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         let xpReward = 0;
         let droppedItemObj = null;
 
-        // === THE FIX: DISABLE RANDOM LOOT IN THE TUTORIAL ===
-        // Only run standard loot tables if we are in a real map!
-        if (combat.zone !== 'TUTORIAL') {
-            goldReward = ((isGorilla ? 500 : (isBaited ? 60 : 25)) * multiplier);
-            let table = LootTables[serverEnemy.id];
-            
-            if (table) {
-                xpReward = (table.xpDrop || 0) * multiplier;
-                if (Math.random() <= table.dropChance) {
-                    let totalWeight = table.pools.reduce((sum, entry) => sum + entry.weight, 0);
-                    let roll = Math.random() * totalWeight;
-                    let droppedItemId = null;
-                    for (let entry of table.pools) {
-                        if (roll < entry.weight) { droppedItemId = entry.itemId; break; }
-                        roll -= entry.weight;
-                    }
-                    if (droppedItemId && ItemDatabase[droppedItemId]) {
-                        droppedItemObj = JSON.parse(JSON.stringify(ItemDatabase[droppedItemId]));
-                    }
+        goldReward = ((isGorilla ? 500 : (isBaited ? 60 : 25)) * multiplier);
+        let table = LootTables[serverEnemy.id];
+        
+        if (table) {
+            xpReward = (table.xpDrop || 0) * multiplier;
+            if (Math.random() <= table.dropChance) {
+                let totalWeight = table.pools.reduce((sum, entry) => sum + entry.weight, 0);
+                let roll = Math.random() * totalWeight;
+                let droppedItemId = null;
+                for (let entry of table.pools) {
+                    if (roll < entry.weight) { droppedItemId = entry.itemId; break; }
+                    roll -= entry.weight;
+                }
+                if (droppedItemId && ItemDatabase[droppedItemId]) {
+                    droppedItemObj = JSON.parse(JSON.stringify(ItemDatabase[droppedItemId]));
                 }
             }
-
-            p.pendingGold = (p.pendingGold || 0) + goldReward;
-            p.pendingXp = (p.pendingXp || 0) + xpReward;
-            p.pendingLoot = p.pendingLoot || [];
-            if (droppedItemObj) p.pendingLoot.push(droppedItemObj);
-
-            io.to(socketId).emit('killConfirmed', { 
-                gold: goldReward, xp: xpReward, item: droppedItemObj, isPet: false, enemyName: serverEnemy.name 
-            });
         }
-        // ====================================================
 
-  // === SERVER AUTOMATICALLY DETECTS VICTORY ===
+        p.pendingGold = (p.pendingGold || 0) + goldReward;
+        p.pendingXp = (p.pendingXp || 0) + xpReward;
+        p.pendingLoot = p.pendingLoot || [];
+        if (droppedItemObj) p.pendingLoot.push(droppedItemObj);
+
+        io.to(socketId).emit('killConfirmed', { 
+            gold: goldReward, xp: xpReward, item: droppedItemObj, isPet: false, enemyName: serverEnemy.name 
+        });
+
+        // Check for normal zone victory
         let allDead = combat.enemies.every(e => !e.alive);
         
         if (allDead) {
-            // THE FIX: If the Quest Engine is active, ignore standard combat victory!
-            if (p.activeQuest) return; 
-
             let zoneGoldReward = 0;
             if (combat.zone === 'GORILLA_ARENA') zoneGoldReward += 5000;
             else if (combat.zone === 'ABYSS') {
@@ -167,75 +147,52 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             }
             if (zoneGoldReward > 0) p.pendingGold = (p.pendingGold || 0) + zoneGoldReward;
             
-            // Clean up server memory
             delete activeCombats[socketId];
         }
     }
 
-    // --- SERVER-AUTHORITATIVE COMBAT ENGINE (UNIFIED DISPATCHER) ---
-    // --- SERVER-AUTHORITATIVE COMBAT ENGINE (UNIFIED DISPATCHER) ---
     socket.on('dispatchCombatAction', (data) => {
         let p = activePlayers[socket.id];
         let combat = activeCombats[socket.id];
         
-        // FIX: Prevent Silent Ghost Sockets
         if (!p) return socket.emit('combatResult', { type: 'error', message: '❌ Server connection lost. Please refresh the page.' });
 
-        // === THE FIX: SERVER-SIDE ATB ENFORCEMENT ===
-        // Strictly ignore combat actions if the server hasn't locked the ATB state for a player turn!
-if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
+        if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
             return socket.emit('combatResult', { type: 'error', message: '❌ Tactical Error: It is not your turn.', newStamina: p.stamina });
         }
 
-
-        
         if (data.actionCategory === 'flee') {
-            // Erase any escrow/pending loot they gathered before fleeing
             p.pendingGold = 0;
             p.pendingXp = 0;
             p.pendingLoot = [];
             
-            // === PHASE 0: FLEE REJUVENATION ===
             p.hp = getMaxHp(p);
             p.stamina = getMaxStamina(p);
-            // ==================================
             
-            // Remove them from the active server battle
             delete activeCombats[socket.id];
-            
             return socket.emit('combatResult', { type: 'flee', updatedPlayer: p });
         }
-		
-        // FIX: Prevent Silent Ghost Sockets
-        if (!p) return socket.emit('combatResult', { type: 'error', message: '❌ Server connection lost. Please refresh the page.' });
 
-        // === 1. PASS TURN LOGIC ===
         if (data.actionCategory === 'pass') {
             let maxStam = getMaxStamina(p);
             let recover = Math.floor(maxStam * 0.15); 
             p.stamina = Math.min(maxStam, (p.stamina || 0) + recover);
-            
             socket.emit('combatResult', { type: 'pass', updatedPlayer: p, recovered: recover });
-            
-     
             return;
         }
         
-// === 2. WEAPON ATTACK LOGIC ===
         if (data.actionCategory === 'weapon') {
             let weapon = p.equipment.weapon;
             
-            // === PHASE 0: UNARMED SERVER FALLBACK ===
             if (!weapon || !weapon.combat) {
                 weapon = {
-                    spriteId: "icon_punch", // Failsafe empty rendering
+                    spriteId: "icon_punch",
                     combat: {
                         standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
                         special: { name: "Haymaker", range: 1, staminaCost: 15, multiplier: 1.5, ignoresDefense: false }
                     }
                 };
             }
-            // ========================================
 
             let combatRules = data.subType === 'special' ? weapon.combat.special : weapon.combat.standard;
             if (!combatRules) return socket.emit('combatResult', { type: 'error', message: '❌ Server: Action not supported by weapon.', newStamina: p.stamina });
@@ -245,17 +202,14 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
                 return socket.emit('combatResult', { type: 'error', message: `❌ Server: Insufficient stamina (${Math.floor(p.stamina)}/${staminaCost}).`, newStamina: p.stamina });
             }
 
-            // === NEW: TACTICAL WEAPON SPECIAL (AoE) ===
             if (data.subType === 'special' && combatRules.targetType === 'aoe') {
                 if (data.tx === undefined || data.ty === undefined) return;
                 
-                // 1. Verify we can throw the center of the AoE that far
                 let castDist = getGridDistance(combat.player.x, combat.player.y, data.tx, data.ty, 1);
                 if (castDist > combatRules.range) {
                     return socket.emit('combatResult', { type: 'error', message: '❌ Server: Target out of range.', newStamina: p.stamina });
                 }
 
-                // 2. Verify Line of Sight
                 if (!combatRules.ignoresLoS && !checkLineOfSight(combat.player.x, combat.player.y, data.tx, data.ty, combat)) {
                     return socket.emit('combatResult', { type: 'error', message: '❌ Server: No line of sight to target area.', newStamina: p.stamina });
                 }
@@ -266,7 +220,6 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
                 let finalBaseDmg = Math.floor(serverPower * combatRules.multiplier);
                 let hitTargets = [];
 
-                // 3. Process the AoE Blast
                 if (combat) {
                     combat.enemies.forEach(e => {
                         if (!e.alive) return;
@@ -288,53 +241,34 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
                     });
                 }
 
-                // 4. Emit the Unified Payload back to the client!
                 return socket.emit('combatResult', { 
-                    type: 'hit',
-                    source: 'weapon',
-                    actionName: data.subType, 
-                    targets: hitTargets,
+                    type: 'hit', source: 'weapon', actionName: data.subType, targets: hitTargets,
                     fx: { tx: data.tx, ty: data.ty, spriteId: weapon.spriteId, isAoE: true, radius: combatRules.aoeRadius || 1 },
                     updatedPlayer: p 
                 });
             }
-            // ==========================================
 
-            // Secure Target Verification
             let serverEnemy = null;
             if (combat && data.targetEnemy) {
                 serverEnemy = combat.enemies.find(e => e.uid === data.targetEnemy.uid && e.alive);
             }
 
-            if (!serverEnemy) {
-                return socket.emit('combatResult', { type: 'error', message: '❌ Server: Target lost or already deceased.', newStamina: p.stamina });
-            }
+            if (!serverEnemy) return socket.emit('combatResult', { type: 'error', message: '❌ Server: Target lost or already deceased.', newStamina: p.stamina });
 
-            // Secure Range Verification
             let dist = getGridDistance(combat.player.x, combat.player.y, serverEnemy.x, serverEnemy.y, serverEnemy.size || 1);
-            
-            if (dist > combatRules.range) {
-                return socket.emit('combatResult', { type: 'error', message: '❌ Server: Target out of confirmed range.', newStamina: p.stamina });
-            }
+            if (dist > combatRules.range) return socket.emit('combatResult', { type: 'error', message: '❌ Server: Target out of confirmed range.', newStamina: p.stamina });
 			
 			if (!combatRules.ignoresLoS) {
                 const hasLOS = checkLineOfSight(combat.player.x, combat.player.y, serverEnemy.x, serverEnemy.y, combat);
-                if (!hasLOS) {
-                    return socket.emit('combatResult', { type: 'error', message: '❌ Server: Target is obscured by an obstacle.', newStamina: p.stamina });
-                }
+                if (!hasLOS) return socket.emit('combatResult', { type: 'error', message: '❌ Server: Target is obscured by an obstacle.', newStamina: p.stamina });
             }
 
-            // Execute resource burn
             p.stamina -= staminaCost; 
 
-            // === THE DUAL-STAGE LEVEL-BASED HIT ALGORITHM ===
             let attackerOffense = getEffectiveStat(p, 'offense') * 10;
             let defenderSpeed = (serverEnemy.speed || 1) * 10;
             let defenderDefense = combatRules.ignoresDefense ? 0 : (serverEnemy.defense || 1) * 10;
 
-            // ---------------------------------------------------------
-            // STAGE 1: EVASION (Offense vs. Speed)
-            // ---------------------------------------------------------
             let offenseHitPower = (attackerOffense * 0.5) + (Math.random() * attackerOffense * 0.5);
             let speedMitigation = Math.random() * defenderSpeed;
 
@@ -343,12 +277,8 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
                 return;
             }
 
-            // ---------------------------------------------------------
-            // STAGE 2: ABSORPTION & DEFLECTION (Offense vs. Defense)
-            // ---------------------------------------------------------
             let rawDamageRoll = Math.sqrt(Math.random()) * attackerOffense;
             let armorAbsorption = Math.pow(Math.random(), 2) * defenderDefense;
-            
             let mitigatedDmg = Math.floor(rawDamageRoll - armorAbsorption);
 
             if (mitigatedDmg <= 0) {
@@ -356,41 +286,27 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
                 return;
             }
 
-            // ---------------------------------------------------------
-            // STAGE 3: THE DAMAGE DISPATCH
-            // ---------------------------------------------------------
             let isCrit = mitigatedDmg >= Math.floor(attackerOffense * 0.90); 
             let finalDmg = Math.floor(mitigatedDmg * combatRules.multiplier);
 
             serverEnemy.hp -= finalDmg;
             let killed = false;
             if (serverEnemy.hp <= 0) {
-                serverEnemy.hp = 0;
-                serverEnemy.alive = false; 
-                killed = true;
+                serverEnemy.hp = 0; serverEnemy.alive = false; killed = true;
                 processSecureKill(socket.id, serverEnemy);
             }
             
             const isRanged = !!weapon.projectileSprite; 
             
             socket.emit('combatResult', { 
-                type: 'hit', 
-                source: 'weapon',
-                actionName: data.subType, 
+                type: 'hit', source: 'weapon', actionName: data.subType, 
                 targets: [{ uid: serverEnemy.uid, damage: finalDmg, isCrit: isCrit, killed: killed }],
-                fx: { 
-                    tx: serverEnemy.x, 
-                    ty: serverEnemy.y, 
-                    spriteId: isRanged ? weapon.projectileSprite : weapon.spriteId, 
-                    isProjectile: isRanged, 
-                    isAoE: false 
-                },
+                fx: { tx: serverEnemy.x, ty: serverEnemy.y, spriteId: isRanged ? weapon.projectileSprite : weapon.spriteId, isProjectile: isRanged, isAoE: false },
                 updatedPlayer: p 
             });
             return;
         } 
 
-        // === 3. CONSUMABLE LOGIC (Brews & Bombs) ===
         if (data.actionCategory === 'consumable') {
             let invIndex = data.invIndex;
             let item = p.inventory[invIndex];
@@ -403,21 +319,15 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
                 return socket.emit('combatItemReceipt', { success: false, message: `❌ Server: Insufficient stamina.` });
             }
 
-            // Heal Parsing
             if (rules.actionType === 'heal') {
                 let maxVitalityCalc = getMaxHp(p);
                 let healAmount = Math.floor(maxVitalityCalc * rules.healPercent);
                 p.hp = Math.min(maxVitalityCalc, p.hp + healAmount);
                 p.inventory.splice(invIndex, 1);
                 p.stamina -= rules.staminaCost || 0;
-                
-                socket.emit('combatItemReceipt', { success: true, updatedPlayer: p, message: `🍺 Chugged ${item.name}. Restored ${healAmount} HP.` });
-                
-            
-                return;
+                return socket.emit('combatItemReceipt', { success: true, updatedPlayer: p, message: `🍺 Chugged ${item.name}. Restored ${healAmount} HP.` });
             }
 
-            // === NEW DYNAMIC BUFF PARSING ===
             if (rules.actionType === 'buff') {
                 p.activeBuffs = p.activeBuffs || [];
                 let buffName = rules.buffType; 
@@ -432,25 +342,13 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
                 }
             }
             
-            // Throwable Parsing (Bombs)
             if (rules.actionType === 'throwable') {
                 if (data.tx === undefined || data.ty === undefined) return;
                 
                 let throwDist = getGridDistance(combat.player.x, combat.player.y, data.tx, data.ty, 1);
                 let maxRange = rules.range || 4; 
                 
-                // === THE FIX: TUTORIAL BOMB OVERRIDE ===
-                // Expands the blast radius to map-wiping proportions so they can't miss!
-                if (combat && combat.zone === 'TUTORIAL' && combat.tutorialStep === 4) {
-                    rules.aoeRadius = 5; 
-                    rules.damageFlat = 999;
-                }
-                // =======================================
-
-                if (throwDist > maxRange) {
-                    return socket.emit('combatItemReceipt', { success: false, message: '❌ Server: Target out of range.' });
-                }
-                
+                if (throwDist > maxRange) return socket.emit('combatItemReceipt', { success: false, message: '❌ Server: Target out of range.' });
                 if (!rules.ignoresLoS && !checkLineOfSight(combat.player.x, combat.player.y, data.tx, data.ty, combat)) {
                     return socket.emit('combatItemReceipt', { success: false, message: '❌ Server: No line of sight to target area.' });
                 }
@@ -467,38 +365,28 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
                             e.hp -= rules.damageFlat;
                             let killed = false;
                             if (e.hp <= 0) { e.hp = 0; e.alive = false; killed = true; processSecureKill(socket.id, e); }
-                            
                             hitTargets.push({ uid: e.uid, damage: rules.damageFlat, isCrit: false, killed: killed });
                         }
                     });
                 }
                 
                 return socket.emit('combatResult', { 
-                    type: 'hit',
-                    source: 'throwable',
-                    actionName: item.name, 
-                    targets: hitTargets,
+                    type: 'hit', source: 'throwable', actionName: item.name, targets: hitTargets,
                     fx: { tx: data.tx, ty: data.ty, spriteId: item.spriteId || "icon_bomb_small", isAoE: true, radius: rules.aoeRadius },
                     updatedPlayer: p 
                 });
             }
             
-			// === NEW: MAGIC SPELL LOGIC (Permanent Scrolls) ===
             if (rules.actionType === 'spell') {
                 if (data.tx === undefined || data.ty === undefined) return;
 
                 let spellData = SpellDatabase[rules.spellId];
                 if (!spellData) return socket.emit('combatItemReceipt', { success: false, message: "❌ Server: Invalid spell logic." });
 
-                if (p.stamina < spellData.cost) {
-                    return socket.emit('combatItemReceipt', { success: false, message: '❌ Server: Insufficient stamina to cast.' });
-                }
+                if (p.stamina < spellData.cost) return socket.emit('combatItemReceipt', { success: false, message: '❌ Server: Insufficient stamina to cast.' });
                 
                 let castDist = getGridDistance(combat.player.x, combat.player.y, data.tx, data.ty, 1);
-                
-                if (castDist > spellData.range) {
-                    return socket.emit('combatItemReceipt', { success: false, message: '❌ Server: Target out of spell range.' });
-                }
+                if (castDist > spellData.range) return socket.emit('combatItemReceipt', { success: false, message: '❌ Server: Target out of spell range.' });
 
                 p.stamina -= spellData.cost;
 
@@ -509,7 +397,6 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
                     if (combat) {
                         combat.enemies.forEach(e => {
                             if (!e.alive) return;
-                            
                             let isHit = false;
                             let s = e.size || 1;
                             for (let bx = e.x; bx < e.x + s; bx++) {
@@ -529,25 +416,17 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
                 }
 
                 return socket.emit('combatResult', { 
-                    type: 'hit',
-                    source: 'spell', 
-                    actionName: spellData.name, 
-                    targets: hitTargets,
+                    type: 'hit', source: 'spell', actionName: spellData.name, targets: hitTargets,
                     fx: { 
-                        type: spellData.fx ? spellData.fx.type : 'beam', 
-                        style: spellData.fx ? spellData.fx.style : 'fire',
-                        density: spellData.fx ? spellData.fx.density : 12,
-                        spread: spellData.fx ? spellData.fx.spread : 15,
-                        speed: spellData.fx ? spellData.fx.speed : 15,
-                        tx: data.tx, 
-                        ty: data.ty 
+                        type: spellData.fx ? spellData.fx.type : 'beam', style: spellData.fx ? spellData.fx.style : 'fire',
+                        density: spellData.fx ? spellData.fx.density : 12, spread: spellData.fx ? spellData.fx.spread : 15,
+                        speed: spellData.fx ? spellData.fx.speed : 15, tx: data.tx, ty: data.ty 
                     }, 
                     updatedPlayer: p 
                 });
             }
         } 
 
-        // === 4. EQUIP LOGIC ===
         if (data.actionCategory === 'equip') {
             let invIndex = data.invIndex;
             let item = p.inventory[invIndex];
@@ -569,7 +448,6 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
         }
     });
 
-    // --- SERVER-HOSTED MAP GENERATOR ---
     socket.on('deployToCombat', (data) => {
         let p = activePlayers[socket.id];
         if (!p) return;
@@ -578,31 +456,31 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
         p.pendingXp = 0;
 
         let zone = data.zoneChoice;
-        
         let requestedLvl = data.activeLevel || 1;
         let runLvl = 1;
+        
         if (zone === 'WILDERNESS') runLvl = Math.min(requestedLvl, p.wildernessLevel || 1);
         if (zone === 'CELLARS') runLvl = Math.min(requestedLvl, p.cellarLevel || 1);
 
-       let combatState = {
+        let combatState = {
             zone: zone, activeLevel: runLvl, 
             turn: 'PLAYER', phase: 'MOVE',
-            gridSize: { cols: data.customCols || 16, rows: data.customRows || 10 }, // Dynamic!
-            tileSize: data.customTileSize || 54, // Dynamic!
+            gridSize: { cols: data.customCols || 16, rows: data.customRows || 10 },
+            tileSize: data.customTileSize || 54,
             player: { x: 1, y: 4, atbCharge: 0 }, enemies: [], obstacles: [],
-            atbPaused: (data.customCols !== undefined) // Auto-pause ATB if it's a cinematic map
+            atbPaused: (data.customCols !== undefined || zone === 'CINEMATIC') 
         };
-
-
 
         let baitMultiplier = (zone === 'WILDERNESS' && p.mapBaited) ? 1.4 : 1.0;
         let prefixLabel = (zone === 'WILDERNESS' && p.mapBaited) ? "Frenzied " : "";
 
-        if (zone === 'GORILLA_ARENA') {
+        if (zone === 'CINEMATIC') {
+            // DO NOTHING - QuestRouter will spawn the actors via the SPAWN_ACTOR JSON event
+        }
+        else if (zone === 'GORILLA_ARENA') {
             combatState.player.x = 2; combatState.player.y = 4;
             for (let i = 0; i < 100; i++) {
                 let sx, sy;
-                // Spawn strictly on the outer rim of the 16x10 grid
                 if (Math.random() > 0.5) { sx = Math.random() > 0.5 ? 0 : 15; sy = Math.floor(Math.random() * 10); } 
                 else { sx = Math.floor(Math.random() * 16); sy = Math.random() > 0.5 ? 0 : 9; }
                 
@@ -612,15 +490,15 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
             }
         }
         else if (zone === 'ABYSS') {
-            combatState.player.x = 0; combatState.player.y = 4; // Start safe on the left
+            combatState.player.x = 0; combatState.player.y = 4;
             let depth = p.abyssDepth || 1;
             let statMult = 1 + (depth * 0.15) + (Math.pow(depth, 2) * 0.005);
             let enemyCount = Math.min(12, 3 + Math.floor(depth / 3));
 
             for (let i = 0; i < enemyCount; i++) {
                 let rng = Math.random();
-                let ex = Math.floor(Math.random() * 10) + 5; // Spawn on right side (Cols 5-15)
-                let ey = Math.floor(Math.random() * 10);     // Any row (0-9)
+                let ex = Math.floor(Math.random() * 10) + 5; 
+                let ey = Math.floor(Math.random() * 10);     
                 while(combatState.enemies.some(e => e.x === ex && e.y === ey)) {
                     ex = Math.floor(Math.random() * 10) + 5; ey = Math.floor(Math.random() * 10);
                 }
@@ -642,9 +520,6 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
                     for (let i = 0; i < 5; i++) combatState.enemies.push(createEnemy("pub_crawl_mimic", 8 + i, 5, "Chummed "));
                 } else if (runLvl >= 5) combatState.enemies.push(createEnemy("pub_crawl_mimic", 12, 6));
             }
-        }
-        else if (zone === 'TUTORIAL') {
-            // DO NOTHING
         }
         else { // WILDERNESS
             if (runLvl === 20) {
@@ -668,19 +543,17 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
         }
 
         let obsIcon = "🪨"; let obsSprite = "map_boulder";
-        if (zone === 'WILDERNESS' || zone === 'TUTORIAL') { obsIcon = "🌲"; obsSprite = "map_tree"; } 
+        if (zone === 'WILDERNESS') { obsIcon = "🌲"; obsSprite = "map_tree"; } 
         else if (zone === 'CELLARS') { obsIcon = "🛢️"; obsSprite = "map_broken_cask"; }
         else if (zone === 'ABYSS') { obsIcon = "🔮"; obsSprite = "map_pillar"; }
         
         if (zone === 'WILDERNESS' && runLvl === 20) {
             combatState.player.x = 1; combatState.player.y = 4;
-            // Removed the massive hardcoded 8x8 array. Just drop 4 corner pillars for the boss!
             let pillars = [{x: 5, y: 1}, {x: 5, y: 8}, {x: 14, y: 1}, {x: 14, y: 8}];
             pillars.forEach(p => combatState.obstacles.push({ x: p.x, y: p.y, icon: obsIcon, spriteId: obsSprite }));
-        } else if (zone !== 'TUTORIAL') { 
+        } else if (zone !== 'CINEMATIC') { 
             let obsCount = (zone === 'ABYSS') ? 20 : 10;
             for (let i = 0; i < obsCount; i++) {
-                // THE FIX: Access combatState.gridSize.cols/rows directly
                 let ox = Math.floor(Math.random() * combatState.gridSize.cols); 
                 let oy = Math.floor(Math.random() * combatState.gridSize.rows);
                 let blocked = (ox === combatState.player.x && oy === combatState.player.y);
@@ -694,14 +567,13 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
 
         combatState.enemies.forEach((e, idx) => { 
             e.uid = `mob_${idx}`; 
-            e.atbCharge = 0; // <--- ENEMY ATB
+            e.atbCharge = 0; 
         });
+        
         activeCombats[socket.id] = combatState;
-        socket.emit('combatDeployed', combatState);
+        io.to(socket.id).emit('combatDeployed', combatState);
     });
 
-    // === REPLACED: AI DECOUPLER ===
-    // --- SERVER-AUTHORITATIVE ENEMY AI ---
    socket.on('endPlayerTurn', (data) => {
         let p = activePlayers[socket.id];
         let combat = activeCombats[socket.id];
@@ -712,26 +584,21 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
             combat.player.y = data.playerPos.y;
         }
 
-        // Turn is over, reset ATB and resume time for monsters!
         combat.player.atbCharge = 0;
         combat.atbPaused = false;
     });
 
-    // === THE FIX: CLIENT MOVIE ACKNOWLEDGEMENT ===
     socket.on('clientPlaybackComplete', () => {
         let combat = activeCombats[socket.id];
-        if (combat) combat.playbackLock = false; // Unlocks the ATB Heartbeat for the next tick!
+        if (combat) combat.playbackLock = false; 
     });
 
-    // --- STANDALONE AI PROCESSOR ---
     function executeEnemyTurn(socketId, combat, p, e) {
         if (!e.alive || p.hp <= 0) return;
         let turnEvents = [];
         
-        // Extract the cols and rows safely
         let cols = combat.gridSize.cols || 16;
         let rows = combat.gridSize.rows || 10;
-
         let collisionMatrix = Array(cols).fill(null).map(() => Array(rows).fill(0));
         
         combat.obstacles.forEach(o => { if (o.x >= 0 && o.x < cols && o.y >= 0 && o.y < rows) collisionMatrix[o.x][o.y] = 1; });
@@ -855,14 +722,13 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
             let enemyHitPower = (eOffense * 0.5) + (Math.random() * eOffense * 0.5);
             let playerSpeedMitigation = Math.random() * playerSpeed;
 
-            // THE FIX: Forcibly deflect all Publing damage during the tutorial to prevent premature deaths!
-            if ((enemyHitPower - playerSpeedMitigation) <= 0 || (combat.zone === 'TUTORIAL' && e.id === 'publing')) {
+            if ((enemyHitPower - playerSpeedMitigation) <= 0) {
                 turnEvents.push({ type: 'deflect', enemyName: e.name }); 
             } else {
                 let rawDamageRoll = Math.sqrt(Math.random()) * eOffense;
                 let playerDef = getEffectiveStat(p, 'defense') * 10;
                 let playerAbsorption = Math.pow(Math.random(), 2) * playerDef;
-                let mitigatedDmg = Math.floor(rawDamageRoll - playerAbsorption);
+                let mitigatedDmg = Math.floor(rawDamageRoll - armorAbsorption);
 
                 if (mitigatedDmg <= 0) turnEvents.push({ type: 'deflect', enemyName: e.name }); 
                 else {
@@ -871,82 +737,41 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
                     turnEvents.push({ type: 'hit', uid: e.uid, enemyName: e.name, damage: mitigatedDmg, isCrit: isCrit, isPoacher: isPoacher, ex: e.x, ey: e.y });
                     
                     if (p.hp <= 0) { 
-                        // === NEW: TUTORIAL DIRECTOR HOOK ===
-                        if (combat.zone === 'TUTORIAL') {
-                            // THE FIX: Fully heal the player for the real game instead of leaving them at 1 HP
-                            p.hp = getEffectiveStat(p, 'vitality') * 25;
-                            p.stamina = getEffectiveStat(p, 'maxStamina') * 25;
-                            
-                            p.tutorialCompleted = true; // They survived the trial!
+                        p.hp = 0; 
+                        
+                        // NORMAL COMBAT DEATH PENALTY
+                        // Destroy all gear and wipe the inventory!
+                        p.equipment = {
+                            helmet: null,
+                            armor: null,
+                            weapon: JSON.parse(JSON.stringify(ItemDatabase["rusty_mace"])),
+                            gloves: null,
+                            boots: null
+                        };
+                        p.inventory = [];
+                        p.pendingLoot = [];
+                        p.pendingGold = 0;
+                        p.pendingXp = 0;
 
-                            // Destroy their OP gear and hand them the Rusty Mace
-                            p.equipment = {
-                                helmet: null,
-                                armor: null,
-                                weapon: JSON.parse(JSON.stringify(ItemDatabase["rusty_mace"])),
-                                gloves: null,
-                                boots: null
-                            };
-                            
-                            // THE FIX: Completely wipe their backpack and pending escrow 
-                            // so they cannot smuggle the Flawless Sapphire into the main game!
-                            p.inventory = [];
-                            p.pendingLoot = [];
-                            p.pendingGold = 0;
-                            p.pendingXp = 0;
-
-                            delete activeCombats[socketId];
-                            turnEvents.push({ type: 'tutorial_death' });
-                        } else {
-                            p.hp = 0; 
-                            delete activeCombats[socketId]; 
-                            turnEvents.push({ type: 'death' }); 
-                        }
-                        // ===================================
+                        delete activeCombats[socketId]; 
+                        turnEvents.push({ type: 'death' }); 
                     }
                 }
-            } // <--- RESTORED BRACE 1
-        } // <--- RESTORED BRACE 2
+            } 
+        } 
         
-        // THE FIX: Return the events so the Mega-Batch loop can compile them!
         return turnEvents;
     }
-// ===================================
 
-    // --- SERVER-AUTHORITATIVE MOVEMENT SYNC ---
     socket.on('combatMove', (data) => {
         let p = activePlayers[socket.id];
         let combat = activeCombats[socket.id];
         
         if (!p || !combat) return socket.emit('moveReceipt', { success: false, message: '❌ Server connection lost. Please refresh the page.' });
 
-        // === THE FIX: SERVER-SIDE ATB ENFORCEMENT ===
         if (combat.atbPaused !== true) {
             return socket.emit('moveReceipt', { success: false, message: '❌ Tactical Error: Cannot move out of turn.', x: combat.player.x, y: combat.player.y });
         }
-
-        // === NEW: TUTORIAL MOVEMENT RESTRICTIONS ===
-        if (combat.zone === 'TUTORIAL') {
-            // Step 3: Prevent them from running away from the single publing
-            if (combat.tutorialStep === 3 && (data.tx !== 1 || data.ty !== 1)) {
-                return socket.emit('moveReceipt', { 
-                    success: false, 
-                    message: "🗣️ Director: 'No, move TOWARDS the Publing! Click the highlighted tile!'", 
-                    x: combat.player.x, 
-                    y: combat.player.y 
-                });
-            }
-            // Step 4: Prevent them from running into the swarm of 3 publings
-            if (combat.tutorialStep === 4 && (data.tx !== 1 || data.ty !== 2)) {
-                return socket.emit('moveReceipt', { 
-                    success: false, 
-                    message: "🗣️ Director: 'Get back! Move to the highlighted safe tile in the corner!'", 
-                    x: combat.player.x, 
-                    y: combat.player.y 
-                });
-            }
-        }
-        // ============================================
 
         let speed = getEffectiveStat(p, 'speed');
         speed = Math.max(1, Math.min(12, speed));
@@ -980,7 +805,6 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
         }
     });
 
-// --- SERVER-AUTHORITATIVE COMBAT ESCROW ---
     socket.on('takePendingLoot', (idx) => {
         let p = activePlayers[socket.id];
         if (!p || !p.pendingLoot || !p.pendingLoot[idx]) return;
@@ -990,8 +814,6 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
             let securedItem = p.pendingLoot.splice(idx, 1)[0];
             p.inventory.push(securedItem);
             socket.emit('inventoryReceipt', { success: true, action: 'takeLoot', updatedPlayer: p, message: `🎒 Secured ${securedItem.name} in backpack.` });
-            
-
         } else {
             socket.emit('inventoryReceipt', { success: false, message: "❌ Backpack is full!" });
         }
@@ -1001,17 +823,6 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
         let p = activePlayers[socket.id];
         if (!p || !p.pendingLoot || !p.pendingLoot[idx]) return;
 
-        // === THE FIX: HARD-BLOCK ALL SELLING IN THE TUTORIAL ===
-        // By placing this at the very top, the server rejects the request instantly.
-        let combat = activeCombats[socket.id];
-        if (combat && combat.zone === 'TUTORIAL') {
-            return socket.emit('inventoryReceipt', { 
-                success: false, 
-                message: "🗣️ Director: 'There are no merchants out here! Just stash it in your backpack!'" 
-            });
-        }
-        // =======================================================
-
         let itemToSell = p.pendingLoot.splice(idx, 1)[0];
         let val = itemToSell.value || (itemToSell.rarity === "Gorilla" ? 500 : 15);
         p.gold += val;
@@ -1019,34 +830,6 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
         socket.emit('inventoryReceipt', { success: true, action: 'sell', updatedPlayer: p, message: `💰 Sold dropped item for ${val}g.` });
     });
 	
-	// === NEW: SECURE TUTORIAL SKIP HANDLER ===
-    socket.on('skipTutorial', () => {
-        let p = activePlayers[socket.id];
-        if (!p) return;
-
-        p.tutorialCompleted = true;
-        
-        // Strip the OP Gear and Tutorial items
-        p.equipment = {
-            helmet: null, armor: null, gloves: null, boots: null,
-            weapon: JSON.parse(JSON.stringify(ItemDatabase["rusty_mace"]))
-        };
-        p.inventory = [];
-        p.pendingLoot = [];
-        p.pendingGold = 0;
-        p.pendingXp = 0;
-
-        // Fully heal them for the real game
-        p.hp = getEffectiveStat(p, 'vitality') * 25;
-        p.stamina = getEffectiveStat(p, 'maxStamina') * 25;
-
-        // Erase the combat instance so they aren't trapped
-        delete activeCombats[socket.id];
-        
-        // Push the sanitized UI back to the browser
-        socket.emit('townReceipt', { success: true, updatedPlayer: p, message: "Tutorial skipped. Gear reset." });
-    });
-
     socket.on('claimCombatRewards', () => {
         let p = activePlayers[socket.id];
         if (!p) return;
@@ -1077,82 +860,64 @@ if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
                 p.xp = 0;
                 p.xpToNext = "MAX";
             }
-        } // End of XP checks
+        }
         
-        // === PHASE 0: VICTORY REJUVENATION ===
-        // Triggers unconditionally after every won match
         p.hp = getMaxHp(p);
         p.stamina = getMaxStamina(p);
-        // =====================================
         
         p.pendingGold = 0; p.pendingXp = 0; p.pendingLoot = [];
-        
-        p.activeBuffs = [];
-        p.activeCombatBuff = null;
-        p.mapBaited = false;
-        p.cellarsChummed = false;
+        p.activeBuffs = []; p.activeCombatBuff = null;
+        p.mapBaited = false; p.cellarsChummed = false;
 
         socket.emit('combatRewardsReceipt', { updatedPlayer: p });
     });
 	
-// === SINGLETON ATB HEARTBEAT ===
-        if (!global.atbEngineStarted) {
-            global.atbEngineStarted = true;
-            
-            setInterval(() => {
-                for (let socketId in activeCombats) {
-                    let combat = activeCombats[socketId];
-                    let p = activePlayers[socketId];
+    if (!global.atbEngineStarted) {
+        global.atbEngineStarted = true;
+        
+        setInterval(() => {
+            for (let socketId in activeCombats) {
+                let combat = activeCombats[socketId];
+                let p = activePlayers[socketId];
 
-                    if (!p || !combat || combat.atbPaused) continue;
+                if (!p || !combat || combat.atbPaused) continue;
 
-                    // BUFFED SPEED MATH: Base 5 + (Speed * 3)
-                   // 2. Add Charges (Capped at 100)
-                    let playerSpeed = (getEffectiveStat(p, 'speed') * 3) + 5;
-                    combat.player.atbCharge = Math.min(100, (combat.player.atbCharge || 0) + playerSpeed);
+                let playerSpeed = (getEffectiveStat(p, 'speed') * 3) + 5;
+                combat.player.atbCharge = Math.min(100, (combat.player.atbCharge || 0) + playerSpeed);
 
-                    combat.enemies.forEach(e => {
-                        if (e.alive) {
-                            let eSpeed = ((e.speed || 1) * 3) + 5;
-                            e.atbCharge = Math.min(100, (e.atbCharge || 0) + eSpeed);
-                        }
-                    });
+                combat.enemies.forEach(e => {
+                    if (e.alive) {
+                        let eSpeed = ((e.speed || 1) * 3) + 5;
+                        e.atbCharge = Math.min(100, (e.atbCharge || 0) + eSpeed);
+                    }
+                });
 
-                    // 3. MEGA-BATCH PROCESSOR & PLAYER PRIORITY
-                    if (combat.player.atbCharge >= 100) {
-                        // Player absolute priority lock
-                        combat.atbPaused = true; 
-                        io.to(socketId).emit('ATB_READY'); 
-                    } else {
-                        // Gather ALL enemies that hit 100 ATB on this exact 200ms tick
-                        let readyEnemies = combat.enemies.filter(e => e.alive && e.atbCharge >= 100);
+                if (combat.player.atbCharge >= 100) {
+                    combat.atbPaused = true; 
+                    io.to(socketId).emit('ATB_READY'); 
+                } else {
+                    let readyEnemies = combat.enemies.filter(e => e.alive && e.atbCharge >= 100);
+                    
+                    if (readyEnemies.length > 0) {
+                        let masterEventList = [];
                         
-                        if (readyEnemies.length > 0) {
-                            let masterEventList = [];
-                            
-                            readyEnemies.forEach(e => {
-                                e.atbCharge = 0; // Reset ATB immediately
-                                let events = executeEnemyTurn(socketId, combat, p, e);
-                                if (events && events.length > 0) {
-                                    masterEventList.push(...events); // Compress all events into one array
-                                }
+                        readyEnemies.forEach(e => {
+                            e.atbCharge = 0; 
+                            let events = executeEnemyTurn(socketId, combat, p, e);
+                            if (events && events.length > 0) masterEventList.push(...events); 
+                        });
+                        
+                        if (masterEventList.length > 0) {
+                            combat.playbackLock = true; 
+                            io.to(socketId).emit('enemyTurnReceipt', { 
+                                events: masterEventList, 
+                                updatedPlayer: p, 
+                                updatedCombatState: combat 
                             });
-                            
-                            // 4. THE EMPTY TURN BYPASS
-                            if (masterEventList.length > 0) {
-                                // At least one entity physically moved or attacked. Lock the client!
-                                combat.playbackLock = true; 
-                                io.to(socketId).emit('enemyTurnReceipt', { 
-                                    events: masterEventList, 
-                                    updatedPlayer: p, 
-                                    updatedCombatState: combat 
-                                });
-                            }
-                            // If masterEventList is empty, all ready gorillas were boxed in.
-                            // The engine skips the socket emit, avoids the handshake, and keeps ticking!
                         }
                     }
                 }
-            }, 200);
-        }
-    };
+            }
+        }, 200);
+    }
+};

@@ -70,14 +70,17 @@ window.ClientQuestDirector = {
         } 
 		// --- SCENE ROUTING ---
        else if (ev.type === 'SET_SCENE') {
-            socket.emit('deployToCombat', { 
-                zoneChoice: ev.zone,
-                customCols: ev.cols,     // NEW: Pass custom dimensions
-                customRows: ev.rows,     // NEW
-                customTileSize: ev.tileSize // NEW
-            });
-            setTimeout(() => socket.emit('questStepComplete'), 800);
-        }
+    // 1. Tell the server to deploy the combat zone
+    socket.emit('deployToCombat', { 
+        zoneChoice: ev.zone,
+        customCols: ev.cols,
+        customRows: ev.rows,
+        customTileSize: ev.tileSize
+    });
+
+    // 2. CRITICAL: Do NOT emit 'questStepComplete' here.
+    // We wait for the server to send the 'combatDeployed' socket event.
+}
         
         // --- FADES ---
         else if (ev.type === 'FADE') {
