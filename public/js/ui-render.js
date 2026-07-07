@@ -739,7 +739,6 @@ if (hopsScreen) hopsScreen.style.display = "none";
             if (backpackHeader) {
                 backpackHeader.innerHTML = `🎒 Knight's Backpack (<span id="inv-count">${player.inventory.length}</span>/${player.maxInventorySlots || 5} Slots) ` +
                 `<button onclick="upgradeBackpackCapacity()" style="font-size:8px; padding:2px; margin-left:5px; background:#e67e22;" ${player.gold < packCost.gold || player.wood < packCost.wood ? 'disabled' : ''} onmouseenter="showSystemTooltip('pack_up', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">➕ Expand (+1 Slot: ${packCost.gold}g, ${packCost.wood}W)</button>` +
-                `<button onclick="sortInventory()" style="font-size:8px; padding:2px; margin-left:5px; background:#2980b9;" onmouseenter="showSystemTooltip('inv_sort', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🔀 Sort</button>`;
             }
 
             const lvlPanel = document.getElementById("level-up-panel");

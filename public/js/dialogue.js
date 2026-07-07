@@ -25,10 +25,7 @@ function showNextDialoguePage() {
     if (currentDialoguePage >= dialogueSequence.length) {
         document.getElementById('dialogue-overlay').style.display = 'none';
         
-        // === NEW WIRING FOR THE DIRECTOR ===
-        if (window.ClientQuestDirector && window.ClientQuestDirector.isActive) {
-            socket.emit('questStepComplete');
-        }
+      
         return;
     }
     
