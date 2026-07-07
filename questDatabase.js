@@ -20,9 +20,12 @@ module.exports = {
           }
         },
 
-        // 3. Force the client to load a custom-sized empty map
+// 3. Force the client to load a custom-sized empty map
         { type: "SET_SCENE", zone: "CINEMATIC", cols: 5, rows: 5, tileSize: 80 },
         { type: "DELAY", duration: 800 },
+        
+        // === ADD THIS FADE IN RIGHT HERE ===
+        { type: "FADE", direction: "IN", duration: 500, color: "#000000" },
         
         // 4. The Arrival & Pass Turn
         { type: "DIALOGUE", sequence: [

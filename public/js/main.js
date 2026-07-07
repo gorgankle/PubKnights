@@ -433,11 +433,16 @@ socket.on('combatDeployed', (serverCombatState) => {
     else if (activeCombatZone === 'CELLARS' && player.cellarsChummed) logMessage("⚠️ SEAFOOD CODES LOADED: 5 Mimics burst out of the structural drain layers!");
     else if (activeCombatZone === 'WILDERNESS' && player.mapBaited && (player.selectedWildernessLevel || player.wildernessLevel) === 20) logMessage("⚠️ THE BOSS SMELLS THE FISH BAIT! CRITICAL COMBAT PARAMETERS ENGAGED.");
     
-    // Force the browser to draw the server's map
+// Force the browser to draw the server's map
     refreshSystemUI(); 
     drawGrid();
     window.scrollTo(0, 0);
-});
+
+    // === ADD THIS HANDSHAKE HERE ===
+    if (window.ClientQuestDirector && window.ClientQuestDirector.isActive) {
+        socket.emit('questStepComplete');
+    }
+}); // <--- This closes socket.on('combatDeployed')
 
 // === SERVER-AUTHORITATIVE AI CATCHER (THE MOVIE PLAYER) ===
 socket.on('enemyTurnReceipt', (receipt) => {
