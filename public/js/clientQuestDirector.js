@@ -1,8 +1,10 @@
 // public/js/clientQuestDirector.js
 window.ClientQuestDirector = {
-    
     isActive: false,
     shield: null,
+    cinematicActors: [],
+    cinematicMap: { cols: 16, rows: 10, tileSize: 54 },
+    activeHighlightTile: null,
 
     init: function() {
         const style = document.createElement('style');
@@ -28,8 +30,7 @@ window.ClientQuestDirector = {
         this.shield.style.display = 'none';
         
         this.shield.addEventListener('click', (e) => {
-            e.stopPropagation();
-            e.preventDefault();
+            e.stopPropagation(); e.preventDefault();
         }, true);
         
         document.body.appendChild(this.shield);
@@ -53,57 +54,57 @@ window.ClientQuestDirector = {
             if (data.action === 'RETURN_TOWN' && typeof transitionToTown === 'function') {
                 transitionToTown();
             } else if (data.action === 'START_COMBAT') {
-                // Free the combat UI lock natively
-                if (typeof refreshSystemUI === 'function') refreshSystemUI();
+                // The movie is over! Seamlessly transition into a real fight.
+                socket.emit('deployToCombat', { zoneChoice: 'WILDERNESS', activeLevel: 1 });
+            } else {
+                if (typeof refreshSystemUI === 'function') refreshSystemUI(); 
             }
-            
-            if (typeof refreshSystemUI === 'function') refreshSystemUI(); 
         });
     },
 
     processEvent: function(ev) {
-        // --- 1. DIALOGUE ---
-        if (ev.type === 'DIALOGUE') {
-            if (typeof playDialogueSequence === 'function') {
-                playDialogueSequence(ev.sequence); 
+        if (ev.type === 'SET_SCENE') {
+            // DETACHMENT: We do NOT ping the combat router. We set up a ghost board.
+            gameState = 'CINEMATIC'; 
+            this.cinematicMap = { cols: ev.cols || 16, rows: ev.rows || 10, tileSize: ev.tileSize || 54 };
+            this.cinematicActors = [];
+            this.activeHighlightTile = null;
+            
+            // Force the combat UI wrapper visible so we have a canvas to draw on
+            document.getElementById("top-nav-bar").style.display = "none";
+            document.getElementById("town-vault-view").style.display = "none";
+            document.getElementById("combat-screen").style.display = "block";
+            
+            let uiHeader = document.getElementById("target-ui-header");
+            if (uiHeader) {
+                uiHeader.innerHTML = `🎬 CINEMATIC SEQUENCE RUNNING`;
+                uiHeader.style.color = "#9b59b6";
             }
-        } 
-		// --- SCENE ROUTING ---
-       else if (ev.type === 'SET_SCENE') {
-    // 1. Tell the server to deploy the combat zone
-    socket.emit('deployToCombat', { 
-        zoneChoice: ev.zone,
-        customCols: ev.cols,
-        customRows: ev.rows,
-        customTileSize: ev.tileSize
-    });
 
-    // 2. CRITICAL: Do NOT emit 'questStepComplete' here.
-    // We wait for the server to send the 'combatDeployed' socket event.
-}
-        
-        // --- FADES ---
+            setTimeout(() => socket.emit('questStepComplete'), 400);
+        }
+        else if (ev.type === 'SPAWN_ACTOR') {
+            // Push a fake actor to our private movie set
+            this.cinematicActors.push({ uid: ev.uid, id: ev.actorId, x: ev.x, y: ev.y });
+            setTimeout(() => socket.emit('questStepComplete'), 100);
+        }
+        else if (ev.type === 'DIALOGUE') {
+            if (typeof playDialogueSequence === 'function') playDialogueSequence(ev.sequence); 
+        }
         else if (ev.type === 'FADE') {
-            // We use the shield itself to simulate the fade!
             this.shield.style.display = 'block';
             this.shield.style.transition = `background-color ${ev.duration}ms ease`;
-            
-            if (ev.direction === 'OUT') {
-                this.shield.style.backgroundColor = ev.color || '#000000';
-            } else {
-                this.shield.style.backgroundColor = 'transparent';
-            }
-            
+            this.shield.style.backgroundColor = ev.direction === 'OUT' ? (ev.color || '#000000') : 'transparent';
             setTimeout(() => {
                 this.shield.style.transition = 'none';
                 socket.emit('questStepComplete');
             }, ev.duration + 100);
         }
-        
-        // --- 2. UI HIGHLIGHTING ---
+    // --- 2. UI HIGHLIGHTING ---
         else if (ev.type === 'HIGHLIGHT_UI') {
             let targetEl = document.getElementById(ev.elementId);
             if (targetEl) {
+                targetEl.removeAttribute('disabled'); // <-- ADD THIS LINE
                 targetEl.classList.add('director-highlight');
                 targetEl.addEventListener('click', () => {
                     this.removeHighlighter();
@@ -113,32 +114,45 @@ window.ClientQuestDirector = {
                 socket.emit('questStepComplete');
             }
         }
-
-        // --- 3. AUDIO ---
+        else if (ev.type === 'HIGHLIGHT_TILE') {
+            this.activeHighlightTile = { x: ev.targetX, y: ev.targetY, style: ev.style };
+            
+            // Add a temporary click listener to the canvas itself
+            const canvas = document.getElementById("gameCanvas");
+            const tileClickHandler = (e) => {
+                const r = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / r.width;
+                const scaleY = canvas.height / r.height;
+                const tx = Math.floor(((e.clientX - r.left) * scaleX) / this.cinematicMap.tileSize);
+                const ty = Math.floor(((e.clientY - r.top) * scaleY) / this.cinematicMap.tileSize);
+                
+                if (tx === ev.targetX && ty === ev.targetY) {
+                    this.activeHighlightTile = null;
+                    canvas.removeEventListener('click', tileClickHandler, true);
+                    
+                    // Move the 'player' actor to the clicked tile
+                    let pActor = this.cinematicActors.find(a => a.id === 'player');
+                    if (pActor) { pActor.x = tx; pActor.y = ty; }
+                    
+                    if (typeof playRetroSound === 'function') playRetroSound('step');
+                    setTimeout(() => socket.emit('questStepComplete'), 100);
+                }
+            };
+            canvas.addEventListener('click', tileClickHandler, true);
+        }
         else if (ev.type === 'AUDIO') {
             if (ev.action === 'PLAY' && typeof cycleMusicTrack === 'function' && typeof musicTracks !== 'undefined') {
                 let trackIndex = musicTracks.findIndex(t => t.name === ev.trackName);
-                if (trackIndex !== -1) {
-                    activeTrackIndex = trackIndex - 1; // Offset for cycle logic
-                    cycleMusicTrack();
-                }
+                if (trackIndex !== -1) { activeTrackIndex = trackIndex - 1; cycleMusicTrack(); }
             } else if (ev.action === 'SFX' && typeof playRetroSound === 'function') {
-                playRetroSound(ev.trackName); // Repurposed for SFX triggers
+                playRetroSound(ev.trackName); 
             }
             socket.emit('questStepComplete'); 
         }
-        
-        // --- 4. UTILITY / FADES / DELAYS ---
         else if (ev.type === 'DELAY') {
             setTimeout(() => socket.emit('questStepComplete'), ev.duration || 1000);
         }
-        else if (ev.type === 'FADE') {
-            // Can be expanded to trigger a CSS fade div in the future
-            setTimeout(() => socket.emit('questStepComplete'), ev.duration || 1000);
-        }
-        
-        // --- 5. COMBAT BOARD INJECTIONS ---
-        else if (ev.type === 'SHAKE' || ev.type === 'PLAY_FX' || ev.type === 'SPAWN_ACTOR' || ev.type === 'HIGHLIGHT_TILE') {
+        else if (ev.type === 'SHAKE' || ev.type === 'PLAY_FX') {
             if (ev.type === 'SHAKE' && document.getElementById('combat-screen')) {
                 document.getElementById('combat-screen').animate([
                     { transform: 'translate(2px, 1px) rotate(0deg)' },
@@ -146,11 +160,6 @@ window.ClientQuestDirector = {
                     { transform: 'translate(1px, 2px) rotate(0deg)' }
                 ], { duration: 300, iterations: 1 });
             } 
-            else if (ev.type === 'SPAWN_ACTOR' && typeof enemies !== 'undefined') {
-                // Instantly inject the actor into the local combat state for rendering
-                enemies.push({ uid: ev.uid, name: ev.actorId, id: ev.actorId, x: ev.x, y: ev.y, hp: 1, maxHp: 1, alive: true, size: 1, speed: 1, defense: 0 });
-                if (typeof drawGrid === 'function') drawGrid();
-            }
             else if (ev.type === 'PLAY_FX' && typeof FXEngine !== 'undefined') {
                 if (ev.fxType === 'EXPLOSION') {
                     FXEngine.spawnExplosion(ev.targetX, ev.targetY, { radius: 1.5 });
@@ -160,7 +169,6 @@ window.ClientQuestDirector = {
                     if (typeof playRetroSound === 'function') playRetroSound('attack');
                 }
             }
-            
             setTimeout(() => socket.emit('questStepComplete'), 400);
         }
     },
@@ -168,6 +176,54 @@ window.ClientQuestDirector = {
     removeHighlighter: function() {
         document.querySelectorAll('.director-highlight').forEach(el => {
             el.classList.remove('director-highlight');
+        });
+    },
+
+    // --- THE GHOST RENDERER ---
+    drawCinematicScene: function(ctx) {
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        let size = this.cinematicMap.tileSize;
+
+        // 1. Draw Floor
+        for (let x = 0; x < this.cinematicMap.cols; x++) {
+            for (let y = 0; y < this.cinematicMap.rows; y++) {
+                if (typeof SpriteMatrices !== 'undefined' && SpriteMatrices['ground_wilderness']) {
+                    drawOptimizedSprite(ctx, 'ground_wilderness', SpriteMatrices['ground_wilderness'], x * size, y * size, size);
+                } else {
+                    ctx.fillStyle = "#273c24"; ctx.fillRect(x * size, y * size, size, size);
+                }
+                ctx.strokeStyle = "#1a1512"; ctx.strokeRect(x * size, y * size, size, size);
+            }
+        }
+
+        // 2. Draw Highlight Tile
+        if (this.activeHighlightTile) {
+            ctx.save();
+            ctx.lineWidth = 4; ctx.setLineDash([5, 5]);
+            ctx.strokeStyle = this.activeHighlightTile.style === 'AIM' ? "#f1c40f" : "#2ecc71";
+            ctx.fillStyle = this.activeHighlightTile.style === 'AIM' ? "rgba(241, 196, 15, 0.3)" : "rgba(46, 204, 113, 0.3)";
+            ctx.beginPath();
+            ctx.rect(this.activeHighlightTile.x * size, this.activeHighlightTile.y * size, size, size);
+            ctx.fill(); ctx.stroke();
+            ctx.restore();
+        }
+
+        // 3. Draw Actors
+        this.cinematicActors.forEach(a => {
+            let px = a.x * size;
+            let py = a.y * size;
+            
+            if (a.id === 'player') {
+                // If it's the player, we can borrow the cached player portrait logic from dialogue or just render the body
+                if (typeof SpriteMatrices !== 'undefined' && SpriteMatrices['body_male']) {
+                    drawOptimizedSprite(ctx, 'body_male', SpriteMatrices['body_male'], px, py, size);
+                    drawOptimizedSprite(ctx, 'hair_messy', SpriteMatrices['hair_messy'], px, py, size);
+                }
+            } else if (typeof SpriteMatrices !== 'undefined' && SpriteMatrices[a.id]) {
+                drawOptimizedSprite(ctx, a.id, SpriteMatrices[a.id], px, py, size);
+            } else {
+                ctx.fillStyle = "#d35400"; ctx.fillRect(px, py, size, size);
+            }
         });
     }
 };

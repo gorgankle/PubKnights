@@ -397,12 +397,22 @@ socket.on('combatDeployed', (serverCombatState) => {
     reachableTiles = null;
     hideTooltip();
     
-    // Sync browser state to the Server's command
+// Sync browser state to the Server's command
     player.idleJob = 'NONE';
     gameState = 'COMBAT'; 
-    currentTurn = 'ENEMY';             // <--- THE LOCK
-    combatPhase = 'WAITING_FOR_ATB';   // <--- THE LOCK
-    player.visualAtb = 0;              // <--- START EMPTY
+    
+    // === FIXED: Give the player control if a cinematic is running ===
+    if (serverCombatState.zone === 'CINEMATIC') {
+        currentTurn = 'PLAYER';
+        combatPhase = 'PHASE_1';
+        player.visualAtb = 100;
+    } else {
+        currentTurn = 'ENEMY';             
+        combatPhase = 'WAITING_FOR_ATB';   
+        player.visualAtb = 0;              
+    }
+    // ======================================
+
     pendingMove = null;
     player.pendingXp = 0;
     
