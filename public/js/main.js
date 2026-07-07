@@ -417,6 +417,8 @@ socket.on('combatDeployed', (serverCombatState) => {
     selectedEnemy = null;
     
     activeCombatZone = serverCombatState.zone;
+    activeCombatFloorSpriteId = serverCombatState.floorSpriteId || "ground_wilderness";
+    activeCombatFloorTiles = serverCombatState.floorTiles || [];
     
     // Automatically rip the loot screen away if it's open
     const lootOverlay = document.getElementById("loot-screen");
@@ -542,6 +544,8 @@ let gameState = 'KNIGHT';
 let currentTurn = 'PLAYER';
 let combatPhase = 'MOVE'; 
 let activeCombatZone = 'WILDERNESS'; 
+let activeCombatFloorSpriteId = 'ground_wilderness';
+let activeCombatFloorTiles = [];
 
 
 // Target Tracking

@@ -68,6 +68,20 @@ function getLineOfEffectPath(x1, y1, x2, y2, maxRange, stopsAtWalls) {
     return path;
 }
 
+function getActiveFloorSpriteId(tileX, tileY) {
+    if (typeof activeCombatFloorTiles !== 'undefined' && activeCombatFloorTiles.length) {
+        const floorTile = activeCombatFloorTiles.find(tile => tile.x === tileX && tile.y === tileY);
+        if (floorTile && floorTile.spriteId) return floorTile.spriteId;
+    }
+    if (typeof activeCombatFloorSpriteId !== 'undefined' && activeCombatFloorSpriteId) {
+        return activeCombatFloorSpriteId;
+    }
+    if (activeCombatZone === 'CELLARS') return 'ground_cellars';
+    if (activeCombatZone === 'GORILLA_ARENA') return 'ground_arena';
+    if (activeCombatZone === 'ABYSS') return 'ground_abyss';
+    return 'ground_wilderness';
+}
+
 
 // === ENGINE HEARTBEAT LOOP ===
 function updateAnimationEngine() {
@@ -149,10 +163,8 @@ function drawGrid() {
     for (let x = 0; x < cols; x++) {
         for (let y = 0; y < rows; y++) {
             
-            let groundSprite = 'ground_wilderness';
-            if (activeCombatZone === 'CELLARS') groundSprite = 'ground_cellars';
-            else if (activeCombatZone === 'GORILLA_ARENA') groundSprite = 'ground_arena';
-			else if (activeCombatZone === 'ABYSS') groundSprite = 'ground_abyss';
+            let groundSprite = getActiveFloorSpriteId(x, y);
+            if (!SpriteMatrices[groundSprite]) groundSprite = 'ground_wilderness';
             
 if (SpriteMatrices[groundSprite]) {
     drawOptimizedSprite(ctx, groundSprite, SpriteMatrices[groundSprite], x * currentTileSize, y * currentTileSize, currentTileSize);
@@ -458,6 +470,24 @@ function renderGridHealthBar(gridX, gridY, currentHp, maximumHp, size = 1, curre
 }
 // ============================================
 
+function buildNpcTooltipHtml(mob) {
+    const hp = Number.isFinite(mob.hp) ? mob.hp : 0;
+    const maxHp = Number.isFinite(mob.maxHp) ? mob.maxHp : hp;
+    const offense = Number.isFinite(mob.offense) ? mob.offense : 0;
+    const defense = Number.isFinite(mob.defense) ? mob.defense : 0;
+    const speed = Number.isFinite(mob.speed) ? mob.speed : 0;
+    const attackRange = Number.isFinite(mob.attackRange) ? mob.attackRange : 1;
+    const npcType = mob.type || "ENEMY";
+
+    return `<h3>${mob.name}</h3>` +
+           `<b>Type:</b> ${npcType}<br>` +
+           `<b>Vitality:</b> ${hp}/${maxHp} HP<br>` +
+           `<b>Offense:</b> ${offense}<br>` +
+           `<b>Defense:</b> ${defense}<br>` +
+           `<b>Speed:</b> ${speed}<br>` +
+           `<b>Attack Range:</b> ${attackRange} Tile(s)`;
+}
+
 canvas.addEventListener("mouseleave", hideTooltip);
 canvas.addEventListener("mousemove", function(e) {
     if (gameState !== 'COMBAT') return;
@@ -505,14 +535,7 @@ canvas.addEventListener("mousemove", function(e) {
     let mob = enemies.find(em => { let s = em.size || 1; return em.alive && tx >= em.x && tx < em.x + s && ty >= em.y && ty < em.y + s; });
     
     if (mob) {
-        let tooltipHtml = `<h3>${mob.name}</h3>` +
-                          `❤️ <b>Vitality:</b> ${mob.hp}/${mob.maxHp} HP<br>` +
-                          `💥 <b>Power:</b> ${mob.attack} DMG<br>` +
-                          `🎯 <b>Accuracy:</b> ${mob.accuracy}<br>` +
-                          `🛡️ <b>Resilience:</b> ${mob.resilience}<br>` +
-                          `🏃 <b>Swiftness:</b> ${mob.moveRange} Steps<br>` +
-                          `📏 <b>Strike Radius:</b> ${mob.attackRange} Tile(s)`;
-        showTooltip(tooltipHtml, e);
+        showTooltip(buildNpcTooltipHtml(mob), e);
     } else {
         hideTooltip(); 
     }

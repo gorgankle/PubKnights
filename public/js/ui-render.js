@@ -121,7 +121,7 @@ function refreshCombatSidebar() {
     if (player.activeBuffs && player.activeBuffs.length > 0) {
         buffHTML += `<div style="margin-top: 10px; border-top:1px dashed #443a32; padding-top:8px; display: flex; flex-direction: column; gap: 6px;">`;
         player.activeBuffs.forEach(buff => {
-            let tooltipDesc = buff === 'IPA' ? "<b>Furious IPA:</b> Amplifies damage multipliers (+10% ATK) for the remainder of this deployment." : "<b>Swift Lager:</b> Expands stride movement capabilities (+1 Stride) for the remainder of this deployment.";
+            let tooltipDesc = buff === 'IPA' ? "<b>Furious IPA:</b> Amplifies Offense (+10%) for the remainder of this deployment." : "<b>Swift Lager:</b> Expands Speed (+1) for the remainder of this deployment.";
             buffHTML += `<div style="font-size: 11px; color:#2ecc71; cursor:help; width:max-content;" onmouseenter="showTooltip('${tooltipDesc}', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🌿 <b>ACTIVE BREW PERK:</b> ${buff}</div>`;
         });
         buffHTML += `</div>`;
@@ -165,7 +165,7 @@ function refreshCombatSidebar() {
         </div>
         <div style="display: flex; flex-direction: column; gap: 10px;">
             <div style="background: #1a1512; padding: 12px; border-radius: 4px; border: 1px solid #4a3b2c; font-size: 12px; color: #bbaaa0; line-height: 1.6; height: 100%; box-sizing: border-box;">
-                💥 <b>Power Output:</b> Lvl ${getPlayerTotalPower()} (Max ${getPlayerTotalPower() * 10} DMG)<br>
+                💥 <b>Offense Output:</b> Lvl ${getPlayerTotalPower()} (Max ${getPlayerTotalPower() * 10} DMG)<br>
                 🛡️ <b>Defense (Absorption):</b> Lvl ${getPlayerDeflectChance()}<br>
                 🏃 <b>Speed (Evasion):</b> Lvl ${getPlayerSwiftness()}
             </div>

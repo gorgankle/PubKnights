@@ -99,7 +99,7 @@ else if (item && item.slot === "consumable") {
         html = `<h3>🌾 Harvest Hops</h3>Work the fields to passively gather <b>Hops</b> for brewing and black market deals.`;
     }
     else if (type === 'bait_wilds') {
-        html = `<h3>🎣 Bait the Wilds</h3>Scatter 15 Fish to draw out larger, frenzied monster swarms.<br>⚠️ Danger: Enemies gain increased Health and Attack power.<br>💰 Reward: Increased gold bounties per kill.`;
+        html = `<h3>🎣 Bait the Wilds</h3>Scatter 15 Fish to draw out larger, frenzied monster swarms.<br>⚠️ Danger: Enemies gain increased Vitality and Offense.<br>💰 Reward: Increased gold bounties per kill.`;
     }
     else if (type === 'pack_up') {
         let pCost = getBackpackUpgradeCost();

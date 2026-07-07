@@ -167,7 +167,7 @@ const ItemDatabase = {
         desc: "A strong, oak-aged specialty ale. Grants a 10% multiplier to all outgoing physical damage.",
         combat: { 
             actionType: "buff", staminaCost: 0, buffType: "IPA", 
-            effectCategory: "power", effectType: "multiplier", effectValue: 1.10, // <--- TARGETS 'power' WITH MULTIPLIER
+            effectCategory: "offense", effectType: "multiplier", effectValue: 1.10,
             msg: "🍺 Drank a Furious IPA! Damage multipliers amplified." 
         }
     },
@@ -176,7 +176,7 @@ const ItemDatabase = {
         desc: "A light, crisp lager brewed for agility. Grants +1 Tactical Stride range for the duration of the combat.",
         combat: { 
             actionType: "buff", staminaCost: 0, buffType: "LAGER", 
-            effectCategory: "Speed", effectType: "flat", effectValue: 1, // <--- TARGETS 'Speed' WITH FLAT BONUS
+            effectCategory: "speed", effectType: "flat", effectValue: 1,
             msg: "🍺 Drank a Swift Lager! Stride movement capabilities expanded." 
         }
     },
