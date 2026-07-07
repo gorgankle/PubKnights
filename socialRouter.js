@@ -139,72 +139,7 @@ module.exports = function(socket, io, activePlayers) {
     });
 	
 	
-	// --- RENAISSANCE CORNER: UGC HANDLING ---
 
-    // 1. Save Art/Music
-    socket.on('saveUGC', async (data) => {
-        let p = activePlayers[socket.id];
-        if (!p || !p.username) return;
-
-        try {
-            const UGC = mongoose.model('UGC');
-            const type = data && ['ART', 'MUSIC'].includes(data.type) ? data.type : null;
-            const contentData = sanitizeUGCContent(type, data && data.contentData);
-
-            // STRICT VALIDATION
-            if (!type) {
-                return socket.emit('zoneNotification', { message: '❌ Invalid creation type.' });
-            }
-
-            if (!contentData) {
-                return socket.emit('zoneNotification', { message: '❌ Creation payload is corrupted or too large.' });
-            }
-
-            if (type === 'ART') {
-                // Validate 24x24 matrix payload bounds to prevent memory bloat
-                if (!Array.isArray(contentData) || contentData.length > 576) { // 24 * 24 = 576
-                    return socket.emit('zoneNotification', { message: '❌ Art matrix is corrupted or exceeds 24x24 limits.' });
-                }
-            }
-
-            if (type === 'MUSIC') {
-                // Validate sequence bounds (e.g., 32 steps max)
-                if (!Array.isArray(contentData) || contentData.length > 32) {
-                    return socket.emit('zoneNotification', { message: '❌ Composition exceeds 32 steps.' });
-                }
-            }
-
-            // Save to MongoDB
-            const newCreation = new UGC({
-                authorUsername: p.username,
-                type,
-                title: sanitizeTitle(data && data.title),
-                contentData
-            });
-
-            await newCreation.save();
-            socket.emit('zoneNotification', { message: `🎨 Successfully archived your ${type.toLowerCase()}!` });
-            
-        } catch (err) {
-            console.error("UGC Save Error:", err);
-            socket.emit('zoneNotification', { message: '❌ The canvas tore! Failed to save creation.' });
-        }
-    });
-
-    // 2. Fetch Player's Personal Gallery
-    socket.on('fetchMyUGC', async () => {
-        let p = activePlayers[socket.id];
-        if (!p || !p.username) return;
-
-        try {
-            const UGC = mongoose.model('UGC');
-            // Retrieve only the requesting Knight's creations
-            const myCreations = await UGC.find({ authorUsername: p.username }).sort({ createdAt: -1 });
-            socket.emit('ugcGalleryLoaded', myCreations);
-        } catch (err) {
-            console.error("UGC Fetch Error:", err);
-        }
-    });
 	
 
     // Helper to cleanly remove a player from their current multiplayer instance

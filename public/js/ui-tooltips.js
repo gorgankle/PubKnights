@@ -244,10 +244,6 @@ function hideTooltip() {
     if (tt) tt.style.display = "none"; 
 }
 
-function showInventoryTooltip(idx, e) { showTooltip(getItemTooltip(player.inventory[idx]), e); }
-function showVaultTooltip(idx, e) { showTooltip(getItemTooltip(player.stash[idx]), e); }
-
-
 			//The Tooltip Logic & Combat Safety
 
 let tooltipHideTimer = null;

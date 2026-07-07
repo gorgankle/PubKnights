@@ -444,8 +444,8 @@ if (data.action === 'equip') {
             if (p.gold >= 1000) {
                 p.gold -= 1000;
                 // Reset to new proper baselines
-                p.vitality = 3; p.hp = Math.min(p.hp, 75);
-                p.maxStamina = 2; p.stamina = Math.min(p.stamina, 50);
+                p.vitality = 1; p.hp = Math.min(p.hp, 25);
+                p.maxStamina = 1; p.stamina = Math.min(p.stamina, 25);
                 p.offense = 1; p.defense = 1; p.speed = 1; 
                 p.skillPoints = totalExpectedSP;
                 socket.emit('townReceipt', { success: true, action: 'resetStats', updatedPlayer: p, message: "🔄 Knight stats reset! Reallocate your Skill Points." });

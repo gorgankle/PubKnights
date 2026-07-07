@@ -28,7 +28,7 @@ let player = {
     buildings: { workerCabin: 1 },
     workers: { total: 0, assigned: { wood: 0, fish: 0, hops: 0 } },
     supplyCart: { wood: 0, fish: 0, hops: 0, max: 100, level: 1 }, mapBaited: false,
-maxInventorySlots: 5, sharpeningStoneBought: 0, ironPlatingBought: 0, backpackUpgrades: 0,
+maxInventorySlots: 5, backpackUpgrades: 0,
     
 // === MULTI-BUFF ARRAYS ADDED HERE ===
     activeCombatBuff: null, activeBuffs: [], happyHourTicks: 0, cellarsChummed: false,
@@ -156,8 +156,7 @@ function saveGame(manualNotify = false) {
         equipment: player.equipment, inventory: player.inventory, stash: player.stash,
         buildings: player.buildings,
         workers: player.workers, supplyCart: player.supplyCart, mapBaited: player.mapBaited,
-		maxInventorySlots: player.maxInventorySlots, sharpeningStoneBought: player.sharpeningStoneBought,
-        ironPlatingBought: player.ironPlatingBought, backpackUpgrades: player.backpackUpgrades,
+		maxInventorySlots: player.maxInventorySlots, backpackUpgrades: player.backpackUpgrades,
         activeCombatBuff: player.activeCombatBuff, activeBuffs: player.activeBuffs, happyHourTicks: player.happyHourTicks, cellarsChummed: player.cellarsChummed,
         pet: player.pet,
         gildedTavernUnlocked: player.gildedTavernUnlocked, autoClaimEnabled: player.autoClaimEnabled,

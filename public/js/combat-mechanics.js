@@ -5,32 +5,6 @@ let activeTargetIndex   = -1;
 let previousCombatPhase = 'PHASE_1';
 let pendingLoot = []; 
 
-// === REPLACED ===
-function calculateHitResult(attackerOffense, defenderDefense, defenderSpeed) {
-    attackerOffense *= 10;
-    defenderDefense *= 10;
-    defenderSpeed *= 10;
-
-    // ---------------------------------------------------------
-    // STAGE 1: EVASION (Offense vs. Speed)
-    // ---------------------------------------------------------
-    let offenseHitPower = (attackerOffense * 0.5) + (Math.random() * attackerOffense * 0.5);
-    let speedMitigation = Math.random() * defenderSpeed;
-
-    if ((offenseHitPower - speedMitigation) <= 0) return { hit: false, damage: 0 };
-
-    // ---------------------------------------------------------
-    // STAGE 2: ABSORPTION & DEFLECTION (Offense vs. Defense)
-    // ---------------------------------------------------------
-    let rawDamageRoll = Math.sqrt(Math.random()) * attackerOffense;
-    let armorAbsorption = Math.pow(Math.random(), 2) * defenderDefense;
-    let mitigatedDmg = Math.floor(rawDamageRoll - armorAbsorption);
-
-    if (mitigatedDmg <= 0) return { hit: false, damage: 0 };
-
-    return { hit: true, damage: mitigatedDmg };
-}
-// ============================================
 
 // Data-Driven Special Descriptions
 function getWeaponSpecialDesc(item) {
