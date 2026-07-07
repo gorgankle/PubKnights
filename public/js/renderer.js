@@ -429,6 +429,12 @@ if (SpriteMatrices[e.id]) {
 
     // === THE FIX: DRAW TUTORIAL HIGHLIGHTS ===
  if (typeof ClientDirector !== 'undefined') ClientDirector.drawTacticalHighlights(ctx);
+ 
+ // Render the Cinematic Overlay on top of the real game board
+if (window.ClientQuestDirector && window.ClientQuestDirector.isActive) {
+    window.ClientQuestDirector.renderFakeTheater(ctx, currentTileSize);
+}
+ 
 
 } // <--- This bracket closes drawGrid()!
 

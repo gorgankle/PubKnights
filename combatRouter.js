@@ -85,13 +85,10 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
     function getMaxHp(player) { return getEffectiveStat(player, 'vitality') * 25; }
     function getMaxStamina(player) { return getEffectiveStat(player, 'maxStamina') * 25; }
 
-    function processSecureKill(socketId, serverEnemy) {
+  function processSecureKill(socketId, serverEnemy) {
         let p = activePlayers[socketId];
         let combat = activeCombats[socketId];
         if (!p || !combat) return;
-
-        // Ensure cinematic/quest enemies don't drop real gold or trigger normal victory math
-        if (combat.zone === 'CINEMATIC' || p.activeQuest) return;
 
         let multiplier = p.monumentBuilt ? 2 : 1;
         let isGorilla = (combat.zone === 'GORILLA_ARENA'); 
@@ -468,16 +465,13 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             gridSize: { cols: data.customCols || 16, rows: data.customRows || 10 },
             tileSize: data.customTileSize || 54,
             player: { x: 1, y: 4, atbCharge: 0 }, enemies: [], obstacles: [],
-            atbPaused: (data.customCols !== undefined || zone === 'CINEMATIC') 
+            atbPaused: (data.customCols !== undefined) 
         };
 
         let baitMultiplier = (zone === 'WILDERNESS' && p.mapBaited) ? 1.4 : 1.0;
         let prefixLabel = (zone === 'WILDERNESS' && p.mapBaited) ? "Frenzied " : "";
 
-        if (zone === 'CINEMATIC') {
-            // DO NOTHING - QuestRouter will spawn the actors via the SPAWN_ACTOR JSON event
-        }
-        else if (zone === 'GORILLA_ARENA') {
+        if (zone === 'GORILLA_ARENA') {
             combatState.player.x = 2; combatState.player.y = 4;
             for (let i = 0; i < 100; i++) {
                 let sx, sy;
@@ -490,56 +484,13 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             }
         }
         else if (zone === 'ABYSS') {
-            combatState.player.x = 0; combatState.player.y = 4;
-            let depth = p.abyssDepth || 1;
-            let statMult = 1 + (depth * 0.15) + (Math.pow(depth, 2) * 0.005);
-            let enemyCount = Math.min(12, 3 + Math.floor(depth / 3));
-
-            for (let i = 0; i < enemyCount; i++) {
-                let rng = Math.random();
-                let ex = Math.floor(Math.random() * 10) + 5; 
-                let ey = Math.floor(Math.random() * 10);     
-                while(combatState.enemies.some(e => e.x === ex && e.y === ey)) {
-                    ex = Math.floor(Math.random() * 10) + 5; ey = Math.floor(Math.random() * 10);
-                }
-                if (rng > 0.7) combatState.enemies.push(createEnemy("spectral_barfly", ex, ey, "", statMult));
-                else if (rng > 0.3) combatState.enemies.push(createEnemy("mash_crawler", ex, ey, "", statMult));
-                else combatState.enemies.push(createEnemy("eldritch_keg", ex, ey, "", statMult));
-            }
+            // ... [Keep your existing ABYSS generation] ...
         }
         else if (zone === 'CELLARS') {
-            if (runLvl === 20) {
-                combatState.enemies.push(createEnemy("vintage_behemoth", 13, 4));
-            } else {
-                let swarmSize = Math.min(6, 1 + Math.floor(runLvl / 2)); 
-                for (let i = 0; i < swarmSize; i++) {
-                    let spawnX = 14 - Math.floor(i / 3); let spawnY = 3 + (i % 3);
-                    combatState.enemies.push(createEnemy("corrupted_cask", spawnX, spawnY));
-                }
-                if (p.cellarsChummed) {
-                    for (let i = 0; i < 5; i++) combatState.enemies.push(createEnemy("pub_crawl_mimic", 8 + i, 5, "Chummed "));
-                } else if (runLvl >= 5) combatState.enemies.push(createEnemy("pub_crawl_mimic", 12, 6));
-            }
+            // ... [Keep your existing CELLARS generation] ...
         }
         else { // WILDERNESS
-            if (runLvl === 20) {
-                combatState.enemies.push(createEnemy("wilderness_overlord", 13, 4, prefixLabel, baitMultiplier));
-            } else {
-                let swarmSize = Math.min(6, 1 + Math.floor(runLvl / 2)); 
-                let publingsToSpawn = (runLvl === 5) ? 1 : (runLvl === 10) ? 2 : (runLvl === 15) ? 3 : 0;
-
-                for (let i = 0; i < swarmSize; i++) {
-                    let spawnX = 14 - Math.floor(i / 3); let spawnY = 3 + (i % 3);           
-                    
-                    if (publingsToSpawn > 0) {
-                        combatState.enemies.push(createEnemy("publing", spawnX, spawnY, prefixLabel, baitMultiplier));
-                        publingsToSpawn--;
-                    } else {
-                        combatState.enemies.push(createEnemy("wild_ravager", spawnX, spawnY, prefixLabel, baitMultiplier));
-                    }
-                }
-                if (p.mapBaited) combatState.enemies.push(createEnemy("alpha_poacher", 6, 5));
-            }
+            // ... [Keep your existing WILDERNESS generation] ...
         }
 
         let obsIcon = "🪨"; let obsSprite = "map_boulder";
@@ -551,7 +502,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             combatState.player.x = 1; combatState.player.y = 4;
             let pillars = [{x: 5, y: 1}, {x: 5, y: 8}, {x: 14, y: 1}, {x: 14, y: 8}];
             pillars.forEach(p => combatState.obstacles.push({ x: p.x, y: p.y, icon: obsIcon, spriteId: obsSprite }));
-        } else if (zone !== 'CINEMATIC') { 
+        } else { 
             let obsCount = (zone === 'ABYSS') ? 20 : 10;
             for (let i = 0; i < obsCount; i++) {
                 let ox = Math.floor(Math.random() * combatState.gridSize.cols); 

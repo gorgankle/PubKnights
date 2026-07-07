@@ -392,26 +392,18 @@ socket.on('combatRewardsReceipt', (receipt) => {
 });
 // ============================================
 
-// === SERVER-AUTHORITATIVE MAP DEPLOYMENT ===
 socket.on('combatDeployed', (serverCombatState) => {
     reachableTiles = null;
     hideTooltip();
     
-// Sync browser state to the Server's command
+    // Sync browser state to the Server's command
     player.idleJob = 'NONE';
     gameState = 'COMBAT'; 
     
-    // === FIXED: Give the player control if a cinematic is running ===
-    if (serverCombatState.zone === 'CINEMATIC') {
-        currentTurn = 'PLAYER';
-        combatPhase = 'PHASE_1';
-        player.visualAtb = 100;
-    } else {
-        currentTurn = 'ENEMY';             
-        combatPhase = 'WAITING_FOR_ATB';   
-        player.visualAtb = 0;              
-    }
-    // ======================================
+    // STRICT GAME LOGIC: Always start waiting for the server's ATB tick
+    currentTurn = 'ENEMY';             
+    combatPhase = 'WAITING_FOR_ATB';   
+    player.visualAtb = 0;              
 
     pendingMove = null;
     player.pendingXp = 0;
@@ -425,14 +417,11 @@ socket.on('combatDeployed', (serverCombatState) => {
     mapObstacles = serverCombatState.obstacles;
     selectedEnemy = null;
     
-    // === NEW: TUTORIAL TRACKING & LOOT TEASE TRAP ===
     activeCombatZone = serverCombatState.zone;
-    currentTutorialStep = serverCombatState.tutorialStep || 0;
     
-    // Automatically rip the loot screen away if it's open (used for the Boss ambush!)
+    // Automatically rip the loot screen away if it's open
     const lootOverlay = document.getElementById("loot-screen");
     if (lootOverlay) lootOverlay.style.display = "none";
-    // ================================================
     
     if (typeof playRetroSound === 'function') playRetroSound('combatStart');
     
@@ -443,16 +432,11 @@ socket.on('combatDeployed', (serverCombatState) => {
     else if (activeCombatZone === 'CELLARS' && player.cellarsChummed) logMessage("⚠️ SEAFOOD CODES LOADED: 5 Mimics burst out of the structural drain layers!");
     else if (activeCombatZone === 'WILDERNESS' && player.mapBaited && (player.selectedWildernessLevel || player.wildernessLevel) === 20) logMessage("⚠️ THE BOSS SMELLS THE FISH BAIT! CRITICAL COMBAT PARAMETERS ENGAGED.");
     
-// Force the browser to draw the server's map
+    // Force the browser to draw the server's map
     refreshSystemUI(); 
     drawGrid();
     window.scrollTo(0, 0);
-
-    // === ADD THIS HANDSHAKE HERE ===
-    if (window.ClientQuestDirector && window.ClientQuestDirector.isActive) {
-        socket.emit('questStepComplete');
-    }
-}); // <--- This closes socket.on('combatDeployed')
+});
 
 // === SERVER-AUTHORITATIVE AI CATCHER (THE MOVIE PLAYER) ===
 socket.on('enemyTurnReceipt', (receipt) => {

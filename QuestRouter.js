@@ -1,94 +1,47 @@
-// QuestRouter.js
-const QuestDB = require('./questDatabase.js');
-const { ItemDatabase } = require('./public/js/items.js');
+// --- QuestRouter.js ---
+const QuestDatabase = require('./questDatabase.js');
 
 module.exports = function(socket, io, activePlayers) {
+    let activeQuests = {}; 
 
-    // === 1. TRIGGER EVALUATOR ===
-    socket.on('checkQuestTriggers', (context) => {
+    socket.on('startCinematic', (questId) => {
         let p = activePlayers[socket.id];
-        if (!p || p.activeQuest) return; // Ignore if already in a movie
-
-        let triggeredQuest = null;
-
-        if (context.triggerType === 'LOGIN' && (!p.completedQuests || !p.completedQuests.includes('tutorial_combat_intro'))) {
-            triggeredQuest = 'tutorial_combat_intro';
-        } else if (context.triggerType === 'TUTORIAL_DEATH') {
-            triggeredQuest = 'tutorial_post_death';
+        if (!p) return;
+        
+        let manifest = QuestDatabase[questId];
+        if (!manifest) {
+            console.log(`❌ Cinematic Error: Quest ID ${questId} not found.`);
+            return;
         }
 
-        if (triggeredQuest) {
-            p.activeQuest = triggeredQuest;
-            p.questStep = 0;
-            executeCurrentStep(socket.id, p);
-        }
+        activeQuests[socket.id] = { id: questId, step: 0, manifest: manifest };
+        p.activeQuest = questId; 
+
+        socket.emit('questEvent', manifest[0]);
     });
 
-    // === 2. STEP EXECUTOR ===
-    function executeCurrentStep(socketId, p) {
-        let questManifest = QuestDB[p.activeQuest];
-        if (!questManifest) return endQuest(socketId, p); 
-
-        let currentEvent = questManifest[p.questStep];
-        if (!currentEvent) return endQuest(socketId, p); 
-
-        if (currentEvent.type === 'END_SCENE') {
-            if (currentEvent.rewards && currentEvent.rewards.items) {
-                currentEvent.rewards.items.forEach(itemId => {
-                    let item = JSON.parse(JSON.stringify(ItemDatabase[itemId]));
-                    p.inventory.push(item);
-                });
-            }
-            return endQuest(socketId, p, currentEvent.action);
-        }
-
-        // === THE FIX: PROPER PLACEMENT OF MODIFY_PLAYER ===
-        // Server-Side Event: Modify Player Stats/Gear silently
-        if (currentEvent.type === 'MODIFY_PLAYER') {
-            if (currentEvent.stats) {
-                if (currentEvent.stats.hp !== undefined) p.hp = currentEvent.stats.hp;
-                if (currentEvent.stats.stamina !== undefined) p.stamina = currentEvent.stats.stamina;
-            }
-            if (currentEvent.inventoryIds) {
-                p.inventory = [];
-                currentEvent.inventoryIds.forEach(id => {
-                    if (ItemDatabase[id]) p.inventory.push(JSON.parse(JSON.stringify(ItemDatabase[id])));
-                });
-            }
-            if (currentEvent.equipmentOverrides) {
-                p.equipment = currentEvent.equipmentOverrides; 
-            }
-            
-            // Force the client UI to sync with the new gear
-            io.to(socketId).emit('townReceipt', { success: true, updatedPlayer: p }); 
-            
-            p.questStep++;
-            return executeCurrentStep(socketId, p); // Move to the next event instantly
-        }
-
-        // For all other normal cinematic steps, send the instruction to the client
-        io.to(socketId).emit('questEvent', currentEvent);
-    }
-
-    // === 3. HANDSHAKE LISTENER ===
     socket.on('questStepComplete', () => {
+        let questInfo = activeQuests[socket.id];
+        if (!questInfo) return; 
+
         let p = activePlayers[socket.id];
-        if (!p || !p.activeQuest) return;
+        questInfo.step++;
+        let nextFrame = questInfo.manifest[questInfo.step];
 
-        p.questStep++;
-        executeCurrentStep(socket.id, p);
-    });
-
-    // === 4. CLEANUP ===
-    function endQuest(socketId, p, endAction) {
-        if (p.activeQuest) {
-            if (!p.completedQuests) p.completedQuests = [];
-            p.completedQuests.push(p.activeQuest);
+        if (!nextFrame) {
+            delete activeQuests[socket.id];
+            if (p) delete p.activeQuest;
+            socket.emit('questConcluded', { action: "NONE" });
+            return;
         }
-        
-        p.activeQuest = null;
-        p.questStep = 0;
-        
-        io.to(socketId).emit('questConcluded', { updatedPlayer: p, action: endAction });
-    }
+
+        if (nextFrame.type === 'END_SCENE') {
+            delete activeQuests[socket.id];
+            if (p) delete p.activeQuest;
+            
+            socket.emit('questConcluded', nextFrame);
+        } else {
+            socket.emit('questEvent', nextFrame);
+        }
+    });
 };
