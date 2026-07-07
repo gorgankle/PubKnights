@@ -30,12 +30,10 @@ let player = {
     supplyCart: { wood: 0, fish: 0, hops: 0, max: 100, level: 1 }, mapBaited: false,
 maxInventorySlots: 5, sharpeningStoneBought: 0, ironPlatingBought: 0, backpackUpgrades: 0,
     
-    // === MULTI-BUFF ARRAYS ADDED HERE ===
+// === MULTI-BUFF ARRAYS ADDED HERE ===
     activeCombatBuff: null, activeBuffs: [], happyHourTicks: 0, cellarsChummed: false,
-    tutorialCompleted: false,
     
 // === NEW: PET STATE ===
-    pet: { adopted: false, name: "Bandit", type: "dog", furColor: "brown", collarColor: "red" },
     
     // === NEW: EPIC TAVERN PRESTIGE ===
     gildedTavernUnlocked: false,
@@ -158,10 +156,10 @@ function saveGame(manualNotify = false) {
         equipment: player.equipment, inventory: player.inventory, stash: player.stash,
         buildings: player.buildings,
         workers: player.workers, supplyCart: player.supplyCart, mapBaited: player.mapBaited,
-        maxInventorySlots: player.maxInventorySlots, sharpeningStoneBought: player.sharpeningStoneBought,
+		maxInventorySlots: player.maxInventorySlots, sharpeningStoneBought: player.sharpeningStoneBought,
         ironPlatingBought: player.ironPlatingBought, backpackUpgrades: player.backpackUpgrades,
         activeCombatBuff: player.activeCombatBuff, activeBuffs: player.activeBuffs, happyHourTicks: player.happyHourTicks, cellarsChummed: player.cellarsChummed,
-        tutorialCompleted: player.tutorialCompleted, pet: player.pet,
+        pet: player.pet,
         gildedTavernUnlocked: player.gildedTavernUnlocked, autoClaimEnabled: player.autoClaimEnabled,
         tradeRoutesExpanded: player.tradeRoutesExpanded, monumentBuilt: player.monumentBuilt
     };

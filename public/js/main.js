@@ -27,14 +27,9 @@ socket.on('serverTick', (serverData) => {
     // Re-trigger the gilded tavern auto-claim logic
     if (typeof runAutoClaimCheck === 'function') runAutoClaimCheck();
 
-    // === THE FIX: STOP BACKGROUND TICKS FROM BREAKING THE MOVIE UI ===
-    if (gameState !== 'CINEMATIC') {
-        refreshSystemUI();
-    }
-    
-    updateTownUI(serverData);   // <--- USE serverData HERE
+    refreshSystemUI();
+    updateTownUI(serverData);
 });
-
 // === SERVER-AUTHORITATIVE COMBAT DISPATCH (UNIFIED ENGINE) ===
 socket.on('combatResult', (result) => {
     if (!result || gameState !== 'COMBAT') return;
@@ -143,7 +138,7 @@ socket.on('combatResult', (result) => {
                 logMessage("🏆 VICTORY Conditions verified.");
                 if (typeof playRetroSound === 'function') playRetroSound('victory');
                 
-                // Pure, standard game logic. No tutorial checks needed!
+              
                 let retBtn = document.querySelector("#loot-screen button");
                 if (retBtn) retBtn.style.display = 'block';
                 setTimeout(showLootScreen, 1200); 

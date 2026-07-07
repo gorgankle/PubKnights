@@ -228,10 +228,10 @@ const lumberScreen = document.getElementById("minigame-lumber-screen");
 const fishingScreen = document.getElementById("minigame-fishing-screen");
 const hopsScreen = document.getElementById("minigame-hops-screen");
 
-if (gameState === 'COMBAT' || gameState === 'CINEMATIC' || gameState === 'MINIGAME_LUMBER' || gameState === 'MINIGAME_FISHING' || gameState === 'MINIGAME_HOPS') {
+if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === 'MINIGAME_FISHING' || gameState === 'MINIGAME_HOPS') {
     if (topNavBar) topNavBar.style.display = "none"; 
     townVaultView.style.display = "none"; 
-    vaultScreen.style.display = "none"; 
+    vaultScreen.style.display = "none";
     
     if (gameState === 'MINIGAME_LUMBER') {
         if (combatScreen) combatScreen.style.display = "none";
@@ -251,14 +251,14 @@ if (gameState === 'COMBAT' || gameState === 'CINEMATIC' || gameState === 'MINIGA
         if (fishingScreen) fishingScreen.style.display = "none";
         if (hopsScreen) hopsScreen.style.display = "flex";
     }
-    else if (gameState === 'COMBAT' || gameState === 'CINEMATIC') {
+    else if (gameState === 'COMBAT') {
         if (lumberScreen) lumberScreen.style.display = "none";
         if (fishingScreen) fishingScreen.style.display = "none";
         if (hopsScreen) hopsScreen.style.display = "none";
         combatScreen.style.display = "block";
             
         let dynamicBg = "none";
-        let activeZoneToUse = gameState === 'CINEMATIC' && window.ClientQuestDirector ? window.ClientQuestDirector.cinematicMap.zone : activeCombatZone;
+        let activeZoneToUse = activeCombatZone;
 
         if (activeZoneToUse === 'WILDERNESS') dynamicBg = "url('assets/images/wilds-bg.png')";
         else if (activeZoneToUse === 'CELLARS') dynamicBg = "url('assets/images/cellars-bg.png')";
@@ -267,18 +267,7 @@ if (gameState === 'COMBAT' || gameState === 'CINEMATIC' || gameState === 'MINIGA
 
         const uiHeader = document.getElementById("target-ui-header");
         
-        // === THE FIX: CINEMATIC UI LOCKS ===
-        if (gameState === 'CINEMATIC') {
-            if (uiHeader) {
-                uiHeader.innerHTML = `🎬 CINEMATIC SEQUENCE RUNNING`;
-                uiHeader.style.color = "#9b59b6";
-            }
-            if (document.getElementById("slash-btn")) document.getElementById("slash-btn").disabled = true;
-            if (document.getElementById("heavy-btn")) document.getElementById("heavy-btn").disabled = true;
-            if (document.getElementById("end-btn")) document.getElementById("end-btn").disabled = true;
-            if (document.getElementById("flee-btn")) document.getElementById("flee-btn").disabled = true;
-        }
-        else if (currentTurn === 'PLAYER') {
+        if (currentTurn === 'PLAYER') {
             if (combatPhase === 'TARGETING') {
                 if (uiHeader) {
                     uiHeader.innerHTML = `🎯 TARGETING: Click anywhere in range to execute!`;
@@ -408,37 +397,24 @@ const combatInvList = document.getElementById("combat-inventory-list");
         
     
             // Actions
-            bagBtn.onclick = () => {
-                if (typeof activeCombatZone !== 'undefined' && activeCombatZone === 'TUTORIAL') {
-                    // THE FIX: Auto-open the THROW tab on Step 4 (Bomb phase)
-                    renderCombatModal(currentTutorialStep === 4 ? 'THROW' : 'DRINK');
-                } else {
-                    renderCombatModal();
-                }
-            };
-			
-            spellBtn.onclick = () => renderSpellbookModal();
-        
-            // === NEW: APPEND DIRECTLY TO THE GRID ===
-            combatInvList.appendChild(bagBtn);
-            combatInvList.appendChild(spellBtn);
+        bagBtn.onclick = () => renderCombatModal();
+        spellBtn.onclick = () => renderSpellbookModal();
+    
+        // === NEW: APPEND DIRECTLY TO THE GRID ===
+        combatInvList.appendChild(bagBtn);
+        combatInvList.appendChild(spellBtn);
 
-            // Keep the Cancel button logic intact, but make it span both columns!
-            if (combatPhase === 'TARGETING') {
-                let cancelBtn = document.createElement("button");
-                cancelBtn.innerText = "✖ Cancel Action";
-                cancelBtn.style.background = "#443a32"; 
-                cancelBtn.style.gridColumn = "span 2"; 
-                cancelBtn.style.padding = "10px";
-                cancelBtn.onclick = () => cancelTarget();
-                combatInvList.appendChild(cancelBtn);
-            }
-            
-// === DELEGATE TO THE CLIENT DIRECTOR ===
-            if (typeof ClientDirector !== 'undefined') {
-                ClientDirector.applyCombatLocks(bagBtn, spellBtn);
-            }
-        } // Closes the combatInvList check
+        // Keep the Cancel button logic intact, but make it span both columns!
+        if (combatPhase === 'TARGETING') {
+            let cancelBtn = document.createElement("button");
+            cancelBtn.innerText = "✖ Cancel Action";
+            cancelBtn.style.background = "#443a32"; 
+            cancelBtn.style.gridColumn = "span 2"; 
+            cancelBtn.style.padding = "10px";
+            cancelBtn.onclick = () => cancelTarget();
+            combatInvList.appendChild(cancelBtn);
+        }
+    } // Closes the combatInvList check
     } // Closes the gameState === 'COMBAT' check
 } // Closes the exclusive full-screen views check
 
@@ -1232,17 +1208,11 @@ function renderCombatModal(filter = 'DRINK') {
 
         foundAny = true; 
        let slotDiv = document.createElement('div');
-        let rc = item.rarity === "Gorilla" ? "slot-jackpot" : (item.rarity ? `slot-${item.rarity.toLowerCase()}` : 'slot-common');
+       let rc = item.rarity === "Gorilla" ? "slot-jackpot" : (item.rarity ? `slot-${item.rarity.toLowerCase()}` : 'slot-common');
         slotDiv.className = `item-slot ${rc}`;
   
-        // === DELEGATE TO THE CLIENT DIRECTOR ===
-        if (typeof ClientDirector !== 'undefined') {
-            ClientDirector.applyModalLocks(item, slotDiv, filter);
-        }
-        // =======================================
-		
         // === THE FIX: ALLOW ITEMS TO BE CLICKED ===
-slotDiv.onclick = () => {
+        slotDiv.onclick = () => {
             closeCombatModal();
             if (typeof selectCombatItem === 'function') {
                 selectCombatItem(idx); // Standard UI targeting hook

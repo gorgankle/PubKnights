@@ -74,13 +74,6 @@ function updateAnimationEngine() {
     requestAnimationFrame(updateAnimationEngine);
     globalAnimClock++;
     
-    // === THE FIX: MOVIE PROJECTOR OVERRIDE ===
-    // If a cinematic is running, it completely takes over the canvas and stops the real game!
-    if (window.ClientQuestDirector && window.ClientQuestDirector.isActive) {
-        window.ClientQuestDirector.drawCinematicScene(ctx);
-        return; 
-    }
-
     // Otherwise, run the normal tactical game
     if (gameState === 'COMBAT') {
         drawGrid(); 
@@ -429,21 +422,12 @@ if (SpriteMatrices[e.id]) {
     }
     // ========================================
 
-    // === THE MISSING HEARTBEAT ===
+// === THE MISSING HEARTBEAT ===
     // This tells the engine to physically draw the arrows, lunges, and damage text!
     if (typeof FXEngine !== 'undefined') {
         FXEngine.render(ctx, currentTileSize);
     }
     // =============================
-
-    // === THE FIX: DRAW TUTORIAL HIGHLIGHTS ===
- if (typeof ClientDirector !== 'undefined') ClientDirector.drawTacticalHighlights(ctx);
- 
- // Render the Cinematic Overlay on top of the real game board
-if (window.ClientQuestDirector && window.ClientQuestDirector.isActive) {
-    window.ClientQuestDirector.renderFakeTheater(ctx, currentTileSize);
-}
- 
 
 } // <--- This bracket closes drawGrid()!
 

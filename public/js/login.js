@@ -44,14 +44,7 @@ function startNewGame() {
 // Triggered after the player finishes customizing
 function finalizeCharacter() {
     if (typeof saveGame === 'function') saveGame(true); 
-    
-    // Default to the normal Town UI, which flips display: flex
     enterGameUI();
-    
-    // Give the browser 100ms to paint the DOM before starting the movie
-    setTimeout(() => {
-        socket.emit('checkQuestTriggers', { triggerType: 'LOGIN' });
-    }, 100);
 }
 
 // === SOCKET LISTENERS (Catching Server Responses) ===
@@ -70,15 +63,9 @@ socket.on('registerSuccess', () => {
     if (typeof renderPaperDoll === 'function') renderPaperDoll(true);
 });
 
+// === SOCKET LISTENERS (Catching Server Responses) ===
 socket.on('loginSuccess', (serverSaveData) => {
     currentUsername = document.getElementById("char-name-input").value.trim();
     Object.assign(player, serverSaveData);
-    
-    // Default to the normal Town UI
     enterGameUI();
-
-    // Give the browser 100ms to paint the DOM before starting the movie
-    setTimeout(() => {
-        socket.emit('checkQuestTriggers', { triggerType: 'LOGIN' });
-    }, 100);
 });
