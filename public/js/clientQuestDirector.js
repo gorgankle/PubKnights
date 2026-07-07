@@ -106,7 +106,13 @@ processEvent: function(ev) {
             setTimeout(() => socket.emit('questStepComplete'), 100);
         }
         else if (ev.type === 'SPAWN_ACTOR') {
-            this.cinematicActors.push({ uid: ev.uid, id: ev.actorId, x: ev.x, y: ev.y });
+            this.cinematicActors.push({ 
+                uid: ev.uid, 
+                id: ev.actorId, 
+                x: ev.x, 
+                y: ev.y,
+                equipment: ev.equipment || null // <-- Add fake gear storage
+            });
             setTimeout(() => socket.emit('questStepComplete'), 100);
         }
         else if (ev.type === 'DESPAWN_ACTOR') {
@@ -135,8 +141,18 @@ processEvent: function(ev) {
                 targetEl.removeAttribute('disabled'); 
                 targetEl.classList.add('director-highlight');
                 
+                // === THE FIX: ESCAPE STACKING CONTEXT TRAPS ===
+                // If the button is trapped inside a modal (like the backpack), pull the WHOLE panel above the shield
+                let parentPanel = targetEl.closest('.panel');
+                let originalZ = '';
+                if (parentPanel) {
+                    originalZ = parentPanel.style.zIndex;
+                    parentPanel.style.zIndex = '100000';
+                }
+                
                 targetEl.addEventListener('click', () => {
                     this.removeHighlighter();
+                    if (parentPanel) parentPanel.style.zIndex = originalZ; // Restore original z-index
                     setTimeout(() => socket.emit('questStepComplete'), 100);
                 }, { once: true });
             } else {
@@ -260,29 +276,40 @@ processEvent: function(ev) {
             let py = (a.y * size) + (a.lungeOffsetY || 0);
             
             if (a.id === 'player') {
-                // === THE FIX: FULLY ASSEMBLED PLAYER SPRITE ===
-                if (typeof SpriteMatrices !== 'undefined') {
+                if (typeof SpriteMatrices !== 'undefined' && SpriteMatrices['body_male']) {
+                    // Draw base body
                     let bodySprite = player.appearance.gender === 'female' ? 'body_female' : 'body_male';
-                    if (SpriteMatrices[bodySprite]) drawOptimizedSprite(ctx, bodySprite, SpriteMatrices[bodySprite], px, py, size);
+                    drawOptimizedSprite(ctx, bodySprite, SpriteMatrices[bodySprite], px, py, size);
+                    
                     if (SpriteMatrices[player.appearance.eyes]) drawOptimizedSprite(ctx, player.appearance.eyes, SpriteMatrices[player.appearance.eyes], px, py, size);
                     
-                    const hidesHair = player.equipment.helmet && player.equipment.helmet.hidesHair;
+                    // === THE FIX: DRAW FAKE MOVIE GEAR ===
+                    let fakeEq = a.equipment || {};
+                    let gSuffix = player.appearance.gender === 'female' ? '_female' : '_male';
+
+                    const hidesHair = fakeEq.helmet && fakeEq.helmet.includes("helm") && !fakeEq.helmet.includes("coif");
                     if (!hidesHair && SpriteMatrices[player.appearance.hair]) {
                         drawOptimizedSprite(ctx, player.appearance.hair, SpriteMatrices[player.appearance.hair], px, py, size);
                     }
-
-                    const eq = player.equipment;
-                    let gSuffix = player.appearance.gender === 'female' ? '_female' : '_male';
                     
-                    if (eq.armor && eq.armor.spriteId) {
-                        let sId = eq.armor.spriteId + gSuffix;
-                        if (SpriteMatrices[sId]) drawOptimizedSprite(ctx, sId, SpriteMatrices[sId], px, py, size);
-                        else if (SpriteMatrices[eq.armor.spriteId]) drawOptimizedSprite(ctx, eq.armor.spriteId, SpriteMatrices[eq.armor.spriteId], px, py, size);
+                    if (fakeEq.armor) {
+                        if (SpriteMatrices[fakeEq.armor + gSuffix]) drawOptimizedSprite(ctx, fakeEq.armor + gSuffix, SpriteMatrices[fakeEq.armor + gSuffix], px, py, size);
+                        else if (SpriteMatrices[fakeEq.armor]) drawOptimizedSprite(ctx, fakeEq.armor, SpriteMatrices[fakeEq.armor], px, py, size);
                     }
-                    if (eq.boots && eq.boots.spriteId && SpriteMatrices[eq.boots.spriteId]) drawOptimizedSprite(ctx, eq.boots.spriteId, SpriteMatrices[eq.boots.spriteId], px, py, size);
-                    if (eq.gloves && eq.gloves.spriteId && SpriteMatrices[eq.gloves.spriteId]) drawOptimizedSprite(ctx, eq.gloves.spriteId, SpriteMatrices[eq.gloves.spriteId], px, py, size);
-                    if (eq.helmet && eq.helmet.spriteId && SpriteMatrices[eq.helmet.spriteId]) drawOptimizedSprite(ctx, eq.helmet.spriteId, SpriteMatrices[eq.helmet.spriteId], px, py, size);
-                    if (eq.weapon && eq.weapon.spriteId && SpriteMatrices[eq.weapon.spriteId]) drawOptimizedSprite(ctx, eq.weapon.spriteId, SpriteMatrices[eq.weapon.spriteId], px, py, size);
+                    if (fakeEq.boots && SpriteMatrices[fakeEq.boots]) drawOptimizedSprite(ctx, fakeEq.boots, SpriteMatrices[fakeEq.boots], px, py, size);
+                    if (fakeEq.gloves && SpriteMatrices[fakeEq.gloves]) drawOptimizedSprite(ctx, fakeEq.gloves, SpriteMatrices[fakeEq.gloves], px, py, size);
+                    if (fakeEq.helmet && SpriteMatrices[fakeEq.helmet]) drawOptimizedSprite(ctx, fakeEq.helmet, SpriteMatrices[fakeEq.helmet], px, py, size);
+                    
+                    if (fakeEq.weapon && SpriteMatrices[fakeEq.weapon]) {
+                        ctx.save();
+                        let wPivotX = px + (size * 0.58);
+                        let wPivotY = py + (size * 0.5);
+                        ctx.translate(wPivotX, wPivotY);
+                        ctx.scale(1.0, 1.0);
+                        ctx.translate(-wPivotX, -wPivotY);
+                        drawOptimizedSprite(ctx, fakeEq.weapon, SpriteMatrices[fakeEq.weapon], px, py, size);
+                        ctx.restore();
+                    }
                 }
             } else if (typeof SpriteMatrices !== 'undefined' && SpriteMatrices[a.id]) {
                 drawOptimizedSprite(ctx, a.id, SpriteMatrices[a.id], px, py, size);

@@ -27,7 +27,11 @@ socket.on('serverTick', (serverData) => {
     // Re-trigger the gilded tavern auto-claim logic
     if (typeof runAutoClaimCheck === 'function') runAutoClaimCheck();
 
-    refreshSystemUI();
+    // === THE FIX: STOP BACKGROUND TICKS FROM BREAKING THE MOVIE UI ===
+    if (gameState !== 'CINEMATIC') {
+        refreshSystemUI();
+    }
+    
     updateTownUI(serverData);   // <--- USE serverData HERE
 });
 

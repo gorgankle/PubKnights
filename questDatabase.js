@@ -16,7 +16,12 @@ module.exports = {
         { type: "DELAY", duration: 800 },
         { type: "FADE", direction: "IN", duration: 500, color: "#000000" },
         
-        { type: "SPAWN_ACTOR", actorId: "player", uid: "fake_player", x: 1, y: 4 },
+        // === THE FIX: FEED VISUAL MOVIE PROPS TO THE ACTOR ===
+        { type: "SPAWN_ACTOR", actorId: "player", uid: "fake_player", x: 1, y: 4, equipment: {
+            helmet: "icon_helm_rusty_coif",
+            armor: "icon_armor_tunic",
+            weapon: "icon_weap_rusty_mace"
+        }},
         
         { type: "DIALOGUE", sequence: [
             { speaker: "PLAYER", text: "Phew... all this traveling got me beat.", portraitId: "player" },
