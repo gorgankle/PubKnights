@@ -23,16 +23,21 @@ module.exports = {
         { type: "HIGHLIGHT_UI", elementId: "end-btn" },
         { type: "DELAY", duration: 500 },
 
-        { type: "DIALOGUE", sequence: [
+    { type: "DIALOGUE", sequence: [
             { speaker: "Kreg", text: "Great! Now open your 🎒 BACKPACK and use the 🍺 STOUT to heal!", portraitId: "npc_kreg" }
         ]},
         
-        // === NEW: VISUALLY FORCE THE GUI OPEN ===
-        { type: "SET_UI_STATE", elementId: "combat-modal", displayState: "flex" },
+        // 1. Force the empty modal open
+        { type: "SET_UI_STATE", elementId: "combat-modal", displayState: "block" },
         
-        { type: "HIGHLIGHT_UI", elementId: "combat-inventory-list" }, 
+        // 2. Inject a fake "Movie Prop" Stout directly into the empty grid!
+        { type: "INJECT_HTML", elementId: "combat-modal-grid", html: "<div id='fake-stout' style='font-size: 24px; text-align: center; border: 2px solid #555; padding: 15px; background: #222; cursor: pointer; border-radius: 5px; color: white;'>🍺 Drink Stout</div>" },
         
-        // === NEW: VISUALLY CLOSE THE GUI ===
+        // 3. Force the player to click the fake prop we just made
+        { type: "HIGHLIGHT_UI", elementId: "fake-stout" },
+        
+        // 4. Once clicked, erase the prop and close the modal
+        { type: "INJECT_HTML", elementId: "combat-modal-grid", html: "" },
         { type: "SET_UI_STATE", elementId: "combat-modal", displayState: "none" },
         
         { type: "DELAY", duration: 800 },

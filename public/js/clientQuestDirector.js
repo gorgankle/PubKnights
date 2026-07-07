@@ -62,19 +62,29 @@ window.ClientQuestDirector = {
 
 processEvent: function(ev) {
         if (ev.type === 'SET_SCENE') {
-            gameState = 'CINEMATIC'; 
+            window.gameState = 'CINEMATIC'; // Force global state safely
             this.cinematicMap = { 
                 cols: ev.cols || 16, rows: ev.rows || 10, 
                 tileSize: ev.tileSize || 54, zone: ev.zone || 'WILDERNESS',
-                obstacles: ev.obstacles || [] // Load static map props
+                obstacles: ev.obstacles || [] 
             };
             this.cinematicActors = [];
             this.activeHighlightTile = null;
             
-            // Force the primary combat screen open
             document.getElementById("top-nav-bar").style.display = "none";
             document.getElementById("town-vault-view").style.display = "none";
-            document.getElementById("combat-screen").style.display = "block";
+            
+            // Show the combat wrapper
+            let combatWrapper = document.getElementById("combat-screen");
+            if (combatWrapper) combatWrapper.style.display = "block";
+            
+            // === THE FIX: FORCE CANVAS DIMENSIONS ===
+            let canvas = document.getElementById("gameCanvas");
+            if (canvas && combatWrapper) {
+                // Ensure the canvas actually has physical pixels to draw on!
+                canvas.width = combatWrapper.clientWidth || 800;
+                canvas.height = combatWrapper.clientHeight || 600;
+            }
             
             let uiHeader = document.getElementById("target-ui-header");
             if (uiHeader) {
@@ -84,11 +94,15 @@ processEvent: function(ev) {
 
             setTimeout(() => socket.emit('questStepComplete'), 400);
         }
-        // === NEW: UI STATE CONTROLLER ===
         else if (ev.type === 'SET_UI_STATE') {
             let targetEl = document.getElementById(ev.elementId);
-            if (targetEl) targetEl.style.display = ev.displayState; // e.g., 'flex', 'block', 'none'
-            
+            if (targetEl) targetEl.style.display = ev.displayState; 
+            setTimeout(() => socket.emit('questStepComplete'), 100);
+        }
+        // === NEW: MOVIE PROP SPAWNER ===
+        else if (ev.type === 'INJECT_HTML') {
+            let targetEl = document.getElementById(ev.elementId);
+            if (targetEl) targetEl.innerHTML = ev.html;
             setTimeout(() => socket.emit('questStepComplete'), 100);
         }
         else if (ev.type === 'SPAWN_ACTOR') {

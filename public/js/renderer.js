@@ -73,9 +73,18 @@ function getLineOfEffectPath(x1, y1, x2, y2, maxRange, stopsAtWalls) {
 function updateAnimationEngine() {
     requestAnimationFrame(updateAnimationEngine);
     globalAnimClock++;
-    if (gameState === 'COMBAT') {
-        drawGrid();
+    
+    // === THE FIX: MOVIE PROJECTOR OVERRIDE ===
+    // If a cinematic is running, it completely takes over the canvas and stops the real game!
+    if (window.ClientQuestDirector && window.ClientQuestDirector.isActive) {
+        window.ClientQuestDirector.drawCinematicScene(ctx);
+        return; 
     }
+
+    // Otherwise, run the normal tactical game
+    if (gameState === 'COMBAT') {
+        drawGrid(); 
+    } 
 }
 
 
