@@ -471,28 +471,86 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         let baitMultiplier = (zone === 'WILDERNESS' && p.mapBaited) ? 1.4 : 1.0;
         let prefixLabel = (zone === 'WILDERNESS' && p.mapBaited) ? "Frenzied " : "";
 
+   let cols = combatState.gridSize.cols || 16;
+        let rows = combatState.gridSize.rows || 10;
+
         if (zone === 'GORILLA_ARENA') {
-            combatState.player.x = 2; combatState.player.y = 4;
+            combatState.player.x = 2; combatState.player.y = Math.floor(rows / 2);
             for (let i = 0; i < 100; i++) {
                 let sx, sy;
-                if (Math.random() > 0.5) { sx = Math.random() > 0.5 ? 0 : 15; sy = Math.floor(Math.random() * 10); } 
-                else { sx = Math.floor(Math.random() * 16); sy = Math.random() > 0.5 ? 0 : 9; }
+                if (Math.random() > 0.5) { sx = Math.random() > 0.5 ? 0 : cols - 1; sy = Math.floor(Math.random() * rows); } 
+                else { sx = Math.floor(Math.random() * cols); sy = Math.random() > 0.5 ? 0 : rows - 1; }
                 
                 let newGorilla = createEnemy("enraged_gorilla", sx, sy);
                 newGorilla.name = `Enraged Gorilla #${i+1}`; 
                 combatState.enemies.push(newGorilla);
             }
-        }
+        } 
         else if (zone === 'ABYSS') {
-            // ... [Keep your existing ABYSS generation] ...
+            combatState.player.x = 0; combatState.player.y = rows - 1;
+            let depth = p.abyssDepth || 1;
+            let statMult = 1 + (depth * 0.15) + (Math.pow(depth, 2) * 0.005);
+            let enemyCount = Math.min(12, 3 + Math.floor(depth / 3));
+
+            for (let i = 0; i < enemyCount; i++) {
+                let rng = Math.random();
+                let ex = Math.floor(Math.random() * (cols - 4)) + 4; // Right side of the map
+                let ey = Math.floor(Math.random() * rows);
+                
+                // Prevent stacking
+                while(combatState.enemies.some(e => e.x === ex && e.y === ey)) {
+                    ex = Math.floor(Math.random() * (cols - 4)) + 4; 
+                    ey = Math.floor(Math.random() * rows);
+                }
+                
+                if (rng > 0.7) combatState.enemies.push(createEnemy("spectral_barfly", ex, ey, "", statMult));
+                else if (rng > 0.3) combatState.enemies.push(createEnemy("mash_crawler", ex, ey, "", statMult));
+                else combatState.enemies.push(createEnemy("eldritch_keg", ex, ey, "", statMult));
+            }
         }
         else if (zone === 'CELLARS') {
-            // ... [Keep your existing CELLARS generation] ...
+            if (runLvl === 20) {
+                combatState.enemies.push(createEnemy("vintage_behemoth", cols - 6, Math.floor(rows / 2)));
+            } else {
+                let swarmSize = Math.min(6, 1 + Math.floor(runLvl / 2)); 
+                for (let i = 0; i < swarmSize; i++) {
+                    let spawnX = (cols - 4) - Math.floor(i / 3); 
+                    let spawnY = 2 + (i % 3);
+                    combatState.enemies.push(createEnemy("corrupted_cask", spawnX, spawnY));
+                }
+                if (p.cellarsChummed) {
+                    for (let i = 0; i < 5; i++) combatState.enemies.push(createEnemy("pub_crawl_mimic", (cols - 8) + i, 5, "Chummed "));
+                } else if (runLvl >= 5) {
+                    combatState.enemies.push(createEnemy("pub_crawl_mimic", cols - 5, 6));
+                }
+            }
         }
         else { // WILDERNESS
-            // ... [Keep your existing WILDERNESS generation] ...
-        }
+            if (runLvl === 20) {
+                combatState.enemies.push(createEnemy("wilderness_overlord", cols - 6, Math.floor(rows / 2), prefixLabel, baitMultiplier));
+            } else {
+                let swarmSize = Math.min(6, 1 + Math.floor(runLvl / 2)); 
+                
+                // PUBLING MILESTONE LOGIC RESTORED
+                let publingsToSpawn = 0;
+                if (runLvl === 5) publingsToSpawn = 1;
+                else if (runLvl === 10) publingsToSpawn = 2;
+                else if (runLvl === 15) publingsToSpawn = 3;
 
+                for (let i = 0; i < swarmSize; i++) {
+                    let spawnX = (cols - 4) - Math.floor(i / 3); 
+                    let spawnY = 2 + (i % 3);           
+                    
+                    if (publingsToSpawn > 0) {
+                        combatState.enemies.push(createEnemy("publing", spawnX, spawnY, prefixLabel, baitMultiplier));
+                        publingsToSpawn--;
+                    } else {
+                        combatState.enemies.push(createEnemy("wild_ravager", spawnX, spawnY, prefixLabel, baitMultiplier));
+                    }
+                }
+                if (p.mapBaited) combatState.enemies.push(createEnemy("alpha_poacher", cols - 8, 5));
+            }
+        }
         let obsIcon = "🪨"; let obsSprite = "map_boulder";
         if (zone === 'WILDERNESS') { obsIcon = "🌲"; obsSprite = "map_tree"; } 
         else if (zone === 'CELLARS') { obsIcon = "🛢️"; obsSprite = "map_broken_cask"; }
