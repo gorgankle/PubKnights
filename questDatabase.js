@@ -1,9 +1,11 @@
+// --- questDatabase.js ---
+// The master JSON manifest for all cinematic scenes. PURELY VISUAL.
+
 module.exports = {
     "tutorial_combat_intro": [
         { type: "FADE", direction: "OUT", duration: 500, color: "#000000" },
         
-        // === THE LEVEL 20 BOSS ARENA ===
-        // Inject static props into the movie scene so it looks like the real Overlord map
+        // Build the Level 20 Boss Arena visually
         { type: "SET_SCENE", zone: "WILDERNESS", cols: 16, rows: 10, tileSize: 54, obstacles: [
             { x: 5, y: 1, spriteId: "map_tree" },
             { x: 5, y: 8, spriteId: "map_tree" },
@@ -23,22 +25,19 @@ module.exports = {
         { type: "HIGHLIGHT_UI", elementId: "end-btn" },
         { type: "DELAY", duration: 500 },
 
-    { type: "DIALOGUE", sequence: [
-            { speaker: "Kreg", text: "Great! Now open your 🎒 BACKPACK and use the 🍺 STOUT to heal!", portraitId: "npc_kreg" }
+        { type: "DIALOGUE", sequence: [
+            { speaker: "Kreg", text: "Great! I am opening your Backpack for you. Drink this Stout to heal!", portraitId: "npc_kreg" }
         ]},
         
-        // 1. Force the empty modal open
-        { type: "SET_UI_STATE", elementId: "combat-modal", displayState: "block" },
-        
-        // 2. Inject a fake "Movie Prop" Stout directly into the empty grid!
-        { type: "INJECT_HTML", elementId: "combat-modal-grid", html: "<div id='fake-stout' style='font-size: 24px; text-align: center; border: 2px solid #555; padding: 15px; background: #222; cursor: pointer; border-radius: 5px; color: white;'>🍺 Drink Stout</div>" },
-        
-        // 3. Force the player to click the fake prop we just made
+        // === THE FIX: Use the actual HTML ID "combat-backpack-modal" ===
+        // Force the modal open, inject a Movie Prop, and highlight it!
+        { type: "SET_UI_STATE", elementId: "combat-backpack-modal", displayState: "block" },
+        { type: "INJECT_HTML", elementId: "combat-modal-grid", html: "<div id='fake-stout' style='font-size: 14px; text-align: center; border: 2px solid #f1c40f; padding: 15px; background: #222; cursor: pointer; border-radius: 5px; color: white;'>🍺 Drink Stout</div>" },
         { type: "HIGHLIGHT_UI", elementId: "fake-stout" },
         
-        // 4. Once clicked, erase the prop and close the modal
+        // Once clicked, erase the prop and close the modal
         { type: "INJECT_HTML", elementId: "combat-modal-grid", html: "" },
-        { type: "SET_UI_STATE", elementId: "combat-modal", displayState: "none" },
+        { type: "SET_UI_STATE", elementId: "combat-backpack-modal", displayState: "none" },
         
         { type: "DELAY", duration: 800 },
 
@@ -58,11 +57,18 @@ module.exports = {
         { type: "SPAWN_ACTOR", actorId: "publing", uid: "mob_tut_3", x: 7, y: 3 },
         { type: "SPAWN_ACTOR", actorId: "publing", uid: "mob_tut_4", x: 8, y: 3 },
         { type: "DIALOGUE", sequence: [
-            { speaker: "Kreg", text: "Three more! Click a tile to back away, then open your Backpack and use the 💣 HEAVY KEG BOMB!", portraitId: "npc_kreg" }
+            { speaker: "Kreg", text: "Three more! Click a tile to back away, then grab a Heavy Keg Bomb from your bag!", portraitId: "npc_kreg" }
         ]},
         
         { type: "HIGHLIGHT_TILE", targetX: 6, targetY: 7, style: "GOAL" },
-        { type: "HIGHLIGHT_UI", elementId: "combat-inventory-list" }, 
+        
+        // === THE FIX: Repeat the movie prop trick for the Bomb ===
+        { type: "SET_UI_STATE", elementId: "combat-backpack-modal", displayState: "block" },
+        { type: "INJECT_HTML", elementId: "combat-modal-grid", html: "<div id='fake-bomb' style='font-size: 14px; text-align: center; border: 2px solid #e74c3c; padding: 15px; background: #222; cursor: pointer; border-radius: 5px; color: white;'>💣 Grab Heavy Bomb</div>" },
+        { type: "HIGHLIGHT_UI", elementId: "fake-bomb" },
+        { type: "INJECT_HTML", elementId: "combat-modal-grid", html: "" },
+        { type: "SET_UI_STATE", elementId: "combat-backpack-modal", displayState: "none" },
+
         { type: "HIGHLIGHT_TILE", targetX: 7, targetY: 3, style: "AIM" }, 
         { type: "PLAY_FX", fxType: "EXPLOSION", startX: 6, startY: 7, targetX: 7, targetY: 3 },
         { type: "DELAY", duration: 1500 },
@@ -71,11 +77,11 @@ module.exports = {
         { type: "DESPAWN_ACTOR", uid: "mob_tut_3" },
         { type: "DESPAWN_ACTOR", uid: "mob_tut_4" },
 
+        // === THE FIX: Smoother transition into the boss ambush ===
         { type: "DIALOGUE", sequence: [
-            { speaker: "Kreg", text: "Whoa, look at the size of that gem they dropped! Click it to stash it!", portraitId: "npc_kreg" }
+            { speaker: "Kreg", text: "Whoa, look at the size of that gem! Let me just grab-- wait, do you feel that shaking?", portraitId: "npc_kreg" }
         ]},
         
-        { type: "HIGHLIGHT_UI", elementId: "loot-take-btn" },
         { type: "SHAKE" },
         { type: "SPAWN_ACTOR", actorId: "wilderness_overlord", uid: "mob_tut_boss", x: 7, y: 3 },
         { type: "AUDIO", action: "PLAY", trackName: "DOOM OF THE OVERLORD" },
