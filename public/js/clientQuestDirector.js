@@ -60,13 +60,13 @@ window.ClientQuestDirector = {
         });
     },
 
-    processEvent: function(ev) {
+processEvent: function(ev) {
         if (ev.type === 'SET_SCENE') {
             gameState = 'CINEMATIC'; 
             this.cinematicMap = { 
                 cols: ev.cols || 16, rows: ev.rows || 10, 
                 tileSize: ev.tileSize || 54, zone: ev.zone || 'WILDERNESS',
-                obstacles: ev.obstacles || [] // NEW: Load static map props
+                obstacles: ev.obstacles || [] // Load static map props
             };
             this.cinematicActors = [];
             this.activeHighlightTile = null;
@@ -83,8 +83,14 @@ window.ClientQuestDirector = {
             }
 
             setTimeout(() => socket.emit('questStepComplete'), 400);
-        }	
-        
+        }
+        // === NEW: UI STATE CONTROLLER ===
+        else if (ev.type === 'SET_UI_STATE') {
+            let targetEl = document.getElementById(ev.elementId);
+            if (targetEl) targetEl.style.display = ev.displayState; // e.g., 'flex', 'block', 'none'
+            
+            setTimeout(() => socket.emit('questStepComplete'), 100);
+        }
         else if (ev.type === 'SPAWN_ACTOR') {
             this.cinematicActors.push({ uid: ev.uid, id: ev.actorId, x: ev.x, y: ev.y });
             setTimeout(() => socket.emit('questStepComplete'), 100);
