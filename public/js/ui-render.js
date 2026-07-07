@@ -892,7 +892,8 @@ if (hopsScreen) hopsScreen.style.display = "none";
             if (player.tutorialCompleted === false) {
                 player.tutorialCompleted = 'active'; 
                 setTimeout(() => {
-                    if (typeof renderTutorialStep === 'function') renderTutorialStep();
+                    // Start the movie projector!
+                    socket.emit('startCinematic', 'tutorial_combat_intro');
                 }, 500);
             }
         } 
