@@ -257,7 +257,7 @@ if (data.saveData) {
         injectTownRouter(socket, io, activePlayers, activeCombats);
         injectCombatRouter(socket, io, activePlayers, activeCombats);
         injectSocialRouter(socket, io, activePlayers, activeCombats);
-		injectQuestRouter(socket, io, activePlayers);
+
 
         // === RESTORED: DISCONNECT HANDLER ===
         socket.on('disconnect', () => {
