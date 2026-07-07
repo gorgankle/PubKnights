@@ -1,9 +1,9 @@
-// public/js/clientQuestDirector.js
+// --- clientQuestDirector.js ---
 window.ClientQuestDirector = {
     isActive: false,
     shield: null,
     cinematicActors: [],
-    cinematicMap: { cols: 16, rows: 10, tileSize: 54 },
+    cinematicMap: { cols: 16, rows: 10, tileSize: 54, zone: 'WILDERNESS' },
     activeHighlightTile: null,
 
     init: function() {
@@ -21,6 +21,7 @@ window.ClientQuestDirector = {
         document.head.appendChild(style);
 
         this.shield = document.createElement('div');
+        this.shield.id = 'cinematic-shield';
         this.shield.style.position = 'fixed';
         this.shield.style.top = '0';
         this.shield.style.left = '0';
@@ -49,13 +50,10 @@ window.ClientQuestDirector = {
             this.shield.style.display = 'none';
             this.removeHighlighter();
             
-            if (data.updatedPlayer) Object.assign(player, data.updatedPlayer);
-            
             if (data.action === 'RETURN_TOWN' && typeof transitionToTown === 'function') {
                 transitionToTown();
             } else if (data.action === 'START_COMBAT') {
-                // The movie is over! Seamlessly transition into a real fight.
-                socket.emit('deployToCombat', { zoneChoice: 'WILDERNESS', activeLevel: 1 });
+                socket.emit('deployToCombat', { zoneChoice: data.targetZone || 'WILDERNESS', activeLevel: data.targetLevel || 1 });
             } else {
                 if (typeof refreshSystemUI === 'function') refreshSystemUI(); 
             }
@@ -64,13 +62,11 @@ window.ClientQuestDirector = {
 
     processEvent: function(ev) {
         if (ev.type === 'SET_SCENE') {
-            // DETACHMENT: We do NOT ping the combat router. We set up a ghost board.
             gameState = 'CINEMATIC'; 
-            this.cinematicMap = { cols: ev.cols || 16, rows: ev.rows || 10, tileSize: ev.tileSize || 54 };
+            this.cinematicMap = { cols: ev.cols || 16, rows: ev.rows || 10, tileSize: ev.tileSize || 54, zone: ev.zone || 'WILDERNESS' };
             this.cinematicActors = [];
             this.activeHighlightTile = null;
             
-            // Force the combat UI wrapper visible so we have a canvas to draw on
             document.getElementById("top-nav-bar").style.display = "none";
             document.getElementById("town-vault-view").style.display = "none";
             document.getElementById("combat-screen").style.display = "block";
@@ -84,11 +80,16 @@ window.ClientQuestDirector = {
             setTimeout(() => socket.emit('questStepComplete'), 400);
         }
         else if (ev.type === 'SPAWN_ACTOR') {
-            // Push a fake actor to our private movie set
             this.cinematicActors.push({ uid: ev.uid, id: ev.actorId, x: ev.x, y: ev.y });
             setTimeout(() => socket.emit('questStepComplete'), 100);
         }
+        else if (ev.type === 'DESPAWN_ACTOR') {
+            this.cinematicActors = this.cinematicActors.filter(a => a.uid !== ev.uid);
+            setTimeout(() => socket.emit('questStepComplete'), 100);
+        }
         else if (ev.type === 'DIALOGUE') {
+            let overlay = document.getElementById('dialogue-overlay');
+            if (overlay) overlay.style.zIndex = '100000'; 
             if (typeof playDialogueSequence === 'function') playDialogueSequence(ev.sequence); 
         }
         else if (ev.type === 'FADE') {
@@ -100,24 +101,26 @@ window.ClientQuestDirector = {
                 socket.emit('questStepComplete');
             }, ev.duration + 100);
         }
-    // --- 2. UI HIGHLIGHTING ---
         else if (ev.type === 'HIGHLIGHT_UI') {
             let targetEl = document.getElementById(ev.elementId);
+            if (!targetEl && ev.elementId.includes('inventory-slot-0')) targetEl = document.querySelector('.item-slot');
+            
             if (targetEl) {
-                targetEl.removeAttribute('disabled'); // <-- ADD THIS LINE
+                targetEl.removeAttribute('disabled'); 
                 targetEl.classList.add('director-highlight');
+                
                 targetEl.addEventListener('click', () => {
                     this.removeHighlighter();
                     setTimeout(() => socket.emit('questStepComplete'), 100);
                 }, { once: true });
             } else {
+                console.error("UI Element not found:", ev.elementId);
                 socket.emit('questStepComplete');
             }
         }
         else if (ev.type === 'HIGHLIGHT_TILE') {
             this.activeHighlightTile = { x: ev.targetX, y: ev.targetY, style: ev.style };
             
-            // Add a temporary click listener to the canvas itself
             const canvas = document.getElementById("gameCanvas");
             const tileClickHandler = (e) => {
                 const r = canvas.getBoundingClientRect();
@@ -130,7 +133,6 @@ window.ClientQuestDirector = {
                     this.activeHighlightTile = null;
                     canvas.removeEventListener('click', tileClickHandler, true);
                     
-                    // Move the 'player' actor to the clicked tile
                     let pActor = this.cinematicActors.find(a => a.id === 'player');
                     if (pActor) { pActor.x = tx; pActor.y = ty; }
                     
@@ -138,7 +140,7 @@ window.ClientQuestDirector = {
                     setTimeout(() => socket.emit('questStepComplete'), 100);
                 }
             };
-            canvas.addEventListener('click', tileClickHandler, true);
+            canvas.addEventListener('click', tileClickHandler, true); 
         }
         else if (ev.type === 'AUDIO') {
             if (ev.action === 'PLAY' && typeof cycleMusicTrack === 'function' && typeof musicTracks !== 'undefined') {
@@ -165,7 +167,8 @@ window.ClientQuestDirector = {
                     FXEngine.spawnExplosion(ev.targetX, ev.targetY, { radius: 1.5 });
                     if (typeof playRetroSound === 'function') playRetroSound('explosion');
                 } else if (ev.fxType === 'MELEE') {
-                    FXEngine.spawnMeleeStrike({x: ev.startX, y: ev.startY}, ev.targetX, ev.targetY, 'lunge_slash');
+                    let actorRef = this.cinematicActors.find(a => a.x === ev.startX && a.y === ev.startY) || {x: ev.startX, y: ev.startY};
+                    FXEngine.spawnMeleeStrike(actorRef, ev.targetX, ev.targetY, 'lunge_slash');
                     if (typeof playRetroSound === 'function') playRetroSound('attack');
                 }
             }
@@ -179,16 +182,19 @@ window.ClientQuestDirector = {
         });
     },
 
-    // --- THE GHOST RENDERER ---
     drawCinematicScene: function(ctx) {
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         let size = this.cinematicMap.tileSize;
 
-        // 1. Draw Floor
+        let groundSprite = 'ground_wilderness';
+        if (this.cinematicMap.zone === 'CELLARS') groundSprite = 'ground_cellars';
+        else if (this.cinematicMap.zone === 'GORILLA_ARENA') groundSprite = 'ground_arena';
+        else if (this.cinematicMap.zone === 'ABYSS') groundSprite = 'ground_abyss';
+
         for (let x = 0; x < this.cinematicMap.cols; x++) {
             for (let y = 0; y < this.cinematicMap.rows; y++) {
-                if (typeof SpriteMatrices !== 'undefined' && SpriteMatrices['ground_wilderness']) {
-                    drawOptimizedSprite(ctx, 'ground_wilderness', SpriteMatrices['ground_wilderness'], x * size, y * size, size);
+                if (typeof SpriteMatrices !== 'undefined' && SpriteMatrices[groundSprite]) {
+                    drawOptimizedSprite(ctx, groundSprite, SpriteMatrices[groundSprite], x * size, y * size, size);
                 } else {
                     ctx.fillStyle = "#273c24"; ctx.fillRect(x * size, y * size, size, size);
                 }
@@ -196,7 +202,6 @@ window.ClientQuestDirector = {
             }
         }
 
-        // 2. Draw Highlight Tile
         if (this.activeHighlightTile) {
             ctx.save();
             ctx.lineWidth = 4; ctx.setLineDash([5, 5]);
@@ -208,13 +213,11 @@ window.ClientQuestDirector = {
             ctx.restore();
         }
 
-        // 3. Draw Actors
         this.cinematicActors.forEach(a => {
-            let px = a.x * size;
-            let py = a.y * size;
+            let px = (a.x * size) + (a.lungeOffsetX || 0);
+            let py = (a.y * size) + (a.lungeOffsetY || 0);
             
             if (a.id === 'player') {
-                // If it's the player, we can borrow the cached player portrait logic from dialogue or just render the body
                 if (typeof SpriteMatrices !== 'undefined' && SpriteMatrices['body_male']) {
                     drawOptimizedSprite(ctx, 'body_male', SpriteMatrices['body_male'], px, py, size);
                     drawOptimizedSprite(ctx, 'hair_messy', SpriteMatrices['hair_messy'], px, py, size);
@@ -225,6 +228,8 @@ window.ClientQuestDirector = {
                 ctx.fillStyle = "#d35400"; ctx.fillRect(px, py, size, size);
             }
         });
+
+        if (typeof FXEngine !== 'undefined') FXEngine.render(ctx, size);
     }
 };
 

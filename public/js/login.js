@@ -45,11 +45,13 @@ function startNewGame() {
 function finalizeCharacter() {
     if (typeof saveGame === 'function') saveGame(true); 
     
-    // Default to the normal Town UI
+    // Default to the normal Town UI, which flips display: flex
     enterGameUI();
     
-    // Let the Quest Engine decide what happens next!
-    socket.emit('checkQuestTriggers', { triggerType: 'LOGIN' });
+    // Give the browser 100ms to paint the DOM before starting the movie
+    setTimeout(() => {
+        socket.emit('checkQuestTriggers', { triggerType: 'LOGIN' });
+    }, 100);
 }
 
 // === SOCKET LISTENERS (Catching Server Responses) ===
@@ -75,6 +77,8 @@ socket.on('loginSuccess', (serverSaveData) => {
     // Default to the normal Town UI
     enterGameUI();
 
-    // Let the Quest Engine decide what happens next!
-    socket.emit('checkQuestTriggers', { triggerType: 'LOGIN' });
+    // Give the browser 100ms to paint the DOM before starting the movie
+    setTimeout(() => {
+        socket.emit('checkQuestTriggers', { triggerType: 'LOGIN' });
+    }, 100);
 });

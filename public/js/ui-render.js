@@ -228,10 +228,16 @@ const lumberScreen = document.getElementById("minigame-lumber-screen");
 const fishingScreen = document.getElementById("minigame-fishing-screen");
 const hopsScreen = document.getElementById("minigame-hops-screen"); // NEW
 
-if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === 'MINIGAME_FISHING' || gameState === 'MINIGAME_HOPS') {
+if (gameState === 'COMBAT' || gameState === 'CINEMATIC' || gameState === 'MINIGAME_LUMBER' || gameState === 'MINIGAME_FISHING' || gameState === 'MINIGAME_HOPS') {
     if (topNavBar) topNavBar.style.display = "none"; 
     townVaultView.style.display = "none"; 
     vaultScreen.style.display = "none"; 
+	
+	// === NEW: THE CINEMATIC LOCK ===
+    // If a movie is playing, do absolutely nothing else. Let the ClientQuestDirector handle the DOM.
+    if (gameState === 'CINEMATIC') {
+        return; 
+    }
 
     if (gameState === 'MINIGAME_LUMBER') {
         if (combatScreen) combatScreen.style.display = "none";
@@ -889,13 +895,7 @@ if (hopsScreen) hopsScreen.style.display = "none";
             }
 
 
-            if (player.tutorialCompleted === false) {
-                player.tutorialCompleted = 'active'; 
-                setTimeout(() => {
-                    // Start the movie projector!
-                    socket.emit('startCinematic', 'tutorial_combat_intro');
-                }, 500);
-            }
+     
         } 
     } catch(e) { console.error(e); }
 }
