@@ -3,6 +3,7 @@ window.ClientQuestDirector = {
     isActive: false,
     shield: null,
     cinematicActors: [],
+	obstacles: [],
     cinematicMap: { cols: 16, rows: 10, tileSize: 54, zone: 'WILDERNESS' },
     activeHighlightTile: null,
 
@@ -231,14 +232,16 @@ processEvent: function(ev) {
             }
         }
 
-        // 2. Draw Static Map Obstacles (The Boss Arena)
-        this.cinematicMap.obstacles.forEach(obs => {
-            let px = obs.x * size;
-            let py = obs.y * size;
-            if (typeof SpriteMatrices !== 'undefined' && SpriteMatrices[obs.spriteId]) {
-                drawOptimizedSprite(ctx, obs.spriteId, SpriteMatrices[obs.spriteId], px, py, size);
-            }
-        });
+        // 2. Draw Static Map Obstacles (The Boss Arena) - NOW CRASH PROOF
+        if (this.cinematicMap.obstacles) {
+            this.cinematicMap.obstacles.forEach(obs => {
+                let px = obs.x * size;
+                let py = obs.y * size;
+                if (typeof SpriteMatrices !== 'undefined' && SpriteMatrices[obs.spriteId]) {
+                    drawOptimizedSprite(ctx, obs.spriteId, SpriteMatrices[obs.spriteId], px, py, size);
+                }
+            });
+        }
 
         // 3. Draw Highlight Tile Guide
         if (this.activeHighlightTile) {
