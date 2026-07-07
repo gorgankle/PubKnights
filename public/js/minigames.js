@@ -1,5 +1,51 @@
 // === REPLACED ===
 // --- minigames.js ---
+const activeMinigameSessions = { lumber: null, fishing: null, hops: null };
+const pendingMinigameEvents = { lumber: [], fishing: [], hops: [] };
+
+function requestMinigameSession(gameType) {
+    activeMinigameSessions[gameType] = null;
+    pendingMinigameEvents[gameType] = [];
+    socket.emit('townAction', { action: 'startMinigame', gameType });
+}
+
+function recordMinigameEvent(gameType, event, payload = {}) {
+    const sessionId = activeMinigameSessions[gameType];
+    if (!sessionId) {
+        if (pendingMinigameEvents[gameType]) pendingMinigameEvents[gameType].push({ event, payload });
+        return;
+    }
+
+    socket.emit('townAction', {
+        action: 'recordMinigameEvent',
+        gameType,
+        sessionId,
+        event,
+        ...payload
+    });
+}
+
+function claimMinigameSession(gameType, claimAction, payload = {}) {
+    const sessionId = activeMinigameSessions[gameType];
+    activeMinigameSessions[gameType] = null;
+    pendingMinigameEvents[gameType] = [];
+
+    socket.emit('townAction', {
+        action: claimAction,
+        sessionId,
+        ...payload
+    });
+}
+
+socket.on('minigameSessionStarted', (data) => {
+    if (!data || !data.gameType || !data.sessionId) return;
+    activeMinigameSessions[data.gameType] = data.sessionId;
+
+    const queuedEvents = pendingMinigameEvents[data.gameType] || [];
+    pendingMinigameEvents[data.gameType] = [];
+    queuedEvents.forEach(entry => recordMinigameEvent(data.gameType, entry.event, entry.payload));
+});
+
 let lumberGameActive = false;
 let lumberTimer = 90;
 let lumberInterval = null;
@@ -27,6 +73,7 @@ function setRandomTarget() {
 }
 
 function startLumberMinigame() {
+    requestMinigameSession('lumber');
     lCanvas = document.getElementById("lumber-canvas");
     lCtx = lCanvas.getContext("2d");
     
@@ -139,12 +186,14 @@ function executeChop() {
         let pointsEarned = 10 * lumberCombo;
         lumberPoints += pointsEarned;
         lumberScore++; // THE FIX: Log the actual wood piece
+        recordMinigameEvent('lumber', 'hit');
         lumberCombo++;
         currentSpeed = baseSpeed * Math.pow(1.05, lumberCombo - 1);
         feedbackEl.innerHTML = `<span style="color:#2ecc71;">PERFECT CHOP! +${pointsEarned} Pts</span>`;
     } else {
 // ============================================
         if (typeof playRetroSound === 'function') playRetroSound('error');
+        recordMinigameEvent('lumber', 'miss');
         lumberCombo = 1;
         currentSpeed = baseSpeed; 
         feedbackEl.innerHTML = `<span style="color:#e74c3c;">MISSED! Combo Reset.</span>`;
@@ -180,7 +229,7 @@ function endLumberMinigame() {
     if (typeof playRetroSound === 'function') playRetroSound('victory');
     
     // THE FIX: Sent woodChopped to the server so it doesn't get rejected!
-    socket.emit('townAction', { action: 'claimLumberMinigame', points: lumberPoints, woodChopped: lumberScore });
+    claimMinigameSession('lumber', 'claimLumberMinigame', { points: lumberPoints, woodChopped: lumberScore });
 
     setTimeout(() => {
         document.getElementById("lumber-start-btn").style.display = "block";
@@ -191,7 +240,7 @@ function endLumberMinigame() {
 function leaveMinigame() {
     // THE FIX: Remove the confirm dialogue and silently bank whatever they earned!
     if (lumberGameActive && (lumberPoints > 0 || lumberScore > 0)) {
-        socket.emit('townAction', { action: 'claimLumberMinigame', points: lumberPoints, woodChopped: lumberScore });
+        claimMinigameSession('lumber', 'claimLumberMinigame', { points: lumberPoints, woodChopped: lumberScore });
         if (typeof playRetroSound === 'function') playRetroSound('victory');
     }
     
@@ -341,6 +390,7 @@ class PoolFish {
 }
 
 function startFishingMinigame() {
+    requestMinigameSession('fishing');
     fCanvas = document.getElementById("fishing-pool-canvas");
     fCtx = fCanvas.getContext("2d");
     
@@ -504,6 +554,7 @@ function fishingLoop() {
             if (f.captureProgress >= 100) {
                 fishingScore++;
                 fishingPoints += f.pts;
+                recordMinigameEvent('fishing', 'catch', { points: f.pts });
                 updateFishingUI();
                 if (typeof playRetroSound === 'function') playRetroSound('coin');
                 activeHookedFish = null;
@@ -547,7 +598,7 @@ function endFishingSession() {
         // THE FIX: Removed the raw fish text!
         fb.innerHTML = `<span style="color:#2ecc71;">Session Ended! Secured ${fishingPoints} Pts!</span>`;
         if (typeof playRetroSound === 'function') playRetroSound('victory');
-        socket.emit('townAction', { action: 'claimFishingMinigame', points: fishingPoints, fishCaught: fishingScore });
+        claimMinigameSession('fishing', 'claimFishingMinigame', { points: fishingPoints, fishCaught: fishingScore });
     } else {
         fb.innerHTML = `<span style="color:#e74c3c;">Session Ended. Nothing was biting...</span>`;
         if (typeof playRetroSound === 'function') playRetroSound('error');
@@ -559,7 +610,7 @@ function endFishingSession() {
 function leaveFishingMinigame() {
     // THE FIX: Remove the confirm dialogue and silently bank whatever they earned!
     if (fishingGameActive && (fishingPoints > 0 || fishingScore > 0)) {
-        socket.emit('townAction', { action: 'claimFishingMinigame', points: fishingPoints, fishCaught: fishingScore });
+        claimMinigameSession('fishing', 'claimFishingMinigame', { points: fishingPoints, fishCaught: fishingScore });
         if (typeof playRetroSound === 'function') playRetroSound('victory');
     }
     
@@ -606,6 +657,7 @@ function initHopsGrid() {
 }
 
 function startHopsMinigame() {
+    requestMinigameSession('hops');
     hCanvas = document.getElementById("hops-farm-canvas");
     hCtx = hCanvas.getContext("2d");
     
@@ -722,12 +774,14 @@ function handleHopsClick(e) {
                 // Hit!
                 hopsScore += 1; 
                 hopsPoints += 15;
+                recordMinigameEvent('hops', 'harvest');
                 cell.state = 0; 
                 if (typeof playRetroSound === 'function') playRetroSound('coin');
             }
             else if (cell.state === 1 || cell.state === 3) { 
                 // Miss/Bad click!
                 hopsPoints = Math.max(0, hopsPoints - 5); 
+                recordMinigameEvent('hops', 'badPick');
                 cell.state = 0; 
                 if (typeof playRetroSound === 'function') playRetroSound('error');
             }
@@ -760,7 +814,7 @@ function endHopsSession() {
         // THE FIX: Removed the raw hops text!
         fb.innerHTML = `<span style="color:#2ecc71;">Harvest Ended! Secured ${hopsPoints} Pts!</span>`;
         if (typeof playRetroSound === 'function') playRetroSound('victory');
-        socket.emit('townAction', { action: 'claimHopsMinigame', points: hopsPoints, hopsHarvested: hopsScore });
+        claimMinigameSession('hops', 'claimHopsMinigame', { points: hopsPoints, hopsHarvested: hopsScore });
     } else {
         fb.innerHTML = `<span style="color:#e74c3c;">Harvest Ended. The crops withered...</span>`;
         if (typeof playRetroSound === 'function') playRetroSound('error');
@@ -772,7 +826,7 @@ function endHopsSession() {
 function leaveHopsMinigame() {
     // THE FIX: Remove the confirm dialogue and silently bank whatever they earned!
     if (hopsGameActive && (hopsPoints > 0 || hopsScore > 0)) {
-        socket.emit('townAction', { action: 'claimHopsMinigame', points: hopsPoints, hopsHarvested: hopsScore });
+        claimMinigameSession('hops', 'claimHopsMinigame', { points: hopsPoints, hopsHarvested: hopsScore });
         if (typeof playRetroSound === 'function') playRetroSound('victory');
     }
     

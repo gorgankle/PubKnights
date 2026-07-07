@@ -53,9 +53,9 @@ socket.on('loginError', (message) => {
     alert(message); // Pop up the error from the server
 });
 
-socket.on('registerSuccess', () => {
+socket.on('registerSuccess', (payload) => {
     // Save the username they just registered with
-    currentUsername = document.getElementById("char-name-input").value.trim();
+    currentUsername = (payload && payload.username) || document.getElementById("char-name-input").value.trim();
     
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('char-creation-screen').style.display = 'block';
@@ -65,7 +65,7 @@ socket.on('registerSuccess', () => {
 
 // === SOCKET LISTENERS (Catching Server Responses) ===
 socket.on('loginSuccess', (serverSaveData) => {
-    currentUsername = document.getElementById("char-name-input").value.trim();
+    currentUsername = serverSaveData.username || document.getElementById("char-name-input").value.trim();
     Object.assign(player, serverSaveData);
     enterGameUI();
 });

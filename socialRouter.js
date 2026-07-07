@@ -56,7 +56,7 @@ module.exports = function(socket, io, activePlayers) {
             const allowedActions = ['addFriend', 'removeFriend', 'addIgnore', 'removeIgnore'];
             if (!data || !allowedActions.includes(data.action)) return;
 
-            let targetInput = normalizeUsername(data.target);
+            let targetInput = normalizeUsername(data && data.target);
             if (!targetInput) {
                 return socket.emit('zoneNotification', { message: 'Invalid Knight name.' });
             }
@@ -264,7 +264,8 @@ module.exports = function(socket, io, activePlayers) {
         if (!p || !p.currentZone) return;
 
         // Securely sanitize and cap the message length
-        let safeMsg = data.message.substring(0, 100);
+        let safeMsg = sanitizeChatMessage(data && data.message, 100);
+        if (!safeMsg) return;
         
         // Broadcast strictly to the player's current room
         io.to(p.currentZone).emit('socialMessage', { sender: p.username, message: safeMsg });
@@ -277,8 +278,8 @@ module.exports = function(socket, io, activePlayers) {
 
         // The canvas is 600x400. With 24x24 sprites, the grid is roughly 25x16.
         // Securely clamp the movement so players can't walk off the screen!
-        let tx = Math.max(0, Math.min(24, data.tx));
-        let ty = Math.max(0, Math.min(15, data.ty));
+        let tx = clampInt(data && data.tx, 0, 24, p.socialX || 12);
+        let ty = clampInt(data && data.ty, 0, 15, p.socialY || 12);
 
         p.socialX = tx;
         p.socialY = ty;
@@ -319,32 +320,39 @@ module.exports = function(socket, io, activePlayers) {
     // 1. The Handshake Request
     socket.on('requestTrade', (data) => {
         let p = activePlayers[socket.id];
-        let target = activePlayers[data.targetId];
-        if (!p || !target || target.activeTradePartner) return;
+        let targetId = data && typeof data.targetId === 'string' ? data.targetId : null;
+        let target = targetId ? activePlayers[targetId] : null;
+        if (!p || !p.username || !target || targetId === socket.id || p.activeTradePartner || target.activeTradePartner) return;
+        if (!p.currentZone || p.currentZone !== target.currentZone) return;
 
-        io.to(data.targetId).emit('incomingTradeRequest', { requesterId: socket.id, requesterName: p.username });
+        io.to(targetId).emit('incomingTradeRequest', { requesterId: socket.id, requesterName: p.username });
     });
 
     // 2. Accept & Create Escrow
     socket.on('acceptTrade', (data) => {
         let p = activePlayers[socket.id];
-        let requester = activePlayers[data.requesterId];
+        let requesterId = data && typeof data.requesterId === 'string' ? data.requesterId : null;
+        let requester = requesterId ? activePlayers[requesterId] : null;
         if (!p || !requester || p.activeTradePartner || requester.activeTradePartner) return;
+        if (!p.currentZone || p.currentZone !== requester.currentZone) return;
 
         // Lock them into a session
-        p.activeTradePartner = data.requesterId;
+        p.activeTradePartner = requesterId;
         requester.activeTradePartner = socket.id;
         
         // Initialize secure staging arrays and states
         p.tradeStaging = []; p.tradeResources = { gold: 0, wood: 0, fish: 0, hops: 0 }; p.tradeLocked = false; p.tradeConfirmed = false;
         requester.tradeStaging = []; requester.tradeResources = { gold: 0, wood: 0, fish: 0, hops: 0 }; requester.tradeLocked = false; requester.tradeConfirmed = false;
 
-        io.to(socket.id).emit('tradeStarted', { partnerId: data.requesterId, partnerName: requester.username, myInventory: p.inventory });
-        io.to(data.requesterId).emit('tradeStarted', { partnerId: socket.id, partnerName: p.username, myInventory: requester.inventory });
+        io.to(socket.id).emit('tradeStarted', { partnerId: requesterId, partnerName: requester.username, myInventory: p.inventory });
+        io.to(requesterId).emit('tradeStarted', { partnerId: socket.id, partnerName: p.username, myInventory: requester.inventory });
     });
 
     socket.on('declineTrade', (data) => {
-        io.to(data.requesterId).emit('zoneNotification', { message: `❌ Your trade request was declined.` });
+        let requesterId = data && typeof data.requesterId === 'string' ? data.requesterId : null;
+        if (requesterId && activePlayers[requesterId]) {
+            io.to(requesterId).emit('zoneNotification', { message: `❌ Your trade request was declined.` });
+        }
     });
 
 // 3a. Modifying Escrow (ITEMS)
@@ -352,17 +360,22 @@ module.exports = function(socket, io, activePlayers) {
         let p = activePlayers[socket.id];
         if (!p || !p.activeTradePartner) return;
         let partner = activePlayers[p.activeTradePartner];
+        if (!partner || !Array.isArray(p.inventory) || !Array.isArray(p.tradeStaging)) return;
 
         // SHATTER THE LOCKS!
         p.tradeLocked = false; p.tradeConfirmed = false;
         partner.tradeLocked = false; partner.tradeConfirmed = false;
 
-        if (data.action === 'offer' && p.inventory[data.index]) {
-            let item = p.inventory.splice(data.index, 1)[0];
+        if (data && data.action === 'offer') {
+            let index = getArrayIndex(data.index, p.inventory);
+            if (index < 0) return;
+            let item = p.inventory.splice(index, 1)[0];
             p.tradeStaging.push(item);
         } 
-        else if (data.action === 'revoke' && p.tradeStaging[data.index]) {
-            let item = p.tradeStaging.splice(data.index, 1)[0];
+        else if (data && data.action === 'revoke') {
+            let index = getArrayIndex(data.index, p.tradeStaging);
+            if (index < 0) return;
+            let item = p.tradeStaging.splice(index, 1)[0];
             p.inventory.push(item);
         }
 
@@ -383,6 +396,7 @@ module.exports = function(socket, io, activePlayers) {
         let p = activePlayers[socket.id];
         if (!p || !p.activeTradePartner) return;
         let partner = activePlayers[p.activeTradePartner];
+        if (!partner || !p.tradeResources || !partner.tradeResources) return;
 
         // SHATTER LOCKS!
         p.tradeLocked = false; p.tradeConfirmed = false;
@@ -395,10 +409,10 @@ module.exports = function(socket, io, activePlayers) {
         p.hops = (p.hops || 0) + p.tradeResources.hops; p.tradeResources.hops = 0;
 
         // Secure Deduction: Check limits and pull the new requested amounts
-        let reqG = Math.max(0, Math.min(p.gold, parseInt(data.gold) || 0));
-        let reqW = Math.max(0, Math.min(p.wood, parseInt(data.wood) || 0));
-        let reqF = Math.max(0, Math.min(p.fish, parseInt(data.fish) || 0));
-        let reqH = Math.max(0, Math.min(p.hops, parseInt(data.hops) || 0));
+        let reqG = clampInt(data && data.gold, 0, p.gold || 0, 0);
+        let reqW = clampInt(data && data.wood, 0, p.wood || 0, 0);
+        let reqF = clampInt(data && data.fish, 0, p.fish || 0, 0);
+        let reqH = clampInt(data && data.hops, 0, p.hops || 0, 0);
 
         p.gold -= reqG; p.tradeResources.gold = reqG;
         p.wood -= reqW; p.tradeResources.wood = reqW;
@@ -423,6 +437,7 @@ module.exports = function(socket, io, activePlayers) {
         let p = activePlayers[socket.id];
         if (!p || !p.activeTradePartner) return;
         let partner = activePlayers[p.activeTradePartner];
+        if (!partner || !p.tradeResources || !partner.tradeResources) return;
 
         p.tradeLocked = !p.tradeLocked; // Toggle lock
         p.tradeConfirmed = false; // Always reset confirm if lock is toggled
@@ -448,6 +463,7 @@ module.exports = function(socket, io, activePlayers) {
         let partnerSocketId = p.activeTradePartner;
         let partner = activePlayers[partnerSocketId];
         if (!partner) return;
+        if (!p.tradeResources || !partner.tradeResources || !Array.isArray(p.tradeStaging) || !Array.isArray(partner.tradeStaging)) return;
 
         // Security check: Both MUST be locked to confirm!
         if (!p.tradeLocked || !partner.tradeLocked) return;

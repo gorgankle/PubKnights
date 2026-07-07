@@ -2,8 +2,15 @@
 // Handles all non-combat economy, inventory, and tavern management logic.
 
 // 1. Import the specific dictionaries this router needs
+const crypto = require('crypto');
 const { ItemDatabase } = require('./public/js/items.js');
 const { LootTables } = require('./public/js/lootTables.js');
+const {
+    sanitizePetCosmetics,
+    sanitizeToken,
+    clampInt,
+    getArrayIndex
+} = require('./serverSecurity.js');
 
 // 2. Bring over the secure unboxing math from server.js
 function rollSecureCrateLoot(crateId) {
@@ -22,6 +29,134 @@ function rollSecureCrateLoot(crateId) {
     return chosenEntry;
 }
 
+function ensurePlayerContainers(player) {
+    player.inventory = Array.isArray(player.inventory) ? player.inventory : [];
+    player.stash = Array.isArray(player.stash) ? player.stash : [];
+    player.equipment = player.equipment && typeof player.equipment === 'object' ? player.equipment : {};
+    player.buildings = player.buildings && typeof player.buildings === 'object' ? player.buildings : { workerCabin: 1 };
+    player.workers = player.workers && typeof player.workers === 'object'
+        ? player.workers
+        : { total: 0, assigned: { wood: 0, fish: 0, hops: 0 } };
+    player.workers.assigned = player.workers.assigned || { wood: 0, fish: 0, hops: 0 };
+    player.supplyCart = player.supplyCart && typeof player.supplyCart === 'object'
+        ? player.supplyCart
+        : { wood: 0, fish: 0, hops: 0, max: 100, level: 1 };
+}
+
+function reorderCollection(collection, fromValue, toValue) {
+    const fromIndex = getArrayIndex(fromValue, collection);
+    if (fromIndex < 0) return false;
+
+    const [movedItem] = collection.splice(fromIndex, 1);
+    const toIndex = clampInt(toValue, 0, Math.max(collection.length, 0), fromIndex);
+    collection.splice(toIndex, 0, movedItem);
+    return true;
+}
+
+const MINIGAME_CONFIG = Object.freeze({
+    lumber: { pointsKey: 'lumberPoints', durationMs: 90000, graceMs: 12000, maxScore: 50000, minEventMs: 300 },
+    fishing: { pointsKey: 'fishingPoints', durationMs: 90000, graceMs: 12000, maxScore: 25000, minEventMs: 700 },
+    hops: { pointsKey: 'hopsPoints', durationMs: 90000, graceMs: 12000, maxScore: 15000, minEventMs: 60 }
+});
+
+function createMinigameSession(player, type) {
+    const config = MINIGAME_CONFIG[type];
+    if (!config) return null;
+
+    const now = Date.now();
+    const session = {
+        id: crypto.randomBytes(16).toString('hex'),
+        type,
+        startedAt: now,
+        expiresAt: now + config.durationMs + config.graceMs,
+        score: 0,
+        combo: 1,
+        eventCount: 0,
+        lastEventAt: 0
+    };
+
+    player.activeMinigame = session;
+    return session;
+}
+
+function validateMinigameSession(player, type, sessionId) {
+    const session = player.activeMinigame;
+    if (!session || session.id !== sessionId || session.type !== type) {
+        return { success: false, message: 'Minigame session expired. Please start a new run.' };
+    }
+
+    if (Date.now() > session.expiresAt) {
+        player.activeMinigame = null;
+        return { success: false, message: 'Minigame session expired. Please start a new run.' };
+    }
+
+    return { success: true, session };
+}
+
+function recordMinigameEvent(player, data) {
+    const type = sanitizeToken(data.gameType, '');
+    const sessionId = sanitizeToken(data.sessionId, '');
+    const event = sanitizeToken(data.event, '');
+    const config = MINIGAME_CONFIG[type];
+    if (!config) return { success: false, message: 'Invalid minigame.' };
+
+    const valid = validateMinigameSession(player, type, sessionId);
+    if (!valid.success) return valid;
+
+    const session = valid.session;
+    const now = Date.now();
+    if (session.lastEventAt && now - session.lastEventAt < config.minEventMs) {
+        return { success: false, message: 'Minigame action was too fast.' };
+    }
+
+    if (type === 'lumber') {
+        if (event === 'hit') {
+            session.score += 10 * session.combo;
+            session.combo += 1;
+        } else if (event === 'miss') {
+            session.combo = 1;
+        } else {
+            return { success: false, message: 'Invalid minigame action.' };
+        }
+    } else if (type === 'fishing') {
+        if (event !== 'catch') return { success: false, message: 'Invalid minigame action.' };
+        const catchPoints = clampInt(data.points, 10, 35, 10);
+        session.score += catchPoints;
+    } else if (type === 'hops') {
+        if (event === 'harvest') {
+            session.score += 15;
+        } else if (event === 'badPick') {
+            session.score = Math.max(0, session.score - 5);
+        } else {
+            return { success: false, message: 'Invalid minigame action.' };
+        }
+    }
+
+    session.eventCount += 1;
+    session.lastEventAt = now;
+    session.score = Math.min(config.maxScore, Math.max(0, session.score));
+    return { success: true, score: session.score, eventCount: session.eventCount };
+}
+
+function claimMinigameSession(player, type, sessionId) {
+    const config = MINIGAME_CONFIG[type];
+    if (!config) return { success: false, points: 0, message: 'Invalid minigame.' };
+
+    const valid = validateMinigameSession(player, type, sessionId);
+    if (!valid.success) return { ...valid, points: 0 };
+
+    const session = valid.session;
+    const points = clampInt(session.score, 0, config.maxScore, 0);
+    player.activeMinigame = null;
+
+    if (points <= 0) {
+        return { success: false, points: 0, message: 'No minigame points to claim.' };
+    }
+
+    player[config.pointsKey] = (player[config.pointsKey] || 0) + points;
+    return { success: true, points };
+}
+
 // 3. Export the setup function that server.js will call
 // We "inject" the live socket and the master activePlayers memory object here.
 module.exports = function(socket, io, activePlayers, activeCombats) {
@@ -30,9 +165,12 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
     socket.on('inventoryAction', (data) => {
         let p = activePlayers[socket.id];
         if (!p) return;
+        if (!data || typeof data !== 'object') return;
+        ensurePlayerContainers(p);
 
 if (data.action === 'equip') {
-            let idx = data.index;
+            let idx = getArrayIndex(data.index, p.inventory);
+            if (idx < 0) return;
             let toEquip = p.inventory[idx];
             if (!toEquip) return;
             
@@ -54,6 +192,8 @@ if (data.action === 'equip') {
         }
         else if (data.action === 'unequip') {
             let slotKey = data.slotKey;
+            const validSlots = ["weapon", "helmet", "armor", "gloves", "boots"];
+            if (!validSlots.includes(slotKey)) return;
             let worn = p.equipment[slotKey];
             if (!worn) return;
             
@@ -67,7 +207,8 @@ if (data.action === 'equip') {
             }
         }
         else if (data.action === 'sell') {
-            let idx = data.index;
+            let idx = getArrayIndex(data.index, p.inventory);
+            if (idx < 0) return;
             let item = p.inventory[idx];
             if (!item) return;
             
@@ -78,7 +219,8 @@ if (data.action === 'equip') {
             socket.emit('inventoryReceipt', { success: true, action: 'sell', updatedPlayer: p, message: `💰 Sold item for ${val}g.` });
         }
         else if (data.action === 'deposit') {
-            let idx = data.index;
+            let idx = getArrayIndex(data.index, p.inventory);
+            if (idx < 0) return;
             if (!p.inventory[idx]) return;
             
             if (p.stash.length < (p.vaultSlots || 10)) {
@@ -89,7 +231,8 @@ if (data.action === 'equip') {
             }
         }
         else if (data.action === 'withdraw') {
-            let idx = data.index;
+            let idx = getArrayIndex(data.index, p.stash);
+            if (idx < 0) return;
             if (!p.stash[idx]) return;
             
             p.maxInventorySlots = p.maxInventorySlots || 5;
@@ -101,14 +244,14 @@ if (data.action === 'equip') {
             }
         }
         else if (data.action === 'reorderBackpack') {
-            const [movedItem] = p.inventory.splice(data.fromIndex, 1);
-            p.inventory.splice(data.toIndex, 0, movedItem);
-            socket.emit('inventoryReceipt', { success: true, action: 'reorder', updatedPlayer: p });
+            if (reorderCollection(p.inventory, data.fromIndex, data.toIndex)) {
+                socket.emit('inventoryReceipt', { success: true, action: 'reorder', updatedPlayer: p });
+            }
         }
         else if (data.action === 'reorderVault') {
-            const [movedItem] = p.stash.splice(data.fromIndex, 1);
-            p.stash.splice(data.toIndex, 0, movedItem);
-            socket.emit('inventoryReceipt', { success: true, action: 'reorder', updatedPlayer: p });
+            if (reorderCollection(p.stash, data.fromIndex, data.toIndex)) {
+                socket.emit('inventoryReceipt', { success: true, action: 'reorder', updatedPlayer: p });
+            }
         }
     });
 
@@ -116,6 +259,32 @@ if (data.action === 'equip') {
     socket.on('townAction', (data) => {
         let p = activePlayers[socket.id];
         if (!p) return;
+        if (!data || typeof data !== 'object') return;
+        ensurePlayerContainers(p);
+
+        if (data.action === 'startMinigame') {
+            const gameType = sanitizeToken(data.gameType, '');
+            const session = createMinigameSession(p, gameType);
+            if (!session) return socket.emit('townReceipt', { success: false, message: 'Invalid minigame.' });
+
+            return socket.emit('minigameSessionStarted', {
+                gameType,
+                sessionId: session.id,
+                durationMs: MINIGAME_CONFIG[gameType].durationMs
+            });
+        }
+
+        if (data.action === 'recordMinigameEvent') {
+            const result = recordMinigameEvent(p, data);
+            if (result.success) {
+                socket.emit('minigameSessionScore', {
+                    gameType: sanitizeToken(data.gameType, ''),
+                    score: result.score,
+                    eventCount: result.eventCount
+                });
+            }
+            return;
+        }
 
         // 1. GILDED TAVERN
         if (data.action === 'purchaseGildedTavern') {
@@ -144,13 +313,14 @@ if (data.action === 'equip') {
             
             if (p.gold >= 10) {
                 p.gold -= 10;
+                const petCosmetics = sanitizePetCosmetics(data, p.pet);
                 p.pet = {
                     adopted: true,
                     level: 1,
-                    name: data.name || "Companion",
-                    type: data.type || "dog",
-                    furColor: data.furColor || "brown",
-                    collarColor: data.collarColor || "red"
+                    name: petCosmetics.name,
+                    type: petCosmetics.type,
+                    furColor: petCosmetics.furColor,
+                    collarColor: petCosmetics.collarColor
                 };
                 socket.emit('townReceipt', { success: true, action: 'adoptPet', updatedPlayer: p, message: `🐕 You have officially adopted ${p.pet.name}!` });
             } else {
@@ -204,7 +374,10 @@ if (data.action === 'equip') {
             } else socket.emit('townReceipt', { success: false, message: `❌ Requires ${cost}W, ${cost}g.` });
         }
         else if (data.action === 'assignWorker') {
-            let reqW = data.wood || 0; let reqF = data.fish || 0; let reqH = data.hops || 0;
+            let totalWorkers = p.workers.total || 0;
+            let reqW = clampInt(data.wood, 0, totalWorkers, 0);
+            let reqF = clampInt(data.fish, 0, totalWorkers, 0);
+            let reqH = clampInt(data.hops, 0, totalWorkers, 0);
             if ((reqW + reqF + reqH) > (p.workers.total || 0)) return socket.emit('townReceipt', { success: false, message: "❌ Cannot exceed total hired workers." });
             
             p.workers.assigned = { wood: reqW, fish: reqF, hops: reqH };
@@ -281,6 +454,11 @@ if (data.action === 'equip') {
         // 12. ALLOCATE STAT
         else if (data.action === 'allocateStat') {
             if (p.skillPoints > 0) {
+                const validStats = ['vitality', 'maxStamina', 'offense', 'defense', 'speed'];
+                if (!validStats.includes(data.statKey)) {
+                    return socket.emit('townReceipt', { success: false, message: "Invalid stat selection." });
+                }
+
                 p.skillPoints--;
                 switch(data.statKey) {
                     case 'vitality': p.vitality += 1; p.hp += 25; break; // +1 Level, +25 resource
@@ -295,7 +473,7 @@ if (data.action === 'equip') {
 // ===================
 // 13. CRAFT BOMB
         else if (data.action === 'craftBomb') {
-            let tier = data.tier;
+            let tier = clampInt(data.tier, 1, 2, 1);
             let costW = tier === 1 ? 10 : 25;   
             let costH = tier === 1 ? 100 : 250; 
             
@@ -317,40 +495,44 @@ if (data.action === 'equip') {
         else if (data.action === 'craftBrew') {
             p.maxInventorySlots = p.maxInventorySlots || 5;
             if (p.inventory.length >= p.maxInventorySlots) return socket.emit('townReceipt', { success: false, message: "🎒 Backpack is full." });
+            const brewType = sanitizeToken(data.brewType, '');
+            if (!['STOUT', 'IPA', 'LAGER', 'RESERVE'].includes(brewType)) return;
             
-            if (data.brewType === 'STOUT') {
+            if (brewType === 'STOUT') {
                 if (p.hops >= 1 && p.gold >= 10) { p.hops -= 1; p.gold -= 10; p.inventory.push(JSON.parse(JSON.stringify(ItemDatabase["stout"]))); socket.emit('townReceipt', { success: true, action: 'craftBrew', updatedPlayer: p, message: "🍺 Crafted a Combat Stout!" }); }
                 else socket.emit('townReceipt', { success: false, message: "❌ Lacking resources for Stout." });
             }
-            else if (data.brewType === 'IPA') {
+            else if (brewType === 'IPA') {
                 if (p.hops >= 1 && p.wood >= 5) { p.hops -= 1; p.wood -= 5; p.inventory.push(JSON.parse(JSON.stringify(ItemDatabase["ipa"]))); socket.emit('townReceipt', { success: true, action: 'craftBrew', updatedPlayer: p, message: "🍺 Crafted a Furious IPA!" }); }
                 else socket.emit('townReceipt', { success: false, message: "❌ Lacking resources for IPA." });
             }
-            else if (data.brewType === 'LAGER') {
+            else if (brewType === 'LAGER') {
                 if (p.hops >= 2 && p.fish >= 5) { p.hops -= 2; p.fish -= 5; p.inventory.push(JSON.parse(JSON.stringify(ItemDatabase["lager"]))); socket.emit('townReceipt', { success: true, action: 'craftBrew', updatedPlayer: p, message: "🍺 Crafted a Swift Lager!" }); }
                 else socket.emit('townReceipt', { success: false, message: "❌ Lacking resources for Lager." });
             }
-            else if (data.brewType === 'RESERVE') {
+            else if (brewType === 'RESERVE') {
                 if (p.hops >= 200 && p.gold >= 50) { p.hops -= 200; p.gold -= 50; p.inventory.push(JSON.parse(JSON.stringify(ItemDatabase["reserve"]))); socket.emit('townReceipt', { success: true, action: 'craftBrew', updatedPlayer: p, message: "🍷 Crafted Grandmaster Reserve!" }); }
                 else socket.emit('townReceipt', { success: false, message: "❌ Lacking resources for Reserve." });
             }
         }
         // 15. DRINK BREW IN TOWN
         else if (data.action === 'drinkBrew') {
-            let item = p.inventory[data.idx];
+            let brewIndex = getArrayIndex(data.idx, p.inventory);
+            if (brewIndex < 0) return;
+            let item = p.inventory[brewIndex];
             if (!item || item.type !== 'brew') return;
             if (item.id === 'stout') {
                 if (p.hp >= p.vitality) return socket.emit('townReceipt', { success: false, message: "❌ Vitality already at max." });
                 p.hp = Math.min(p.vitality, p.hp + Math.floor(p.vitality * 0.1));
-                p.inventory.splice(data.idx, 1);
+                p.inventory.splice(brewIndex, 1);
                 socket.emit('townReceipt', { success: true, action: 'drinkBrew', updatedPlayer: p, message: "🍺 Chugged a Stout! Restored 10% HP." });
             }
             else if (item.id === 'ipa') {
-                p.activeCombatBuff = 'IPA'; p.inventory.splice(data.idx, 1);
+                p.activeCombatBuff = 'IPA'; p.inventory.splice(brewIndex, 1);
                 socket.emit('townReceipt', { success: true, action: 'drinkBrew', updatedPlayer: p, message: "🍺 Drank Furious IPA! Damage boosted for next run." });
             }
             else if (item.id === 'lager') {
-                p.activeCombatBuff = 'LAGER'; p.inventory.splice(data.idx, 1);
+                p.activeCombatBuff = 'LAGER'; p.inventory.splice(brewIndex, 1);
                 socket.emit('townReceipt', { success: true, action: 'drinkBrew', updatedPlayer: p, message: "🍺 Drank Swift Lager! Movement boosted for next run." });
             }
         }
@@ -418,29 +600,28 @@ if (data.action === 'equip') {
 // === REPLACED ===
         // 19. MINIGAME PAYOUT SECURE HANDLER
         else if (data.action === 'claimLumberMinigame') {
-            if (data.points >= 0) { 
-                p.lumberPoints = (p.lumberPoints || 0) + data.points; 
-                socket.emit('townReceipt', { success: true, action: 'minigameWin', updatedPlayer: p, message: `🌲 Timber Camp Complete! Secured ${data.points} Quartermaster Pts.` });
-            }
+            const result = claimMinigameSession(p, 'lumber', sanitizeToken(data.sessionId, ''));
+            if (!result.success) return socket.emit('townReceipt', { success: false, message: result.message });
+            return socket.emit('townReceipt', { success: true, action: 'minigameWin', updatedPlayer: p, message: `Timber Camp Complete! Secured ${result.points} Quartermaster Pts.` });
         }
         // 20. FISHING POND SECURE HANDLER
         else if (data.action === 'claimFishingMinigame') {
-            if (data.points >= 0) { 
-                p.fishingPoints = (p.fishingPoints || 0) + data.points; 
-                socket.emit('townReceipt', { success: true, action: 'minigameWin', updatedPlayer: p, message: `🐟 Fishing Complete! Secured ${data.points} Quartermaster Pts.` });
-            }
+            const result = claimMinigameSession(p, 'fishing', sanitizeToken(data.sessionId, ''));
+            if (!result.success) return socket.emit('townReceipt', { success: false, message: result.message });
+            return socket.emit('townReceipt', { success: true, action: 'minigameWin', updatedPlayer: p, message: `Fishing Complete! Secured ${result.points} Quartermaster Pts.` });
         }
         // 21. HOPS HARVESTING SECURE HANDLER
         else if (data.action === 'claimHopsMinigame') {
-            if (data.points >= 0) { 
-                p.hopsPoints = (p.hopsPoints || 0) + data.points; 
-                socket.emit('townReceipt', { success: true, action: 'minigameWin', updatedPlayer: p, message: `🌾 Harvest Complete! Secured ${data.points} Quartermaster Pts.` });
-            }
+            const result = claimMinigameSession(p, 'hops', sanitizeToken(data.sessionId, ''));
+            if (!result.success) return socket.emit('townReceipt', { success: false, message: result.message });
+            return socket.emit('townReceipt', { success: true, action: 'minigameWin', updatedPlayer: p, message: `Harvest Complete! Secured ${result.points} Quartermaster Pts.` });
         }
 // ============================================
         // 22. QUARTERMASTER POINT EXCHANGE
         else if (data.action === 'exchangePoints') {
-            const type = data.exchangeType; const tier = data.tier;         
+            const type = sanitizeToken(data.exchangeType, '');
+            const tier = sanitizeToken(data.tier, '');         
+            if (!['lumber', 'fish', 'hops'].includes(type) || !['low', 'mid', 'gamble', 'epic'].includes(tier)) return;
             let cost = 0; let rewardAmt = 0;
 
             if (tier === 'low') { cost = 100; rewardAmt = 100; }
@@ -488,7 +669,9 @@ if (data.action === 'equip') {
         }
 // 23. UNBOX GAMBLE CRATES
         else if (data.action === 'openCrate') {
-            const invIndex = data.index; const crateId = data.crateId;
+            const invIndex = getArrayIndex(data.index, p.inventory);
+            const crateId = sanitizeToken(data.crateId, '');
+            if (invIndex < 0) return socket.emit('townReceipt', { success: false, message: "Invalid crate selection." });
             if (!p.inventory[invIndex] || p.inventory[invIndex].id !== crateId) return socket.emit('townReceipt', { success: false, message: "❌ Invalid crate selection." });
             
             p.inventory.splice(invIndex, 1);

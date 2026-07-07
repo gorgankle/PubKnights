@@ -107,6 +107,23 @@ function sanitizeItemSchema(savedItem) {
     return hydratedItem;
 }
 
+function createSaveSnapshot(playerState) {
+    const snapshot = JSON.parse(JSON.stringify(playerState || {}));
+
+    delete snapshot.activeMinigame;
+    delete snapshot._lastMinigameClaim;
+    delete snapshot.tradeStaging;
+    delete snapshot.tradeResources;
+    delete snapshot.tradeLocked;
+    delete snapshot.tradeConfirmed;
+    delete snapshot.activeTradePartner;
+    delete snapshot.currentZone;
+    delete snapshot.socialX;
+    delete snapshot.socialY;
+
+    return snapshot;
+}
+
 // Serve the index.html file from the root directory
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -210,9 +227,10 @@ if (data.saveData) {
             }
 
             // 3. Save the SERVER'S secure memory state to MongoDB, completely ignoring the client's economy data.
+            const saveSnapshot = createSaveSnapshot(p);
             await Player.findOneAndUpdate(
                 { username: p.username },
-                { saveData: p }
+                { saveData: saveSnapshot }
             );
             console.log(`💾 Secure save synced for Knight: ${p.username}`);
         } catch (err) {
@@ -252,6 +270,16 @@ if (data.saveData) {
                 pd.appearance = sanitizeAppearance(pd.appearance);
                 pd.friends = playerDoc.friends || [];
                 pd.ignored = playerDoc.ignored || [];
+                delete pd.activeMinigame;
+                delete pd._lastMinigameClaim;
+                delete pd.tradeStaging;
+                delete pd.tradeResources;
+                delete pd.tradeLocked;
+                delete pd.tradeConfirmed;
+                delete pd.activeTradePartner;
+                delete pd.currentZone;
+                delete pd.socialX;
+                delete pd.socialY;
                 
                 // 1. Sanitize Equipped Gear
                 if (pd.equipment) {

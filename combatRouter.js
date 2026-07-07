@@ -5,6 +5,7 @@ const { ItemDatabase } = require('./public/js/items.js');
 const { LootTables } = require('./public/js/lootTables.js');
 const { NpcDatabase, createEnemy } = require('./public/js/npc-database.js');
 const { SpellDatabase } = require('./public/js/spells.js');
+const { sanitizeToken, clampInt, getArrayIndex } = require('./serverSecurity.js');
 
 function getGridDistance(x1, y1, x2, y2, size2 = 1) {
     let closeX = Math.max(x2, Math.min(x1, x2 + size2 - 1));
@@ -151,6 +152,13 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
     socket.on('dispatchCombatAction', (data) => {
         let p = activePlayers[socket.id];
         let combat = activeCombats[socket.id];
+        if (!data || typeof data !== 'object') return;
+        data.actionCategory = sanitizeToken(data.actionCategory, '');
+        data.subType = sanitizeToken(data.subType, 'standard');
+        if (combat && data.tx !== undefined && data.ty !== undefined) {
+            data.tx = clampInt(data.tx, 0, combat.gridSize.cols - 1, combat.player.x);
+            data.ty = clampInt(data.ty, 0, combat.gridSize.rows - 1, combat.player.y);
+        }
         
         if (!p) return socket.emit('combatResult', { type: 'error', message: '❌ Server connection lost. Please refresh the page.' });
 
@@ -305,7 +313,8 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         } 
 
         if (data.actionCategory === 'consumable') {
-            let invIndex = data.invIndex;
+            let invIndex = getArrayIndex(data.invIndex, p.inventory);
+            if (invIndex < 0) return socket.emit('combatItemReceipt', { success: false, message: "Invalid inventory slot." });
             let item = p.inventory[invIndex];
             
             if (!item || !item.combat) return socket.emit('combatItemReceipt', { success: false, message: "❌ Invalid item data." });
@@ -425,7 +434,8 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         } 
 
         if (data.actionCategory === 'equip') {
-            let invIndex = data.invIndex;
+            let invIndex = getArrayIndex(data.invIndex, p.inventory);
+            if (invIndex < 0) return socket.emit('combatItemReceipt', { success: false, message: "Invalid inventory slot." });
             let item = p.inventory[invIndex];
             if (!item) return;
 
@@ -448,12 +458,17 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
     socket.on('deployToCombat', (data) => {
         let p = activePlayers[socket.id];
         if (!p) return;
+        if (!data || typeof data !== 'object') return;
 
         p.idleJob = 'NONE';
         p.pendingXp = 0;
 
-        let zone = data.zoneChoice;
-        let requestedLvl = data.activeLevel || 1;
+        let zone = sanitizeToken(data.zoneChoice, 'WILDERNESS');
+        if (!['WILDERNESS', 'CELLARS', 'ABYSS', 'GORILLA_ARENA'].includes(zone)) return;
+        if (zone === 'CELLARS' && !p.cellarsUnlocked) return;
+        if (zone === 'ABYSS' && !p.abyssUnlocked) return;
+
+        let requestedLvl = clampInt(data.activeLevel, 1, 20, 1);
         let runLvl = 1;
         
         if (zone === 'WILDERNESS') runLvl = Math.min(requestedLvl, p.wildernessLevel || 1);
@@ -462,10 +477,10 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         let combatState = {
             zone: zone, activeLevel: runLvl, 
             turn: 'PLAYER', phase: 'MOVE',
-            gridSize: { cols: data.customCols || 16, rows: data.customRows || 10 },
-            tileSize: data.customTileSize || 54,
+            gridSize: { cols: clampInt(data.customCols, 8, 24, 16), rows: clampInt(data.customRows, 6, 18, 10) },
+            tileSize: clampInt(data.customTileSize, 32, 96, 54),
             player: { x: 1, y: 4, atbCharge: 0 }, enemies: [], obstacles: [],
-            atbPaused: (data.customCols !== undefined) 
+            atbPaused: false
         };
 
         let baitMultiplier = (zone === 'WILDERNESS' && p.mapBaited) ? 1.4 : 1.0;
@@ -587,11 +602,6 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         let p = activePlayers[socket.id];
         let combat = activeCombats[socket.id];
         if (!p || !combat) return;
-
-        if (data && data.playerPos) {
-            combat.player.x = data.playerPos.x;
-            combat.player.y = data.playerPos.y;
-        }
 
         combat.player.atbCharge = 0;
         combat.atbPaused = false;
@@ -775,6 +785,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
     socket.on('combatMove', (data) => {
         let p = activePlayers[socket.id];
         let combat = activeCombats[socket.id];
+        if (!data || typeof data !== 'object') return;
         
         if (!p || !combat) return socket.emit('moveReceipt', { success: false, message: '❌ Server connection lost. Please refresh the page.' });
 
@@ -784,19 +795,21 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
 
         let speed = getEffectiveStat(p, 'speed');
         speed = Math.max(1, Math.min(12, speed));
+        let tx = clampInt(data.tx, 0, combat.gridSize.cols - 1, combat.player.x);
+        let ty = clampInt(data.ty, 0, combat.gridSize.rows - 1, combat.player.y);
         
-        let dist = getGridDistance(combat.player.x, combat.player.y, data.tx, data.ty, 1);
+        let dist = getGridDistance(combat.player.x, combat.player.y, tx, ty, 1);
         
-       if (data.tx < 0 || data.tx >= combat.gridSize.cols || data.ty < 0 || data.ty >= combat.gridSize.rows) {
+       if (tx < 0 || tx >= combat.gridSize.cols || ty < 0 || ty >= combat.gridSize.rows) {
             return socket.emit('moveReceipt', { success: false, message: '❌ Server: Coordinates out of bounds.', x: combat.player.x, y: combat.player.y });
         }
-        let hitWall = combat.obstacles.some(o => o.x === data.tx && o.y === data.ty);
+        let hitWall = combat.obstacles.some(o => o.x === tx && o.y === ty);
         if (hitWall) {
             return socket.emit('moveReceipt', { success: false, message: '❌ Server: Obstacle collision detected.', x: combat.player.x, y: combat.player.y });
         }
         let hitEnemy = combat.enemies.some(e => {
             let s = e.size || 1;
-            return e.alive && data.tx >= e.x && data.tx < e.x + s && data.ty >= e.y && data.ty < e.y + s;
+            return e.alive && tx >= e.x && tx < e.x + s && ty >= e.y && ty < e.y + s;
         });
         if (hitEnemy) {
             return socket.emit('moveReceipt', { success: false, message: '❌ Server: Entity collision detected.', x: combat.player.x, y: combat.player.y });
@@ -806,8 +819,8 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
 
         if (p.stamina >= moveStaminaCost) {
             p.stamina -= moveStaminaCost;
-            combat.player.x = data.tx;
-            combat.player.y = data.ty;
+            combat.player.x = tx;
+            combat.player.y = ty;
             socket.emit('moveReceipt', { success: true, updatedPlayer: p });
         } else {
             socket.emit('moveReceipt', { success: false, message: `❌ Server: Not enough stamina to move (${p.stamina}/${moveStaminaCost}).`, x: combat.player.x, y: combat.player.y });
@@ -816,11 +829,12 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
 
     socket.on('takePendingLoot', (idx) => {
         let p = activePlayers[socket.id];
-        if (!p || !p.pendingLoot || !p.pendingLoot[idx]) return;
+        let lootIndex = getArrayIndex(idx, p && p.pendingLoot);
+        if (!p || lootIndex < 0) return;
 
         p.maxInventorySlots = p.maxInventorySlots || 5;
         if (p.inventory.length < p.maxInventorySlots) {
-            let securedItem = p.pendingLoot.splice(idx, 1)[0];
+            let securedItem = p.pendingLoot.splice(lootIndex, 1)[0];
             p.inventory.push(securedItem);
             socket.emit('inventoryReceipt', { success: true, action: 'takeLoot', updatedPlayer: p, message: `🎒 Secured ${securedItem.name} in backpack.` });
         } else {
@@ -830,9 +844,10 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
 
     socket.on('sellPendingLoot', (idx) => {
         let p = activePlayers[socket.id];
-        if (!p || !p.pendingLoot || !p.pendingLoot[idx]) return;
+        let lootIndex = getArrayIndex(idx, p && p.pendingLoot);
+        if (!p || lootIndex < 0) return;
 
-        let itemToSell = p.pendingLoot.splice(idx, 1)[0];
+        let itemToSell = p.pendingLoot.splice(lootIndex, 1)[0];
         let val = itemToSell.value || (itemToSell.rarity === "Gorilla" ? 500 : 15);
         p.gold += val;
         

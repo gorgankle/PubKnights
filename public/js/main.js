@@ -1,7 +1,7 @@
 // --- CORE GAME ENGINE & GLOBALS ---
 
 // Establish secure connection to the Node server
-const socket = io('https://pubknights.onrender.com');
+const socket = io();
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
