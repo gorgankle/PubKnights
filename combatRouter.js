@@ -45,6 +45,8 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             p.pendingGold = 0;
             p.pendingXp = 0;
             p.pendingLoot = [];
+            p.mapBaited = false;
+            p.cellarsChummed = false;
             p.hp = getMaxHp(p);
             p.stamina = getMaxStamina(p);
             delete activeCombats[socket.id];

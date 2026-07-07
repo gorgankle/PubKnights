@@ -416,6 +416,35 @@ function cycleAppearance(part) {
     renderPaperDoll(isCreating);
 }
 
+let randomizeAppearanceTimer = null;
+
+function randomAppearanceValue(part) {
+    const options = appearanceOptions[part];
+    return options[Math.floor(Math.random() * options.length)];
+}
+
+function randomizeAppearance() {
+    clearInterval(randomizeAppearanceTimer);
+
+    const parts = ['gender', 'skin', 'hair', 'hairColor', 'eyes', 'shirtColor', 'pantsColor', 'bootsColor'];
+    let ticks = 0;
+
+    randomizeAppearanceTimer = setInterval(() => {
+        parts.forEach(part => {
+            player.appearance[part] = randomAppearanceValue(part);
+        });
+
+        const isCreating = document.getElementById('char-creation-screen').style.display === 'block';
+        renderPaperDoll(isCreating);
+
+        ticks++;
+        if (ticks >= 8) {
+            clearInterval(randomizeAppearanceTimer);
+            randomizeAppearanceTimer = null;
+        }
+    }, 60);
+}
+
 function renderPaperDoll(isNaked = false) {
     const menuCanvas = document.getElementById('menuCharacterCanvas');
     if (!menuCanvas) return;
