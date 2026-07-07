@@ -226,19 +226,13 @@ function refreshSystemUI() {
 // === FULL SCREEN EXCLUSIVE VIEWS ===
 const lumberScreen = document.getElementById("minigame-lumber-screen");
 const fishingScreen = document.getElementById("minigame-fishing-screen");
-const hopsScreen = document.getElementById("minigame-hops-screen"); // NEW
+const hopsScreen = document.getElementById("minigame-hops-screen");
 
 if (gameState === 'COMBAT' || gameState === 'CINEMATIC' || gameState === 'MINIGAME_LUMBER' || gameState === 'MINIGAME_FISHING' || gameState === 'MINIGAME_HOPS') {
     if (topNavBar) topNavBar.style.display = "none"; 
     townVaultView.style.display = "none"; 
     vaultScreen.style.display = "none"; 
-	
-	// === NEW: THE CINEMATIC LOCK ===
-    // If a movie is playing, do absolutely nothing else. Let the ClientQuestDirector handle the DOM.
-    if (gameState === 'CINEMATIC') {
-        return; 
-    }
-
+    
     if (gameState === 'MINIGAME_LUMBER') {
         if (combatScreen) combatScreen.style.display = "none";
         if (fishingScreen) fishingScreen.style.display = "none";
@@ -257,147 +251,131 @@ if (gameState === 'COMBAT' || gameState === 'CINEMATIC' || gameState === 'MINIGA
         if (fishingScreen) fishingScreen.style.display = "none";
         if (hopsScreen) hopsScreen.style.display = "flex";
     }
-    else if (gameState === 'COMBAT') {
+    else if (gameState === 'COMBAT' || gameState === 'CINEMATIC') {
         if (lumberScreen) lumberScreen.style.display = "none";
         if (fishingScreen) fishingScreen.style.display = "none";
         if (hopsScreen) hopsScreen.style.display = "none";
         combatScreen.style.display = "block";
             
-            let dynamicBg = "none";
-            if (activeCombatZone === 'WILDERNESS') dynamicBg = "url('assets/images/wilds-bg.png')";
-            else if (activeCombatZone === 'CELLARS') dynamicBg = "url('assets/images/cellars-bg.png')";
-            else if (activeCombatZone === 'GORILLA_ARENA') dynamicBg = "url('assets/images/arena-bg.png')";
-            combatScreen.style.setProperty('--active-combat-bg', dynamicBg);
+        let dynamicBg = "none";
+        let activeZoneToUse = gameState === 'CINEMATIC' && window.ClientQuestDirector ? window.ClientQuestDirector.cinematicMap.zone : activeCombatZone;
 
-            const uiHeader = document.getElementById("target-ui-header");
-            
-            if (currentTurn === 'PLAYER') {
-                if (combatPhase === 'TARGETING') {
-                    if (uiHeader) {
-                        uiHeader.innerHTML = `🎯 TARGETING: Click anywhere in range to execute!`;
-                        uiHeader.style.color = "#e74c3c";
-                    }
-                    if (document.getElementById("slash-btn")) document.getElementById("slash-btn").disabled = true;
-                    if (document.getElementById("heavy-btn")) document.getElementById("heavy-btn").disabled = true;
-                    if (document.getElementById("end-btn")) document.getElementById("end-btn").disabled = true;
-                    if (document.getElementById("flee-btn")) document.getElementById("flee-btn").disabled = true;
-                } else {
-                    // === INSTANT AUTO-TARGETING LOGIC ===
-                    let range = (player.equipment.weapon && player.equipment.weapon.combat && player.equipment.weapon.combat.standard.range) || 1;
-                    let hasTarget = selectedEnemy && selectedEnemy.alive;
-                    let withinRange = false; let losClear = false;
-                    let isAttackPhase = (combatPhase === 'PHASE_2');
-                    
-                    if (hasTarget) {
-                        let dist = getGridDistance(player.x, player.y, selectedEnemy.x, selectedEnemy.y, selectedEnemy.size || 1);
-                        withinRange = (dist <= range);
-                        let sSize = selectedEnemy.size || 1;
-                        for (let bx = selectedEnemy.x; bx < selectedEnemy.x + sSize; bx++) {
-                            for (let by = selectedEnemy.y; by < selectedEnemy.y + sSize; by++) if (hasLineOfSight(player.x, player.y, bx, by)) losClear = true;
-                        }
-                    }
-                    
-                    if (isAttackPhase && (!hasTarget || !withinRange || !losClear)) {
-                        let autoEnemy = enemies.find(e => {
-                            if (!e.alive) return false;
-                            let d = getGridDistance(player.x, player.y, e.x, e.y, e.size || 1);
-                            if (d > range) return false;
-                            let lClear = false;
-                            let cSize = e.size || 1;
-                            for (let bx = e.x; bx < e.x + cSize; bx++) {
-                                for (let by = e.y; by < e.y + cSize; by++) if (hasLineOfSight(player.x, player.y, bx, by)) lClear = true;
-                            }
-                            return lClear;
-                        });
-                        
-                        if (autoEnemy) {
-                            selectedEnemy = autoEnemy;
-                            hasTarget = true;
-                            withinRange = true;
-                            losClear = true;
-                        }
-                    }
+        if (activeZoneToUse === 'WILDERNESS') dynamicBg = "url('assets/images/wilds-bg.png')";
+        else if (activeZoneToUse === 'CELLARS') dynamicBg = "url('assets/images/cellars-bg.png')";
+        else if (activeZoneToUse === 'GORILLA_ARENA') dynamicBg = "url('assets/images/arena-bg.png')";
+        combatScreen.style.setProperty('--active-combat-bg', dynamicBg);
 
-                    let phaseLabel = combatPhase.replace('_', ' '); 
-                    let instructions = (combatPhase === 'PHASE_2') ? "Select Target or Bomb" : "Select Tile to Stride";
-                    
-                    // === THE FIX: EXPLICIT PHASE INSTRUCTIONS ===
-                    if (activeCombatZone === 'TUTORIAL') {
-                        if (currentTutorialStep === 3) {
-                            if (combatPhase === 'PHASE_1') instructions = "PHASE 1 (MOVE): Click the highlighted tile to approach!";
-                            else if (combatPhase === 'PHASE_2') instructions = "PHASE 2 (ACTION): Click your Attack button to strike!";
-                        } else if (currentTutorialStep === 4) {
-                            if (combatPhase === 'PHASE_1') instructions = "PHASE 1 (MOVE): Click the highlighted tile to retreat!";
-                            else if (combatPhase === 'PHASE_2') instructions = "PHASE 2 (ACTION): Select your Backpack and throw the Bomb!";
-                        }
-                    }
-                    // ============================================
-                    
-                    if (uiHeader) {
-                        if (pendingMove) {
-                            uiHeader.innerHTML = `🏃 CONFIRM MOVE - Click green highlighted tile to jump`;
-                            uiHeader.style.color = "#2ecc71";
-                        } else if (selectedEnemy && selectedEnemy.alive && combatPhase === 'PHASE_2') {
-                            uiHeader.innerHTML = `🎯 FOCUS: ${selectedEnemy.name} (${selectedEnemy.hp}/${selectedEnemy.maxHp} HP) - [${phaseLabel}]`;
-                            uiHeader.style.color = "#2ecc71";
-                        } else {
-                            uiHeader.innerHTML = `⚔️ ${phaseLabel} - ${instructions}`;
-                            uiHeader.style.color = "#3498db";
-                        }
-                    }
-                    
-                    let slashBtn = document.getElementById("slash-btn");
-                    let heavyBtn = document.getElementById("heavy-btn");
-                    let endBtn = document.getElementById("end-btn");
-                    
-                    let weapon = player.equipment.weapon;
-
-                    if (slashBtn) {
-                        slashBtn.disabled = !(hasTarget && withinRange && losClear && isAttackPhase);
-                        if (weapon && weapon.combat && weapon.combat.standard) {
-                            slashBtn.innerText = `Attack (${weapon.combat.standard.staminaCost}⚡)`;
-                        } else {
-                            slashBtn.innerText = `Unarmed Strike (5⚡)`;
-                        }
-                    }
-                    
-                    if (heavyBtn) {
-                        heavyBtn.disabled = !(hasTarget && withinRange && losClear && isAttackPhase);
-                        if (weapon && weapon.combat && weapon.combat.special) {
-                            heavyBtn.innerText = `${weapon.combat.special.name} (${weapon.combat.special.staminaCost}⚡)`;
-                        } else {
-                            heavyBtn.innerText = `Weapon Skill`;
-                        }
-                    }
-                    
-                    if (endBtn) {
-                        endBtn.disabled = false;
-                        endBtn.style.opacity = (hasTarget && withinRange && losClear && isAttackPhase) ? "0.6" : "1.0";
-                    }
-                    let fleeBtn = document.getElementById("flee-btn");
-                    if (fleeBtn) {
-                        fleeBtn.disabled = false;
-                        fleeBtn.style.opacity = "1.0";
-                    }
-                }
-            } else {
+        const uiHeader = document.getElementById("target-ui-header");
+        
+        // === THE FIX: CINEMATIC UI LOCKS ===
+        if (gameState === 'CINEMATIC') {
+            if (uiHeader) {
+                uiHeader.innerHTML = `🎬 CINEMATIC SEQUENCE RUNNING`;
+                uiHeader.style.color = "#9b59b6";
+            }
+            if (document.getElementById("slash-btn")) document.getElementById("slash-btn").disabled = true;
+            if (document.getElementById("heavy-btn")) document.getElementById("heavy-btn").disabled = true;
+            if (document.getElementById("end-btn")) document.getElementById("end-btn").disabled = true;
+            if (document.getElementById("flee-btn")) document.getElementById("flee-btn").disabled = true;
+        }
+        else if (currentTurn === 'PLAYER') {
+            if (combatPhase === 'TARGETING') {
                 if (uiHeader) {
-                    uiHeader.innerHTML = "🤖 MONSTERS EXECUTING TACTICAL ENGINE";
+                    uiHeader.innerHTML = `🎯 TARGETING: Click anywhere in range to execute!`;
                     uiHeader.style.color = "#e74c3c";
                 }
                 if (document.getElementById("slash-btn")) document.getElementById("slash-btn").disabled = true;
                 if (document.getElementById("heavy-btn")) document.getElementById("heavy-btn").disabled = true;
-                if (document.getElementById("end-btn")) {
-                    document.getElementById("end-btn").disabled = true;
-                    document.getElementById("end-btn").style.opacity = "1.0";
+                if (document.getElementById("end-btn")) document.getElementById("end-btn").disabled = true;
+                if (document.getElementById("flee-btn")) document.getElementById("flee-btn").disabled = true;
+            } else {
+                let range = (player.equipment.weapon && player.equipment.weapon.combat && player.equipment.weapon.combat.standard.range) || 1;
+                let hasTarget = selectedEnemy && selectedEnemy.alive;
+                let withinRange = false; let losClear = false;
+                let isAttackPhase = (combatPhase === 'PHASE_2');
+                
+                if (hasTarget) {
+                    let dist = getGridDistance(player.x, player.y, selectedEnemy.x, selectedEnemy.y, selectedEnemy.size || 1);
+                    withinRange = (dist <= range);
+                    let sSize = selectedEnemy.size || 1;
+                    for (let bx = selectedEnemy.x; bx < selectedEnemy.x + sSize; bx++) {
+                        for (let by = selectedEnemy.y; by < selectedEnemy.y + sSize; by++) if (hasLineOfSight(player.x, player.y, bx, by)) losClear = true;
+                    }
                 }
-                if (document.getElementById("flee-btn")) {
-                    document.getElementById("flee-btn").disabled = true;
-                    document.getElementById("flee-btn").style.opacity = "1.0";
+                
+                if (isAttackPhase && (!hasTarget || !withinRange || !losClear)) {
+                    let autoEnemy = enemies.find(e => {
+                        if (!e.alive) return false;
+                        let d = getGridDistance(player.x, player.y, e.x, e.y, e.size || 1);
+                        if (d > range) return false;
+                        let lClear = false;
+                        let cSize = e.size || 1;
+                        for (let bx = e.x; bx < e.x + cSize; bx++) {
+                            for (let by = e.y; by < e.y + cSize; by++) if (hasLineOfSight(player.x, player.y, bx, by)) lClear = true;
+                        }
+                        return lClear;
+                    });
+                    if (autoEnemy) {
+                        selectedEnemy = autoEnemy;
+                        hasTarget = true;
+                        withinRange = true;
+                        losClear = true;
+                    }
+                }
+
+                let phaseLabel = combatPhase.replace('_', ' '); 
+                let instructions = (combatPhase === 'PHASE_2') ? "Select Target or Bomb" : "Select Tile to Stride";
+                
+                if (uiHeader) {
+                    if (pendingMove) {
+                        uiHeader.innerHTML = `🏃 CONFIRM MOVE - Click green highlighted tile to jump`;
+                        uiHeader.style.color = "#2ecc71";
+                    } else if (selectedEnemy && selectedEnemy.alive && combatPhase === 'PHASE_2') {
+                        uiHeader.innerHTML = `🎯 FOCUS: ${selectedEnemy.name} (${selectedEnemy.hp}/${selectedEnemy.maxHp} HP) - [${phaseLabel}]`;
+                        uiHeader.style.color = "#2ecc71";
+                    } else {
+                        uiHeader.innerHTML = `⚔️ ${phaseLabel} - ${instructions}`;
+                        uiHeader.style.color = "#3498db";
+                    }
+                }
+                
+                let slashBtn = document.getElementById("slash-btn");
+                let heavyBtn = document.getElementById("heavy-btn");
+                let endBtn = document.getElementById("end-btn");
+                let weapon = player.equipment.weapon;
+
+                if (slashBtn) {
+                    slashBtn.disabled = !(hasTarget && withinRange && losClear && isAttackPhase);
+                    if (weapon && weapon.combat && weapon.combat.standard) slashBtn.innerText = `Attack (${weapon.combat.standard.staminaCost}⚡)`;
+                    else slashBtn.innerText = `Unarmed Strike (5⚡)`;
+                }
+                if (heavyBtn) {
+                    heavyBtn.disabled = !(hasTarget && withinRange && losClear && isAttackPhase);
+                    if (weapon && weapon.combat && weapon.combat.special) heavyBtn.innerText = `${weapon.combat.special.name} (${weapon.combat.special.staminaCost}⚡)`;
+                    else heavyBtn.innerText = `Weapon Skill`;
+                }
+                if (endBtn) {
+                    endBtn.disabled = false;
+                    endBtn.style.opacity = (hasTarget && withinRange && losClear && isAttackPhase) ? "0.6" : "1.0";
+                }
+                let fleeBtn = document.getElementById("flee-btn");
+                if (fleeBtn) {
+                    fleeBtn.disabled = false;
+                    fleeBtn.style.opacity = "1.0";
                 }
             }
-            
-            refreshCombatSidebar();
+        } else {
+            if (uiHeader) {
+                uiHeader.innerHTML = "🤖 MONSTERS EXECUTING TACTICAL ENGINE";
+                uiHeader.style.color = "#e74c3c";
+            }
+            if (document.getElementById("slash-btn")) document.getElementById("slash-btn").disabled = true;
+            if (document.getElementById("heavy-btn")) document.getElementById("heavy-btn").disabled = true;
+            if (document.getElementById("end-btn")) { document.getElementById("end-btn").disabled = true; document.getElementById("end-btn").style.opacity = "1.0"; }
+            if (document.getElementById("flee-btn")) { document.getElementById("flee-btn").disabled = true; document.getElementById("flee-btn").style.opacity = "1.0"; }
+        }
+        
+        refreshCombatSidebar();
 
 const combatInvList = document.getElementById("combat-inventory-list");
         if (combatInvList) {
@@ -422,11 +400,11 @@ const combatInvList = document.getElementById("combat-inventory-list");
             spellBtn.style.background = "#8e44ad";
             spellBtn.style.borderColor = "#9b59b6";
         
-            // Phase Locks
-            if (currentTurn !== 'PLAYER' || combatPhase === 'TARGETING') {
-                bagBtn.disabled = true;
-                spellBtn.disabled = true;
-            }
+          // Phase Locks
+        if (gameState === 'CINEMATIC' || currentTurn !== 'PLAYER' || combatPhase === 'TARGETING') {
+            bagBtn.disabled = true;
+            spellBtn.disabled = true;
+        }
         
     
             // Actions

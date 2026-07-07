@@ -63,10 +63,7 @@ window.ClientQuestDirector = {
 
 processEvent: function(ev) {
         if (ev.type === 'SET_SCENE') {
-            
-            // THE FIX: Dropped "window." so it targets the real main.js variable!
             gameState = 'CINEMATIC'; 
-            
             this.cinematicMap = { 
                 cols: ev.cols || 16, rows: ev.rows || 10, 
                 tileSize: ev.tileSize || 54, zone: ev.zone || 'WILDERNESS',
@@ -78,23 +75,22 @@ processEvent: function(ev) {
             document.getElementById("top-nav-bar").style.display = "none";
             document.getElementById("town-vault-view").style.display = "none";
             
-            // Show the combat wrapper
             let combatWrapper = document.getElementById("combat-screen");
             if (combatWrapper) combatWrapper.style.display = "block";
             
-            // === THE FIX: FORCE CANVAS DIMENSIONS ===
+            // === THE FIX: LOCK THE CANVAS TO THE 16x10 GRID RATIO ===
             let canvas = document.getElementById("gameCanvas");
-            if (canvas && combatWrapper) {
-                // Ensure the canvas actually has physical pixels to draw on!
-                canvas.width = combatWrapper.clientWidth || 800;
-                canvas.height = combatWrapper.clientHeight || 600;
+            if (canvas) {
+                canvas.width = this.cinematicMap.cols * this.cinematicMap.tileSize;
+                canvas.height = this.cinematicMap.rows * this.cinematicMap.tileSize;
             }
             
-            let uiHeader = document.getElementById("target-ui-header");
-            if (uiHeader) {
-                uiHeader.innerHTML = `🎬 CINEMATIC SEQUENCE RUNNING`;
-                uiHeader.style.color = "#9b59b6";
-            }
+            // Sync global physics to the movie layout
+            window.currentTileSize = this.cinematicMap.tileSize;
+            window.currentGridSize = { cols: this.cinematicMap.cols, rows: this.cinematicMap.rows };
+
+            // Trigger the UI to draw the backpack buttons!
+            if (typeof refreshSystemUI === 'function') refreshSystemUI();
 
             setTimeout(() => socket.emit('questStepComplete'), 400);
         }
@@ -258,15 +254,35 @@ processEvent: function(ev) {
             ctx.restore();
         }
 
-        // 4. Draw Actors
+       // 4. Draw Actors
         this.cinematicActors.forEach(a => {
             let px = (a.x * size) + (a.lungeOffsetX || 0);
             let py = (a.y * size) + (a.lungeOffsetY || 0);
             
             if (a.id === 'player') {
-                if (typeof SpriteMatrices !== 'undefined' && SpriteMatrices['body_male']) {
-                    drawOptimizedSprite(ctx, 'body_male', SpriteMatrices['body_male'], px, py, size);
-                    drawOptimizedSprite(ctx, 'hair_messy', SpriteMatrices['hair_messy'], px, py, size);
+                // === THE FIX: FULLY ASSEMBLED PLAYER SPRITE ===
+                if (typeof SpriteMatrices !== 'undefined') {
+                    let bodySprite = player.appearance.gender === 'female' ? 'body_female' : 'body_male';
+                    if (SpriteMatrices[bodySprite]) drawOptimizedSprite(ctx, bodySprite, SpriteMatrices[bodySprite], px, py, size);
+                    if (SpriteMatrices[player.appearance.eyes]) drawOptimizedSprite(ctx, player.appearance.eyes, SpriteMatrices[player.appearance.eyes], px, py, size);
+                    
+                    const hidesHair = player.equipment.helmet && player.equipment.helmet.hidesHair;
+                    if (!hidesHair && SpriteMatrices[player.appearance.hair]) {
+                        drawOptimizedSprite(ctx, player.appearance.hair, SpriteMatrices[player.appearance.hair], px, py, size);
+                    }
+
+                    const eq = player.equipment;
+                    let gSuffix = player.appearance.gender === 'female' ? '_female' : '_male';
+                    
+                    if (eq.armor && eq.armor.spriteId) {
+                        let sId = eq.armor.spriteId + gSuffix;
+                        if (SpriteMatrices[sId]) drawOptimizedSprite(ctx, sId, SpriteMatrices[sId], px, py, size);
+                        else if (SpriteMatrices[eq.armor.spriteId]) drawOptimizedSprite(ctx, eq.armor.spriteId, SpriteMatrices[eq.armor.spriteId], px, py, size);
+                    }
+                    if (eq.boots && eq.boots.spriteId && SpriteMatrices[eq.boots.spriteId]) drawOptimizedSprite(ctx, eq.boots.spriteId, SpriteMatrices[eq.boots.spriteId], px, py, size);
+                    if (eq.gloves && eq.gloves.spriteId && SpriteMatrices[eq.gloves.spriteId]) drawOptimizedSprite(ctx, eq.gloves.spriteId, SpriteMatrices[eq.gloves.spriteId], px, py, size);
+                    if (eq.helmet && eq.helmet.spriteId && SpriteMatrices[eq.helmet.spriteId]) drawOptimizedSprite(ctx, eq.helmet.spriteId, SpriteMatrices[eq.helmet.spriteId], px, py, size);
+                    if (eq.weapon && eq.weapon.spriteId && SpriteMatrices[eq.weapon.spriteId]) drawOptimizedSprite(ctx, eq.weapon.spriteId, SpriteMatrices[eq.weapon.spriteId], px, py, size);
                 }
             } else if (typeof SpriteMatrices !== 'undefined' && SpriteMatrices[a.id]) {
                 drawOptimizedSprite(ctx, a.id, SpriteMatrices[a.id], px, py, size);
