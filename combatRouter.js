@@ -733,10 +733,10 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
 
             if ((enemyHitPower - playerSpeedMitigation) <= 0) {
                 turnEvents.push({ type: 'deflect', enemyName: e.name }); 
-            } else {
+           } else {
                 let rawDamageRoll = Math.sqrt(Math.random()) * eOffense;
                 let playerDef = getEffectiveStat(p, 'defense') * 10;
-                let playerAbsorption = Math.pow(Math.random(), 2) * playerDef;
+                let armorAbsorption = Math.pow(Math.random(), 2) * playerDef; // <--- DECLARED PROPERLY
                 let mitigatedDmg = Math.floor(rawDamageRoll - armorAbsorption);
 
                 if (mitigatedDmg <= 0) turnEvents.push({ type: 'deflect', enemyName: e.name }); 
