@@ -1,19 +1,32 @@
 // --- socialRouter.js ---
 // Handles all Community Square logic: Zone instancing, chat, and movement.
 const mongoose = require('mongoose');
+const {
+    normalizeUsername,
+    sanitizeChatMessage,
+    sanitizeTitle,
+    sanitizeZoneId,
+    sanitizeUGCContent,
+    clampInt,
+    getArrayIndex,
+    escapeRegExp
+} = require('./serverSecurity.js');
 
 module.exports = function(socket, io, activePlayers) {
 	
 // === REPLACED: GLOBAL PRIVATE MESSAGE ROUTER (LIVE ONLY) ===
     socket.on('sendPrivateMessage', async (data) => {
         let p = activePlayers[socket.id];
-        if (!p) return;
+        if (!p || !p.username) return;
 
-        let targetName = data.target;
-        let msg = data.message;
+        let targetName = normalizeUsername(data && data.target);
+        let msg = sanitizeChatMessage(data && data.message, 240);
+        if (!targetName || !msg) {
+            return socket.emit('zoneNotification', { message: 'Invalid private message.' });
+        }
 
         // 1. Check if the target is online by scanning ALL active sockets globally
-        let targetSocketId = Object.keys(activePlayers).find(key => activePlayers[key].username.toLowerCase() === targetName.toLowerCase());
+        let targetSocketId = Object.keys(activePlayers).find(key => (activePlayers[key].username || '').toLowerCase() === targetName.toLowerCase());
 
         if (targetSocketId) {
             let targetPlayer = activePlayers[targetSocketId];
@@ -33,14 +46,20 @@ module.exports = function(socket, io, activePlayers) {
 // === NEW: DATABASE SOCIAL LIST MANAGER ===
     socket.on('manageSocialList', async (data) => {
         let p = activePlayers[socket.id];
-        if (!p) return;
+        if (!p || !p.username) return;
         
         try {
             const PlayerModel = mongoose.model('Player');
             let dbUser = await PlayerModel.findOne({ username: p.username });
             if (!dbUser) return;
             
-            let targetInput = data.target;
+            const allowedActions = ['addFriend', 'removeFriend', 'addIgnore', 'removeIgnore'];
+            if (!data || !allowedActions.includes(data.action)) return;
+
+            let targetInput = normalizeUsername(data.target);
+            if (!targetInput) {
+                return socket.emit('zoneNotification', { message: 'Invalid Knight name.' });
+            }
             
             // Cannot add/block yourself
             if (targetInput.toLowerCase() === p.username.toLowerCase()) {
@@ -49,7 +68,9 @@ module.exports = function(socket, io, activePlayers) {
 
             // 1. Case-Insensitive Database Lookup!
             // We do this to ensure we grab the EXACT spelling/casing of their name from the DB.
-            let targetUser = await PlayerModel.findOne({ username: new RegExp('^' + targetInput + '$', 'i') });
+            let targetUser = await PlayerModel
+                .findOne({ username: new RegExp('^' + escapeRegExp(targetInput) + '$', 'i') })
+                .collation({ locale: 'en', strength: 2 });
 
             // Ensure the user actually exists before trying to friend OR ignore them
             if (data.action === 'addFriend' || data.action === 'addIgnore') {
@@ -100,7 +121,7 @@ module.exports = function(socket, io, activePlayers) {
 	
 	socket.on('fetchSocialLists', async () => {
          let p = activePlayers[socket.id];
-         if (!p) return;
+         if (!p || !p.username) return;
          
          try {
              const PlayerModel = mongoose.model('Player');
@@ -123,24 +144,32 @@ module.exports = function(socket, io, activePlayers) {
     // 1. Save Art/Music
     socket.on('saveUGC', async (data) => {
         let p = activePlayers[socket.id];
-        if (!p) return;
+        if (!p || !p.username) return;
 
         try {
+            const UGC = mongoose.model('UGC');
+            const type = data && ['ART', 'MUSIC'].includes(data.type) ? data.type : null;
+            const contentData = sanitizeUGCContent(type, data && data.contentData);
+
             // STRICT VALIDATION
-            if (!data.type || !['ART', 'MUSIC'].includes(data.type)) {
+            if (!type) {
                 return socket.emit('zoneNotification', { message: '❌ Invalid creation type.' });
             }
 
-            if (data.type === 'ART') {
+            if (!contentData) {
+                return socket.emit('zoneNotification', { message: '❌ Creation payload is corrupted or too large.' });
+            }
+
+            if (type === 'ART') {
                 // Validate 24x24 matrix payload bounds to prevent memory bloat
-                if (!Array.isArray(data.contentData) || data.contentData.length > 576) { // 24 * 24 = 576
+                if (!Array.isArray(contentData) || contentData.length > 576) { // 24 * 24 = 576
                     return socket.emit('zoneNotification', { message: '❌ Art matrix is corrupted or exceeds 24x24 limits.' });
                 }
             }
 
-            if (data.type === 'MUSIC') {
+            if (type === 'MUSIC') {
                 // Validate sequence bounds (e.g., 32 steps max)
-                if (!Array.isArray(data.contentData) || data.contentData.length > 32) {
+                if (!Array.isArray(contentData) || contentData.length > 32) {
                     return socket.emit('zoneNotification', { message: '❌ Composition exceeds 32 steps.' });
                 }
             }
@@ -148,13 +177,13 @@ module.exports = function(socket, io, activePlayers) {
             // Save to MongoDB
             const newCreation = new UGC({
                 authorUsername: p.username,
-                type: data.type,
-                title: data.title ? data.title.substring(0, 30) : 'Untitled', // Cap title length
-                contentData: data.contentData
+                type,
+                title: sanitizeTitle(data && data.title),
+                contentData
             });
 
             await newCreation.save();
-            socket.emit('zoneNotification', { message: `🎨 Successfully archived your ${data.type.toLowerCase()}!` });
+            socket.emit('zoneNotification', { message: `🎨 Successfully archived your ${type.toLowerCase()}!` });
             
         } catch (err) {
             console.error("UGC Save Error:", err);
@@ -165,9 +194,10 @@ module.exports = function(socket, io, activePlayers) {
     // 2. Fetch Player's Personal Gallery
     socket.on('fetchMyUGC', async () => {
         let p = activePlayers[socket.id];
-        if (!p) return;
+        if (!p || !p.username) return;
 
         try {
+            const UGC = mongoose.model('UGC');
             // Retrieve only the requesting Knight's creations
             const myCreations = await UGC.find({ authorUsername: p.username }).sort({ createdAt: -1 });
             socket.emit('ugcGalleryLoaded', myCreations);
@@ -194,16 +224,15 @@ module.exports = function(socket, io, activePlayers) {
 
     socket.on('joinZone', (data) => {
         let p = activePlayers[socket.id];
-        if (!p) return;
-		
-		// NEW: Grab the username directly from the client's packet!
-        if (data.username) p.username = data.username;
+        if (!p || !p.username) return;
 
         // 1. Leave any existing zone first
         leaveCurrentZone();
 
         // 2. Assign the new zone and default spawn coordinates
-        let zoneId = data.zoneId;
+        let zoneId = sanitizeZoneId(data && data.zoneId);
+        if (!zoneId) return;
+
         p.currentZone = zoneId;
         p.socialX = 12; // Default spawn X
         p.socialY = 12; // Default spawn Y

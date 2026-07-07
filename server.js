@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const http = require('http');
+const path = require('path');
 const { Server } = require('socket.io');
 const mongoose = require('mongoose');
 
@@ -9,6 +10,17 @@ const injectTownRouter = require('./townRouter.js');
 const injectCombatRouter = require('./combatRouter.js');
 const injectSocialRouter = require('./socialRouter.js');
 const { ItemDatabase } = require('./public/js/items.js');
+const {
+    DEFAULT_APPEARANCE,
+    normalizeUsername,
+    validatePassword,
+    hashPassword,
+    verifyPassword,
+    needsPasswordUpgrade,
+    sanitizeAppearance,
+    sanitizePetCosmetics,
+    sanitizeToken
+} = require('./serverSecurity.js');
 
 
 // Initialize the Express app and wrap it in an HTTP server for Socket.io
@@ -97,7 +109,7 @@ function sanitizeItemSchema(savedItem) {
 
 // Serve the index.html file from the root directory
 app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/index.html');
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // === SOCKET.IO COMMUNICATION HUB ===
@@ -107,7 +119,18 @@ io.on('connection', (socket) => {
     // --- REGISTER NEW KNIGHT ---
     socket.on('register', async (data) => {
         try {
-            const existingPlayer = await Player.findOne({ username: data.username });
+            const username = normalizeUsername(data && data.username);
+            const password = data && data.password;
+
+            if (!username) {
+                return socket.emit('loginError', 'Knight names can use letters, numbers, spaces, underscores, or hyphens, up to 24 characters.');
+            }
+
+            if (!validatePassword(password)) {
+                return socket.emit('loginError', 'Password must be 4-128 characters.');
+            }
+
+            const existingPlayer = await Player.findOne({ username }).collation({ locale: 'en', strength: 2 });
             if (existingPlayer) {
                 return socket.emit('loginError', 'Name already taken by another Knight.');
             }
@@ -115,6 +138,7 @@ io.on('connection', (socket) => {
 // Generate a secure default template on the server
 // === REPLACED ===
 const defaultTemplate = {
+                username,
                 level: 1, xp: 0, xpToNext: 100, skillPoints: 0,
                 vitality: 1, hp: 25, stamina: 25, maxStamina: 1, 
                 offense: 1, defense: 1, speed: 1,
@@ -122,7 +146,7 @@ const defaultTemplate = {
                 lumberPoints: 0, fishingPoints: 0, hopsPoints: 0,
                 pendingGold: 0, pendingXp: 0, pendingLoot: [],
                 wildernessLevel: 1, cellarLevel: 1, abyssDepth: 1,
-                appearance: { gender: 'male', skin: 'light', hair: 'hair_messy', hairColor: 'brown', eyes: 'eyes_blue', shirtColor: 'blue', pantsColor: 'dark', bootsColor: 'leather' },
+                appearance: { ...DEFAULT_APPEARANCE },
                 equipment: { 
                     // PULL SECURELY FROM ITEM DATABASE!
                     weapon: JSON.parse(JSON.stringify(ItemDatabase["rusty_mace"])),
@@ -137,8 +161,8 @@ const defaultTemplate = {
 // ===================
 
             const newPlayer = new Player({
-                username: data.username,
-                password: data.password, 
+                username,
+                password: hashPassword(password), 
                 saveData: defaultTemplate 
             });
 
@@ -147,12 +171,16 @@ const defaultTemplate = {
             // === THE FIX: LOG THE PLAYER INTO RAM IMMEDIATELY ===
             // This ensures the server knows who they are when they click "Begin Adventure"
             let pd = newPlayer.saveData;
+            pd.username = newPlayer.username;
+            pd.friends = [];
+            pd.ignored = [];
             pd.hp = (pd.vitality || 1) * 25;
             pd.stamina = (pd.maxStamina || 1) * 25;
+            socket.data.username = newPlayer.username;
             activePlayers[socket.id] = pd;
             // ====================================================
 
-            socket.emit('registerSuccess');
+            socket.emit('registerSuccess', { username: newPlayer.username });
         } catch (err) {
             console.error(err);
             socket.emit('loginError', 'Server error during registration.');
@@ -164,33 +192,29 @@ const defaultTemplate = {
             let p = activePlayers[socket.id];
             
             // 1. If the player isn't loaded in server memory, reject the save entirely.
-            if (!p) return;
+            if (!p || !p.username) return;
 
             // 2. ONLY accept purely cosmetic updates from the client's payload.
             // We surgically extract ONLY what is safe, ignoring Gold, Items, and Stats.
 if (data.saveData) {
                 if (data.saveData.appearance) {
-                    p.appearance = data.saveData.appearance;
+                    p.appearance = sanitizeAppearance(data.saveData.appearance);
                 }
                 // Allow the server to remember their job when logging in!
-                if (data.saveData.idleJob) p.idleJob = data.saveData.idleJob;
+                if (data.saveData.idleJob) p.idleJob = sanitizeToken(data.saveData.idleJob, p.idleJob || 'TAVERN');
                 
                 // Allow pet cosmetic updates, but fiercely protect the level and adoption status!
                 if (data.saveData.pet) {
-                    p.pet = p.pet || {};
-                    p.pet.name = data.saveData.pet.name || p.pet.name;
-                    p.pet.type = data.saveData.pet.type || p.pet.type;
-                    p.pet.furColor = data.saveData.pet.furColor || p.pet.furColor;
-                    p.pet.collarColor = data.saveData.pet.collarColor || p.pet.collarColor;
+                    p.pet = sanitizePetCosmetics(data.saveData.pet, p.pet);
                 }
             }
 
             // 3. Save the SERVER'S secure memory state to MongoDB, completely ignoring the client's economy data.
             await Player.findOneAndUpdate(
-                { username: data.username },
+                { username: p.username },
                 { saveData: p }
             );
-            console.log(`💾 Secure save synced for Knight: ${data.username}`);
+            console.log(`💾 Secure save synced for Knight: ${p.username}`);
         } catch (err) {
             console.error('Error saving game data to MongoDB:', err);
         }
@@ -199,17 +223,35 @@ if (data.saveData) {
 // --- LOGIN EXISTING KNIGHT ---
         socket.on('login', async (data) => {
             try {
-                const playerDoc = await Player.findOne({ username: data.username, password: data.password });
-                if (!playerDoc) return socket.emit('loginError', 'Invalid Knight Name or Password.');
+                const username = normalizeUsername(data && data.username);
+                const password = data && data.password;
+
+                if (!username || !validatePassword(password)) {
+                    return socket.emit('loginError', 'Invalid Knight Name or Password.');
+                }
+
+                const playerDoc = await Player.findOne({ username }).collation({ locale: 'en', strength: 2 });
+                if (!playerDoc || !verifyPassword(password, playerDoc.password)) {
+                    return socket.emit('loginError', 'Invalid Knight Name or Password.');
+                }
+
+                if (needsPasswordUpgrade(playerDoc.password)) {
+                    playerDoc.password = hashPassword(password);
+                    await playerDoc.save();
+                }
 
                 if (!playerDoc.saveData.appearance) {
-                    playerDoc.saveData.appearance = { gender: 'male', skin: 'light', hair: 'hair_messy', hairColor: 'brown', eyes: 'eyes_blue', shirtColor: 'blue', pantsColor: 'dark', bootsColor: 'leather' };
+                    playerDoc.saveData.appearance = { ...DEFAULT_APPEARANCE };
                 }
 
                 // ============================================
                 // === AUTOMATED LONGEVITY: SANITIZE LOADOUT ===
                 // ============================================
                 let pd = playerDoc.saveData;
+                pd.username = playerDoc.username;
+                pd.appearance = sanitizeAppearance(pd.appearance);
+                pd.friends = playerDoc.friends || [];
+                pd.ignored = playerDoc.ignored || [];
                 
                 // 1. Sanitize Equipped Gear
                 if (pd.equipment) {
@@ -244,6 +286,7 @@ if (data.saveData) {
                 pd.stamina = (pd.maxStamina || 1) * 25;
                 // =====================================
 
+                socket.data.username = playerDoc.username;
                 activePlayers[socket.id] = pd;
                 socket.emit('loginSuccess', pd);
             } catch (err) {
