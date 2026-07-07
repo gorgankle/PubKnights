@@ -1264,7 +1264,7 @@ function renderCombatModal(filter = 'DRINK') {
         // =======================================
 		
         // === THE FIX: ALLOW ITEMS TO BE CLICKED ===
-        slotDiv.onclick = () => {git 
+slotDiv.onclick = () => {
             closeCombatModal();
             if (typeof selectCombatItem === 'function') {
                 selectCombatItem(idx); // Standard UI targeting hook

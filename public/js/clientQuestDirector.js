@@ -63,7 +63,10 @@ window.ClientQuestDirector = {
 
 processEvent: function(ev) {
         if (ev.type === 'SET_SCENE') {
-            window.gameState = 'CINEMATIC'; // Force global state safely
+            
+            // THE FIX: Dropped "window." so it targets the real main.js variable!
+            gameState = 'CINEMATIC'; 
+            
             this.cinematicMap = { 
                 cols: ev.cols || 16, rows: ev.rows || 10, 
                 tileSize: ev.tileSize || 54, zone: ev.zone || 'WILDERNESS',
