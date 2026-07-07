@@ -84,7 +84,7 @@ window.ClientQuestDirector = {
 
             setTimeout(() => socket.emit('questStepComplete'), 400);
         }	
-        }
+        
         else if (ev.type === 'SPAWN_ACTOR') {
             this.cinematicActors.push({ uid: ev.uid, id: ev.actorId, x: ev.x, y: ev.y });
             setTimeout(() => socket.emit('questStepComplete'), 100);
