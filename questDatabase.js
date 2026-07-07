@@ -2,12 +2,18 @@ module.exports = {
     "tutorial_combat_intro": [
         { type: "FADE", direction: "OUT", duration: 500, color: "#000000" },
         
-        // Build the fake movie set
-        { type: "SET_SCENE", zone: "WILDERNESS", cols: 16, rows: 10, tileSize: 54 },
+        // === THE LEVEL 20 BOSS ARENA ===
+        // Inject static props into the movie scene so it looks like the real Overlord map
+        { type: "SET_SCENE", zone: "WILDERNESS", cols: 16, rows: 10, tileSize: 54, obstacles: [
+            { x: 5, y: 1, spriteId: "map_tree" },
+            { x: 5, y: 8, spriteId: "map_tree" },
+            { x: 14, y: 1, spriteId: "map_tree" },
+            { x: 14, y: 8, spriteId: "map_tree" }
+        ]},
+        
         { type: "DELAY", duration: 800 },
         { type: "FADE", direction: "IN", duration: 500, color: "#000000" },
         
-        // Spawn the visual actor representing the player
         { type: "SPAWN_ACTOR", actorId: "player", uid: "fake_player", x: 1, y: 4 },
         
         { type: "DIALOGUE", sequence: [
@@ -20,9 +26,15 @@ module.exports = {
         { type: "DIALOGUE", sequence: [
             { speaker: "Kreg", text: "Great! Now open your 🎒 BACKPACK and use the 🍺 STOUT to heal!", portraitId: "npc_kreg" }
         ]},
-        // Highlight the UI for the player to follow along with the "Movie"
+        
+        // === NEW: VISUALLY FORCE THE GUI OPEN ===
+        { type: "SET_UI_STATE", elementId: "combat-modal", displayState: "flex" },
+        
         { type: "HIGHLIGHT_UI", elementId: "combat-inventory-list" }, 
-        { type: "HIGHLIGHT_UI", elementId: "combat-modal-grid" }, 
+        
+        // === NEW: VISUALLY CLOSE THE GUI ===
+        { type: "SET_UI_STATE", elementId: "combat-modal", displayState: "none" },
+        
         { type: "DELAY", duration: 800 },
 
         { type: "SPAWN_ACTOR", actorId: "publing", uid: "mob_tut_1", x: 7, y: 5 },

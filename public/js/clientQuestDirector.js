@@ -63,10 +63,15 @@ window.ClientQuestDirector = {
     processEvent: function(ev) {
         if (ev.type === 'SET_SCENE') {
             gameState = 'CINEMATIC'; 
-            this.cinematicMap = { cols: ev.cols || 16, rows: ev.rows || 10, tileSize: ev.tileSize || 54, zone: ev.zone || 'WILDERNESS' };
+            this.cinematicMap = { 
+                cols: ev.cols || 16, rows: ev.rows || 10, 
+                tileSize: ev.tileSize || 54, zone: ev.zone || 'WILDERNESS',
+                obstacles: ev.obstacles || [] // NEW: Load static map props
+            };
             this.cinematicActors = [];
             this.activeHighlightTile = null;
             
+            // Force the primary combat screen open
             document.getElementById("top-nav-bar").style.display = "none";
             document.getElementById("town-vault-view").style.display = "none";
             document.getElementById("combat-screen").style.display = "block";
@@ -78,6 +83,7 @@ window.ClientQuestDirector = {
             }
 
             setTimeout(() => socket.emit('questStepComplete'), 400);
+        }	
         }
         else if (ev.type === 'SPAWN_ACTOR') {
             this.cinematicActors.push({ uid: ev.uid, id: ev.actorId, x: ev.x, y: ev.y });
@@ -182,10 +188,13 @@ window.ClientQuestDirector = {
         });
     },
 
-    drawCinematicScene: function(ctx) {
+   drawCinematicScene: function(ctx) {
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        let size = this.cinematicMap.tileSize;
+        
+        // FIX: Use the engine's dynamic tile size, fallback to manifest size
+        let size = window.currentTileSize || this.cinematicMap.tileSize || 54;
 
+        // 1. Draw Environment Floor
         let groundSprite = 'ground_wilderness';
         if (this.cinematicMap.zone === 'CELLARS') groundSprite = 'ground_cellars';
         else if (this.cinematicMap.zone === 'GORILLA_ARENA') groundSprite = 'ground_arena';
@@ -202,6 +211,16 @@ window.ClientQuestDirector = {
             }
         }
 
+        // 2. Draw Static Map Obstacles (The Boss Arena)
+        this.cinematicMap.obstacles.forEach(obs => {
+            let px = obs.x * size;
+            let py = obs.y * size;
+            if (typeof SpriteMatrices !== 'undefined' && SpriteMatrices[obs.spriteId]) {
+                drawOptimizedSprite(ctx, obs.spriteId, SpriteMatrices[obs.spriteId], px, py, size);
+            }
+        });
+
+        // 3. Draw Highlight Tile Guide
         if (this.activeHighlightTile) {
             ctx.save();
             ctx.lineWidth = 4; ctx.setLineDash([5, 5]);
@@ -213,6 +232,7 @@ window.ClientQuestDirector = {
             ctx.restore();
         }
 
+        // 4. Draw Actors
         this.cinematicActors.forEach(a => {
             let px = (a.x * size) + (a.lungeOffsetX || 0);
             let py = (a.y * size) + (a.lungeOffsetY || 0);
@@ -229,6 +249,7 @@ window.ClientQuestDirector = {
             }
         });
 
+        // 5. Force FXEngine
         if (typeof FXEngine !== 'undefined') FXEngine.render(ctx, size);
     }
 };
