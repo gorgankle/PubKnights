@@ -9,6 +9,8 @@ const mongoose = require('mongoose');
 const injectTownRouter = require('./townRouter.js');
 const injectCombatRouter = require('./combatRouter.js');
 const injectSocialRouter = require('./socialRouter.js');
+const injectQuestRouter = require('./questRouter.js');
+const { CombatMapTemplates, obstacleStyleForZone } = require('./combatMapTemplates.js');
 const { ItemDatabase } = require('./public/js/items.js');
 const {
     DEFAULT_APPEARANCE,
@@ -117,6 +119,7 @@ function createSaveSnapshot(playerState) {
     delete snapshot.tradeLocked;
     delete snapshot.tradeConfirmed;
     delete snapshot.activeTradePartner;
+    delete snapshot.activeQuestSession;
     delete snapshot.currentZone;
     delete snapshot.socialX;
     delete snapshot.socialY;
@@ -124,9 +127,42 @@ function createSaveSnapshot(playerState) {
     return snapshot;
 }
 
+function getPublicCombatMapTemplates() {
+    const publicTemplates = {};
+
+    Object.entries(CombatMapTemplates).forEach(([templateId, template]) => {
+        const defaultObstacle = obstacleStyleForZone(template.zone);
+        publicTemplates[templateId] = {
+            id: template.id,
+            zone: template.zone,
+            name: template.name,
+            gridSize: template.gridSize,
+            tileSize: template.tileSize,
+            floorSpriteId: template.floorSpriteId || 'ground_wilderness',
+            floorTiles: template.floorTiles || [],
+            playerStart: template.playerStart,
+            enemies: template.enemies || [],
+            enemySlots: template.enemySlots || [],
+            obstacles: (template.obstacles || []).map(obstacle => ({
+                x: obstacle.x,
+                y: obstacle.y,
+                spriteId: obstacle.spriteId || defaultObstacle.spriteId,
+                icon: obstacle.icon || defaultObstacle.icon
+            })),
+            interactables: template.interactables || []
+        };
+    });
+
+    return publicTemplates;
+}
+
 // Serve the index.html file from the root directory
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.get('/api/combat-map-templates', (req, res) => {
+    res.json(getPublicCombatMapTemplates());
 });
 
 // === SOCKET.IO COMMUNICATION HUB ===
@@ -173,7 +209,8 @@ const defaultTemplate = {
                 workers: { total: 0, assigned: { wood: 0, fish: 0, hops: 0 } },
                 supplyCart: { wood: 0, fish: 0, hops: 0, max: 100, level: 1 },
                 maxInventorySlots: 5, backpackUpgrades: 0,
-                pet: { adopted: false, level: 1 }
+                pet: { adopted: false, level: 1 },
+                quests: { completed: {} }
             };
 // ===================
 
@@ -301,6 +338,8 @@ if (data.saveData) {
 
                 // --- LEGACY SCHEMA MIGRATION ---
                 if (!pd.buildings) pd.buildings = { workerCabin: 1 };
+                if (!pd.quests) pd.quests = { completed: {} };
+                if (!pd.quests.completed) pd.quests.completed = {};
                 if (pd.workers && pd.workers.woodcutters !== undefined) {
                     let w = pd.workers.woodcutters || 0;
                     let f = pd.workers.fishermen || 0;
@@ -328,6 +367,7 @@ if (data.saveData) {
         injectTownRouter(socket, io, activePlayers, activeCombats);
         injectCombatRouter(socket, io, activePlayers, activeCombats);
         injectSocialRouter(socket, io, activePlayers, activeCombats);
+        injectQuestRouter(socket, io, activePlayers);
 
 
         // === RESTORED: DISCONNECT HANDLER ===

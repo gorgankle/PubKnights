@@ -510,6 +510,7 @@
             <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
                 <button onclick="openStudioTool('pixel-studio.html')" style="background: #e67e22; border-color: #d35400; padding: 10px; font-size: 14px; margin: 0;">🎨 Art Studio</button>
                 <button onclick="openStudioTool('beat-studio.html')" style="background: #2980b9; border-color: #3498db; padding: 10px; font-size: 14px; margin: 0;">🎵 Music Studio</button>
+                <button onclick="openStudioTool('quest-movie-studio.html')" style="background: #236743; border-color: #2ecc71; padding: 10px; font-size: 14px; margin: 0;">Quest Movie Studio</button>
             </div>
         </div>
 
@@ -827,8 +828,22 @@
 <div id="game-tooltip"></div>
 	
 <!-- === QUEST CINEMATIC PLAYER (MOCK ONLY) === -->
-<div id="quest-cinematic-overlay" style="display:none; position:fixed; inset:0; z-index:100004; background:rgba(8, 6, 5, 0.96); align-items:center; justify-content:center; padding:18px; box-sizing:border-box;">
-    <div style="width:min(100%, 980px); background:#1a1512; border:3px solid #8b5a2b; border-radius:8px; box-shadow:0 15px 45px rgba(0,0,0,0.95); overflow:hidden;">
+<div id="quest-cinematic-overlay" style="display:none; opacity:0; transition:opacity 260ms ease; position:fixed; inset:0; z-index:100004; background:rgba(8, 6, 5, 0.96); align-items:center; justify-content:center; padding:18px; box-sizing:border-box;">
+    <style>
+        #quest-cinematic-overlay button.quest-required-action {
+            border-color: #f1c40f !important;
+            box-shadow: 0 0 0 2px rgba(241, 196, 15, 0.24), 0 0 18px rgba(241, 196, 15, 0.34);
+            transform: translateY(-1px);
+        }
+        #quest-cinematic-overlay button.quest-locked-action {
+            opacity: 0.52;
+            cursor: not-allowed;
+        }
+        #quest-cinematic-overlay button:disabled {
+            filter: grayscale(0.35);
+        }
+    </style>
+    <div id="quest-cinematic-shell" style="width:min(100%, 980px); background:#1a1512; border:3px solid #8b5a2b; border-radius:8px; box-shadow:0 15px 45px rgba(0,0,0,0.95); overflow:hidden;">
         <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 14px; border-bottom:1px dashed #634e3d; background:#110d0a;">
             <div>
                 <div id="quest-cinematic-title" style="color:#ffcc66; font-weight:bold; font-size:15px; text-transform:uppercase;">Training</div>
@@ -836,10 +851,21 @@
             </div>
             <button id="quest-cinematic-skip-btn" onclick="QuestCinematics.skipCurrent()" style="background:#443a32; border-color:#634e3d; padding:7px 12px; margin:0;">Skip</button>
         </div>
-        <canvas id="quest-cinematic-canvas" width="864" height="540" onclick="QuestCinematics.advance()" style="display:block; width:100%; height:auto; background:#0a0806; image-rendering:pixelated; cursor:pointer;"></canvas>
-        <div style="display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center; padding:12px 14px; border-top:1px dashed #634e3d; background:#221a14;">
-            <div id="quest-cinematic-caption" style="color:#f4ebd9; font-size:13px; line-height:1.45; font-weight:bold;">Click continue.</div>
-            <button id="quest-cinematic-next-btn" onclick="QuestCinematics.advance()" style="background:#27ae60; border-color:#2ecc71; padding:10px 18px; margin:0;">Continue</button>
+        <canvas id="quest-cinematic-canvas" width="864" height="540" onclick="QuestCinematics.canvasClick(event)" style="display:block; width:100%; height:auto; background:#0a0806; image-rendering:pixelated; cursor:crosshair;"></canvas>
+        <div style="display:grid; grid-template-columns:1fr 1.3fr; gap:10px; padding:12px 14px; border-top:1px dashed #634e3d; background:#221a14;">
+            <div style="background:#110d0a; border:1px solid #4a3b2c; border-radius:4px; padding:9px;">
+                <div id="quest-cinematic-phase" style="color:#3498db; font-size:12px; font-weight:bold; text-transform:uppercase;">Player Turn</div>
+                <div id="quest-cinematic-target" style="color:#2ecc71; font-size:12px; margin-top:5px; font-weight:bold;">No target</div>
+                <div id="quest-cinematic-status" style="color:#bbaaa0; font-size:11px; margin-top:5px;">Listen to Kreg</div>
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:7px;">
+                <button id="quest-mock-attack-btn" onclick="QuestCinematics.performAction('attack')" style="background:#8b5a2b; border-color:#b87934; padding:8px 6px; margin:0;">Attack</button>
+                <button id="quest-mock-pass-btn" onclick="QuestCinematics.performAction('pass')" style="background:#3f5f7d; border-color:#4f9ddd; padding:8px 6px; margin:0;">Pass Turn</button>
+                <button disabled style="background:#443a32; border-color:#634e3d; padding:8px 6px; margin:0;">Flee</button>
+                <button id="quest-mock-brew-btn" onclick="QuestCinematics.performAction('brew')" style="background:#236743; border-color:#2ecc71; padding:8px 6px; margin:0;">Drink Brew</button>
+                <button id="quest-mock-bomb-btn" onclick="QuestCinematics.performAction('prepBomb')" style="background:#9a4f18; border-color:#e67e22; padding:8px 6px; margin:0;">Throw Bomb</button>
+                <button id="quest-mock-brace-btn" onclick="QuestCinematics.performAction('brace')" style="background:#7d2f2f; border-color:#e74c3c; padding:8px 6px; margin:0;">Brace</button>
+            </div>
         </div>
     </div>
 </div>
@@ -924,6 +950,7 @@
     <script src="js/renderer.js"></script>       <!-- RENDERS DATA -->
 	<script src="js/fx-engine.js"></script>
 	<script src="js/dialogue.js"></script>
+	<script src="js/quest-scripts.js"></script>
 	<script src="js/quest-cinematics.js"></script>
 	<script src="js/social.js"></script>
 

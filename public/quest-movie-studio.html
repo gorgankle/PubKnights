@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pub Knights - Quest Movie Studio</title>
+    <style>
+        :root {
+            --bg: #1c1714;
+            --panel: #241d18;
+            --panel-2: #14110f;
+            --line: #5d4938;
+            --gold: #f1c766;
+            --text: #f4ebd9;
+            --muted: #b9aa98;
+            --red: #d95757;
+            --blue: #4f9ddd;
+            --green: #4fb477;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: "Courier New", monospace;
+            margin: 0;
+            padding: 18px;
+        }
+
+        h1 {
+            color: var(--gold);
+            font-size: 28px;
+            margin: 0 auto 14px;
+            max-width: 1440px;
+        }
+
+        button,
+        input,
+        select,
+        textarea {
+            font-family: inherit;
+        }
+
+        input,
+        select,
+        textarea {
+            background: #0d0b09;
+            border: 1px solid #46382d;
+            border-radius: 4px;
+            color: var(--text);
+            min-height: 34px;
+            padding: 7px 8px;
+            width: 100%;
+        }
+
+        textarea {
+            line-height: 1.35;
+            resize: vertical;
+        }
+
+        button {
+            background: #2d251f;
+            border: 2px solid #4b3b30;
+            border-radius: 4px;
+            color: var(--text);
+            cursor: pointer;
+            font-weight: 700;
+            min-height: 36px;
+            padding: 8px 10px;
+        }
+
+        button:hover { border-color: var(--gold); }
+
+        label {
+            color: var(--muted);
+            display: grid;
+            gap: 5px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .app-shell {
+            align-items: start;
+            display: grid;
+            gap: 16px;
+            grid-template-columns: 320px minmax(560px, 1fr) 430px;
+            margin: 0 auto;
+            max-width: 1440px;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 2px solid var(--line);
+            border-radius: 6px;
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+            padding: 14px;
+        }
+
+        .tool-section {
+            border-top: 1px dashed #634e3d;
+            display: grid;
+            gap: 9px;
+            padding-top: 12px;
+        }
+
+        .tool-section:first-child {
+            border-top: 0;
+            padding-top: 0;
+        }
+
+        .tool-title {
+            color: var(--gold);
+            font-size: 13px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .scene-list {
+            display: grid;
+            gap: 7px;
+            max-height: 430px;
+            overflow-y: auto;
+        }
+
+        .scene-row {
+            background: #17120f;
+            border: 1px solid #4a3b2c;
+            border-radius: 4px;
+            color: var(--muted);
+            display: grid;
+            gap: 3px;
+            padding: 8px;
+            text-align: left;
+        }
+
+        .scene-row.active {
+            background: #825c2f;
+            border-color: var(--gold);
+            color: #fff;
+        }
+
+        .scene-row small {
+            color: inherit;
+            opacity: 0.82;
+        }
+
+        .editor-grid {
+            display: grid;
+            gap: 12px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .span-2 { grid-column: 1 / -1; }
+
+        .mini-grid {
+            display: grid;
+            gap: 8px;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        .actions {
+            display: grid;
+            gap: 8px;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        .btn-green { background: #236743; border-color: var(--green); }
+        .btn-blue { background: #285a7d; border-color: var(--blue); }
+        .btn-red { background: #77312c; border-color: #b84a43; }
+        .btn-gold { background: #825c2f; border-color: var(--gold); }
+
+        .preview {
+            background: #0f0c0a;
+            border: 2px solid #8b5a2b;
+            border-radius: 6px;
+            min-height: 330px;
+            overflow: hidden;
+        }
+
+        .preview-header {
+            background: #17120f;
+            border-bottom: 1px dashed #4a3b2c;
+            display: grid;
+            gap: 3px;
+            padding: 10px 12px;
+        }
+
+        .preview-canvas {
+            background: #080604;
+            display: block;
+            image-rendering: pixelated;
+            width: 100%;
+        }
+
+        .preview-caption {
+            background: #17120f;
+            border-top: 1px dashed #4a3b2c;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.45;
+            padding: 10px 12px;
+        }
+
+        .timeline {
+            max-height: 280px;
+            overflow-y: auto;
+            padding: 8px 14px 14px;
+        }
+
+        .preview-scene {
+            border-bottom: 1px dashed #4a3b2c;
+            display: grid;
+            gap: 5px;
+            padding: 8px 0;
+        }
+
+        .preview-scene:last-child { border-bottom: 0; }
+
+        .tag-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .tag {
+            background: #2c2520;
+            border: 1px solid #4a3b2c;
+            border-radius: 4px;
+            color: var(--muted);
+            font-size: 11px;
+            padding: 3px 6px;
+        }
+
+        .export-panel {
+            display: grid;
+            gap: 8px;
+            grid-column: 1 / -1;
+        }
+
+        .export-bar {
+            align-items: center;
+            display: flex;
+            gap: 10px;
+            justify-content: space-between;
+        }
+
+        #export-output {
+            color: #58d68d;
+            height: 340px;
+        }
+
+        .hint {
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.45;
+        }
+
+        @media (max-width: 1160px) {
+            body { padding: 12px; }
+            .app-shell { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <h1>Quest Movie Studio</h1>
+
+    <main class="app-shell">
+        <aside class="panel">
+            <section class="tool-section">
+                <div class="tool-title">Quest</div>
+                <label>
+                    Quest ID
+                    <input id="quest-id" value="tutorial_kreg" spellcheck="false">
+                </label>
+                <label>
+                    Title
+                    <input id="quest-title" value="Kreg's Combat Primer" spellcheck="false">
+                </label>
+                <label>
+                    Map Template
+                    <select id="map-template">
+                        <option value="CUSTOM">Custom Visual Map</option>
+                    </select>
+                </label>
+                <button class="btn-blue" onclick="applyMapToCurrentScene()">Use Map Starts</button>
+                <label>
+                    Custom Floor Sprite
+                    <select id="floor-sprite">
+                        <option value="ground_wilderness">ground_wilderness</option>
+                        <option value="ground_cellars">ground_cellars</option>
+                        <option value="ground_abyss">ground_abyss</option>
+                        <option value="ground_arena">ground_arena</option>
+                    </select>
+                </label>
+            </section>
+
+            <section class="tool-section">
+                <div class="tool-title">Server Ending</div>
+                <label>
+                    Completion Mode
+                    <select id="completion-mode">
+                        <option value="none">Movie only</option>
+                        <option value="reward">Persist completion and rewards</option>
+                        <option value="combatZone">Send to combat zone</option>
+                    </select>
+                </label>
+                <label>
+                    Gold Reward
+                    <input id="reward-gold" type="number" min="0" value="0">
+                </label>
+                <label>
+                    XP Reward
+                    <input id="reward-xp" type="number" min="0" value="0">
+                </label>
+                <label>
+                    Combat Zone
+                    <select id="combat-zone">
+                        <option value="WILDERNESS">WILDERNESS</option>
+                        <option value="CELLARS">CELLARS</option>
+                        <option value="GORILLA_ARENA">GORILLA_ARENA</option>
+                    </select>
+                </label>
+            </section>
+
+            <section class="tool-section">
+                <div class="tool-title">Scenes</div>
+                <div class="scene-list" id="scene-list"></div>
+                <button class="btn-green" onclick="addScene()">Add Scene</button>
+            </section>
+        </aside>
+
+        <section class="panel">
+            <div class="tool-section">
+                <div class="tool-title">Scene Editor</div>
+                <div class="editor-grid">
+                    <label>
+                        Scene ID
+                        <input id="scene-id" spellcheck="false">
+                    </label>
+                    <label>
+                        Scene Title
+                        <input id="scene-title" spellcheck="false">
+                    </label>
+                    <label>
+                        Subtitle
+                        <input id="scene-subtitle" spellcheck="false">
+                    </label>
+                    <label>
+                        Phase Label
+                        <input id="scene-phase" spellcheck="false">
+                    </label>
+                    <label>
+                        Required Action
+                        <select id="scene-action">
+                            <option value="pass">Pass Turn button</option>
+                            <option value="brew">Drink Brew button</option>
+                            <option value="selectTarget">Click target on grid</option>
+                            <option value="attack">Attack button</option>
+                            <option value="bomb">Throw Bomb then tile</option>
+                            <option value="brace">Brace button</option>
+                            <option value="continue">Auto continue</option>
+                        </select>
+                    </label>
+                    <label>
+                        Visual Mode
+                        <select id="scene-mode">
+                            <option value="pass">pass</option>
+                            <option value="brew">brew</option>
+                            <option value="select">select</option>
+                            <option value="attack">attack</option>
+                            <option value="bomb">bomb</option>
+                            <option value="boss">boss</option>
+                        </select>
+                    </label>
+                    <label>
+                        Auto Advance MS
+                        <input id="scene-delay" type="number" min="300" value="900">
+                    </label>
+                    <label>
+                        Effects
+                        <select id="scene-effects" multiple size="3">
+                            <option value="fadeIn">fadeIn</option>
+                            <option value="shake">shake</option>
+                            <option value="flash">flash</option>
+                        </select>
+                    </label>
+
+                    <label class="span-2">
+                        Kreg Dialogue
+                        <textarea id="scene-dialogue" rows="4" spellcheck="true"></textarea>
+                    </label>
+
+                    <div class="span-2 mini-grid">
+                        <label>Player X<input id="player-x" type="number" min="0" value="2"></label>
+                        <label>Player Y<input id="player-y" type="number" min="0" value="5"></label>
+                        <label>Player HP<input id="player-hp" type="number" min="1" value="100"></label>
+                        <label>Stamina<input id="player-stamina" type="number" min="0" value="70"></label>
+                    </div>
+
+                    <div class="span-2 mini-grid">
+                        <label>Enemy ID<input id="enemy-id" value="wild_ravager" spellcheck="false"></label>
+                        <label>Enemy Name<input id="enemy-name" value="Training Ravager" spellcheck="false"></label>
+                        <label>Enemy X<input id="enemy-x" type="number" min="0" value="10"></label>
+                        <label>Enemy Y<input id="enemy-y" type="number" min="0" value="5"></label>
+                    </div>
+
+                    <div class="span-2 actions">
+                        <button class="btn-blue" onclick="saveScene()">Save Scene</button>
+                        <button onclick="moveScene(-1)">Move Up</button>
+                        <button onclick="moveScene(1)">Move Down</button>
+                        <button class="btn-red" onclick="deleteScene()">Delete</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <aside class="panel">
+            <section class="tool-section">
+                <div class="tool-title">Movie Preview</div>
+                <div class="preview">
+                    <div class="preview-header">
+                        <strong id="preview-title" style="color:var(--gold);">Scene Preview</strong>
+                        <span id="preview-map-name" style="color:var(--muted); font-size:12px;">Custom Visual Map</span>
+                    </div>
+                    <canvas id="preview-canvas" class="preview-canvas" width="640" height="400"></canvas>
+                    <div id="preview-caption" class="preview-caption"></div>
+                    <div id="preview" class="timeline"></div>
+                </div>
+            </section>
+        </aside>
+
+        <section class="panel export-panel">
+            <div class="export-bar">
+                <strong style="color: var(--gold);">Quest Export</strong>
+                <button id="export-btn" class="btn-gold" onclick="copyExport()">Copy Export</button>
+            </div>
+            <textarea id="export-output" readonly></textarea>
+            <div class="hint">Paste the client block into QuestScripts in public/js/quest-scripts.js. Paste the server block into QuestDefinitions in questDefinitions.js.</div>
+        </section>
+    </main>
+
+    <script>
+        const defaultPlayer = { x: 2, y: 5, hp: 100, maxHp: 100, stamina: 70, maxStamina: 100, atb: 100 };
+        const defaultEnemy = { x: 10, y: 5, id: "wild_ravager", name: "Training Ravager", hp: 100, maxHp: 100, atb: 30 };
+        const floorColors = {
+            ground_wilderness: "#3f6f48",
+            ground_cellars: "#5b4536",
+            ground_abyss: "#3a315e",
+            ground_arena: "#6b5338"
+        };
+        const defaultObstacleByZone = {
+            WILDERNESS: { spriteId: "map_tree", label: "TREE" },
+            CELLARS: { spriteId: "map_broken_cask", label: "CASK" },
+            ABYSS: { spriteId: "map_pillar", label: "PILLAR" },
+            GORILLA_ARENA: { spriteId: "map_boulder", label: "ROCK" }
+        };
+        const defaultEnemyByZone = {
+            WILDERNESS: "wild_ravager",
+            CELLARS: "corrupted_cask",
+            ABYSS: "spectral_barfly",
+            GORILLA_ARENA: "enraged_gorilla"
+        };
+
+        let scenes = [
+            makeScene("pass_turn", "Passing Turn", "Phase 1: Recovery", "PLAYER TURN - PHASE 1", "pass", "pass", "First lesson: click Pass Turn when you need to recover."),
+            makeScene("select_target", "Select Target", "Phase 2: Target Lock", "PLAYER TURN - PHASE 2", "selectTarget", "select", "Click the enemy on the grid before attacking."),
+            makeScene("standard_attack", "Standard Attack", "Phase 2: Weapon Action", "PLAYER TURN - PHASE 2", "attack", "attack", "Now click Attack to strike the selected target.")
+        ];
+        let selectedIndex = 0;
+        let mapTemplates = {};
+        let activeMapTemplateId = "CUSTOM";
+
+        document.querySelectorAll("input, select, textarea").forEach(field => {
+            field.addEventListener("input", generateExport);
+            field.addEventListener("change", generateExport);
+        });
+
+        document.getElementById("map-template").addEventListener("change", () => {
+            activeMapTemplateId = document.getElementById("map-template").value;
+            syncMapFieldsFromTemplate(false);
+            renderPreview();
+            generateExport();
+        });
+
+        document.getElementById("floor-sprite").addEventListener("change", () => {
+            if (activeMapTemplateId === "CUSTOM") renderPreview();
+        });
+
+        function makeScene(id, title, subtitle, phase, requiredAction, mode, dialogue) {
+            return {
+                id,
+                title,
+                subtitle,
+                phase,
+                mode,
+                requiredAction,
+                highlight: requiredAction,
+                requiresTarget: requiredAction === "attack",
+                autoAdvanceMs: 900,
+                effects: [],
+                dialogue: [{ speaker: "Kreg", portraitId: "npc_kreg", text: dialogue }],
+                player: { ...defaultPlayer },
+                enemy: { ...defaultEnemy },
+                targetTile: { x: defaultEnemy.x, y: defaultEnemy.y }
+            };
+        }
+
+        function createCustomMapTemplate() {
+            return {
+                id: "CUSTOM",
+                zone: "CUSTOM",
+                name: "Custom Visual Map",
+                gridSize: { cols: 16, rows: 10 },
+                tileSize: 54,
+                floorSpriteId: document.getElementById("floor-sprite").value || "ground_wilderness",
+                floorTiles: [],
+                playerStart: { x: 2, y: 5 },
+                enemies: [],
+                enemySlots: [{ id: "wild_ravager", x: 10, y: 5 }],
+                obstacles: [
+                    { x: 4, y: 2, spriteId: "map_tree" },
+                    { x: 4, y: 7, spriteId: "map_tree" },
+                    { x: 8, y: 3, spriteId: "map_tree" },
+                    { x: 8, y: 7, spriteId: "map_tree" }
+                ],
+                interactables: []
+            };
+        }
+
+        async function loadCombatMapTemplates() {
+            try {
+                const response = await fetch("/api/combat-map-templates");
+                if (!response.ok) throw new Error("Map template request failed");
+                mapTemplates = await response.json();
+            } catch (err) {
+                mapTemplates = {};
+            }
+
+            populateMapTemplateSelect();
+            syncMapFieldsFromTemplate(false);
+            renderPreview();
+            generateExport();
+        }
+
+        function populateMapTemplateSelect() {
+            const select = document.getElementById("map-template");
+            const currentValue = select.value || "CUSTOM";
+            select.innerHTML = `<option value="CUSTOM">Custom Visual Map</option>`;
+
+            Object.values(mapTemplates)
+                .sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id))
+                .forEach(template => {
+                    const option = document.createElement("option");
+                    option.value = template.id;
+                    option.textContent = `${template.name} (${template.id})`;
+                    select.appendChild(option);
+                });
+
+            select.value = mapTemplates[currentValue] ? currentValue : "CUSTOM";
+            activeMapTemplateId = select.value;
+        }
+
+        function getActiveMapTemplate() {
+            return mapTemplates[activeMapTemplateId] || createCustomMapTemplate();
+        }
+
+        function syncMapFieldsFromTemplate(applyStarts) {
+            const map = getActiveMapTemplate();
+            if (map.floorSpriteId) document.getElementById("floor-sprite").value = map.floorSpriteId;
+            if (applyStarts) applyMapToCurrentScene();
+        }
+
+        function applyMapToCurrentScene() {
+            const scene = scenes[selectedIndex];
+            const map = getActiveMapTemplate();
+            if (!scene || !map) return;
+
+            if (map.playerStart) {
+                scene.player.x = map.playerStart.x;
+                scene.player.y = map.playerStart.y;
+            }
+
+            const slot = pickPreviewEnemySlot(map);
+            if (slot) {
+                scene.enemy.id = slot.id || defaultEnemyByZone[map.zone] || scene.enemy.id || "wild_ravager";
+                scene.enemy.name = readableName(scene.enemy.id);
+                scene.enemy.x = slot.x;
+                scene.enemy.y = slot.y;
+                scene.enemy.size = scene.mode === "boss" ? 2 : 1;
+                scene.targetTile = { x: slot.x, y: slot.y };
+            }
+
+            loadSceneForm();
+            renderSceneList();
+            renderPreview();
+            generateExport();
+        }
+
+        function pickPreviewEnemySlot(map) {
+            if (Array.isArray(map.enemies) && map.enemies.length) return map.enemies[0];
+            if (Array.isArray(map.enemySlots) && map.enemySlots.length) {
+                return map.enemySlots.find(slot => slot.id) || map.enemySlots[0];
+            }
+            return null;
+        }
+
+        function selectScene(index) {
+            selectedIndex = Math.max(0, Math.min(scenes.length - 1, index));
+            loadSceneForm();
+            renderSceneList();
+            renderPreview();
+        }
+
+        function addScene() {
+            scenes.push(makeScene(`scene_${scenes.length + 1}`, "New Scene", "Quest Beat", "PLAYER TURN", "continue", "select", "Kreg explains what happens in this scene."));
+            selectScene(scenes.length - 1);
+            generateExport();
+        }
+
+        function saveScene() {
+            const scene = scenes[selectedIndex];
+            if (!scene) return;
+
+            scene.id = cleanId(document.getElementById("scene-id").value, `scene_${selectedIndex + 1}`);
+            scene.title = document.getElementById("scene-title").value.trim() || "Quest Scene";
+            scene.subtitle = document.getElementById("scene-subtitle").value.trim() || "Quest Beat";
+            scene.phase = document.getElementById("scene-phase").value.trim() || "PLAYER TURN";
+            scene.requiredAction = document.getElementById("scene-action").value;
+            scene.highlight = scene.requiredAction;
+            scene.requiresTarget = scene.requiredAction === "attack";
+            scene.mode = document.getElementById("scene-mode").value;
+            scene.autoAdvanceMs = Math.max(300, parseInt(document.getElementById("scene-delay").value, 10) || 900);
+            scene.effects = Array.from(document.getElementById("scene-effects").selectedOptions).map(option => option.value);
+            scene.dialogue = splitDialogue(document.getElementById("scene-dialogue").value);
+            scene.player = {
+                x: num("player-x"), y: num("player-y"),
+                hp: num("player-hp", 100), maxHp: 100,
+                stamina: num("player-stamina", 70), maxStamina: 100,
+                atb: 100
+            };
+            scene.enemy = {
+                id: document.getElementById("enemy-id").value.trim() || "wild_ravager",
+                name: document.getElementById("enemy-name").value.trim() || "Training Ravager",
+                x: num("enemy-x", 10), y: num("enemy-y", 5),
+                hp: 100, maxHp: 100, atb: 30,
+                size: scene.mode === "boss" ? 2 : 1
+            };
+            scene.targetTile = { x: scene.enemy.x, y: scene.enemy.y };
+
+            renderSceneList();
+            renderPreview();
+            generateExport();
+        }
+
+        function deleteScene() {
+            if (scenes.length <= 1) return;
+            scenes.splice(selectedIndex, 1);
+            selectScene(Math.min(selectedIndex, scenes.length - 1));
+            generateExport();
+        }
+
+        function moveScene(direction) {
+            const nextIndex = selectedIndex + direction;
+            if (nextIndex < 0 || nextIndex >= scenes.length) return;
+            const temp = scenes[selectedIndex];
+            scenes[selectedIndex] = scenes[nextIndex];
+            scenes[nextIndex] = temp;
+            selectScene(nextIndex);
+            generateExport();
+        }
+
+        function loadSceneForm() {
+            const scene = scenes[selectedIndex];
+            if (!scene) return;
+
+            setValue("scene-id", scene.id);
+            setValue("scene-title", scene.title);
+            setValue("scene-subtitle", scene.subtitle);
+            setValue("scene-phase", scene.phase);
+            setValue("scene-action", scene.requiredAction);
+            setValue("scene-mode", scene.mode);
+            setValue("scene-delay", scene.autoAdvanceMs);
+            setValue("scene-dialogue", (scene.dialogue || []).map(page => page.text).join("\n\n"));
+            setValue("player-x", scene.player.x);
+            setValue("player-y", scene.player.y);
+            setValue("player-hp", scene.player.hp);
+            setValue("player-stamina", scene.player.stamina);
+            setValue("enemy-id", scene.enemy.id);
+            setValue("enemy-name", scene.enemy.name);
+            setValue("enemy-x", scene.enemy.x);
+            setValue("enemy-y", scene.enemy.y);
+
+            const effectSelect = document.getElementById("scene-effects");
+            Array.from(effectSelect.options).forEach(option => {
+                option.selected = (scene.effects || []).includes(option.value);
+            });
+        }
+
+        function renderSceneList() {
+            const list = document.getElementById("scene-list");
+            list.innerHTML = "";
+            scenes.forEach((scene, index) => {
+                const row = document.createElement("button");
+                row.className = "scene-row" + (index === selectedIndex ? " active" : "");
+                row.onclick = () => selectScene(index);
+                row.innerHTML = `<strong>${index + 1}. ${escapeHtml(scene.title)}</strong><small>${escapeHtml(scene.requiredAction)} / ${escapeHtml(scene.mode)}</small>`;
+                list.appendChild(row);
+            });
+        }
+
+        function renderPreview() {
+            const preview = document.getElementById("preview");
+            const scene = scenes[selectedIndex];
+            const map = getActiveMapTemplate();
+
+            document.getElementById("preview-title").innerText = scene ? scene.title : "Scene Preview";
+            document.getElementById("preview-map-name").innerText = map ? `${map.name || map.id} - ${map.zone || "CUSTOM"}` : "Custom Visual Map";
+            document.getElementById("preview-caption").innerText = scene
+                ? `${scene.phase} | Required: ${scene.requiredAction} | Effects: ${(scene.effects || []).join(", ") || "none"}`
+                : "";
+
+            drawPreviewCanvas(scene, map);
+
+            preview.innerHTML = scenes.map((scene, index) => `
+                <div class="preview-scene">
+                    <strong style="color:${index === selectedIndex ? "var(--gold)" : "var(--text)"};">${index + 1}. ${escapeHtml(scene.title)}</strong>
+                    <div class="tag-row">
+                        <span class="tag">${escapeHtml(scene.phase)}</span>
+                        <span class="tag">${escapeHtml(scene.requiredAction)}</span>
+                        <span class="tag">${escapeHtml(scene.mode)}</span>
+                    </div>
+                    <small style="color:var(--muted);">${escapeHtml((scene.dialogue && scene.dialogue[0] && scene.dialogue[0].text) || "")}</small>
+                </div>
+            `).join("");
+        }
+
+        function drawPreviewCanvas(scene, map) {
+            const canvas = document.getElementById("preview-canvas");
+            if (!canvas || !scene || !map) return;
+
+            const ctx = canvas.getContext("2d");
+            const cols = (map.gridSize && map.gridSize.cols) || 16;
+            const rows = (map.gridSize && map.gridSize.rows) || 10;
+            const tile = Math.floor(Math.min(canvas.width / cols, canvas.height / rows));
+            const offsetX = Math.floor((canvas.width - (cols * tile)) / 2);
+            const offsetY = Math.floor((canvas.height - (rows * tile)) / 2);
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#080604";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            for (let x = 0; x < cols; x++) {
+                for (let y = 0; y < rows; y++) {
+                    const spriteId = getPreviewFloorSprite(map, x, y);
+                    ctx.fillStyle = floorColors[spriteId] || "#3f6f48";
+                    ctx.fillRect(offsetX + x * tile, offsetY + y * tile, tile, tile);
+                    ctx.fillStyle = "rgba(0, 0, 0, 0.16)";
+                    ctx.fillRect(offsetX + x * tile, offsetY + y * tile, tile, tile);
+                    ctx.strokeStyle = "#2b231d";
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(offsetX + x * tile, offsetY + y * tile, tile, tile);
+                }
+            }
+
+            drawMapTemplateSlots(ctx, map, offsetX, offsetY, tile);
+            drawPreviewObstacles(ctx, map, offsetX, offsetY, tile);
+            drawSceneHighlights(ctx, scene, offsetX, offsetY, tile);
+            drawPreviewActor(ctx, scene.player, offsetX, offsetY, tile, "#4f9ddd", "YOU");
+            drawPreviewActor(ctx, scene.enemy, offsetX, offsetY, tile, "#d95757", "MOB", scene.enemy.size || 1);
+            drawPreviewDialogue(ctx, scene);
+        }
+
+        function drawMapTemplateSlots(ctx, map, offsetX, offsetY, tile) {
+            const slots = [...(map.enemySlots || []), ...(map.enemies || [])].slice(0, 18);
+            slots.forEach(slot => {
+                ctx.fillStyle = "rgba(217, 87, 87, 0.18)";
+                ctx.beginPath();
+                ctx.arc(offsetX + (slot.x * tile) + tile / 2, offsetY + (slot.y * tile) + tile / 2, Math.max(4, tile * 0.12), 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        function drawPreviewObstacles(ctx, map, offsetX, offsetY, tile) {
+            (map.obstacles || []).forEach(obstacle => {
+                ctx.fillStyle = "rgba(20, 17, 15, 0.72)";
+                ctx.fillRect(offsetX + obstacle.x * tile + 4, offsetY + obstacle.y * tile + 4, tile - 8, tile - 8);
+                ctx.strokeStyle = "#87919a";
+                ctx.strokeRect(offsetX + obstacle.x * tile + 7, offsetY + obstacle.y * tile + 7, tile - 14, tile - 14);
+                ctx.fillStyle = "#b9aa98";
+                ctx.font = "700 9px Courier New";
+                ctx.textAlign = "center";
+                ctx.fillText(shortObstacleLabel(obstacle, map), offsetX + obstacle.x * tile + tile / 2, offsetY + obstacle.y * tile + tile / 2 + 3);
+            });
+        }
+
+        function drawSceneHighlights(ctx, scene, offsetX, offsetY, tile) {
+            if (scene.requiredAction === "selectTarget" && scene.enemy) {
+                drawPreviewTileOutline(ctx, scene.enemy.x, scene.enemy.y, scene.enemy.size || 1, offsetX, offsetY, tile, "#2ecc71");
+            }
+            if (scene.requiredAction === "bomb") {
+                const target = scene.targetTile || scene.enemy;
+                drawPreviewAoe(ctx, target.x, target.y, offsetX, offsetY, tile);
+                drawPreviewTileOutline(ctx, target.x, target.y, 1, offsetX, offsetY, tile, "#e67e22");
+            }
+            if ((scene.effects || []).includes("shake") || scene.mode === "boss") {
+                ctx.fillStyle = "rgba(231, 76, 60, 0.16)";
+                ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            }
+        }
+
+        function drawPreviewActor(ctx, actor, offsetX, offsetY, tile, color, label, size = 1) {
+            if (!actor) return;
+            ctx.fillStyle = color;
+            ctx.fillRect(offsetX + actor.x * tile + 6, offsetY + actor.y * tile + 6, (tile * size) - 12, (tile * size) - 12);
+            ctx.strokeStyle = "#f4ebd9";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(offsetX + actor.x * tile + 9, offsetY + actor.y * tile + 9, (tile * size) - 18, (tile * size) - 18);
+            ctx.fillStyle = "#fff";
+            ctx.font = "700 11px Courier New";
+            ctx.textAlign = "center";
+            ctx.fillText(label, offsetX + actor.x * tile + (tile * size) / 2, offsetY + actor.y * tile + (tile * size) / 2 + 4);
+        }
+
+        function drawPreviewDialogue(ctx, scene) {
+            const text = (scene.dialogue && scene.dialogue[0] && scene.dialogue[0].text) || "";
+            if (!text) return;
+            ctx.fillStyle = "rgba(20, 17, 15, 0.88)";
+            ctx.fillRect(12, 306, 616, 82);
+            ctx.strokeStyle = "#b9aa98";
+            ctx.strokeRect(12, 306, 616, 82);
+            ctx.fillStyle = "#f1c766";
+            ctx.font = "700 12px Courier New";
+            ctx.fillText("KREG", 26, 326);
+            ctx.fillStyle = "#f4ebd9";
+            ctx.font = "700 12px Courier New";
+            wrapCanvasText(ctx, text, 26, 346, 580, 16, 2);
+        }
+
+        function drawPreviewAoe(ctx, x, y, offsetX, offsetY, tile) {
+            ctx.fillStyle = "rgba(230, 126, 34, 0.28)";
+            for (let dx = -1; dx <= 1; dx++) {
+                for (let dy = -1; dy <= 1; dy++) {
+                    ctx.fillRect(offsetX + (x + dx) * tile, offsetY + (y + dy) * tile, tile, tile);
+                }
+            }
+        }
+
+        function drawPreviewTileOutline(ctx, x, y, size, offsetX, offsetY, tile, color) {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 4;
+            ctx.strokeRect(offsetX + x * tile + 3, offsetY + y * tile + 3, (tile * size) - 6, (tile * size) - 6);
+        }
+
+        function getPreviewFloorSprite(map, x, y) {
+            const override = (map.floorTiles || []).find(tile => tile.x === x && tile.y === y);
+            return override && override.spriteId ? override.spriteId : map.floorSpriteId || document.getElementById("floor-sprite").value;
+        }
+
+        function shortObstacleLabel(obstacle, map) {
+            if (obstacle.icon) return String(obstacle.icon).slice(0, 5).toUpperCase();
+            const fallback = defaultObstacleByZone[map.zone] || defaultObstacleByZone.WILDERNESS;
+            const spriteId = obstacle.spriteId || fallback.spriteId;
+            if (spriteId.includes("cask")) return "CASK";
+            if (spriteId.includes("pillar")) return "PILL";
+            if (spriteId.includes("boulder")) return "ROCK";
+            return "TREE";
+        }
+
+        function readableName(id) {
+            return String(id || "Training Ravager")
+                .split("_")
+                .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+                .join(" ");
+        }
+
+        function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight, maxLines) {
+            const words = String(text).split(/\s+/);
+            let line = "";
+            let lineCount = 0;
+
+            words.forEach(word => {
+                const testLine = line ? `${line} ${word}` : word;
+                if (ctx.measureText(testLine).width > maxWidth && line) {
+                    if (lineCount < maxLines) ctx.fillText(line, x, y + (lineCount * lineHeight));
+                    line = word;
+                    lineCount++;
+                } else {
+                    line = testLine;
+                }
+            });
+
+            if (line && lineCount < maxLines) {
+                ctx.fillText(line, x, y + (lineCount * lineHeight));
+            }
+        }
+
+        function collectClientScript() {
+            const questId = cleanId(document.getElementById("quest-id").value, "custom_quest");
+            const map = getActiveMapTemplate();
+            return {
+                id: questId,
+                title: document.getElementById("quest-title").value.trim() || "Custom Quest",
+                mapTemplateId: map.id !== "CUSTOM" ? map.id : null,
+                zone: map.zone || "CUSTOM",
+                tileSize: 54,
+                grid: map.gridSize || { cols: 16, rows: 10 },
+                floorSpriteId: map.floorSpriteId || document.getElementById("floor-sprite").value,
+                floorTiles: map.floorTiles || [],
+                actors: {
+                    playerStart: map.playerStart || { x: 2, y: 5 },
+                    kregStart: { x: 1, y: 4 },
+                    ravagerStart: { x: 10, y: 5 },
+                    bossStart: { x: 11, y: 4 }
+                },
+                obstacles: normalizeExportObstacles(map),
+                interactables: map.interactables || [],
+                introDialogue: [
+                    { speaker: "Kreg", portraitId: "npc_kreg", text: "Let us run this scene safely before the real rewards and danger kick in." }
+                ],
+                outroDialogue: [
+                    { speaker: "Kreg", portraitId: "npc_kreg", text: "Scene complete. Back to the real world." }
+                ],
+                scenes: scenes.map(scene => ({ ...scene }))
+            };
+        }
+
+        function normalizeExportObstacles(map) {
+            const fallback = defaultObstacleByZone[map.zone] || defaultObstacleByZone.WILDERNESS;
+            return (map.obstacles || []).map(obstacle => ({
+                x: obstacle.x,
+                y: obstacle.y,
+                spriteId: obstacle.spriteId || fallback.spriteId
+            }));
+        }
+
+        function collectServerDefinition() {
+            const questId = cleanId(document.getElementById("quest-id").value, "custom_quest");
+            const mode = document.getElementById("completion-mode").value;
+            const gold = Math.max(0, parseInt(document.getElementById("reward-gold").value, 10) || 0);
+            const xp = Math.max(0, parseInt(document.getElementById("reward-xp").value, 10) || 0);
+            const rewards = mode === "reward" ? { gold, xp } : null;
+            const completionAction = mode === "combatZone" ? { type: "combatZone", zone: document.getElementById("combat-zone").value } : null;
+
+            return {
+                id: questId,
+                scriptId: questId,
+                title: document.getElementById("quest-title").value.trim() || "Custom Quest",
+                type: "cinematic",
+                persistCompletion: mode === "reward",
+                rewards,
+                completionAction,
+                requirements: { minLevel: 1 }
+            };
+        }
+
+        function generateExport() {
+            const questId = cleanId(document.getElementById("quest-id").value, "custom_quest");
+            const client = collectClientScript();
+            const server = collectServerDefinition();
+            const clientText = `${questId}: ${toJsObject(client)}`;
+            const serverText = `${questId}: ${toJsObject(server)}`;
+            document.getElementById("export-output").value =
+                `// public/js/quest-scripts.js\n${clientText},\n\n// questDefinitions.js\n${serverText},`;
+        }
+
+        function copyExport() {
+            const outArea = document.getElementById("export-output");
+            outArea.select();
+            document.execCommand("copy");
+            const btn = document.getElementById("export-btn");
+            const oldText = btn.innerText;
+            btn.innerText = "Copied";
+            setTimeout(() => btn.innerText = oldText, 1500);
+        }
+
+        function splitDialogue(value) {
+            const pages = (value || "")
+                .split(/\n\s*\n/g)
+                .map(text => text.trim())
+                .filter(Boolean);
+            return (pages.length ? pages : ["Kreg gives the next instruction."]).map(text => ({
+                speaker: "Kreg",
+                portraitId: "npc_kreg",
+                text
+            }));
+        }
+
+        function toJsObject(value) {
+            return JSON.stringify(value, null, 4)
+                .replace(/"([^"]+)":/g, "$1:")
+                .replace(/"([^"]+)"/g, "\"$1\"");
+        }
+
+        function cleanId(value, fallback) {
+            return (value || fallback)
+                .trim()
+                .toLowerCase()
+                .replace(/[^a-z0-9_]/g, "_")
+                .replace(/_+/g, "_")
+                .replace(/^_|_$/g, "") || fallback;
+        }
+
+        function num(id, fallback = 0) {
+            const parsed = parseInt(document.getElementById(id).value, 10);
+            return Number.isFinite(parsed) ? parsed : fallback;
+        }
+
+        function setValue(id, value) {
+            document.getElementById(id).value = value;
+        }
+
+        function escapeHtml(value) {
+            return String(value || "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;");
+        }
+
+        loadSceneForm();
+        renderSceneList();
+        renderPreview();
+        generateExport();
+        loadCombatMapTemplates();
+    </script>
+</body>
+</html>

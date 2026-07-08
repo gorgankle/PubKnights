@@ -10,7 +10,10 @@ let isTyping = false;
 let dialogueCompleteCallback = null;
 
 function playDialogueSequence(sequence, onComplete = null) {
-    if (!sequence || sequence.length === 0) return;
+    if (!sequence || sequence.length === 0) {
+        if (typeof onComplete === 'function') onComplete();
+        return;
+    }
     
     dialogueSequence = sequence;
     currentDialoguePage = 0;
