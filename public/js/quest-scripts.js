@@ -58,7 +58,7 @@ const QuestScripts = Object.freeze({
                 highlight: "brew",
                 autoAdvanceMs: 1000,
                 dialogue: [
-                    { speaker: "Kreg", portraitId: "npc_kreg", text: "When your health is low, open your options and drink a brew. This stout is a prop, so it cannot be carried out." }
+                    { speaker: "Kreg", portraitId: "npc_kreg", text: "When your health is low, open your Backpack, stay on Drinks, and drink the prop Combat Stout. It cannot be carried out." }
                 ],
                 player: { x: 2, y: 5, hp: 38, maxHp: 100, stamina: 65, maxStamina: 100, atb: 100 },
                 enemy: { x: 10, y: 5, id: "wild_ravager", name: "Training Ravager", hp: 100, maxHp: 100, atb: 42 }
@@ -104,7 +104,7 @@ const QuestScripts = Object.freeze({
                 highlight: "bomb",
                 autoAdvanceMs: 1200,
                 dialogue: [
-                    { speaker: "Kreg", portraitId: "npc_kreg", text: "Bombs are aimed at a tile and splash nearby spaces. Click Throw Bomb, then click the glowing target tile." }
+                    { speaker: "Kreg", portraitId: "npc_kreg", text: "Bombs live in Backpack under Throw. Open the Backpack, choose the prop bomb, then click the glowing target tile." }
                 ],
                 player: { x: 6, y: 5, hp: 100, maxHp: 100, stamina: 68, maxStamina: 100, atb: 100 },
                 enemy: { x: 10, y: 5, id: "wild_ravager", name: "Training Ravager", hp: 46, maxHp: 100, atb: 30 },

@@ -31,6 +31,7 @@ const QuestCinematics = (() => {
     let shakeUntil = 0;
     let flashUntil = 0;
     let pendingAdvanceTimer = null;
+    let backpackFilter = "DRINK";
 
     function start(questId) {
         if (active || currentSession) return;
@@ -121,6 +122,7 @@ const QuestCinematics = (() => {
 
         if (action === "prepBomb" && scene.requiredAction === "bomb") {
             targetingMode = "bomb";
+            closeBackpack();
             applySceneUI();
             if (typeof playRetroSound === "function") playRetroSound("menu");
             return;
@@ -137,7 +139,35 @@ const QuestCinematics = (() => {
             return;
         }
 
+        closeBackpack();
         completeSceneAction(action);
+    }
+
+    function openBackpack(filter) {
+        if (!active || !waitingForInput) return;
+        const scene = getScene();
+        if (!scene || (scene.requiredAction !== "brew" && scene.requiredAction !== "bomb")) {
+            if (typeof playRetroSound === "function") playRetroSound("error");
+            return;
+        }
+        if (targetingMode === "bomb") return;
+        renderBackpack(filter || (scene.requiredAction === "bomb" ? "THROW" : "DRINK"));
+    }
+
+    function closeBackpack() {
+        const modal = document.getElementById("quest-combat-backpack-modal");
+        if (modal) modal.style.display = "none";
+    }
+
+    function selectBackpackTab(filter) {
+        renderBackpack(filter);
+    }
+
+    function cancelTargeting() {
+        if (!active || targetingMode !== "bomb") return;
+        targetingMode = null;
+        applySceneUI();
+        if (typeof playRetroSound === "function") playRetroSound("menu");
     }
 
     function canvasClick(event) {
@@ -244,8 +274,8 @@ const QuestCinematics = (() => {
 
         setText("quest-cinematic-title", scene.title || currentScript.title || "Quest Scene");
         setText("quest-cinematic-subtitle", scene.subtitle || "Mock quest scene");
-        setText("quest-cinematic-phase", scene.phase || "Quest Scene");
-        setText("quest-cinematic-target", getTargetLabel(scene));
+        setCombatHeader(scene);
+        renderMockCombatInterface(scene);
 
         const status = document.getElementById("quest-cinematic-status");
         if (status) {
@@ -256,19 +286,184 @@ const QuestCinematics = (() => {
         }
 
         updateButton("quest-mock-pass-btn", scene.requiredAction === "pass", waitingForInput, "pass");
-        updateButton("quest-mock-brew-btn", scene.requiredAction === "brew", waitingForInput, "brew");
         updateButton("quest-mock-attack-btn", scene.requiredAction === "attack", waitingForInput && (!scene.requiresTarget || mockTargetSelected), "attack");
-        updateButton("quest-mock-bomb-btn", scene.requiredAction === "bomb", waitingForInput && targetingMode !== "bomb", "bomb");
         updateButton("quest-mock-brace-btn", scene.requiredAction === "brace", waitingForInput, "brace");
+        updateButton("quest-mock-backpack-btn", scene.requiredAction === "brew" || scene.requiredAction === "bomb", waitingForInput && targetingMode !== "bomb", "backpack");
 
-        const bombBtn = document.getElementById("quest-mock-bomb-btn");
-        if (bombBtn && targetingMode === "bomb") {
-            bombBtn.disabled = true;
-            bombBtn.classList.remove("quest-required-action");
-            bombBtn.innerText = "Targeting...";
-        } else if (bombBtn) {
-            bombBtn.innerText = "Throw Bomb";
+        setButtonText("quest-mock-attack-btn", "Attack (5⚡)");
+        setButtonText("quest-mock-brace-btn", scene.requiredAction === "brace" ? "Brace (15⚡)" : "Flurry (15⚡)");
+        setButtonText("quest-mock-backpack-btn", "🎒 Backpack (7/7)");
+
+        const spellBtn = document.getElementById("quest-mock-spellbook-btn");
+        if (spellBtn) spellBtn.disabled = true;
+        const fleeBtn = document.getElementById("quest-mock-flee-btn");
+        if (fleeBtn) fleeBtn.disabled = true;
+        const cancelBtn = document.getElementById("quest-mock-cancel-target-btn");
+        if (cancelBtn) cancelBtn.style.display = targetingMode === "bomb" ? "block" : "none";
+    }
+
+    function setCombatHeader(scene) {
+        const header = document.getElementById("quest-target-ui-header");
+        if (!header) return;
+
+        if (targetingMode === "bomb") {
+            header.innerHTML = "🎯 TARGETING: CLICK ANYWHERE IN RANGE TO EXECUTE!";
+            header.style.color = "#e74c3c";
+            return;
         }
+
+        const phaseLabel = scene.phase || "PLAYER TURN";
+        if (scene.requiredAction === "selectTarget" && scene.enemy) {
+            header.innerHTML = `⚔️ ${phaseLabel} - Select Target or Bomb`;
+            header.style.color = "#3498db";
+        } else if (mockTargetSelected && scene.enemy) {
+            header.innerHTML = `🎯 FOCUS: ${scene.enemy.name || scene.enemy.id} (${scene.enemy.hp}/${scene.enemy.maxHp} HP) - [${phaseLabel}]`;
+            header.style.color = "#2ecc71";
+        } else if (scene.requiredAction === "bomb") {
+            header.innerHTML = "⚔️ PHASE 2 - Select Target or Bomb";
+            header.style.color = "#3498db";
+        } else if (scene.requiredAction === "pass") {
+            header.innerHTML = "⚔️ PHASE 1 - Select Tile to Stride";
+            header.style.color = "#3498db";
+        } else if (scene.requiredAction === "brew") {
+            header.innerHTML = "⚔️ PHASE 2 - Open Backpack and choose a drink";
+            header.style.color = "#3498db";
+        } else {
+            header.innerHTML = `⚔️ ${phaseLabel}`;
+            header.style.color = "#3498db";
+        }
+    }
+
+    function renderMockCombatInterface(scene) {
+        const topBars = document.getElementById("quest-combat-top-bars");
+        const bottomStats = document.getElementById("quest-combat-bottom-stats");
+        if (topBars) {
+            topBars.innerHTML = `
+                <div class="combat-grid-2-col">
+                    ${mockStatBar("VITALITY:", scene.player.hp, scene.player.maxHp, "HP", "#27ae60")}
+                    ${mockStatBar("STAMINA:", scene.player.stamina, scene.player.maxStamina, "STAM", "#e67e22")}
+                </div>
+            `;
+        }
+        if (bottomStats) {
+            bottomStats.innerHTML = `
+                <div style="background:#1a1512; padding:12px; border-radius:4px; border:1px solid #4a3b2c;">
+                    <h4 style="margin:0 0 10px 0; font-size:12px; color:#ffcc66; text-transform:uppercase; border-bottom:1px dashed #4a3b2c; padding-bottom:6px;">🛡️ Active Loadout</h4>
+                    <div style="display:flex; flex-direction:column; gap:8px; font-size:12px; line-height:1.4;">
+                        <div><b>Helmet:</b> <span class="Common">Training Cap</span></div>
+                        <div><b>Armor:</b> <span class="Common">Padded Practice Tunic</span></div>
+                        <div><b>Weapon:</b> <span class="Common">Prop Training Mace</span></div>
+                        <div><b>Gloves:</b> <span style="color:#55443a;">Bare Hands</span></div>
+                        <div><b>Boots:</b> <span class="Common">Practice Boots</span></div>
+                    </div>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                    <div style="background:#1a1512; padding:12px; border-radius:4px; border:1px solid #4a3b2c; font-size:12px; color:#bbaaa0; line-height:1.6; height:100%; box-sizing:border-box;">
+                        💥 <b>Offense Output:</b> Lvl 27 (Max 270 DMG)<br>
+                        🛡️ <b>Defense (Absorption):</b> Lvl 8<br>
+                        🏃 <b>Speed (Evasion):</b> Lvl 4<br>
+                        <span style="color:#2ecc71;">Training props only. No real items or stats can change.</span>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    function mockStatBar(label, current, max, suffix, color) {
+        const pct = Math.max(0, Math.min(100, (current / Math.max(1, max)) * 100));
+        const valueColor = suffix === "HP" ? "#2ecc71" : "#f1c40f";
+        return `
+            <div style="background:#1a1512; padding:12px; border-radius:4px; border:1px solid #4a3b2c;">
+                <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:bold; margin-bottom:6px;">
+                    <span style="color:#ffcc66;">${label}</span>
+                    <span style="color:${valueColor};">${Math.floor(current)} / ${max} ${suffix}</span>
+                </div>
+                <div style="width:100%; background:#110d0a; height:16px; border-radius:3px; overflow:hidden; border:1px solid #55443a;">
+                    <div style="width:${pct}%; background:${color}; height:100%; transition:width 0.2s;"></div>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderBackpack(filter = "DRINK") {
+        const scene = getScene();
+        const modal = document.getElementById("quest-combat-backpack-modal");
+        const filters = document.getElementById("quest-combat-modal-filters");
+        const grid = document.getElementById("quest-combat-modal-grid");
+        if (!modal || !filters || !grid || !scene) return;
+
+        backpackFilter = filter;
+        filters.innerHTML = "";
+        [
+            { id: "DRINK", icon: "🍺", text: "Drinks" },
+            { id: "THROW", icon: "💣", text: "Throw" },
+            { id: "EQUIP", icon: "🛡️", text: "Gear" }
+        ].forEach(tab => {
+            const btn = document.createElement("button");
+            btn.className = "quest-backpack-tab";
+            btn.innerText = `${tab.icon} ${tab.text}`;
+            btn.style.background = backpackFilter === tab.id ? "#27ae60" : "#443a32";
+            btn.onclick = () => selectBackpackTab(tab.id);
+            filters.appendChild(btn);
+        });
+
+        grid.innerHTML = "";
+        if (backpackFilter === "DRINK") {
+            grid.appendChild(makePropItemSlot("🍺", "Combat Stout", scene.requiredAction === "brew", () => performAction("brew")));
+            grid.appendChild(makePropItemCard({
+                name: "Combat Stout",
+                meta: "BREW | VALUE: 5G",
+                text: "🍺 Combat Effect: Instantly restores 25% of Maximum Vitality.",
+                action: "Drink",
+                enabled: scene.requiredAction === "brew" && waitingForInput,
+                onClick: () => performAction("brew")
+            }));
+        } else if (backpackFilter === "THROW") {
+            grid.appendChild(makePropItemSlot("💣", "Training Bomb", scene.requiredAction === "bomb", () => performAction("prepBomb")));
+            grid.appendChild(makePropItemCard({
+                name: "Training Bomb",
+                meta: "THROWABLE | VALUE: 0G",
+                text: "💣 Prop Effect: Opens tile targeting for a harmless 3x3 practice blast.",
+                action: "Throw",
+                enabled: scene.requiredAction === "bomb" && waitingForInput,
+                onClick: () => performAction("prepBomb")
+            }));
+        } else {
+            grid.innerHTML = `<div style="color:#bbaaa0; text-align:center; padding:25px 15px; font-size:12px; font-style:italic; width:100%;">Prop gear is locked for this lesson.</div>`;
+        }
+
+        if (typeof playRetroSound === "function") playRetroSound("menu");
+        modal.style.display = "block";
+    }
+
+    function makePropItemSlot(icon, label, enabled, onClick) {
+        const slot = document.createElement("div");
+        slot.className = "item-slot slot-common";
+        slot.title = label;
+        slot.style.opacity = enabled ? "1" : "0.55";
+        slot.innerHTML = `<span style="font-size:22px; pointer-events:none;">${icon}</span>`;
+        slot.onclick = () => {
+            if (!enabled) {
+                if (typeof playRetroSound === "function") playRetroSound("error");
+                return;
+            }
+            onClick();
+        };
+        return slot;
+    }
+
+    function makePropItemCard(config) {
+        const card = document.createElement("div");
+        card.className = "quest-prop-card";
+        card.innerHTML = `
+            <h4>${config.name}</h4>
+            <div style="font-size:10px; color:#f4ebd9; margin-bottom:8px;">${config.meta}</div>
+            <div style="border-top:1px solid #776c62; border-bottom:1px dashed #634e3d; padding:8px 0; margin-bottom:10px;">${config.text}</div>
+            <button style="background:#2980b9; border-color:#3498db; padding:7px; width:100%; margin:0;" ${config.enabled ? "" : "disabled"}>${config.action}</button>
+        `;
+        const button = card.querySelector("button");
+        if (button) button.onclick = config.onClick;
+        return card;
     }
 
     function updateButton(id, isRequired, enabled, actionName) {
@@ -278,6 +473,11 @@ const QuestCinematics = (() => {
         button.classList.toggle("quest-required-action", isRequired && enabled);
         button.classList.toggle("quest-locked-action", !isRequired || !enabled);
         button.setAttribute("data-action", actionName);
+    }
+
+    function setButtonText(id, text) {
+        const button = document.getElementById(id);
+        if (button) button.innerText = text;
     }
 
     function loop() {
@@ -593,10 +793,10 @@ const QuestCinematics = (() => {
     function getRequiredActionLabel(scene) {
         const labels = {
             pass: "Click Pass Turn",
-            brew: "Click Drink Brew",
+            brew: "Open Backpack, then Drink",
             selectTarget: "Click the target",
             attack: "Click Attack",
-            bomb: "Click Throw Bomb",
+            bomb: "Open Backpack, then Throw",
             brace: "Click Brace"
         };
         return labels[scene.requiredAction] || "Continue";
@@ -658,6 +858,10 @@ const QuestCinematics = (() => {
     return {
         start,
         performAction,
+        openBackpack,
+        closeBackpack,
+        selectBackpackTab,
+        cancelTargeting,
         canvasClick,
         skipCurrent
     };
