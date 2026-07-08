@@ -7,12 +7,14 @@ let currentDialogueText = "";
 let typeIndex = 0;
 let typeTimer = null;
 let isTyping = false;
+let dialogueCompleteCallback = null;
 
-function playDialogueSequence(sequence) {
+function playDialogueSequence(sequence, onComplete = null) {
     if (!sequence || sequence.length === 0) return;
     
     dialogueSequence = sequence;
     currentDialoguePage = 0;
+    dialogueCompleteCallback = typeof onComplete === 'function' ? onComplete : null;
     
     const overlay = document.getElementById('dialogue-overlay');
     if (overlay) {
@@ -24,8 +26,9 @@ function playDialogueSequence(sequence) {
 function showNextDialoguePage() {
     if (currentDialoguePage >= dialogueSequence.length) {
         document.getElementById('dialogue-overlay').style.display = 'none';
-        
-      
+        const onComplete = dialogueCompleteCallback;
+        dialogueCompleteCallback = null;
+        if (onComplete) onComplete();
         return;
     }
     

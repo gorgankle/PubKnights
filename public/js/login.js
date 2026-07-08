@@ -45,6 +45,7 @@ function startNewGame() {
 function finalizeCharacter() {
     if (typeof saveGame === 'function') saveGame(true); 
     enterGameUI();
+    if (typeof QuestCinematics !== 'undefined') QuestCinematics.start('tutorial_kreg');
 }
 
 // === SOCKET LISTENERS (Catching Server Responses) ===

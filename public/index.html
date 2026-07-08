@@ -824,7 +824,25 @@
 
 
 
-    <div id="game-tooltip"></div>
+<div id="game-tooltip"></div>
+	
+<!-- === QUEST CINEMATIC PLAYER (MOCK ONLY) === -->
+<div id="quest-cinematic-overlay" style="display:none; position:fixed; inset:0; z-index:100004; background:rgba(8, 6, 5, 0.96); align-items:center; justify-content:center; padding:18px; box-sizing:border-box;">
+    <div style="width:min(100%, 980px); background:#1a1512; border:3px solid #8b5a2b; border-radius:8px; box-shadow:0 15px 45px rgba(0,0,0,0.95); overflow:hidden;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 14px; border-bottom:1px dashed #634e3d; background:#110d0a;">
+            <div>
+                <div id="quest-cinematic-title" style="color:#ffcc66; font-weight:bold; font-size:15px; text-transform:uppercase;">Training</div>
+                <div id="quest-cinematic-subtitle" style="color:#bbaaa0; font-size:11px; margin-top:3px;">Mock quest scene</div>
+            </div>
+            <button id="quest-cinematic-skip-btn" onclick="QuestCinematics.skipCurrent()" style="background:#443a32; border-color:#634e3d; padding:7px 12px; margin:0;">Skip</button>
+        </div>
+        <canvas id="quest-cinematic-canvas" width="864" height="540" onclick="QuestCinematics.advance()" style="display:block; width:100%; height:auto; background:#0a0806; image-rendering:pixelated; cursor:pointer;"></canvas>
+        <div style="display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center; padding:12px 14px; border-top:1px dashed #634e3d; background:#221a14;">
+            <div id="quest-cinematic-caption" style="color:#f4ebd9; font-size:13px; line-height:1.45; font-weight:bold;">Click continue.</div>
+            <button id="quest-cinematic-next-btn" onclick="QuestCinematics.advance()" style="background:#27ae60; border-color:#2ecc71; padding:10px 18px; margin:0;">Continue</button>
+        </div>
+    </div>
+</div>
 	
 	
 <!-- === NEW: DIALOGUE ENGINE OVERLAY === -->
@@ -906,6 +924,7 @@
     <script src="js/renderer.js"></script>       <!-- RENDERS DATA -->
 	<script src="js/fx-engine.js"></script>
 	<script src="js/dialogue.js"></script>
+	<script src="js/quest-cinematics.js"></script>
 	<script src="js/social.js"></script>
 
 
