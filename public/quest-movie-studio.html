@@ -6,528 +6,270 @@
     <title>Pub Knights - Quest Movie Studio</title>
     <style>
         :root {
-            --bg: #1c1714;
-            --panel: #241d18;
-            --panel-2: #14110f;
-            --line: #5d4938;
-            --gold: #f1c766;
-            --text: #f4ebd9;
-            --muted: #b9aa98;
-            --red: #d95757;
-            --blue: #4f9ddd;
-            --green: #4fb477;
+            --bg:#1c1714; --panel:#241d18; --panel2:#14110f; --line:#5d4938;
+            --gold:#f1c766; --text:#f4ebd9; --muted:#b9aa98; --red:#d95757;
+            --blue:#4f9ddd; --green:#4fb477; --orange:#e67e22;
         }
-
-        * { box-sizing: border-box; }
-
-        body {
-            background: var(--bg);
-            color: var(--text);
-            font-family: "Courier New", monospace;
-            margin: 0;
-            padding: 18px;
+        * { box-sizing:border-box; }
+        body { background:var(--bg); color:var(--text); font-family:"Courier New", monospace; margin:0; padding:18px; }
+        h1 { color:var(--gold); font-size:28px; margin:0 auto 14px; max-width:1480px; }
+        button, input, select, textarea { font-family:inherit; }
+        input, select, textarea {
+            background:#0d0b09; border:1px solid #46382d; border-radius:4px; color:var(--text);
+            min-height:34px; padding:7px 8px; width:100%;
         }
-
-        h1 {
-            color: var(--gold);
-            font-size: 28px;
-            margin: 0 auto 14px;
-            max-width: 1440px;
-        }
-
-        button,
-        input,
-        select,
-        textarea {
-            font-family: inherit;
-        }
-
-        input,
-        select,
-        textarea {
-            background: #0d0b09;
-            border: 1px solid #46382d;
-            border-radius: 4px;
-            color: var(--text);
-            min-height: 34px;
-            padding: 7px 8px;
-            width: 100%;
-        }
-
-        textarea {
-            line-height: 1.35;
-            resize: vertical;
-        }
-
+        textarea { line-height:1.35; resize:vertical; }
         button {
-            background: #2d251f;
-            border: 2px solid #4b3b30;
-            border-radius: 4px;
-            color: var(--text);
-            cursor: pointer;
-            font-weight: 700;
-            min-height: 36px;
-            padding: 8px 10px;
+            background:#2d251f; border:2px solid #4b3b30; border-radius:4px; color:var(--text);
+            cursor:pointer; font-weight:700; min-height:36px; padding:8px 10px;
         }
-
-        button:hover { border-color: var(--gold); }
-
-        label {
-            color: var(--muted);
-            display: grid;
-            gap: 5px;
-            font-size: 12px;
-            font-weight: 700;
-            text-transform: uppercase;
-        }
-
+        button:hover { border-color:var(--gold); }
+        label { color:var(--muted); display:grid; gap:5px; font-size:12px; font-weight:700; text-transform:uppercase; }
         .app-shell {
-            align-items: start;
-            display: grid;
-            gap: 16px;
-            grid-template-columns: 320px minmax(560px, 1fr) 430px;
-            margin: 0 auto;
-            max-width: 1440px;
+            align-items:start; display:grid; gap:16px; grid-template-columns:320px minmax(560px,1fr) 430px;
+            margin:0 auto; max-width:1480px;
         }
-
-        .panel {
-            background: var(--panel);
-            border: 2px solid var(--line);
-            border-radius: 6px;
-            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
-            padding: 14px;
+        .panel { background:var(--panel); border:2px solid var(--line); border-radius:6px; box-shadow:0 10px 24px rgba(0,0,0,.45); padding:14px; }
+        .section { border-top:1px dashed #634e3d; display:grid; gap:9px; padding-top:12px; }
+        .section:first-child { border-top:0; padding-top:0; }
+        .title { color:var(--gold); font-size:13px; font-weight:800; text-transform:uppercase; }
+        .grid-2 { display:grid; gap:9px; grid-template-columns:1fr 1fr; }
+        .grid-3 { display:grid; gap:9px; grid-template-columns:repeat(3,minmax(0,1fr)); }
+        .span { grid-column:1/-1; }
+        .btn-green { background:#236743; border-color:var(--green); }
+        .btn-blue { background:#285a7d; border-color:var(--blue); }
+        .btn-red { background:#77312c; border-color:#b84a43; }
+        .btn-gold { background:#825c2f; border-color:var(--gold); }
+        .btn-orange { background:#8a4a19; border-color:var(--orange); }
+        .timeline { display:grid; gap:8px; max-height:520px; overflow-y:auto; }
+        .step-row {
+            background:#17120f; border:1px solid #4a3b2c; border-radius:4px; display:grid;
+            gap:5px; padding:8px; text-align:left;
         }
-
-        .tool-section {
-            border-top: 1px dashed #634e3d;
-            display: grid;
-            gap: 9px;
-            padding-top: 12px;
-        }
-
-        .tool-section:first-child {
-            border-top: 0;
-            padding-top: 0;
-        }
-
-        .tool-title {
-            color: var(--gold);
-            font-size: 13px;
-            font-weight: 800;
-            text-transform: uppercase;
-        }
-
-        .scene-list {
-            display: grid;
-            gap: 7px;
-            max-height: 430px;
-            overflow-y: auto;
-        }
-
-        .scene-row {
-            background: #17120f;
-            border: 1px solid #4a3b2c;
-            border-radius: 4px;
-            color: var(--muted);
-            display: grid;
-            gap: 3px;
-            padding: 8px;
-            text-align: left;
-        }
-
-        .scene-row.active {
-            background: #825c2f;
-            border-color: var(--gold);
-            color: #fff;
-        }
-
-        .scene-row small {
-            color: inherit;
-            opacity: 0.82;
-        }
-
-        .editor-grid {
-            display: grid;
-            gap: 12px;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-
-        .span-2 { grid-column: 1 / -1; }
-
-        .mini-grid {
-            display: grid;
-            gap: 8px;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-        }
-
-        .actions {
-            display: grid;
-            gap: 8px;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-        }
-
-        .btn-green { background: #236743; border-color: var(--green); }
-        .btn-blue { background: #285a7d; border-color: var(--blue); }
-        .btn-red { background: #77312c; border-color: #b84a43; }
-        .btn-gold { background: #825c2f; border-color: var(--gold); }
-
+        .step-row.active { background:#825c2f; border-color:var(--gold); color:#fff; }
+        .step-top { align-items:center; display:flex; gap:7px; justify-content:space-between; }
+        .step-type { color:var(--gold); font-weight:800; text-transform:uppercase; }
+        .step-desc { color:var(--muted); font-size:12px; line-height:1.35; }
+        .step-actions { display:flex; gap:6px; }
+        .step-actions button { font-size:11px; min-height:28px; padding:4px 7px; }
         .preview {
-            background: #0f0c0a;
-            border: 2px solid #8b5a2b;
-            border-radius: 6px;
-            min-height: 330px;
-            overflow: hidden;
+            background:#0f0c0a; border:2px solid #8b5a2b; border-radius:6px; overflow:hidden;
         }
-
-        .preview-header {
-            background: #17120f;
-            border-bottom: 1px dashed #4a3b2c;
-            display: grid;
-            gap: 3px;
-            padding: 10px 12px;
-        }
-
-        .preview-canvas {
-            background: #080604;
-            display: block;
-            image-rendering: pixelated;
-            width: 100%;
-        }
-
-        .preview-caption {
-            background: #17120f;
-            border-top: 1px dashed #4a3b2c;
-            color: var(--muted);
-            font-size: 12px;
-            line-height: 1.45;
-            padding: 10px 12px;
-        }
-
-        .timeline {
-            max-height: 280px;
-            overflow-y: auto;
-            padding: 8px 14px 14px;
-        }
-
-        .preview-scene {
-            border-bottom: 1px dashed #4a3b2c;
-            display: grid;
-            gap: 5px;
-            padding: 8px 0;
-        }
-
-        .preview-scene:last-child { border-bottom: 0; }
-
-        .tag-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 5px;
-        }
-
-        .tag {
-            background: #2c2520;
-            border: 1px solid #4a3b2c;
-            border-radius: 4px;
-            color: var(--muted);
-            font-size: 11px;
-            padding: 3px 6px;
-        }
-
-        .export-panel {
-            display: grid;
-            gap: 8px;
-            grid-column: 1 / -1;
-        }
-
-        .export-bar {
-            align-items: center;
-            display: flex;
-            gap: 10px;
-            justify-content: space-between;
-        }
-
-        #export-output {
-            color: #58d68d;
-            height: 340px;
-        }
-
-        .hint {
-            color: var(--muted);
-            font-size: 12px;
-            line-height: 1.45;
-        }
-
-        @media (max-width: 1160px) {
-            body { padding: 12px; }
-            .app-shell { grid-template-columns: 1fr; }
-        }
+        .preview-header { background:#17120f; border-bottom:1px dashed #4a3b2c; display:grid; gap:3px; padding:10px 12px; }
+        .preview-canvas { background:#080604; display:block; image-rendering:pixelated; width:100%; }
+        .preview-caption { background:#17120f; border-top:1px dashed #4a3b2c; color:var(--muted); font-size:12px; line-height:1.45; padding:10px 12px; }
+        #export-output { color:#58d68d; height:340px; }
+        .hint { color:var(--muted); font-size:12px; line-height:1.45; }
+        .pill-row { display:flex; flex-wrap:wrap; gap:6px; }
+        .pill { background:#2c2520; border:1px solid #4a3b2c; border-radius:4px; color:var(--muted); font-size:11px; padding:3px 6px; }
+        .mode-fields { display:none; }
+        .mode-fields.active { display:grid; }
+        @media (max-width:1180px) { body{padding:12px;} .app-shell{grid-template-columns:1fr;} }
     </style>
 </head>
 <body>
     <h1>Quest Movie Studio</h1>
-
     <main class="app-shell">
         <aside class="panel">
-            <section class="tool-section">
-                <div class="tool-title">Quest</div>
-                <label>
-                    Quest ID
-                    <input id="quest-id" value="tutorial_kreg" spellcheck="false">
-                </label>
-                <label>
-                    Title
-                    <input id="quest-title" value="Kreg's Combat Primer" spellcheck="false">
-                </label>
-                <label>
-                    Map Template
-                    <select id="map-template">
-                        <option value="CUSTOM">Custom Visual Map</option>
-                    </select>
-                </label>
-                <button class="btn-blue" onclick="applyMapToCurrentScene()">Use Map Starts</button>
-                <label>
-                    Custom Floor Sprite
-                    <select id="floor-sprite">
-                        <option value="ground_wilderness">ground_wilderness</option>
-                        <option value="ground_cellars">ground_cellars</option>
-                        <option value="ground_abyss">ground_abyss</option>
-                        <option value="ground_arena">ground_arena</option>
-                    </select>
-                </label>
+            <section class="section">
+                <div class="title">Quest</div>
+                <label>Quest ID<input id="quest-id" value="tutorial_kreg" spellcheck="false"></label>
+                <label>Title<input id="quest-title" value="Kreg's Combat Primer" spellcheck="false"></label>
+                <label>Map Template<select id="map-template"><option value="CUSTOM">Custom Visual Map</option></select></label>
+                <label>Custom Floor<select id="floor-sprite">
+                    <option value="ground_wilderness">ground_wilderness</option>
+                    <option value="ground_cellars">ground_cellars</option>
+                    <option value="ground_abyss">ground_abyss</option>
+                    <option value="ground_arena">ground_arena</option>
+                </select></label>
             </section>
 
-            <section class="tool-section">
-                <div class="tool-title">Server Ending</div>
-                <label>
-                    Completion Mode
-                    <select id="completion-mode">
-                        <option value="none">Movie only</option>
-                        <option value="reward">Persist completion and rewards</option>
-                        <option value="combatZone">Send to combat zone</option>
-                    </select>
-                </label>
-                <label>
-                    Gold Reward
-                    <input id="reward-gold" type="number" min="0" value="0">
-                </label>
-                <label>
-                    XP Reward
-                    <input id="reward-xp" type="number" min="0" value="0">
-                </label>
-                <label>
-                    Combat Zone
-                    <select id="combat-zone">
-                        <option value="WILDERNESS">WILDERNESS</option>
-                        <option value="CELLARS">CELLARS</option>
-                        <option value="GORILLA_ARENA">GORILLA_ARENA</option>
-                    </select>
-                </label>
+            <section class="section">
+                <div class="title">Ending</div>
+                <label>Completion<select id="completion-mode">
+                    <option value="none">Movie only</option>
+                    <option value="reward">Persist completion and rewards</option>
+                    <option value="combatZone">Start real combat zone</option>
+                    <option value="town">Back to town</option>
+                </select></label>
+                <div class="grid-2">
+                    <label>Gold<input id="reward-gold" type="number" min="0" value="0"></label>
+                    <label>XP<input id="reward-xp" type="number" min="0" value="0"></label>
+                </div>
+                <label>Combat Zone<select id="combat-zone">
+                    <option value="WILDERNESS">WILDERNESS</option>
+                    <option value="CELLARS">CELLARS</option>
+                    <option value="GORILLA_ARENA">GORILLA_ARENA</option>
+                </select></label>
             </section>
 
-            <section class="tool-section">
-                <div class="tool-title">Scenes</div>
-                <div class="scene-list" id="scene-list"></div>
-                <button class="btn-green" onclick="addScene()">Add Scene</button>
+            <section class="section">
+                <div class="title">Movie Steps</div>
+                <div class="timeline" id="timeline"></div>
             </section>
         </aside>
 
         <section class="panel">
-            <div class="tool-section">
-                <div class="tool-title">Scene Editor</div>
-                <div class="editor-grid">
-                    <label>
-                        Scene ID
-                        <input id="scene-id" spellcheck="false">
-                    </label>
-                    <label>
-                        Scene Title
-                        <input id="scene-title" spellcheck="false">
-                    </label>
-                    <label>
-                        Subtitle
-                        <input id="scene-subtitle" spellcheck="false">
-                    </label>
-                    <label>
-                        Phase Label
-                        <input id="scene-phase" spellcheck="false">
-                    </label>
-                    <label>
-                        Required Action
-                        <select id="scene-action">
-                            <option value="pass">Pass Turn button</option>
-                            <option value="brew">Drink Brew button</option>
-                            <option value="selectTarget">Click target on grid</option>
-                            <option value="attack">Attack button</option>
-                            <option value="bomb">Throw Bomb then tile</option>
-                            <option value="brace">Brace button</option>
-                            <option value="continue">Auto continue</option>
-                        </select>
-                    </label>
-                    <label>
-                        Visual Mode
-                        <select id="scene-mode">
-                            <option value="pass">pass</option>
-                            <option value="brew">brew</option>
-                            <option value="select">select</option>
-                            <option value="attack">attack</option>
-                            <option value="bomb">bomb</option>
-                            <option value="boss">boss</option>
-                        </select>
-                    </label>
-                    <label>
-                        Auto Advance MS
-                        <input id="scene-delay" type="number" min="300" value="900">
-                    </label>
-                    <label>
-                        Effects
-                        <select id="scene-effects" multiple size="3">
-                            <option value="fadeIn">fadeIn</option>
-                            <option value="shake">shake</option>
-                            <option value="flash">flash</option>
-                        </select>
-                    </label>
+            <section class="section">
+                <div class="title">Add Step</div>
+                <label>Step Type<select id="step-type" onchange="refreshStepFields()">
+                    <option value="fadeOut">Fade Out</option>
+                    <option value="setupScene">Setup Scene</option>
+                    <option value="fadeIn">Fade In</option>
+                    <option value="dialogue">Dialogue</option>
+                    <option value="action">Action</option>
+                    <option value="effect">Effect</option>
+                    <option value="endScene">End Scene</option>
+                    <option value="reward">Reward Beat</option>
+                    <option value="backToTown">Back To Town</option>
+                    <option value="startCombat">Start Real Combat</option>
+                </select></label>
 
-                    <label class="span-2">
-                        Kreg Dialogue
-                        <textarea id="scene-dialogue" rows="4" spellcheck="true"></textarea>
-                    </label>
-
-                    <div class="span-2 mini-grid">
-                        <label>Player X<input id="player-x" type="number" min="0" value="2"></label>
-                        <label>Player Y<input id="player-y" type="number" min="0" value="5"></label>
-                        <label>Player HP<input id="player-hp" type="number" min="1" value="100"></label>
-                        <label>Stamina<input id="player-stamina" type="number" min="0" value="70"></label>
+                <div id="fields-setupScene" class="mode-fields">
+                    <div class="grid-2">
+                        <label>Scene Title<input id="scene-title" value="New Scene"></label>
+                        <label>Phase Label<input id="scene-phase" value="PLAYER TURN"></label>
                     </div>
-
-                    <div class="span-2 mini-grid">
-                        <label>Enemy ID<input id="enemy-id" value="wild_ravager" spellcheck="false"></label>
-                        <label>Enemy Name<input id="enemy-name" value="Training Ravager" spellcheck="false"></label>
-                        <label>Enemy X<input id="enemy-x" type="number" min="0" value="10"></label>
-                        <label>Enemy Y<input id="enemy-y" type="number" min="0" value="5"></label>
+                    <div class="grid-3">
+                        <label>Player X<input id="player-x" type="number" value="2"></label>
+                        <label>Player Y<input id="player-y" type="number" value="5"></label>
+                        <label>Player HP<input id="player-hp" type="number" value="100"></label>
                     </div>
+                    <div class="grid-3">
+                        <label>Enemy ID<input id="enemy-id" value="wild_ravager"></label>
+                        <label>Enemy X<input id="enemy-x" type="number" value="10"></label>
+                        <label>Enemy Y<input id="enemy-y" type="number" value="5"></label>
+                    </div>
+                    <button class="btn-blue" onclick="useMapStarts()">Use Selected Map Starts</button>
+                </div>
 
-                    <div class="span-2 actions">
-                        <button class="btn-blue" onclick="saveScene()">Save Scene</button>
-                        <button onclick="moveScene(-1)">Move Up</button>
-                        <button onclick="moveScene(1)">Move Down</button>
-                        <button class="btn-red" onclick="deleteScene()">Delete</button>
+                <div id="fields-dialogue" class="mode-fields">
+                    <div class="grid-2">
+                        <label>Speaker<select id="dialogue-speaker">
+                            <option value="Kreg">Kreg</option>
+                            <option value="Player">Player</option>
+                            <option value="Enemy">Enemy</option>
+                            <option value="Narrator">Narrator</option>
+                        </select></label>
+                        <label>Portrait<select id="dialogue-portrait">
+                            <option value="npc_kreg">npc_kreg</option>
+                            <option value="player">player</option>
+                            <option value="wild_ravager">wild_ravager</option>
+                            <option value="wilderness_overlord">wilderness_overlord</option>
+                        </select></label>
+                    </div>
+                    <label>Dialogue Text<textarea id="dialogue-text" rows="5">Kreg gives the next instruction.</textarea></label>
+                </div>
+
+                <div id="fields-action" class="mode-fields">
+                    <div class="grid-2">
+                        <label>Action<select id="action-type">
+                            <option value="pass">Pass Turn</option>
+                            <option value="brew">Drink Brew</option>
+                            <option value="selectTarget">Select Target</option>
+                            <option value="attack">Attack</option>
+                            <option value="bomb">Throw Bomb</option>
+                            <option value="brace">Brace</option>
+                            <option value="continue">Auto Continue</option>
+                        </select></label>
+                        <label>Auto Advance MS<input id="action-delay" type="number" min="300" value="950"></label>
                     </div>
                 </div>
-            </div>
+
+                <div id="fields-effect" class="mode-fields">
+                    <div class="grid-2">
+                        <label>Effect<select id="effect-type">
+                            <option value="fadeOut">Fade Out</option>
+                            <option value="fadeIn">Fade In</option>
+                            <option value="shake">Screen Shake</option>
+                            <option value="flash">Flash</option>
+                            <option value="boss">Boss Arrival</option>
+                        </select></label>
+                        <label>Duration MS<input id="effect-delay" type="number" min="300" value="900"></label>
+                    </div>
+                </div>
+
+                <div id="fields-endScene" class="mode-fields">
+                    <label>End Note<input id="end-note" value="End scene and fade out."></label>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                    <button class="btn-green" onclick="addStep()">Add Step</button>
+                    <button onclick="previewPrevious()">Previous Preview</button>
+                    <button onclick="previewNext()">Next Preview</button>
+                    <button class="btn-red" onclick="clearTimeline()">Clear Timeline</button>
+                </div>
+            </section>
+
+            <section class="section">
+                <div class="title">Compiled Scene Notes</div>
+                <div id="compiled-notes" class="hint"></div>
+            </section>
         </section>
 
         <aside class="panel">
-            <section class="tool-section">
-                <div class="tool-title">Movie Preview</div>
+            <section class="section">
+                <div class="title">Preview</div>
                 <div class="preview">
                     <div class="preview-header">
-                        <strong id="preview-title" style="color:var(--gold);">Scene Preview</strong>
+                        <strong id="preview-title" style="color:var(--gold);">Preview</strong>
                         <span id="preview-map-name" style="color:var(--muted); font-size:12px;">Custom Visual Map</span>
                     </div>
                     <canvas id="preview-canvas" class="preview-canvas" width="640" height="400"></canvas>
                     <div id="preview-caption" class="preview-caption"></div>
-                    <div id="preview" class="timeline"></div>
                 </div>
             </section>
         </aside>
 
-        <section class="panel export-panel">
-            <div class="export-bar">
-                <strong style="color: var(--gold);">Quest Export</strong>
+        <section class="panel span">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:8px;">
+                <strong style="color:var(--gold);">Quest Export</strong>
                 <button id="export-btn" class="btn-gold" onclick="copyExport()">Copy Export</button>
             </div>
             <textarea id="export-output" readonly></textarea>
-            <div class="hint">Paste the client block into QuestScripts in public/js/quest-scripts.js. Paste the server block into QuestDefinitions in questDefinitions.js.</div>
+            <div class="hint">Export compiles your movie steps into QuestScripts scenes plus a server QuestDefinitions block.</div>
         </section>
     </main>
 
     <script>
-        const defaultPlayer = { x: 2, y: 5, hp: 100, maxHp: 100, stamina: 70, maxStamina: 100, atb: 100 };
-        const defaultEnemy = { x: 10, y: 5, id: "wild_ravager", name: "Training Ravager", hp: 100, maxHp: 100, atb: 30 };
         const floorColors = {
-            ground_wilderness: "#3f6f48",
-            ground_cellars: "#5b4536",
-            ground_abyss: "#3a315e",
-            ground_arena: "#6b5338"
+            ground_wilderness:"#3f6f48", ground_cellars:"#5b4536",
+            ground_abyss:"#3a315e", ground_arena:"#6b5338"
         };
         const defaultObstacleByZone = {
-            WILDERNESS: { spriteId: "map_tree", label: "TREE" },
-            CELLARS: { spriteId: "map_broken_cask", label: "CASK" },
-            ABYSS: { spriteId: "map_pillar", label: "PILLAR" },
-            GORILLA_ARENA: { spriteId: "map_boulder", label: "ROCK" }
+            WILDERNESS:{ spriteId:"map_tree", label:"TREE" },
+            CELLARS:{ spriteId:"map_broken_cask", label:"CASK" },
+            ABYSS:{ spriteId:"map_pillar", label:"PILL" },
+            GORILLA_ARENA:{ spriteId:"map_boulder", label:"ROCK" }
         };
         const defaultEnemyByZone = {
-            WILDERNESS: "wild_ravager",
-            CELLARS: "corrupted_cask",
-            ABYSS: "spectral_barfly",
-            GORILLA_ARENA: "enraged_gorilla"
+            WILDERNESS:"wild_ravager", CELLARS:"corrupted_cask",
+            ABYSS:"spectral_barfly", GORILLA_ARENA:"enraged_gorilla"
         };
 
-        let scenes = [
-            makeScene("pass_turn", "Passing Turn", "Phase 1: Recovery", "PLAYER TURN - PHASE 1", "pass", "pass", "First lesson: click Pass Turn when you need to recover."),
-            makeScene("select_target", "Select Target", "Phase 2: Target Lock", "PLAYER TURN - PHASE 2", "selectTarget", "select", "Click the enemy on the grid before attacking."),
-            makeScene("standard_attack", "Standard Attack", "Phase 2: Weapon Action", "PLAYER TURN - PHASE 2", "attack", "attack", "Now click Attack to strike the selected target.")
-        ];
-        let selectedIndex = 0;
         let mapTemplates = {};
         let activeMapTemplateId = "CUSTOM";
+        let selectedStepIndex = 0;
+        let movieSteps = [
+            { type:"fadeOut", label:"Fade Out", duration:500 },
+            { type:"setupScene", title:"Passing Turn", phase:"PLAYER TURN - PHASE 1", player:{ x:2, y:5, hp:100, stamina:40 }, enemy:{ id:"wild_ravager", x:10, y:5, hp:100 } },
+            { type:"fadeIn", label:"Fade In", duration:500 },
+            { type:"dialogue", speaker:"Kreg", portraitId:"npc_kreg", text:"First lesson: click Pass Turn when you need to recover." },
+            { type:"action", action:"pass", duration:950 },
+            { type:"dialogue", speaker:"Kreg", portraitId:"npc_kreg", text:"Good. Dialogue, effects, and actions are now separate beats on the movie timeline." },
+            { type:"endScene", label:"End Scene", duration:500 }
+        ];
 
         document.querySelectorAll("input, select, textarea").forEach(field => {
-            field.addEventListener("input", generateExport);
-            field.addEventListener("change", generateExport);
+            field.addEventListener("input", refreshAll);
+            field.addEventListener("change", refreshAll);
         });
-
         document.getElementById("map-template").addEventListener("change", () => {
             activeMapTemplateId = document.getElementById("map-template").value;
-            syncMapFieldsFromTemplate(false);
-            renderPreview();
-            generateExport();
+            const map = getActiveMapTemplate();
+            if (map.floorSpriteId) document.getElementById("floor-sprite").value = map.floorSpriteId;
+            refreshAll();
         });
-
-        document.getElementById("floor-sprite").addEventListener("change", () => {
-            if (activeMapTemplateId === "CUSTOM") renderPreview();
-        });
-
-        function makeScene(id, title, subtitle, phase, requiredAction, mode, dialogue) {
-            return {
-                id,
-                title,
-                subtitle,
-                phase,
-                mode,
-                requiredAction,
-                highlight: requiredAction,
-                requiresTarget: requiredAction === "attack",
-                autoAdvanceMs: 900,
-                effects: [],
-                dialogue: [{ speaker: "Kreg", portraitId: "npc_kreg", text: dialogue }],
-                player: { ...defaultPlayer },
-                enemy: { ...defaultEnemy },
-                targetTile: { x: defaultEnemy.x, y: defaultEnemy.y }
-            };
-        }
-
-        function createCustomMapTemplate() {
-            return {
-                id: "CUSTOM",
-                zone: "CUSTOM",
-                name: "Custom Visual Map",
-                gridSize: { cols: 16, rows: 10 },
-                tileSize: 54,
-                floorSpriteId: document.getElementById("floor-sprite").value || "ground_wilderness",
-                floorTiles: [],
-                playerStart: { x: 2, y: 5 },
-                enemies: [],
-                enemySlots: [{ id: "wild_ravager", x: 10, y: 5 }],
-                obstacles: [
-                    { x: 4, y: 2, spriteId: "map_tree" },
-                    { x: 4, y: 7, spriteId: "map_tree" },
-                    { x: 8, y: 3, spriteId: "map_tree" },
-                    { x: 8, y: 7, spriteId: "map_tree" }
-                ],
-                interactables: []
-            };
-        }
 
         async function loadCombatMapTemplates() {
             try {
@@ -537,492 +279,512 @@
             } catch (err) {
                 mapTemplates = {};
             }
-
             populateMapTemplateSelect();
-            syncMapFieldsFromTemplate(false);
-            renderPreview();
-            generateExport();
+            refreshAll();
         }
 
         function populateMapTemplateSelect() {
             const select = document.getElementById("map-template");
-            const currentValue = select.value || "CUSTOM";
             select.innerHTML = `<option value="CUSTOM">Custom Visual Map</option>`;
-
-            Object.values(mapTemplates)
-                .sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id))
-                .forEach(template => {
-                    const option = document.createElement("option");
-                    option.value = template.id;
-                    option.textContent = `${template.name} (${template.id})`;
-                    select.appendChild(option);
-                });
-
-            select.value = mapTemplates[currentValue] ? currentValue : "CUSTOM";
-            activeMapTemplateId = select.value;
+            Object.values(mapTemplates).sort((a,b)=>(a.name || a.id).localeCompare(b.name || b.id)).forEach(template => {
+                const option = document.createElement("option");
+                option.value = template.id;
+                option.textContent = `${template.name} (${template.id})`;
+                select.appendChild(option);
+            });
+            select.value = activeMapTemplateId;
         }
 
-        function getActiveMapTemplate() {
-            return mapTemplates[activeMapTemplateId] || createCustomMapTemplate();
+        function refreshStepFields() {
+            const type = document.getElementById("step-type").value;
+            document.querySelectorAll(".mode-fields").forEach(panel => panel.classList.remove("active"));
+            if (type === "setupScene") document.getElementById("fields-setupScene").classList.add("active");
+            if (type === "dialogue") document.getElementById("fields-dialogue").classList.add("active");
+            if (type === "action") document.getElementById("fields-action").classList.add("active");
+            if (type === "effect" || type === "fadeIn" || type === "fadeOut") document.getElementById("fields-effect").classList.add("active");
+            if (type === "endScene" || type === "reward" || type === "backToTown" || type === "startCombat") document.getElementById("fields-endScene").classList.add("active");
         }
 
-        function syncMapFieldsFromTemplate(applyStarts) {
-            const map = getActiveMapTemplate();
-            if (map.floorSpriteId) document.getElementById("floor-sprite").value = map.floorSpriteId;
-            if (applyStarts) applyMapToCurrentScene();
-        }
-
-        function applyMapToCurrentScene() {
-            const scene = scenes[selectedIndex];
-            const map = getActiveMapTemplate();
-            if (!scene || !map) return;
-
-            if (map.playerStart) {
-                scene.player.x = map.playerStart.x;
-                scene.player.y = map.playerStart.y;
+        function addStep() {
+            const type = document.getElementById("step-type").value;
+            let step = { type };
+            if (type === "setupScene") {
+                step = {
+                    type,
+                    title: value("scene-title", "New Scene"),
+                    phase: value("scene-phase", "PLAYER TURN"),
+                    player: { x:num("player-x",2), y:num("player-y",5), hp:num("player-hp",100), stamina:70 },
+                    enemy: { id:value("enemy-id","wild_ravager"), x:num("enemy-x",10), y:num("enemy-y",5), hp:100 }
+                };
+            } else if (type === "dialogue") {
+                step = {
+                    type,
+                    speaker: value("dialogue-speaker", "Kreg"),
+                    portraitId: value("dialogue-portrait", "npc_kreg"),
+                    text: value("dialogue-text", "Kreg gives the next instruction.")
+                };
+            } else if (type === "action") {
+                step = { type, action:value("action-type","pass"), duration:num("action-delay",950) };
+            } else if (type === "effect") {
+                step = { type, effect:value("effect-type","shake"), duration:num("effect-delay",900) };
+            } else if (type === "fadeIn" || type === "fadeOut") {
+                step = { type, effect:type, duration:num("effect-delay",600) };
+            } else if (type === "endScene" || type === "reward" || type === "backToTown" || type === "startCombat") {
+                step = { type, label:value("end-note", readableStepType(type)), duration:700 };
             }
+            movieSteps.splice(selectedStepIndex + 1, 0, step);
+            selectedStepIndex++;
+            refreshAll();
+        }
 
+        function removeStep(index) {
+            movieSteps.splice(index, 1);
+            selectedStepIndex = Math.max(0, Math.min(selectedStepIndex, movieSteps.length - 1));
+            refreshAll();
+        }
+
+        function moveStep(index, delta) {
+            const target = index + delta;
+            if (target < 0 || target >= movieSteps.length) return;
+            const tmp = movieSteps[index];
+            movieSteps[index] = movieSteps[target];
+            movieSteps[target] = tmp;
+            selectedStepIndex = target;
+            refreshAll();
+        }
+
+        function selectStep(index) {
+            selectedStepIndex = Math.max(0, Math.min(index, movieSteps.length - 1));
+            refreshAll();
+        }
+
+        function previewPrevious() { selectStep(selectedStepIndex - 1); }
+        function previewNext() { selectStep(selectedStepIndex + 1); }
+
+        function clearTimeline() {
+            if (!confirm("Clear the whole movie timeline?")) return;
+            movieSteps = [{ type:"setupScene", title:"New Scene", phase:"PLAYER TURN", player:{x:2,y:5,hp:100,stamina:70}, enemy:{id:"wild_ravager",x:10,y:5,hp:100} }];
+            selectedStepIndex = 0;
+            refreshAll();
+        }
+
+        function useMapStarts() {
+            const map = getActiveMapTemplate();
             const slot = pickPreviewEnemySlot(map);
+            if (map.playerStart) {
+                setValue("player-x", map.playerStart.x);
+                setValue("player-y", map.playerStart.y);
+            }
             if (slot) {
-                scene.enemy.id = slot.id || defaultEnemyByZone[map.zone] || scene.enemy.id || "wild_ravager";
-                scene.enemy.name = readableName(scene.enemy.id);
-                scene.enemy.x = slot.x;
-                scene.enemy.y = slot.y;
-                scene.enemy.size = scene.mode === "boss" ? 2 : 1;
-                scene.targetTile = { x: slot.x, y: slot.y };
+                setValue("enemy-id", slot.id || defaultEnemyByZone[map.zone] || "wild_ravager");
+                setValue("enemy-x", slot.x);
+                setValue("enemy-y", slot.y);
             }
-
-            loadSceneForm();
-            renderSceneList();
-            renderPreview();
-            generateExport();
+            refreshAll();
         }
 
-        function pickPreviewEnemySlot(map) {
-            if (Array.isArray(map.enemies) && map.enemies.length) return map.enemies[0];
-            if (Array.isArray(map.enemySlots) && map.enemySlots.length) {
-                return map.enemySlots.find(slot => slot.id) || map.enemySlots[0];
-            }
-            return null;
-        }
-
-        function selectScene(index) {
-            selectedIndex = Math.max(0, Math.min(scenes.length - 1, index));
-            loadSceneForm();
-            renderSceneList();
-            renderPreview();
-        }
-
-        function addScene() {
-            scenes.push(makeScene(`scene_${scenes.length + 1}`, "New Scene", "Quest Beat", "PLAYER TURN", "continue", "select", "Kreg explains what happens in this scene."));
-            selectScene(scenes.length - 1);
-            generateExport();
-        }
-
-        function saveScene() {
-            const scene = scenes[selectedIndex];
-            if (!scene) return;
-
-            scene.id = cleanId(document.getElementById("scene-id").value, `scene_${selectedIndex + 1}`);
-            scene.title = document.getElementById("scene-title").value.trim() || "Quest Scene";
-            scene.subtitle = document.getElementById("scene-subtitle").value.trim() || "Quest Beat";
-            scene.phase = document.getElementById("scene-phase").value.trim() || "PLAYER TURN";
-            scene.requiredAction = document.getElementById("scene-action").value;
-            scene.highlight = scene.requiredAction;
-            scene.requiresTarget = scene.requiredAction === "attack";
-            scene.mode = document.getElementById("scene-mode").value;
-            scene.autoAdvanceMs = Math.max(300, parseInt(document.getElementById("scene-delay").value, 10) || 900);
-            scene.effects = Array.from(document.getElementById("scene-effects").selectedOptions).map(option => option.value);
-            scene.dialogue = splitDialogue(document.getElementById("scene-dialogue").value);
-            scene.player = {
-                x: num("player-x"), y: num("player-y"),
-                hp: num("player-hp", 100), maxHp: 100,
-                stamina: num("player-stamina", 70), maxStamina: 100,
-                atb: 100
-            };
-            scene.enemy = {
-                id: document.getElementById("enemy-id").value.trim() || "wild_ravager",
-                name: document.getElementById("enemy-name").value.trim() || "Training Ravager",
-                x: num("enemy-x", 10), y: num("enemy-y", 5),
-                hp: 100, maxHp: 100, atb: 30,
-                size: scene.mode === "boss" ? 2 : 1
-            };
-            scene.targetTile = { x: scene.enemy.x, y: scene.enemy.y };
-
-            renderSceneList();
-            renderPreview();
-            generateExport();
-        }
-
-        function deleteScene() {
-            if (scenes.length <= 1) return;
-            scenes.splice(selectedIndex, 1);
-            selectScene(Math.min(selectedIndex, scenes.length - 1));
-            generateExport();
-        }
-
-        function moveScene(direction) {
-            const nextIndex = selectedIndex + direction;
-            if (nextIndex < 0 || nextIndex >= scenes.length) return;
-            const temp = scenes[selectedIndex];
-            scenes[selectedIndex] = scenes[nextIndex];
-            scenes[nextIndex] = temp;
-            selectScene(nextIndex);
-            generateExport();
-        }
-
-        function loadSceneForm() {
-            const scene = scenes[selectedIndex];
-            if (!scene) return;
-
-            setValue("scene-id", scene.id);
-            setValue("scene-title", scene.title);
-            setValue("scene-subtitle", scene.subtitle);
-            setValue("scene-phase", scene.phase);
-            setValue("scene-action", scene.requiredAction);
-            setValue("scene-mode", scene.mode);
-            setValue("scene-delay", scene.autoAdvanceMs);
-            setValue("scene-dialogue", (scene.dialogue || []).map(page => page.text).join("\n\n"));
-            setValue("player-x", scene.player.x);
-            setValue("player-y", scene.player.y);
-            setValue("player-hp", scene.player.hp);
-            setValue("player-stamina", scene.player.stamina);
-            setValue("enemy-id", scene.enemy.id);
-            setValue("enemy-name", scene.enemy.name);
-            setValue("enemy-x", scene.enemy.x);
-            setValue("enemy-y", scene.enemy.y);
-
-            const effectSelect = document.getElementById("scene-effects");
-            Array.from(effectSelect.options).forEach(option => {
-                option.selected = (scene.effects || []).includes(option.value);
-            });
-        }
-
-        function renderSceneList() {
-            const list = document.getElementById("scene-list");
-            list.innerHTML = "";
-            scenes.forEach((scene, index) => {
-                const row = document.createElement("button");
-                row.className = "scene-row" + (index === selectedIndex ? " active" : "");
-                row.onclick = () => selectScene(index);
-                row.innerHTML = `<strong>${index + 1}. ${escapeHtml(scene.title)}</strong><small>${escapeHtml(scene.requiredAction)} / ${escapeHtml(scene.mode)}</small>`;
-                list.appendChild(row);
-            });
-        }
-
-        function renderPreview() {
-            const preview = document.getElementById("preview");
-            const scene = scenes[selectedIndex];
-            const map = getActiveMapTemplate();
-
-            document.getElementById("preview-title").innerText = scene ? scene.title : "Scene Preview";
-            document.getElementById("preview-map-name").innerText = map ? `${map.name || map.id} - ${map.zone || "CUSTOM"}` : "Custom Visual Map";
-            document.getElementById("preview-caption").innerText = scene
-                ? `${scene.phase} | Required: ${scene.requiredAction} | Effects: ${(scene.effects || []).join(", ") || "none"}`
-                : "";
-
-            drawPreviewCanvas(scene, map);
-
-            preview.innerHTML = scenes.map((scene, index) => `
-                <div class="preview-scene">
-                    <strong style="color:${index === selectedIndex ? "var(--gold)" : "var(--text)"};">${index + 1}. ${escapeHtml(scene.title)}</strong>
-                    <div class="tag-row">
-                        <span class="tag">${escapeHtml(scene.phase)}</span>
-                        <span class="tag">${escapeHtml(scene.requiredAction)}</span>
-                        <span class="tag">${escapeHtml(scene.mode)}</span>
+        function renderTimeline() {
+            const container = document.getElementById("timeline");
+            container.innerHTML = movieSteps.map((step, index) => `
+                <div class="step-row ${index === selectedStepIndex ? "active" : ""}" onclick="selectStep(${index})">
+                    <div class="step-top">
+                        <span class="step-type">${index + 1}. ${escapeHtml(readableStepType(step.type))}</span>
+                        <span class="step-actions">
+                            <button onclick="event.stopPropagation(); moveStep(${index}, -1)">Up</button>
+                            <button onclick="event.stopPropagation(); moveStep(${index}, 1)">Down</button>
+                            <button onclick="event.stopPropagation(); removeStep(${index})">Delete</button>
+                        </span>
                     </div>
-                    <small style="color:var(--muted);">${escapeHtml((scene.dialogue && scene.dialogue[0] && scene.dialogue[0].text) || "")}</small>
+                    <div class="step-desc">${escapeHtml(describeStep(step))}</div>
                 </div>
             `).join("");
         }
 
-        function drawPreviewCanvas(scene, map) {
-            const canvas = document.getElementById("preview-canvas");
-            if (!canvas || !scene || !map) return;
+        function compileMovie() {
+            const scenes = [];
+            let current = null;
+            let setup = defaultSetup();
+            let pendingEffects = [];
+            let sceneCounter = 1;
 
+            function ensureScene(title = "Movie Beat") {
+                if (!current) {
+                    current = createCompiledScene(sceneCounter++, title, setup);
+                    current.effects.push(...pendingEffects);
+                    pendingEffects = [];
+                }
+                return current;
+            }
+
+            function closeScene() {
+                if (!current) return;
+                scenes.push(current);
+                current = null;
+            }
+
+            movieSteps.forEach(step => {
+                if (step.type === "setupScene") {
+                    closeScene();
+                    setup = setupFromStep(step);
+                    current = createCompiledScene(sceneCounter++, step.title || "Scene", setup);
+                } else if (step.type === "dialogue") {
+                    ensureScene().dialogue.push({ speaker:step.speaker, portraitId:step.portraitId, text:step.text });
+                } else if (step.type === "action") {
+                    const scene = ensureScene(actionLabel(step.action));
+                    applyActionToScene(scene, step);
+                    closeScene();
+                } else if (step.type === "effect" || step.type === "fadeIn" || step.type === "fadeOut") {
+                    const effectName = step.effect || step.type;
+                    if (current) {
+                        current.effects.push(effectName);
+                        current.autoAdvanceMs = step.duration || current.autoAdvanceMs;
+                    } else {
+                        pendingEffects.push(effectName);
+                    }
+                } else if (step.type === "endScene" || step.type === "reward" || step.type === "backToTown" || step.type === "startCombat") {
+                    const scene = ensureScene(readableStepType(step.type));
+                    scene.requiredAction = "continue";
+                    scene.mode = step.type;
+                    scene.autoAdvanceMs = step.duration || 700;
+                    scene.effects.push("fadeOut");
+                    closeScene();
+                }
+            });
+            closeScene();
+
+            return scenes.length ? scenes : [createCompiledScene(1, "Empty Movie", setup)];
+        }
+
+        function createCompiledScene(index, title, setup) {
+            return {
+                id: cleanId(`${index}_${title}`, `scene_${index}`),
+                title,
+                subtitle: "Quest Movie Beat",
+                phase: setup.phase || "PLAYER TURN",
+                mode: "select",
+                requiredAction: "continue",
+                highlight: "continue",
+                requiresTarget: false,
+                autoAdvanceMs: 700,
+                effects: [],
+                dialogue: [],
+                player: { x:setup.player.x, y:setup.player.y, hp:setup.player.hp, maxHp:100, stamina:setup.player.stamina, maxStamina:100, atb:100 },
+                enemy: { id:setup.enemy.id, name:readableName(setup.enemy.id), x:setup.enemy.x, y:setup.enemy.y, hp:setup.enemy.hp, maxHp:100, atb:30, size:setup.enemy.id === "wilderness_overlord" ? 2 : 1 },
+                targetTile: { x:setup.enemy.x, y:setup.enemy.y }
+            };
+        }
+
+        function applyActionToScene(scene, step) {
+            const action = step.action || "continue";
+            scene.title = actionLabel(action);
+            scene.mode = modeForAction(action);
+            scene.requiredAction = action;
+            scene.highlight = action;
+            scene.requiresTarget = action === "attack";
+            scene.autoAdvanceMs = step.duration || 900;
+            if (action === "brace") {
+                scene.mode = "boss";
+                scene.effects.push("shake", "flash");
+                scene.enemy.id = "wilderness_overlord";
+                scene.enemy.name = "Wilderness Overlord";
+                scene.enemy.size = 2;
+            }
+        }
+
+        function renderPreview() {
+            const compiled = compileMovie();
+            const step = movieSteps[selectedStepIndex] || movieSteps[0];
+            const scene = previewSceneForStep(step, compiled);
+            const map = getActiveMapTemplate();
+            document.getElementById("preview-title").innerText = `${selectedStepIndex + 1}. ${readableStepType(step.type)}`;
+            document.getElementById("preview-map-name").innerText = `${map.name || map.id} - ${map.zone || "CUSTOM"}`;
+            document.getElementById("preview-caption").innerText = describeStep(step);
+            drawPreviewCanvas(scene, map, step);
+            document.getElementById("compiled-notes").innerHTML = `
+                <div class="pill-row">
+                    <span class="pill">${compiled.length} compiled scenes</span>
+                    <span class="pill">${movieSteps.length} timeline steps</span>
+                    <span class="pill">${map.id || "CUSTOM"}</span>
+                </div>`;
+        }
+
+        function previewSceneForStep(step, compiled) {
+            if (step.type === "setupScene") return createCompiledScene(1, step.title || "Setup Scene", setupFromStep(step));
+            const sceneIndex = Math.min(compiled.length - 1, Math.max(0, compiled.findIndex(scene => scene.dialogue.some(page => page.text === step.text))));
+            const fallback = compiled[sceneIndex >= 0 ? sceneIndex : 0];
+            if (step.type === "action") {
+                const clone = JSON.parse(JSON.stringify(fallback));
+                applyActionToScene(clone, step);
+                return clone;
+            }
+            if (step.type === "effect" || step.type === "fadeIn" || step.type === "fadeOut") {
+                const clone = JSON.parse(JSON.stringify(fallback));
+                clone.effects = [step.effect || step.type];
+                return clone;
+            }
+            return fallback;
+        }
+
+        function drawPreviewCanvas(scene, map, step) {
+            const canvas = document.getElementById("preview-canvas");
             const ctx = canvas.getContext("2d");
             const cols = (map.gridSize && map.gridSize.cols) || 16;
             const rows = (map.gridSize && map.gridSize.rows) || 10;
             const tile = Math.floor(Math.min(canvas.width / cols, canvas.height / rows));
-            const offsetX = Math.floor((canvas.width - (cols * tile)) / 2);
-            const offsetY = Math.floor((canvas.height - (rows * tile)) / 2);
-
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = "#080604";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            for (let x = 0; x < cols; x++) {
-                for (let y = 0; y < rows; y++) {
-                    const spriteId = getPreviewFloorSprite(map, x, y);
-                    ctx.fillStyle = floorColors[spriteId] || "#3f6f48";
-                    ctx.fillRect(offsetX + x * tile, offsetY + y * tile, tile, tile);
-                    ctx.fillStyle = "rgba(0, 0, 0, 0.16)";
-                    ctx.fillRect(offsetX + x * tile, offsetY + y * tile, tile, tile);
-                    ctx.strokeStyle = "#2b231d";
-                    ctx.lineWidth = 1;
-                    ctx.strokeRect(offsetX + x * tile, offsetY + y * tile, tile, tile);
-                }
+            const offsetX = Math.floor((canvas.width - cols * tile) / 2);
+            const offsetY = Math.floor((canvas.height - rows * tile) / 2);
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            ctx.fillStyle = "#080604"; ctx.fillRect(0,0,canvas.width,canvas.height);
+            for (let x=0; x<cols; x++) for (let y=0; y<rows; y++) {
+                const sprite = getPreviewFloorSprite(map, x, y);
+                ctx.fillStyle = floorColors[sprite] || "#3f6f48";
+                ctx.fillRect(offsetX+x*tile, offsetY+y*tile, tile, tile);
+                ctx.fillStyle = "rgba(0,0,0,.16)";
+                ctx.fillRect(offsetX+x*tile, offsetY+y*tile, tile, tile);
+                ctx.strokeStyle = "#2b231d";
+                ctx.strokeRect(offsetX+x*tile, offsetY+y*tile, tile, tile);
             }
-
             drawMapTemplateSlots(ctx, map, offsetX, offsetY, tile);
             drawPreviewObstacles(ctx, map, offsetX, offsetY, tile);
             drawSceneHighlights(ctx, scene, offsetX, offsetY, tile);
             drawPreviewActor(ctx, scene.player, offsetX, offsetY, tile, "#4f9ddd", "YOU");
-            drawPreviewActor(ctx, scene.enemy, offsetX, offsetY, tile, "#d95757", "MOB", scene.enemy.size || 1);
-            drawPreviewDialogue(ctx, scene);
+            drawPreviewActor(ctx, scene.enemy, offsetX, offsetY, tile, "#d95757", scene.enemy.size > 1 ? "BOSS" : "MOB", scene.enemy.size || 1);
+            if (step.type === "dialogue") drawPreviewDialogue(ctx, step);
+            if (step.type === "fadeOut") drawCurtain(ctx, "rgba(0,0,0,.52)", "FADE OUT");
+            if (step.type === "fadeIn") drawCurtain(ctx, "rgba(255,255,255,.12)", "FADE IN");
         }
 
         function drawMapTemplateSlots(ctx, map, offsetX, offsetY, tile) {
-            const slots = [...(map.enemySlots || []), ...(map.enemies || [])].slice(0, 18);
-            slots.forEach(slot => {
-                ctx.fillStyle = "rgba(217, 87, 87, 0.18)";
+            [...(map.enemySlots || []), ...(map.enemies || [])].slice(0, 18).forEach(slot => {
+                ctx.fillStyle = "rgba(217,87,87,.18)";
                 ctx.beginPath();
-                ctx.arc(offsetX + (slot.x * tile) + tile / 2, offsetY + (slot.y * tile) + tile / 2, Math.max(4, tile * 0.12), 0, Math.PI * 2);
+                ctx.arc(offsetX+slot.x*tile+tile/2, offsetY+slot.y*tile+tile/2, Math.max(4,tile*.12), 0, Math.PI*2);
                 ctx.fill();
             });
         }
 
         function drawPreviewObstacles(ctx, map, offsetX, offsetY, tile) {
             (map.obstacles || []).forEach(obstacle => {
-                ctx.fillStyle = "rgba(20, 17, 15, 0.72)";
-                ctx.fillRect(offsetX + obstacle.x * tile + 4, offsetY + obstacle.y * tile + 4, tile - 8, tile - 8);
+                ctx.fillStyle = "rgba(20,17,15,.72)";
+                ctx.fillRect(offsetX+obstacle.x*tile+4, offsetY+obstacle.y*tile+4, tile-8, tile-8);
                 ctx.strokeStyle = "#87919a";
-                ctx.strokeRect(offsetX + obstacle.x * tile + 7, offsetY + obstacle.y * tile + 7, tile - 14, tile - 14);
+                ctx.strokeRect(offsetX+obstacle.x*tile+7, offsetY+obstacle.y*tile+7, tile-14, tile-14);
                 ctx.fillStyle = "#b9aa98";
                 ctx.font = "700 9px Courier New";
                 ctx.textAlign = "center";
-                ctx.fillText(shortObstacleLabel(obstacle, map), offsetX + obstacle.x * tile + tile / 2, offsetY + obstacle.y * tile + tile / 2 + 3);
+                ctx.fillText(shortObstacleLabel(obstacle, map), offsetX+obstacle.x*tile+tile/2, offsetY+obstacle.y*tile+tile/2+3);
             });
         }
 
         function drawSceneHighlights(ctx, scene, offsetX, offsetY, tile) {
-            if (scene.requiredAction === "selectTarget" && scene.enemy) {
-                drawPreviewTileOutline(ctx, scene.enemy.x, scene.enemy.y, scene.enemy.size || 1, offsetX, offsetY, tile, "#2ecc71");
-            }
+            if (scene.requiredAction === "selectTarget") drawPreviewTileOutline(ctx, scene.enemy.x, scene.enemy.y, scene.enemy.size || 1, offsetX, offsetY, tile, "#2ecc71");
             if (scene.requiredAction === "bomb") {
-                const target = scene.targetTile || scene.enemy;
-                drawPreviewAoe(ctx, target.x, target.y, offsetX, offsetY, tile);
-                drawPreviewTileOutline(ctx, target.x, target.y, 1, offsetX, offsetY, tile, "#e67e22");
+                drawPreviewAoe(ctx, scene.targetTile.x, scene.targetTile.y, offsetX, offsetY, tile);
+                drawPreviewTileOutline(ctx, scene.targetTile.x, scene.targetTile.y, 1, offsetX, offsetY, tile, "#e67e22");
             }
             if ((scene.effects || []).includes("shake") || scene.mode === "boss") {
-                ctx.fillStyle = "rgba(231, 76, 60, 0.16)";
-                ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                ctx.fillStyle = "rgba(231,76,60,.16)";
+                ctx.fillRect(0,0,ctx.canvas.width,ctx.canvas.height);
             }
         }
 
-        function drawPreviewActor(ctx, actor, offsetX, offsetY, tile, color, label, size = 1) {
+        function drawPreviewActor(ctx, actor, offsetX, offsetY, tile, color, label, size=1) {
             if (!actor) return;
             ctx.fillStyle = color;
-            ctx.fillRect(offsetX + actor.x * tile + 6, offsetY + actor.y * tile + 6, (tile * size) - 12, (tile * size) - 12);
-            ctx.strokeStyle = "#f4ebd9";
-            ctx.lineWidth = 2;
-            ctx.strokeRect(offsetX + actor.x * tile + 9, offsetY + actor.y * tile + 9, (tile * size) - 18, (tile * size) - 18);
-            ctx.fillStyle = "#fff";
-            ctx.font = "700 11px Courier New";
-            ctx.textAlign = "center";
-            ctx.fillText(label, offsetX + actor.x * tile + (tile * size) / 2, offsetY + actor.y * tile + (tile * size) / 2 + 4);
+            ctx.fillRect(offsetX+actor.x*tile+6, offsetY+actor.y*tile+6, tile*size-12, tile*size-12);
+            ctx.strokeStyle = "#f4ebd9"; ctx.lineWidth = 2;
+            ctx.strokeRect(offsetX+actor.x*tile+9, offsetY+actor.y*tile+9, tile*size-18, tile*size-18);
+            ctx.fillStyle = "#fff"; ctx.font = "700 11px Courier New"; ctx.textAlign = "center";
+            ctx.fillText(label, offsetX+actor.x*tile+(tile*size)/2, offsetY+actor.y*tile+(tile*size)/2+4);
         }
 
-        function drawPreviewDialogue(ctx, scene) {
-            const text = (scene.dialogue && scene.dialogue[0] && scene.dialogue[0].text) || "";
-            if (!text) return;
-            ctx.fillStyle = "rgba(20, 17, 15, 0.88)";
-            ctx.fillRect(12, 306, 616, 82);
-            ctx.strokeStyle = "#b9aa98";
-            ctx.strokeRect(12, 306, 616, 82);
-            ctx.fillStyle = "#f1c766";
-            ctx.font = "700 12px Courier New";
-            ctx.fillText("KREG", 26, 326);
+        function drawPreviewDialogue(ctx, step) {
+            ctx.fillStyle = "rgba(20,17,15,.88)";
+            ctx.fillRect(12,306,616,82);
+            ctx.strokeStyle = "#b9aa98"; ctx.strokeRect(12,306,616,82);
+            ctx.fillStyle = "#f1c766"; ctx.font = "700 12px Courier New";
+            ctx.fillText(step.speaker || "Kreg", 26,326);
             ctx.fillStyle = "#f4ebd9";
-            ctx.font = "700 12px Courier New";
-            wrapCanvasText(ctx, text, 26, 346, 580, 16, 2);
+            wrapCanvasText(ctx, step.text || "", 26,346,580,16,2);
         }
 
-        function drawPreviewAoe(ctx, x, y, offsetX, offsetY, tile) {
-            ctx.fillStyle = "rgba(230, 126, 34, 0.28)";
-            for (let dx = -1; dx <= 1; dx++) {
-                for (let dy = -1; dy <= 1; dy++) {
-                    ctx.fillRect(offsetX + (x + dx) * tile, offsetY + (y + dy) * tile, tile, tile);
-                }
-            }
-        }
-
-        function drawPreviewTileOutline(ctx, x, y, size, offsetX, offsetY, tile, color) {
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 4;
-            ctx.strokeRect(offsetX + x * tile + 3, offsetY + y * tile + 3, (tile * size) - 6, (tile * size) - 6);
-        }
-
-        function getPreviewFloorSprite(map, x, y) {
-            const override = (map.floorTiles || []).find(tile => tile.x === x && tile.y === y);
-            return override && override.spriteId ? override.spriteId : map.floorSpriteId || document.getElementById("floor-sprite").value;
-        }
-
-        function shortObstacleLabel(obstacle, map) {
-            if (obstacle.icon) return String(obstacle.icon).slice(0, 5).toUpperCase();
-            const fallback = defaultObstacleByZone[map.zone] || defaultObstacleByZone.WILDERNESS;
-            const spriteId = obstacle.spriteId || fallback.spriteId;
-            if (spriteId.includes("cask")) return "CASK";
-            if (spriteId.includes("pillar")) return "PILL";
-            if (spriteId.includes("boulder")) return "ROCK";
-            return "TREE";
-        }
-
-        function readableName(id) {
-            return String(id || "Training Ravager")
-                .split("_")
-                .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-                .join(" ");
-        }
-
-        function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight, maxLines) {
-            const words = String(text).split(/\s+/);
-            let line = "";
-            let lineCount = 0;
-
-            words.forEach(word => {
-                const testLine = line ? `${line} ${word}` : word;
-                if (ctx.measureText(testLine).width > maxWidth && line) {
-                    if (lineCount < maxLines) ctx.fillText(line, x, y + (lineCount * lineHeight));
-                    line = word;
-                    lineCount++;
-                } else {
-                    line = testLine;
-                }
-            });
-
-            if (line && lineCount < maxLines) {
-                ctx.fillText(line, x, y + (lineCount * lineHeight));
-            }
+        function drawCurtain(ctx, fill, label) {
+            ctx.fillStyle = fill;
+            ctx.fillRect(0,0,ctx.canvas.width,ctx.canvas.height);
+            ctx.fillStyle = "#f1c766";
+            ctx.font = "800 22px Courier New";
+            ctx.textAlign = "center";
+            ctx.fillText(label, ctx.canvas.width/2, ctx.canvas.height/2);
         }
 
         function collectClientScript() {
-            const questId = cleanId(document.getElementById("quest-id").value, "custom_quest");
             const map = getActiveMapTemplate();
+            const questId = cleanId(value("quest-id", "custom_quest"), "custom_quest");
             return {
                 id: questId,
-                title: document.getElementById("quest-title").value.trim() || "Custom Quest",
+                title: value("quest-title", "Custom Quest"),
                 mapTemplateId: map.id !== "CUSTOM" ? map.id : null,
                 zone: map.zone || "CUSTOM",
                 tileSize: 54,
-                grid: map.gridSize || { cols: 16, rows: 10 },
-                floorSpriteId: map.floorSpriteId || document.getElementById("floor-sprite").value,
+                grid: map.gridSize || { cols:16, rows:10 },
+                floorSpriteId: map.floorSpriteId || value("floor-sprite", "ground_wilderness"),
                 floorTiles: map.floorTiles || [],
-                actors: {
-                    playerStart: map.playerStart || { x: 2, y: 5 },
-                    kregStart: { x: 1, y: 4 },
-                    ravagerStart: { x: 10, y: 5 },
-                    bossStart: { x: 11, y: 4 }
-                },
+                actors: { playerStart:map.playerStart || { x:2, y:5 }, kregStart:{ x:1, y:4 } },
                 obstacles: normalizeExportObstacles(map),
                 interactables: map.interactables || [],
-                introDialogue: [
-                    { speaker: "Kreg", portraitId: "npc_kreg", text: "Let us run this scene safely before the real rewards and danger kick in." }
-                ],
-                outroDialogue: [
-                    { speaker: "Kreg", portraitId: "npc_kreg", text: "Scene complete. Back to the real world." }
-                ],
-                scenes: scenes.map(scene => ({ ...scene }))
+                introDialogue: [],
+                outroDialogue: [],
+                scenes: compileMovie()
+            };
+        }
+
+        function collectServerDefinition() {
+            const questId = cleanId(value("quest-id", "custom_quest"), "custom_quest");
+            const mode = value("completion-mode", "none");
+            const rewards = mode === "reward" ? { gold:num("reward-gold",0), xp:num("reward-xp",0) } : null;
+            const completionAction = mode === "combatZone" ? { type:"combatZone", zone:value("combat-zone","WILDERNESS") } : null;
+            return {
+                id:questId,
+                scriptId:questId,
+                title:value("quest-title", "Custom Quest"),
+                type:"cinematic",
+                persistCompletion:mode === "reward",
+                rewards,
+                completionAction,
+                requirements:{ minLevel:1 }
+            };
+        }
+
+        function generateExport() {
+            const questId = cleanId(value("quest-id", "custom_quest"), "custom_quest");
+            const clientText = `${questId}: ${toJsObject(collectClientScript())}`;
+            const serverText = `${questId}: ${toJsObject(collectServerDefinition())}`;
+            document.getElementById("export-output").value = `// public/js/quest-scripts.js\n${clientText},\n\n// questDefinitions.js\n${serverText},`;
+        }
+
+        function refreshAll() {
+            renderTimeline();
+            renderPreview();
+            generateExport();
+        }
+
+        function getActiveMapTemplate() {
+            return mapTemplates[activeMapTemplateId] || createCustomMapTemplate();
+        }
+
+        function createCustomMapTemplate() {
+            return {
+                id:"CUSTOM", zone:"CUSTOM", name:"Custom Visual Map", gridSize:{ cols:16, rows:10 }, tileSize:54,
+                floorSpriteId:value("floor-sprite", "ground_wilderness"), floorTiles:[],
+                playerStart:{ x:2, y:5 }, enemies:[], enemySlots:[{ id:"wild_ravager", x:10, y:5 }],
+                obstacles:[{ x:4, y:2, spriteId:"map_tree" }, { x:4, y:7, spriteId:"map_tree" }, { x:8, y:3, spriteId:"map_tree" }, { x:8, y:7, spriteId:"map_tree" }],
+                interactables:[]
+            };
+        }
+
+        function pickPreviewEnemySlot(map) {
+            if (Array.isArray(map.enemies) && map.enemies.length) return map.enemies[0];
+            if (Array.isArray(map.enemySlots) && map.enemySlots.length) return map.enemySlots.find(slot => slot.id) || map.enemySlots[0];
+            return null;
+        }
+
+        function setupFromStep(step) {
+            return {
+                phase:step.phase || "PLAYER TURN",
+                player:{ x:step.player?.x ?? 2, y:step.player?.y ?? 5, hp:step.player?.hp ?? 100, stamina:step.player?.stamina ?? 70 },
+                enemy:{ id:step.enemy?.id || "wild_ravager", x:step.enemy?.x ?? 10, y:step.enemy?.y ?? 5, hp:step.enemy?.hp ?? 100 }
+            };
+        }
+
+        function defaultSetup() {
+            const map = getActiveMapTemplate();
+            const slot = pickPreviewEnemySlot(map) || { id:"wild_ravager", x:10, y:5 };
+            return {
+                phase:"PLAYER TURN",
+                player:{ x:map.playerStart?.x ?? 2, y:map.playerStart?.y ?? 5, hp:100, stamina:70 },
+                enemy:{ id:slot.id || defaultEnemyByZone[map.zone] || "wild_ravager", x:slot.x, y:slot.y, hp:100 }
             };
         }
 
         function normalizeExportObstacles(map) {
             const fallback = defaultObstacleByZone[map.zone] || defaultObstacleByZone.WILDERNESS;
-            return (map.obstacles || []).map(obstacle => ({
-                x: obstacle.x,
-                y: obstacle.y,
-                spriteId: obstacle.spriteId || fallback.spriteId
-            }));
+            return (map.obstacles || []).map(o => ({ x:o.x, y:o.y, spriteId:o.spriteId || fallback.spriteId }));
         }
 
-        function collectServerDefinition() {
-            const questId = cleanId(document.getElementById("quest-id").value, "custom_quest");
-            const mode = document.getElementById("completion-mode").value;
-            const gold = Math.max(0, parseInt(document.getElementById("reward-gold").value, 10) || 0);
-            const xp = Math.max(0, parseInt(document.getElementById("reward-xp").value, 10) || 0);
-            const rewards = mode === "reward" ? { gold, xp } : null;
-            const completionAction = mode === "combatZone" ? { type: "combatZone", zone: document.getElementById("combat-zone").value } : null;
-
-            return {
-                id: questId,
-                scriptId: questId,
-                title: document.getElementById("quest-title").value.trim() || "Custom Quest",
-                type: "cinematic",
-                persistCompletion: mode === "reward",
-                rewards,
-                completionAction,
-                requirements: { minLevel: 1 }
-            };
+        function getPreviewFloorSprite(map, x, y) {
+            const override = (map.floorTiles || []).find(tile => tile.x === x && tile.y === y);
+            return override?.spriteId || map.floorSpriteId || value("floor-sprite", "ground_wilderness");
         }
-
-        function generateExport() {
-            const questId = cleanId(document.getElementById("quest-id").value, "custom_quest");
-            const client = collectClientScript();
-            const server = collectServerDefinition();
-            const clientText = `${questId}: ${toJsObject(client)}`;
-            const serverText = `${questId}: ${toJsObject(server)}`;
-            document.getElementById("export-output").value =
-                `// public/js/quest-scripts.js\n${clientText},\n\n// questDefinitions.js\n${serverText},`;
+        function shortObstacleLabel(obstacle, map) {
+            const sprite = obstacle.spriteId || (defaultObstacleByZone[map.zone] || defaultObstacleByZone.WILDERNESS).spriteId;
+            if (sprite.includes("cask")) return "CASK";
+            if (sprite.includes("pillar")) return "PILL";
+            if (sprite.includes("boulder")) return "ROCK";
+            return "TREE";
         }
-
-        function copyExport() {
-            const outArea = document.getElementById("export-output");
-            outArea.select();
-            document.execCommand("copy");
-            const btn = document.getElementById("export-btn");
-            const oldText = btn.innerText;
-            btn.innerText = "Copied";
-            setTimeout(() => btn.innerText = oldText, 1500);
+        function drawPreviewAoe(ctx, x, y, offsetX, offsetY, tile) {
+            ctx.fillStyle = "rgba(230,126,34,.28)";
+            for (let dx=-1; dx<=1; dx++) for (let dy=-1; dy<=1; dy++) ctx.fillRect(offsetX+(x+dx)*tile, offsetY+(y+dy)*tile, tile, tile);
         }
-
-        function splitDialogue(value) {
-            const pages = (value || "")
-                .split(/\n\s*\n/g)
-                .map(text => text.trim())
-                .filter(Boolean);
-            return (pages.length ? pages : ["Kreg gives the next instruction."]).map(text => ({
-                speaker: "Kreg",
-                portraitId: "npc_kreg",
-                text
-            }));
+        function drawPreviewTileOutline(ctx, x, y, size, offsetX, offsetY, tile, color) {
+            ctx.strokeStyle = color; ctx.lineWidth = 4;
+            ctx.strokeRect(offsetX+x*tile+3, offsetY+y*tile+3, tile*size-6, tile*size-6);
         }
-
-        function toJsObject(value) {
-            return JSON.stringify(value, null, 4)
-                .replace(/"([^"]+)":/g, "$1:")
-                .replace(/"([^"]+)"/g, "\"$1\"");
+        function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight, maxLines) {
+            const words = String(text).split(/\s+/); let line = ""; let count = 0;
+            words.forEach(word => {
+                const test = line ? `${line} ${word}` : word;
+                if (ctx.measureText(test).width > maxWidth && line) {
+                    if (count < maxLines) ctx.fillText(line, x, y + count * lineHeight);
+                    line = word; count++;
+                } else line = test;
+            });
+            if (line && count < maxLines) ctx.fillText(line, x, y + count * lineHeight);
         }
-
+        function describeStep(step) {
+            if (step.type === "setupScene") return `${step.title} at ${step.phase}. Player ${step.player.x},${step.player.y}; ${step.enemy.id} ${step.enemy.x},${step.enemy.y}.`;
+            if (step.type === "dialogue") return `${step.speaker}: ${step.text}`;
+            if (step.type === "action") return `Require player action: ${actionLabel(step.action)}.`;
+            if (step.type === "effect" || step.type === "fadeIn" || step.type === "fadeOut") return `Visual effect: ${step.effect || step.type}.`;
+            return step.label || readableStepType(step.type);
+        }
+        function readableStepType(type) {
+            return ({ fadeOut:"Fade Out", setupScene:"Setup Scene", fadeIn:"Fade In", dialogue:"Dialogue", action:"Action", effect:"Effect", endScene:"End Scene", reward:"Reward Beat", backToTown:"Back To Town", startCombat:"Start Real Combat" })[type] || type;
+        }
+        function actionLabel(action) {
+            return ({ pass:"Passing Turn", brew:"Drinking Brew", selectTarget:"Selecting Target", attack:"Standard Attack", bomb:"Throwing Bomb", brace:"Brace For Boss", continue:"Continue" })[action] || action;
+        }
+        function modeForAction(action) {
+            return ({ pass:"pass", brew:"brew", selectTarget:"select", attack:"attack", bomb:"bomb", brace:"boss", continue:"select" })[action] || "select";
+        }
+        function readableName(id) {
+            return String(id || "Training Ravager").split("_").map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
+        }
         function cleanId(value, fallback) {
-            return (value || fallback)
-                .trim()
-                .toLowerCase()
-                .replace(/[^a-z0-9_]/g, "_")
-                .replace(/_+/g, "_")
-                .replace(/^_|_$/g, "") || fallback;
+            return String(value || fallback).trim().toLowerCase().replace(/[^a-z0-9_]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "") || fallback;
         }
-
+        function value(id, fallback = "") { return document.getElementById(id)?.value || fallback; }
+        function setValue(id, v) { document.getElementById(id).value = v; }
         function num(id, fallback = 0) {
-            const parsed = parseInt(document.getElementById(id).value, 10);
+            const parsed = parseInt(value(id, fallback), 10);
             return Number.isFinite(parsed) ? parsed : fallback;
         }
-
-        function setValue(id, value) {
-            document.getElementById(id).value = value;
+        function escapeHtml(text) {
+            return String(text || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+        }
+        function toJsObject(value) {
+            return JSON.stringify(value, null, 4).replace(/"([^"]+)":/g, "$1:").replace(/"([^"]+)"/g, "\"$1\"");
+        }
+        function copyExport() {
+            const out = document.getElementById("export-output");
+            out.select(); document.execCommand("copy");
+            const btn = document.getElementById("export-btn");
+            const old = btn.innerText; btn.innerText = "Copied";
+            setTimeout(() => btn.innerText = old, 1400);
         }
 
-        function escapeHtml(value) {
-            return String(value || "")
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;");
-        }
-
-        loadSceneForm();
-        renderSceneList();
-        renderPreview();
-        generateExport();
+        refreshStepFields();
+        refreshAll();
         loadCombatMapTemplates();
     </script>
 </body>

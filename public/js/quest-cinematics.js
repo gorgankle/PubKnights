@@ -255,6 +255,8 @@ const QuestCinematics = (() => {
             else status.innerText = "Action complete";
         }
 
+        renderMockCombatInterface(scene);
+
         updateButton("quest-mock-pass-btn", scene.requiredAction === "pass", waitingForInput, "pass");
         updateButton("quest-mock-brew-btn", scene.requiredAction === "brew", waitingForInput, "brew");
         updateButton("quest-mock-attack-btn", scene.requiredAction === "attack", waitingForInput && (!scene.requiresTarget || mockTargetSelected), "attack");
@@ -267,8 +269,48 @@ const QuestCinematics = (() => {
             bombBtn.classList.remove("quest-required-action");
             bombBtn.innerText = "Targeting...";
         } else if (bombBtn) {
-            bombBtn.innerText = "Throw Bomb";
+            bombBtn.innerText = "Prop Backpack: Throw Bomb";
         }
+    }
+
+    function renderMockCombatInterface(scene) {
+        const topBars = document.getElementById("quest-combat-top-bars");
+        const bottomStats = document.getElementById("quest-combat-bottom-stats");
+        if (topBars) {
+            topBars.innerHTML = `
+                <div class="combat-grid-2-col" style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                    ${mockStatBar("HP", scene.player.hp, scene.player.maxHp, "#27ae60")}
+                    ${mockStatBar("STAMINA", scene.player.stamina, scene.player.maxStamina, "#e67e22")}
+                </div>
+            `;
+        }
+        if (bottomStats) {
+            const enemy = scene.enemy || { name: "No Target", hp: 0, maxHp: 1, id: "target" };
+            bottomStats.innerHTML = `
+                <div style="background:#1a1512; border:1px dashed #4a3b2c; padding:10px; border-radius:4px;">
+                    <div style="color:#ffcc66; font-weight:bold; margin-bottom:6px;">Knight Status</div>
+                    <div style="color:#bbaaa0; font-size:12px; line-height:1.5;">Mock HP ${scene.player.hp}/${scene.player.maxHp}<br>Mock Stamina ${scene.player.stamina}/${scene.player.maxStamina}</div>
+                </div>
+                <div style="background:#1a1512; border:1px dashed #4a3b2c; padding:10px; border-radius:4px;">
+                    <div style="color:#e74c3c; font-weight:bold; margin-bottom:6px;">Target Status</div>
+                    <div style="color:#bbaaa0; font-size:12px; line-height:1.5;">${enemy.name || enemy.id}<br>Mock HP ${enemy.hp}/${enemy.maxHp}</div>
+                </div>
+            `;
+        }
+    }
+
+    function mockStatBar(label, current, max, color) {
+        const ratio = Math.max(0, Math.min(100, Math.round((current / max) * 100)));
+        return `
+            <div style="background:#110d0a; border:1px solid #4a3b2c; border-radius:4px; padding:7px;">
+                <div style="display:flex; justify-content:space-between; color:#f4ebd9; font-size:11px; font-weight:bold; margin-bottom:5px;">
+                    <span>${label}</span><span>${current}/${max}</span>
+                </div>
+                <div style="height:10px; background:#060504; border:1px solid #2c2520;">
+                    <div style="height:100%; width:${ratio}%; background:${color};"></div>
+                </div>
+            </div>
+        `;
     }
 
     function updateButton(id, isRequired, enabled, actionName) {
@@ -440,6 +482,13 @@ const QuestCinematics = (() => {
         const fadeInAlpha = Math.max(0, 1 - (elapsed / 600));
         if (fadeInAlpha > 0) {
             ctx.fillStyle = `rgba(0, 0, 0, ${fadeInAlpha})`;
+            ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        }
+
+        const scene = getScene();
+        if (scene && scene.effects && scene.effects.includes("fadeOut")) {
+            const fadeOutAlpha = Math.min(0.85, elapsed / Math.max(450, scene.autoAdvanceMs || 700));
+            ctx.fillStyle = `rgba(0, 0, 0, ${fadeOutAlpha})`;
             ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         }
 
