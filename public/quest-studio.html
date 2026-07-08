@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Pub Knights - Quest Studio</title>
+    <script src="js/character-creator.js"></script>
+    <script src="js/item-assets.js"></script>
+    <script src="js/map-assets.js"></script>
+    <script src="js/npc-assets.js"></script>
+    <script src="js/audio.js"></script>
+    <style>
+        :root {
+            --bg: #1c1714;
+            --panel: #241d18;
+            --panel-2: #14110f;
+            --line: #5d4938;
+            --gold: #f1c766;
+            --text: #f4ebd9;
+            --muted: #b9aa98;
+            --red: #d95757;
+            --blue: #4f9ddd;
+            --green: #4fb477;
+            --orange: #e67e22;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: "Courier New", monospace;
+            margin: 0;
+            padding: 18px;
+        }
+
+        h1 {
+            color: var(--gold);
+            font-size: 28px;
+            margin: 0 auto 14px;
+            max-width: 1460px;
+        }
+
+        button,
+        input,
+        select,
+        textarea {
+            font-family: inherit;
+        }
+
+        input,
+        select,
+        textarea {
+            background: #0d0b09;
+            border: 1px solid #46382d;
+            border-radius: 4px;
+            color: var(--text);
+            min-height: 34px;
+            padding: 7px 8px;
+            width: 100%;
+        }
+
+        textarea {
+            line-height: 1.35;
+            resize: vertical;
+        }
+
+        button {
+            background: #2d251f;
+            border: 2px solid #4b3b30;
+            border-radius: 4px;
+            color: var(--text);
+            cursor: pointer;
+            font-weight: 700;
+            min-height: 36px;
+            padding: 8px 10px;
+        }
+
+        button:hover { border-color: var(--gold); }
+        button.active { background: #825c2f; border-color: var(--gold); }
+
+        label {
+            color: var(--muted);
+            display: grid;
+            gap: 5px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .app-shell {
+            align-items: start;
+            display: grid;
+            gap: 16px;
+            grid-template-columns: 310px minmax(520px, 1fr) 430px;
+            margin: 0 auto;
+            max-width: 1460px;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 2px solid var(--line);
+            border-radius: 6px;
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+            padding: 14px;
+        }
+
+        .section {
+            border-top: 1px dashed #634e3d;
+            display: grid;
+            gap: 9px;
+            padding-top: 12px;
+        }
+
+        .section:first-child {
+            border-top: 0;
+            padding-top: 0;
+        }
+
+        .section-title {
+            color: var(--gold);
+            font-size: 13px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .field-grid {
+            display: grid;
+            gap: 8px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .span-2 { grid-column: 1 / -1; }
+
+        .stage-panel {
+            display: grid;
+            gap: 10px;
+        }
+
+        #stage-canvas {
+            background: #080604;
+            border: 3px solid #8b5a2b;
+            display: block;
+            image-rendering: pixelated;
+            width: 100%;
+        }
+
+        .stage-caption {
+            background: var(--panel-2);
+            border: 1px solid #4a3b2c;
+            border-radius: 4px;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.45;
+            min-height: 48px;
+            padding: 9px 10px;
+        }
+
+        .stage-actions {
+            display: grid;
+            gap: 8px;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .timeline-actions {
+            display: grid;
+            gap: 8px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .timeline {
+            display: grid;
+            gap: 9px;
+            max-height: 690px;
+            overflow-y: auto;
+            padding-right: 3px;
+        }
+
+        .event-block {
+            background: #1a1512;
+            border: 1px dashed #634e3d;
+            border-radius: 5px;
+            display: grid;
+            gap: 9px;
+            padding: 10px;
+        }
+
+        .event-block.selected {
+            border-color: var(--gold);
+            box-shadow: 0 0 0 1px rgba(241, 199, 102, 0.34);
+        }
+
+        .event-header {
+            align-items: center;
+            display: flex;
+            gap: 8px;
+            justify-content: space-between;
+        }
+
+        .event-title {
+            color: var(--blue);
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .event-tools {
+            display: flex;
+            gap: 5px;
+        }
+
+        .event-tools button {
+            min-height: 28px;
+            padding: 3px 7px;
+        }
+
+        .dialogue-row {
+            background: #110d0a;
+            border: 1px solid #4a3b2c;
+            display: grid;
+            gap: 7px;
+            grid-template-columns: 0.8fr 1fr 2fr 34px;
+            padding: 8px;
+        }
+
+        .export-panel {
+            display: grid;
+            gap: 10px;
+            grid-column: 1 / -1;
+        }
+
+        #export-output {
+            color: #58d68d;
+            min-height: 300px;
+        }
+
+        .btn-green { background: #236743; border-color: var(--green); }
+        .btn-blue { background: #285a7d; border-color: var(--blue); }
+        .btn-red { background: #77312c; border-color: #b84a43; }
+        .btn-gold { background: #825c2f; border-color: var(--gold); }
+        .btn-orange { background: #8b4d18; border-color: var(--orange); }
+
+        @media (max-width: 1180px) {
+            body { padding: 12px; }
+            .app-shell { grid-template-columns: 1fr; }
+            .timeline { max-height: none; }
+        }
+    </style>
+</head>
+<body>
+    <h1>Quest Studio</h1>
+
+    <main class="app-shell">
+        <aside class="panel">
+            <section class="section">
+                <div class="section-title">Quest</div>
+                <label>
+                    Quest ID
+                    <input id="quest-id" value="tutorial_kreg" spellcheck="false" oninput="generateExport()">
+                </label>
+                <label>
+                    Title
+                    <input id="quest-title" value="Kreg's Combat Primer" spellcheck="false" oninput="generateExport()">
+                </label>
+                <label>
+                    Combat Map Template
+                    <select id="map-template" onchange="refreshAll()">
+                        <option value="CUSTOM">Custom Visual Map</option>
+                    </select>
+                </label>
+                <label>
+                    Fallback Floor
+                    <select id="floor-sprite" onchange="refreshAll()">
+                        <option value="ground_wilderness">ground_wilderness</option>
+                        <option value="ground_cellars">ground_cellars</option>
+                        <option value="ground_abyss">ground_abyss</option>
+                        <option value="ground_arena">ground_arena</option>
+                    </select>
+                </label>
+            </section>
+
+            <section class="section">
+                <div class="section-title">Dialogue Bookends</div>
+                <label>
+                    Intro Dialogue
+                    <textarea id="intro-dialogue" rows="5" oninput="generateExport()">Alright, fresh face. This is a harmless training fight using props only. No real gear, loot, health, stamina, or inventory will be touched.
+
+I will talk you through each move, then you will click the same kind of combat control you will use in the wilds.</textarea>
+                </label>
+                <label>
+                    Outro Dialogue
+                    <textarea id="outro-dialogue" rows="5" oninput="generateExport()">In real combat, death can cost gear equipped on your Knight and items sitting in your backpack. Vaulted items stay safe.
+
+Now you are back in town. Try the Adventures board when you are ready.</textarea>
+                </label>
+            </section>
+
+            <section class="section">
+                <div class="section-title">Server Ending</div>
+                <label>
+                    Completion Mode
+                    <select id="completion-mode" onchange="generateExport()">
+                        <option value="none">Movie only</option>
+                        <option value="reward">Persist rewards</option>
+                        <option value="combatZone">Send into combat zone</option>
+                    </select>
+                </label>
+                <div class="field-grid">
+                    <label>
+                        Gold
+                        <input id="reward-gold" type="number" min="0" value="0" oninput="generateExport()">
+                    </label>
+                    <label>
+                        XP
+                        <input id="reward-xp" type="number" min="0" value="0" oninput="generateExport()">
+                    </label>
+                    <label class="span-2">
+                        Combat Zone
+                        <select id="combat-zone" onchange="generateExport()">
+                            <option value="WILDERNESS">WILDERNESS</option>
+                            <option value="CELLARS">CELLARS</option>
+                            <option value="ABYSS">ABYSS</option>
+                            <option value="GORILLA_ARENA">GORILLA_ARENA</option>
+                        </select>
+                    </label>
+                </div>
+            </section>
+        </aside>
+
+        <section class="panel stage-panel">
+            <div class="section-title">Preview</div>
+            <canvas id="stage-canvas" width="864" height="540"></canvas>
+            <div id="stage-caption" class="stage-caption"></div>
+            <div class="stage-actions">
+                <button class="btn-blue" onclick="refreshStage()">Update</button>
+                <button class="btn-green" onclick="playPreview()">Play Timeline</button>
+                <button class="btn-red" onclick="stopPreview()">Stop</button>
+            </div>
+            <div class="export-panel">
+                <div class="section-title">Export</div>
+                <div class="stage-actions">
+                    <button class="btn-gold" onclick="generateExport()">Generate</button>
+                    <button class="btn-green" onclick="copyExport()">Copy</button>
+                    <button class="btn-orange" onclick="seedTutorialTimeline()">Reload Tutorial</button>
+                </div>
+                <textarea id="export-output" readonly spellcheck="false"></textarea>
+            </div>
+        </section>
+
+        <aside class="panel">
+            <section class="section">
+                <div class="section-title">Add Step</div>
+                <div class="timeline-actions">
+                    <button class="btn-blue" onclick="addEvent('FADE')">Screen Fade</button>
+                    <button class="btn-blue" onclick="addEvent('SET_SCENE')">Set Scene</button>
+                    <button class="btn-orange" onclick="addEvent('SPAWN_ACTOR')">Spawn Actor</button>
+                    <button class="btn-green" onclick="addEvent('DIALOGUE')">Dialogue</button>
+                    <button class="btn-green" onclick="addEvent('HIGHLIGHT_TILE')">Map Tile</button>
+                    <button class="btn-orange" onclick="addEvent('HIGHLIGHT_UI')">GUI Action</button>
+                    <button class="btn-red" onclick="addEvent('PLAY_FX')">Effect</button>
+                    <button class="btn-red" onclick="addEvent('SHAKE')">Shake</button>
+                    <button onclick="addEvent('DELAY')">Wait</button>
+                    <button class="btn-gold" onclick="addEvent('END_SCENE')">End Scene</button>
+                </div>
+            </section>
+
+            <section class="section">
+                <div class="section-title">Timeline</div>
+                <div id="timeline" class="timeline"></div>
+            </section>
+        </aside>
+    </main>
+
+    <script>
+        const TILE_SIZE = 54;
+        const FALLBACK_MAP = {
+            id: "CUSTOM",
+            zone: "WILDERNESS",
+            name: "Custom Visual Map",
+            gridSize: { cols: 16, rows: 10 },
+            tileSize: TILE_SIZE,
+            floorSpriteId: "ground_wilderness",
+            floorTiles: [],
+            playerStart: { x: 2, y: 5 },
+            enemies: [],
+            enemySlots: [{ id: "wild_ravager", x: 10, y: 5 }],
+            obstacles: []
+        };
+        const FLOOR_COLORS = {
+            ground_wilderness: "#3f6f48",
+            ground_cellars: "#604832",
+            ground_abyss: "#2b315d",
+            ground_arena: "#726348"
+        };
+        const ACTIONS = {
+            pass: { label: "Pass Turn", requiredAction: "pass", mode: "pass", highlight: "pass", phase: "PLAYER TURN" },
+            brew: { label: "Drink Brew", requiredAction: "brew", mode: "brew", highlight: "brew", phase: "PLAYER TURN" },
+            attack: { label: "Attack", requiredAction: "attack", mode: "attack", highlight: "attack", phase: "PLAYER TURN", requiresTarget: true },
+            bomb: { label: "Throw Bomb", requiredAction: "bomb", mode: "bomb", highlight: "bomb", phase: "TARGETING" },
+            brace: { label: "Brace", requiredAction: "brace", mode: "boss", highlight: "brace", phase: "WARNING", effects: ["shake", "flash"] },
+            continue: { label: "Continue", requiredAction: "continue", mode: "observe", highlight: "continue", phase: "QUEST SCENE" }
+        };
+
+        let timelineEvents = [];
+        let mapTemplates = {};
+        let selectedEventId = null;
+        let previewTimer = null;
+        let previewIndex = 0;
+
+        const stageCanvas = document.getElementById("stage-canvas");
+        const stageCtx = stageCanvas.getContext("2d");
+        if (typeof window.player === "undefined") {
+            window.player = {
+                appearance: {
+                    gender: "male",
+                    skin: "light",
+                    hair: "hair_messy",
+                    hairColor: "brown",
+                    eyes: "eyes_blue",
+                    shirtColor: "blue",
+                    pantsColor: "dark",
+                    bootsColor: "leather"
+                },
+                equipment: {}
+            };
+        }
+
+        function addEvent(type) {
+            syncTimeline();
+            const event = createEvent(type);
+            timelineEvents.push(event);
+            selectedEventId = event.id;
+            refreshAll();
+        }
+
+        function createEvent(type) {
+            const id = `${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+            const base = { id, type };
+            if (type === "FADE") return { ...base, direction: "OUT", duration: 800, color: "#000000" };
+            if (type === "SET_SCENE") return { ...base, templateId: value("map-template", "CUSTOM"), title: "Set the scene" };
+            if (type === "SPAWN_ACTOR") return { ...base, actorId: "player", uid: "player", name: "Player", x: 2, y: 5, hp: 100, maxHp: 100, stamina: 80, maxStamina: 100, size: 1 };
+            if (type === "DIALOGUE") return { ...base, sequence: [{ speaker: "Kreg", portraitId: "npc_kreg", text: "Write the next instruction here." }] };
+            if (type === "HIGHLIGHT_TILE") return { ...base, targetX: 10, targetY: 5, style: "TARGET" };
+            if (type === "HIGHLIGHT_UI") return { ...base, elementId: "pass", title: "Click the combat control" };
+            if (type === "PLAY_FX") return { ...base, fxType: "EXPLOSION", startX: 2, startY: 5, targetX: 10, targetY: 5 };
+            if (type === "SHAKE") return { ...base, duration: 900, flash: true };
+            if (type === "DELAY") return { ...base, duration: 900 };
+            return { ...base, action: "RETURN_TOWN", title: "End scene" };
+        }
+
+        function removeEvent(id) {
+            syncTimeline();
+            timelineEvents = timelineEvents.filter(event => event.id !== id);
+            if (selectedEventId === id) selectedEventId = timelineEvents[0] ? timelineEvents[0].id : null;
+            refreshAll();
+        }
+
+        function moveEvent(id, direction) {
+            syncTimeline();
+            const index = timelineEvents.findIndex(event => event.id === id);
+            const next = index + direction;
+            if (index < 0 || next < 0 || next >= timelineEvents.length) return;
+            const temp = timelineEvents[index];
+            timelineEvents[index] = timelineEvents[next];
+            timelineEvents[next] = temp;
+            selectedEventId = id;
+            refreshAll();
+        }
+
+        function addDialogueLine(eventId) {
+            syncTimeline();
+            const event = timelineEvents.find(item => item.id === eventId);
+            if (!event) return;
+            event.sequence.push({ speaker: "Kreg", portraitId: "npc_kreg", text: "Next line..." });
+            selectedEventId = eventId;
+            refreshAll();
+        }
+
+        function removeDialogueLine(eventId, rowIndex) {
+            syncTimeline();
+            const event = timelineEvents.find(item => item.id === eventId);
+            if (!event) return;
+            event.sequence.splice(rowIndex, 1);
+            if (event.sequence.length === 0) event.sequence.push({ speaker: "Kreg", portraitId: "npc_kreg", text: "..." });
+            selectedEventId = eventId;
+            refreshAll();
+        }
+
+        function syncTimeline() {
+            timelineEvents.forEach(event => {
+                const block = document.getElementById(`event-${event.id}`);
+                if (!block) return;
+                if (event.type === "FADE") {
+                    event.direction = field(block, ".inp-fade-dir", event.direction);
+                    event.duration = intField(block, ".inp-fade-dur", 800);
+                    event.color = field(block, ".inp-fade-col", "#000000");
+                } else if (event.type === "SET_SCENE") {
+                    event.templateId = field(block, ".inp-template", "CUSTOM");
+                    event.title = field(block, ".inp-title", "Set the scene");
+                } else if (event.type === "SPAWN_ACTOR") {
+                    event.actorId = field(block, ".inp-actor", "player");
+                    event.uid = field(block, ".inp-uid", event.actorId);
+                    event.name = field(block, ".inp-name", readableName(event.actorId));
+                    event.x = intField(block, ".inp-x", 2);
+                    event.y = intField(block, ".inp-y", 5);
+                    event.hp = intField(block, ".inp-hp", 100);
+                    event.maxHp = intField(block, ".inp-maxhp", 100);
+                    event.stamina = intField(block, ".inp-stamina", 80);
+                    event.maxStamina = intField(block, ".inp-maxstamina", 100);
+                    event.size = intField(block, ".inp-size", 1);
+                } else if (event.type === "DIALOGUE") {
+                    event.sequence = Array.from(block.querySelectorAll(".dialogue-row")).map(row => ({
+                        speaker: field(row, ".inp-speaker", "Kreg"),
+                        portraitId: field(row, ".inp-portrait", "npc_kreg"),
+                        text: field(row, ".inp-text", "")
+                    })).filter(page => page.text.trim());
+                } else if (event.type === "HIGHLIGHT_TILE") {
+                    event.targetX = intField(block, ".inp-target-x", 0);
+                    event.targetY = intField(block, ".inp-target-y", 0);
+                    event.style = field(block, ".inp-style", "TARGET");
+                } else if (event.type === "HIGHLIGHT_UI") {
+                    event.elementId = field(block, ".inp-ui", "pass");
+                    event.title = field(block, ".inp-title", "Click the combat control");
+                } else if (event.type === "PLAY_FX") {
+                    event.fxType = field(block, ".inp-fx", "EXPLOSION");
+                    event.startX = intField(block, ".inp-start-x", 2);
+                    event.startY = intField(block, ".inp-start-y", 5);
+                    event.targetX = intField(block, ".inp-target-x", 10);
+                    event.targetY = intField(block, ".inp-target-y", 5);
+                } else if (event.type === "SHAKE") {
+                    event.duration = intField(block, ".inp-duration", 900);
+                    event.flash = block.querySelector(".inp-flash").checked;
+                } else if (event.type === "DELAY") {
+                    event.duration = intField(block, ".inp-duration", 900);
+                } else if (event.type === "END_SCENE") {
+                    event.action = field(block, ".inp-action", "RETURN_TOWN");
+                    event.title = field(block, ".inp-title", "End scene");
+                }
+            });
+        }
+
+        function renderTimeline() {
+            const container = document.getElementById("timeline");
+            container.innerHTML = "";
+            timelineEvents.forEach((event, index) => {
+                const block = document.createElement("div");
+                block.className = `event-block${event.id === selectedEventId ? " selected" : ""}`;
+                block.id = `event-${event.id}`;
+                block.onclick = () => {
+                    selectedEventId = event.id;
+                    renderTimeline();
+                    refreshStage();
+                };
+                block.innerHTML = `
+                    <div class="event-header">
+                        <div class="event-title">${index + 1}. ${eventLabel(event.type)}</div>
+                        <div class="event-tools">
+                            <button type="button" onclick="event.stopPropagation(); moveEvent('${event.id}', -1)">Up</button>
+                            <button type="button" onclick="event.stopPropagation(); moveEvent('${event.id}', 1)">Down</button>
+                            <button class="btn-red" type="button" onclick="event.stopPropagation(); removeEvent('${event.id}')">X</button>
+                        </div>
+                    </div>
+                    ${renderEventFields(event)}
+                `;
+                container.appendChild(block);
+            });
+        }
+
+        function renderEventFields(event) {
+            if (event.type === "FADE") {
+                return `
+                    <div class="field-grid">
+                        <label>Direction ${selectHtml("inp-fade-dir", ["IN", "OUT"], event.direction)}</label>
+                        <label>Duration ${inputHtml("inp-fade-dur", event.duration, "number")}</label>
+                        <label class="span-2">Color ${inputHtml("inp-fade-col", event.color, "text")}</label>
+                    </div>
+                `;
+            }
+            if (event.type === "SET_SCENE") {
+                return `
+                    <label>Beat Title ${inputHtml("inp-title", event.title)}</label>
+                    <label>Template ${mapTemplateSelect("inp-template", event.templateId || value("map-template", "CUSTOM"))}</label>
+                `;
+            }
+            if (event.type === "SPAWN_ACTOR") {
+                return `
+                    <div class="field-grid">
+                        <label>Actor Sprite ${actorSelect("inp-actor", event.actorId)}</label>
+                        <label>Runtime ID ${inputHtml("inp-uid", event.uid)}</label>
+                        <label>Name ${inputHtml("inp-name", event.name)}</label>
+                        <label>Size ${inputHtml("inp-size", event.size, "number")}</label>
+                        <label>X ${inputHtml("inp-x", event.x, "number")}</label>
+                        <label>Y ${inputHtml("inp-y", event.y, "number")}</label>
+                        <label>HP ${inputHtml("inp-hp", event.hp, "number")}</label>
+                        <label>Max HP ${inputHtml("inp-maxhp", event.maxHp, "number")}</label>
+                        <label>Stamina ${inputHtml("inp-stamina", event.stamina, "number")}</label>
+                        <label>Max Stamina ${inputHtml("inp-maxstamina", event.maxStamina, "number")}</label>
+                    </div>
+                `;
+            }
+            if (event.type === "DIALOGUE") {
+                const rows = (event.sequence || []).map((page, rowIndex) => `
+                    <div class="dialogue-row">
+                        ${inputHtml("inp-speaker", page.speaker)}
+                        ${portraitSelect("inp-portrait", page.portraitId)}
+                        <textarea class="inp-text" rows="2" oninput="syncTimeline(); generateExport()">${escapeHtml(page.text)}</textarea>
+                        <button class="btn-red" type="button" onclick="event.stopPropagation(); removeDialogueLine('${event.id}', ${rowIndex})">X</button>
+                    </div>
+                `).join("");
+                return `
+                    ${rows}
+                    <button class="btn-green" type="button" onclick="event.stopPropagation(); addDialogueLine('${event.id}')">Add Dialogue Line</button>
+                `;
+            }
+            if (event.type === "HIGHLIGHT_TILE") {
+                return `
+                    <div class="field-grid">
+                        <label>X ${inputHtml("inp-target-x", event.targetX, "number")}</label>
+                        <label>Y ${inputHtml("inp-target-y", event.targetY, "number")}</label>
+                        <label class="span-2">Style ${selectHtml("inp-style", ["TARGET", "AIM", "GOAL", "MOVE"], event.style)}</label>
+                    </div>
+                `;
+            }
+            if (event.type === "HIGHLIGHT_UI") {
+                return `
+                    <label>Beat Title ${inputHtml("inp-title", event.title)}</label>
+                    <label>Combat Control ${selectHtml("inp-ui", Object.keys(ACTIONS), event.elementId)}</label>
+                `;
+            }
+            if (event.type === "PLAY_FX") {
+                return `
+                    <div class="field-grid">
+                        <label>Effect ${selectHtml("inp-fx", ["EXPLOSION", "SLASH", "FLASH"], event.fxType)}</label>
+                        <label>Start X ${inputHtml("inp-start-x", event.startX, "number")}</label>
+                        <label>Start Y ${inputHtml("inp-start-y", event.startY, "number")}</label>
+                        <label>Target X ${inputHtml("inp-target-x", event.targetX, "number")}</label>
+                        <label>Target Y ${inputHtml("inp-target-y", event.targetY, "number")}</label>
+                    </div>
+                `;
+            }
+            if (event.type === "SHAKE") {
+                return `
+                    <label>Duration ${inputHtml("inp-duration", event.duration, "number")}</label>
+                    <label style="display:flex; align-items:center; grid-template-columns:22px 1fr; text-transform:none;">
+                        <input class="inp-flash" type="checkbox" ${event.flash ? "checked" : ""} onchange="syncTimeline(); generateExport()" style="width:auto; min-height:auto;"> Add red flash
+                    </label>
+                `;
+            }
+            if (event.type === "DELAY") {
+                return `<label>Duration ${inputHtml("inp-duration", event.duration, "number")}</label>`;
+            }
+            return `
+                <label>Beat Title ${inputHtml("inp-title", event.title)}</label>
+                <label>Action ${selectHtml("inp-action", ["RETURN_TOWN", "START_COMBAT", "REWARD"], event.action)}</label>
+            `;
+        }
+
+        function compileTimelineToScenes() {
+            const scenes = [];
+            let state = makeWorldState(getActiveMapTemplate());
+            let pendingDialogue = [];
+            let pendingHighlightTile = null;
+
+            function consumeDialogue() {
+                const pages = pendingDialogue;
+                pendingDialogue = [];
+                return pages;
+            }
+
+            function pushScene(sourceEvent, patch) {
+                const action = ACTIONS[patch.actionKey || patch.requiredAction || "continue"] || ACTIONS.continue;
+                const scene = {
+                    id: cleanId(`${sourceEvent.type}_${scenes.length + 1}`, `scene_${scenes.length + 1}`),
+                    title: patch.title || eventLabel(sourceEvent.type),
+                    subtitle: patch.subtitle || sourceEvent.type,
+                    phase: patch.phase || action.phase,
+                    mode: patch.mode || action.mode,
+                    requiredAction: patch.requiredAction || action.requiredAction,
+                    highlight: patch.highlight || action.highlight,
+                    autoAdvanceMs: patch.autoAdvanceMs || 900,
+                    dialogue: patch.dialogue || consumeDialogue(),
+                    player: { ...state.player },
+                    enemy: state.enemy ? { ...state.enemy } : null
+                };
+
+                if (action.requiresTarget || patch.requiresTarget) scene.requiresTarget = true;
+                if (patch.effects && patch.effects.length) scene.effects = patch.effects;
+                if (patch.targetTile) scene.targetTile = { ...patch.targetTile };
+                else if (pendingHighlightTile && scene.requiredAction === "bomb") scene.targetTile = { ...pendingHighlightTile };
+                if (pendingHighlightTile) scene.highlightTile = { ...pendingHighlightTile };
+                if (patch.audioCue) scene.audioCue = patch.audioCue;
+
+                scenes.push(scene);
+                pendingHighlightTile = null;
+            }
+
+            timelineEvents.forEach(event => {
+                if (event.type === "SET_SCENE") {
+                    const nextMap = mapTemplates[event.templateId] || getActiveMapTemplate();
+                    state = makeWorldState(nextMap, state);
+                    pushScene(event, { title: event.title || "Set the scene", effects: ["fadeIn"], autoAdvanceMs: 500 });
+                } else if (event.type === "SPAWN_ACTOR") {
+                    applyActorToState(state, event);
+                } else if (event.type === "DIALOGUE") {
+                    pendingDialogue.push(...(event.sequence || []).map(page => ({
+                        speaker: page.speaker || "Kreg",
+                        portraitId: page.portraitId || "npc_kreg",
+                        text: page.text || ""
+                    })).filter(page => page.text.trim()));
+                } else if (event.type === "HIGHLIGHT_TILE") {
+                    pendingHighlightTile = { x: event.targetX, y: event.targetY };
+                    state.targetTile = { ...pendingHighlightTile };
+                    if (event.style === "TARGET") {
+                        pushScene(event, {
+                            title: "Select Target",
+                            subtitle: "Target lock",
+                            actionKey: "continue",
+                            requiredAction: "selectTarget",
+                            mode: "select",
+                            highlight: "target",
+                            phase: "PLAYER TURN",
+                            autoAdvanceMs: 700
+                        });
+                    }
+                } else if (event.type === "HIGHLIGHT_UI") {
+                    const action = ACTIONS[event.elementId] || ACTIONS.continue;
+                    pushScene(event, {
+                        title: event.title || action.label,
+                        actionKey: event.elementId,
+                        effects: action.effects || [],
+                        requiresTarget: action.requiresTarget,
+                        targetTile: event.elementId === "bomb" ? state.targetTile : null,
+                        autoAdvanceMs: event.elementId === "brace" ? 2100 : 1000
+                    });
+                } else if (event.type === "PLAY_FX") {
+                    const targetTile = { x: event.targetX, y: event.targetY };
+                    state.targetTile = targetTile;
+                    pushScene(event, {
+                        title: readableName(event.fxType),
+                        mode: event.fxType === "EXPLOSION" ? "bomb" : "attack",
+                        effects: event.fxType === "FLASH" ? ["flash"] : [],
+                        targetTile,
+                        autoAdvanceMs: 850
+                    });
+                } else if (event.type === "SHAKE") {
+                    const effects = ["shake"];
+                    if (event.flash) effects.push("flash");
+                    pushScene(event, { title: "Impact", effects, autoAdvanceMs: event.duration || 900 });
+                } else if (event.type === "FADE") {
+                    pushScene(event, {
+                        title: event.direction === "IN" ? "Fade In" : "Fade Out",
+                        effects: [event.direction === "IN" ? "fadeIn" : "fadeOut"],
+                        autoAdvanceMs: event.duration || 800
+                    });
+                } else if (event.type === "DELAY") {
+                    pushScene(event, { title: "Wait", autoAdvanceMs: event.duration || 900 });
+                } else if (event.type === "END_SCENE") {
+                    pushScene(event, { title: event.title || "End scene", effects: ["fadeOut"], autoAdvanceMs: 700 });
+                }
+            });
+
+            if (pendingDialogue.length) {
+                pushScene({ type: "DIALOGUE" }, { title: "Dialogue", autoAdvanceMs: 700 });
+            }
+
+            return scenes.length ? scenes : [defaultScene(state)];
+        }
+
+        function makeWorldState(map, previousState) {
+            const firstEnemy = (map.enemies && map.enemies[0]) || (map.enemySlots && map.enemySlots[0]) || { id: "wild_ravager", x: 10, y: 5 };
+            return {
+                map,
+                player: {
+                    x: (previousState && previousState.player.x) || (map.playerStart && map.playerStart.x) || 2,
+                    y: (previousState && previousState.player.y) || (map.playerStart && map.playerStart.y) || 5,
+                    hp: (previousState && previousState.player.hp) || 100,
+                    maxHp: (previousState && previousState.player.maxHp) || 100,
+                    stamina: (previousState && previousState.player.stamina) || 80,
+                    maxStamina: (previousState && previousState.player.maxStamina) || 100,
+                    atb: 100
+                },
+                enemy: {
+                    x: (previousState && previousState.enemy && previousState.enemy.x) || firstEnemy.x || 10,
+                    y: (previousState && previousState.enemy && previousState.enemy.y) || firstEnemy.y || 5,
+                    id: (previousState && previousState.enemy && previousState.enemy.id) || firstEnemy.id || "wild_ravager",
+                    name: (previousState && previousState.enemy && previousState.enemy.name) || readableName(firstEnemy.id || "wild_ravager"),
+                    hp: (previousState && previousState.enemy && previousState.enemy.hp) || 100,
+                    maxHp: (previousState && previousState.enemy && previousState.enemy.maxHp) || 100,
+                    atb: 35,
+                    size: firstEnemy.id && firstEnemy.id.includes("overlord") ? 2 : 1
+                },
+                actors: {
+                    kregStart: (previousState && previousState.actors && previousState.actors.kregStart) || { x: 1, y: 4 }
+                },
+                targetTile: null
+            };
+        }
+
+        function applyActorToState(state, event) {
+            const actor = {
+                x: event.x,
+                y: event.y,
+                hp: event.hp,
+                maxHp: event.maxHp,
+                stamina: event.stamina,
+                maxStamina: event.maxStamina,
+                atb: 100
+            };
+            if (event.actorId === "player" || event.uid === "player") {
+                state.player = { ...state.player, ...actor };
+            } else if (event.actorId === "npc_kreg" || event.uid === "kreg") {
+                state.actors.kregStart = { x: event.x, y: event.y };
+            } else {
+                state.enemy = {
+                    ...actor,
+                    id: event.actorId || "wild_ravager",
+                    name: event.name || readableName(event.actorId),
+                    size: event.size || 1
+                };
+            }
+        }
+
+        function defaultScene(state) {
+            return {
+                id: "scene_1",
+                title: "Quest Scene",
+                subtitle: "Preview",
+                phase: "QUEST SCENE",
+                mode: "observe",
+                requiredAction: "continue",
+                highlight: "continue",
+                autoAdvanceMs: 800,
+                dialogue: [{ speaker: "Kreg", portraitId: "npc_kreg", text: "Add dialogue and actions to build the quest." }],
+                player: { ...state.player },
+                enemy: { ...state.enemy }
+            };
+        }
+
+        function collectClientScript() {
+            const map = getActiveMapTemplate();
+            const questId = cleanId(value("quest-id", "custom_quest"), "custom_quest");
+            const world = makeWorldState(map);
+            return {
+                id: questId,
+                title: value("quest-title", "Custom Quest"),
+                mapTemplateId: map.id !== "CUSTOM" ? map.id : null,
+                zone: map.zone || "WILDERNESS",
+                tileSize: map.tileSize || TILE_SIZE,
+                grid: map.gridSize || { cols: 16, rows: 10 },
+                floorSpriteId: map.floorSpriteId || value("floor-sprite", "ground_wilderness"),
+                floorTiles: map.floorTiles || [],
+                actors: {
+                    playerStart: map.playerStart || { x: 2, y: 5 },
+                    kregStart: world.actors.kregStart,
+                    ravagerStart: { x: world.enemy.x, y: world.enemy.y }
+                },
+                obstacles: normalizeObstacles(map),
+                interactables: map.interactables || [],
+                introDialogue: dialogueFromTextarea("intro-dialogue"),
+                outroDialogue: dialogueFromTextarea("outro-dialogue"),
+                scenes: compileTimelineToScenes()
+            };
+        }
+
+        function collectServerDefinition() {
+            const questId = cleanId(value("quest-id", "custom_quest"), "custom_quest");
+            const mode = value("completion-mode", "none");
+            const gold = Math.max(0, parseInt(value("reward-gold", "0"), 10) || 0);
+            const xp = Math.max(0, parseInt(value("reward-xp", "0"), 10) || 0);
+            return {
+                id: questId,
+                scriptId: questId,
+                title: value("quest-title", "Custom Quest"),
+                type: "cinematic",
+                persistCompletion: mode === "reward",
+                rewards: mode === "reward" ? { gold, xp } : null,
+                completionAction: mode === "combatZone" ? { type: "combatZone", zone: value("combat-zone", "WILDERNESS") } : null,
+                requirements: { minLevel: 1 }
+            };
+        }
+
+        function generateExport() {
+            syncTimeline();
+            const questId = cleanId(value("quest-id", "custom_quest"), "custom_quest");
+            const clientText = `${questId}: ${toJsObject(collectClientScript())}`;
+            const serverText = `${questId}: ${toJsObject(collectServerDefinition())}`;
+            document.getElementById("export-output").value =
+                `// Paste inside public/js/quest-scripts.js, inside QuestScripts\n${clientText},\n\n// Paste inside questDefinitions.js, inside QuestDefinitions\n${serverText},`;
+        }
+
+        function copyExport() {
+            const output = document.getElementById("export-output");
+            output.select();
+            document.execCommand("copy");
+        }
+
+        function refreshAll() {
+            syncTimeline();
+            renderTimeline();
+            refreshStage();
+            generateExport();
+        }
+
+        function refreshStage() {
+            const selectedIndex = Math.max(0, timelineEvents.findIndex(event => event.id === selectedEventId));
+            drawStage(selectedIndex);
+        }
+
+        function playPreview() {
+            stopPreview();
+            if (!timelineEvents.length) return;
+            previewIndex = 0;
+            selectedEventId = timelineEvents[0].id;
+            renderTimeline();
+            drawStage(previewIndex);
+            previewTimer = setInterval(() => {
+                previewIndex += 1;
+                if (previewIndex >= timelineEvents.length) {
+                    stopPreview();
+                    return;
+                }
+                selectedEventId = timelineEvents[previewIndex].id;
+                renderTimeline();
+                drawStage(previewIndex);
+            }, 950);
+        }
+
+        function stopPreview() {
+            if (previewTimer) clearInterval(previewTimer);
+            previewTimer = null;
+        }
+
+        function drawStage(eventIndex) {
+            const map = getMapAtEvent(eventIndex);
+            const state = getWorldAtEvent(eventIndex, map);
+            const event = timelineEvents[eventIndex] || null;
+            const cols = (map.gridSize && map.gridSize.cols) || 16;
+            const rows = (map.gridSize && map.gridSize.rows) || 10;
+            const tile = Math.floor(Math.min(stageCanvas.width / cols, stageCanvas.height / rows));
+            const offsetX = Math.floor((stageCanvas.width - cols * tile) / 2);
+            const offsetY = Math.floor((stageCanvas.height - rows * tile) / 2);
+
+            stageCtx.clearRect(0, 0, stageCanvas.width, stageCanvas.height);
+            stageCtx.fillStyle = "#080604";
+            stageCtx.fillRect(0, 0, stageCanvas.width, stageCanvas.height);
+
+            for (let x = 0; x < cols; x++) {
+                for (let y = 0; y < rows; y++) {
+                    const spriteId = floorSpriteAt(map, x, y);
+                    drawSpriteOrTile(stageCtx, spriteId, offsetX + x * tile, offsetY + y * tile, tile, FLOOR_COLORS[spriteId] || "#3f6f48");
+                    stageCtx.strokeStyle = "#2b231d";
+                    stageCtx.lineWidth = 1;
+                    stageCtx.strokeRect(offsetX + x * tile, offsetY + y * tile, tile, tile);
+                }
+            }
+
+            drawObstacles(stageCtx, map, offsetX, offsetY, tile);
+            drawMapSlots(stageCtx, map, offsetX, offsetY, tile);
+            drawActors(stageCtx, state, offsetX, offsetY, tile);
+            drawEventOverlay(stageCtx, event, state, offsetX, offsetY, tile);
+            updateCaption(event, map);
+        }
+
+        function drawObstacles(ctx, map, offsetX, offsetY, tile) {
+            (map.obstacles || []).forEach(obstacle => {
+                const spriteId = obstacle.spriteId || defaultObstacleSprite(map.zone);
+                drawSpriteOrTile(ctx, spriteId, offsetX + obstacle.x * tile, offsetY + obstacle.y * tile, tile, "rgba(20,17,15,0.74)");
+                ctx.strokeStyle = "#87919a";
+                ctx.strokeRect(offsetX + obstacle.x * tile + 7, offsetY + obstacle.y * tile + 7, tile - 14, tile - 14);
+            });
+        }
+
+        function drawMapSlots(ctx, map, offsetX, offsetY, tile) {
+            const slots = [...(map.enemySlots || []), ...(map.enemies || [])].slice(0, 20);
+            slots.forEach(slot => {
+                ctx.fillStyle = "rgba(217,87,87,0.16)";
+                ctx.beginPath();
+                ctx.arc(offsetX + slot.x * tile + tile / 2, offsetY + slot.y * tile + tile / 2, Math.max(4, tile * 0.12), 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        function drawActors(ctx, state, offsetX, offsetY, tile) {
+            drawActor(ctx, "npc_kreg", "KREG", state.actors.kregStart.x, state.actors.kregStart.y, 1, offsetX, offsetY, tile, "#f1c766");
+            drawActor(ctx, "player", "YOU", state.player.x, state.player.y, 1, offsetX, offsetY, tile, "#4f9ddd");
+            if (state.enemy) drawActor(ctx, state.enemy.id, state.enemy.name || "MOB", state.enemy.x, state.enemy.y, state.enemy.size || 1, offsetX, offsetY, tile, "#d95757");
+        }
+
+        function drawActor(ctx, spriteId, label, x, y, size, offsetX, offsetY, tile, color) {
+            if (spriteId === "player") {
+                drawPlayerPreview(ctx, offsetX + x * tile, offsetY + y * tile, tile);
+            } else if (!drawSprite(ctx, spriteId, offsetX + x * tile, offsetY + y * tile, tile * size)) {
+                ctx.fillStyle = color;
+                ctx.fillRect(offsetX + x * tile + 6, offsetY + y * tile + 6, tile * size - 12, tile * size - 12);
+            }
+            ctx.fillStyle = "#fff";
+            ctx.font = "700 10px Courier New";
+            ctx.textAlign = "center";
+            ctx.fillText(String(label || spriteId).slice(0, 12).toUpperCase(), offsetX + x * tile + (tile * size) / 2, offsetY + y * tile - 4);
+            ctx.textAlign = "left";
+        }
+
+        function drawPlayerPreview(ctx, x, y, tile) {
+            const appearance = {
+                gender: "male",
+                eyes: "eyes_blue",
+                hair: "hair_messy"
+            };
+            if (!drawSprite(ctx, "body_male", x, y, tile)) {
+                ctx.fillStyle = "#4f9ddd";
+                ctx.fillRect(x + 7, y + 7, tile - 14, tile - 14);
+                return;
+            }
+            drawSprite(ctx, appearance.eyes, x, y, tile);
+            drawSprite(ctx, appearance.hair, x, y, tile);
+            drawSprite(ctx, "armor_tunic_male", x, y, tile);
+            drawSprite(ctx, "sturdy_boots", x, y, tile);
+            drawSprite(ctx, "weap_rusty_mace", x, y, tile);
+        }
+
+        function drawEventOverlay(ctx, event, state, offsetX, offsetY, tile) {
+            if (!event) return;
+            if (event.type === "HIGHLIGHT_TILE") {
+                const color = event.style === "AIM" ? "#e67e22" : event.style === "MOVE" ? "#4f9ddd" : "#2ecc71";
+                drawTileOutline(ctx, event.targetX, event.targetY, 1, offsetX, offsetY, tile, color);
+            }
+            if (event.type === "PLAY_FX") {
+                drawTileOutline(ctx, event.targetX, event.targetY, 1, offsetX, offsetY, tile, "#e67e22");
+                drawAoe(ctx, event.targetX, event.targetY, offsetX, offsetY, tile);
+            }
+            if (event.type === "DIALOGUE") drawDialoguePreview(ctx, event);
+            if (event.type === "FADE" && event.direction === "OUT") drawCurtain(ctx, "FADE OUT");
+            if (event.type === "SHAKE") {
+                ctx.fillStyle = "rgba(231,76,60,0.18)";
+                ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            }
+            if (event.type === "HIGHLIGHT_UI") {
+                ctx.fillStyle = "rgba(17,13,10,0.86)";
+                ctx.fillRect(16, 474, 832, 48);
+                ctx.strokeStyle = "#f1c766";
+                ctx.strokeRect(16, 474, 832, 48);
+                ctx.fillStyle = "#f1c766";
+                ctx.font = "700 14px Courier New";
+                ctx.fillText(`GUI: ${ACTIONS[event.elementId] ? ACTIONS[event.elementId].label : event.elementId}`, 32, 503);
+            }
+        }
+
+        function drawDialoguePreview(ctx, event) {
+            const page = event.sequence && event.sequence[0];
+            if (!page) return;
+            ctx.fillStyle = "rgba(17,13,10,0.9)";
+            ctx.fillRect(18, 386, 828, 120);
+            ctx.strokeStyle = "#b9aa98";
+            ctx.strokeRect(18, 386, 828, 120);
+            ctx.fillStyle = "#f1c766";
+            ctx.font = "700 14px Courier New";
+            ctx.fillText(page.speaker || "Kreg", 36, 413);
+            ctx.fillStyle = "#f4ebd9";
+            ctx.font = "700 13px Courier New";
+            wrapCanvasText(ctx, page.text || "", 36, 438, 790, 18, 3);
+        }
+
+        function drawCurtain(ctx, label) {
+            ctx.fillStyle = "rgba(0,0,0,0.62)";
+            ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            ctx.fillStyle = "#f4ebd9";
+            ctx.font = "700 18px Courier New";
+            ctx.textAlign = "center";
+            ctx.fillText(label, ctx.canvas.width / 2, ctx.canvas.height / 2);
+            ctx.textAlign = "left";
+        }
+
+        function drawAoe(ctx, x, y, offsetX, offsetY, tile) {
+            ctx.fillStyle = "rgba(230,126,34,0.26)";
+            for (let dx = -1; dx <= 1; dx++) {
+                for (let dy = -1; dy <= 1; dy++) {
+                    ctx.fillRect(offsetX + (x + dx) * tile, offsetY + (y + dy) * tile, tile, tile);
+                }
+            }
+        }
+
+        function drawTileOutline(ctx, x, y, size, offsetX, offsetY, tile, color) {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 4;
+            ctx.strokeRect(offsetX + x * tile + 4, offsetY + y * tile + 4, tile * size - 8, tile * size - 8);
+        }
+
+        function drawSpriteOrTile(ctx, spriteId, x, y, size, color) {
+            if (!drawSprite(ctx, spriteId, x, y, size)) {
+                ctx.fillStyle = color;
+                ctx.fillRect(x, y, size, size);
+                ctx.fillStyle = "rgba(0,0,0,0.14)";
+                ctx.fillRect(x, y, size, size);
+            }
+        }
+
+        function drawSprite(ctx, spriteId, x, y, size) {
+            if (typeof SpriteMatrices === "undefined" || !SpriteMatrices[spriteId]) return false;
+            if (typeof drawOptimizedSprite === "function") {
+                drawOptimizedSprite(ctxOrStage(), spriteId, SpriteMatrices[spriteId], x, y, size);
+                return true;
+            }
+            if (typeof drawProceduralSprite === "function") {
+                drawProceduralSprite(ctxOrStage(), SpriteMatrices[spriteId], x, y, size);
+                return true;
+            }
+            return false;
+
+            function ctxOrStage() {
+                return stageCtx;
+            }
+        }
+
+        function updateCaption(event, map) {
+            const scenes = compileTimelineToScenes();
+            const caption = document.getElementById("stage-caption");
+            caption.innerHTML = event
+                ? `<strong style="color:var(--gold);">${escapeHtml(eventLabel(event.type))}</strong><br>${escapeHtml(map.name || map.id)} / Exported scenes: ${scenes.length}`
+                : `No step selected. Exported scenes: ${scenes.length}`;
+        }
+
+        function getMapAtEvent(eventIndex) {
+            let map = getActiveMapTemplate();
+            for (let index = 0; index <= eventIndex; index++) {
+                const event = timelineEvents[index];
+                if (event && event.type === "SET_SCENE" && mapTemplates[event.templateId]) map = clone(mapTemplates[event.templateId]);
+            }
+            return map;
+        }
+
+        function getWorldAtEvent(eventIndex, map) {
+            let state = makeWorldState(map);
+            for (let index = 0; index <= eventIndex; index++) {
+                const event = timelineEvents[index];
+                if (!event) continue;
+                if (event.type === "SET_SCENE" && mapTemplates[event.templateId]) state = makeWorldState(mapTemplates[event.templateId], state);
+                if (event.type === "SPAWN_ACTOR") applyActorToState(state, event);
+                if (event.type === "HIGHLIGHT_TILE") state.targetTile = { x: event.targetX, y: event.targetY };
+            }
+            return state;
+        }
+
+        function getActiveMapTemplate() {
+            const selected = value("map-template", "CUSTOM");
+            return clone(mapTemplates[selected] || {
+                ...FALLBACK_MAP,
+                floorSpriteId: value("floor-sprite", "ground_wilderness")
+            });
+        }
+
+        async function loadCombatMapTemplates() {
+            try {
+                const response = await fetch("/api/combat-map-templates");
+                if (!response.ok) throw new Error("Map template request failed");
+                mapTemplates = await response.json();
+            } catch (error) {
+                mapTemplates = {};
+            }
+            populateMapSelects();
+            refreshAll();
+        }
+
+        function populateMapSelects() {
+            const options = [`<option value="CUSTOM">Custom Visual Map</option>`]
+                .concat(Object.values(mapTemplates).map(template => `<option value="${escapeHtml(template.id)}">${escapeHtml(template.name || template.id)}</option>`))
+                .join("");
+            document.getElementById("map-template").innerHTML = options;
+        }
+
+        function mapTemplateSelect(className, selected) {
+            const options = [`<option value="CUSTOM"${selected === "CUSTOM" ? " selected" : ""}>Custom Visual Map</option>`]
+                .concat(Object.values(mapTemplates).map(template => `<option value="${escapeHtml(template.id)}"${selected === template.id ? " selected" : ""}>${escapeHtml(template.name || template.id)}</option>`))
+                .join("");
+            return `<select class="${className}" onchange="syncTimeline(); refreshStage(); generateExport()">${options}</select>`;
+        }
+
+        function actorSelect(className, selected) {
+            const options = getActorIds().map(id => `<option value="${escapeHtml(id)}"${selected === id ? " selected" : ""}>${escapeHtml(id)}</option>`).join("");
+            return `<select class="${className}" onchange="syncTimeline(); refreshStage(); generateExport()">${options}</select>`;
+        }
+
+        function portraitSelect(className, selected) {
+            const ids = ["player", ...getActorIds().filter(id => id !== "player")];
+            const options = ids.map(id => `<option value="${escapeHtml(id)}"${selected === id ? " selected" : ""}>${escapeHtml(id)}</option>`).join("");
+            return `<select class="${className}" onchange="syncTimeline(); generateExport()">${options}</select>`;
+        }
+
+        function getActorIds() {
+            const fallback = ["player", "npc_kreg", "wild_ravager", "wilderness_overlord", "pub_crawl_mimic", "vintage_behemoth", "spectral_barfly", "mash_crawler", "eldritch_keg"];
+            if (typeof SpriteMatrices === "undefined") return fallback;
+            const ids = Object.keys(SpriteMatrices)
+                .filter(id => id === "npc_kreg" || id.includes("ravager") || id.includes("overlord") || id.includes("mimic") || id.includes("behemoth") || id.includes("barfly") || id.includes("crawler") || id.includes("keg"))
+                .sort();
+            return ["player", ...new Set([...ids, ...fallback.filter(id => id !== "player")])];
+        }
+
+        function seedTutorialTimeline() {
+            timelineEvents = [
+                { id: "seed_1", type: "SET_SCENE", templateId: "WILDERNESS_STANDARD", title: "Training field" },
+                { id: "seed_2", type: "SPAWN_ACTOR", actorId: "player", uid: "player", name: "Player", x: 2, y: 5, hp: 100, maxHp: 100, stamina: 40, maxStamina: 100, size: 1 },
+                { id: "seed_3", type: "SPAWN_ACTOR", actorId: "npc_kreg", uid: "kreg", name: "Kreg", x: 1, y: 4, hp: 100, maxHp: 100, stamina: 100, maxStamina: 100, size: 1 },
+                { id: "seed_4", type: "SPAWN_ACTOR", actorId: "wild_ravager", uid: "training_ravager", name: "Training Ravager", x: 10, y: 5, hp: 100, maxHp: 100, stamina: 100, maxStamina: 100, size: 1 },
+                { id: "seed_5", type: "DIALOGUE", sequence: [{ speaker: "Kreg", portraitId: "npc_kreg", text: "First lesson: if you need to breathe, pass the turn. Click Pass Turn in the combat controls." }] },
+                { id: "seed_6", type: "HIGHLIGHT_UI", elementId: "pass", title: "Passing Turn" },
+                { id: "seed_7", type: "DIALOGUE", sequence: [{ speaker: "Kreg", portraitId: "npc_kreg", text: "When your health is low, drink a brew. This stout is a prop, so it cannot be carried out." }] },
+                { id: "seed_8", type: "HIGHLIGHT_UI", elementId: "brew", title: "Drinking Brews" },
+                { id: "seed_9", type: "DIALOGUE", sequence: [{ speaker: "Kreg", portraitId: "npc_kreg", text: "Attacks need a focus. Click the Training Ravager on the grid to lock your target." }] },
+                { id: "seed_10", type: "HIGHLIGHT_TILE", targetX: 10, targetY: 5, style: "TARGET" },
+                { id: "seed_11", type: "DIALOGUE", sequence: [{ speaker: "Kreg", portraitId: "npc_kreg", text: "Good. Once a target is locked and in range, click Attack." }] },
+                { id: "seed_12", type: "HIGHLIGHT_UI", elementId: "attack", title: "Standard Attack" },
+                { id: "seed_13", type: "DIALOGUE", sequence: [{ speaker: "Kreg", portraitId: "npc_kreg", text: "Bombs are aimed at a tile and splash nearby spaces. Click Throw Bomb, then click the glowing target tile." }] },
+                { id: "seed_14", type: "HIGHLIGHT_TILE", targetX: 10, targetY: 5, style: "AIM" },
+                { id: "seed_15", type: "HIGHLIGHT_UI", elementId: "bomb", title: "AOE Bombs" },
+                { id: "seed_16", type: "SPAWN_ACTOR", actorId: "wilderness_overlord", uid: "boss", name: "Apex Overlord", x: 11, y: 4, hp: 150, maxHp: 150, stamina: 100, maxStamina: 100, size: 2 },
+                { id: "seed_17", type: "DIALOGUE", sequence: [{ speaker: "Kreg", portraitId: "npc_kreg", text: "Last lesson: sometimes the map has teeth. Click Brace and watch what happens when something much bigger takes a turn." }] },
+                { id: "seed_18", type: "HIGHLIGHT_UI", elementId: "brace", title: "Death Preview" },
+                { id: "seed_19", type: "END_SCENE", action: "RETURN_TOWN", title: "Return to town" }
+            ];
+            selectedEventId = timelineEvents[0].id;
+            refreshAll();
+        }
+
+        function normalizeObstacles(map) {
+            return (map.obstacles || []).map(obstacle => ({
+                x: obstacle.x,
+                y: obstacle.y,
+                spriteId: obstacle.spriteId || defaultObstacleSprite(map.zone)
+            }));
+        }
+
+        function floorSpriteAt(map, x, y) {
+            const override = (map.floorTiles || []).find(tile => tile.x === x && tile.y === y);
+            return override && override.spriteId ? override.spriteId : map.floorSpriteId || value("floor-sprite", "ground_wilderness");
+        }
+
+        function defaultObstacleSprite(zone) {
+            if (zone === "CELLARS") return "map_broken_cask";
+            if (zone === "ABYSS") return "map_pillar";
+            if (zone === "GORILLA_ARENA") return "map_boulder";
+            return "map_tree";
+        }
+
+        function dialogueFromTextarea(id) {
+            return value(id, "")
+                .split(/\n\s*\n/g)
+                .map(text => text.trim())
+                .filter(Boolean)
+                .map(text => ({ speaker: "Kreg", portraitId: "npc_kreg", text }));
+        }
+
+        function eventLabel(type) {
+            return String(type || "STEP").toLowerCase().split("_").map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
+        }
+
+        function readableName(id) {
+            return String(id || "Actor").split("_").map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
+        }
+
+        function selectHtml(className, options, selected) {
+            const optionHtml = options.map(option => `<option value="${escapeHtml(option)}"${selected === option ? " selected" : ""}>${escapeHtml(ACTIONS[option] ? ACTIONS[option].label : option)}</option>`).join("");
+            return `<select class="${className}" onchange="syncTimeline(); refreshStage(); generateExport()">${optionHtml}</select>`;
+        }
+
+        function inputHtml(className, val, type = "text") {
+            return `<input class="${className}" type="${type}" value="${escapeHtml(val)}" oninput="syncTimeline(); refreshStage(); generateExport()">`;
+        }
+
+        function field(root, selector, fallback) {
+            const input = root.querySelector(selector);
+            return input ? input.value : fallback;
+        }
+
+        function intField(root, selector, fallback) {
+            const parsed = parseInt(field(root, selector, fallback), 10);
+            return Number.isFinite(parsed) ? parsed : fallback;
+        }
+
+        function value(id, fallback) {
+            const el = document.getElementById(id);
+            return el && el.value !== "" ? el.value : fallback;
+        }
+
+        function clone(obj) {
+            return JSON.parse(JSON.stringify(obj));
+        }
+
+        function cleanId(value, fallback) {
+            return String(value || fallback)
+                .trim()
+                .toLowerCase()
+                .replace(/[^a-z0-9_]/g, "_")
+                .replace(/_+/g, "_")
+                .replace(/^_|_$/g, "") || fallback;
+        }
+
+        function toJsObject(value) {
+            return JSON.stringify(value, null, 4).replace(/"([^"]+)":/g, "$1:");
+        }
+
+        function escapeHtml(value) {
+            return String(value == null ? "" : value)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;");
+        }
+
+        function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight, maxLines) {
+            const words = String(text || "").split(/\s+/);
+            let line = "";
+            let lineCount = 0;
+            words.forEach(word => {
+                const testLine = line ? `${line} ${word}` : word;
+                if (ctx.measureText(testLine).width > maxWidth && line) {
+                    if (lineCount < maxLines) ctx.fillText(line, x, y + lineCount * lineHeight);
+                    line = word;
+                    lineCount += 1;
+                } else {
+                    line = testLine;
+                }
+            });
+            if (line && lineCount < maxLines) ctx.fillText(line, x, y + lineCount * lineHeight);
+        }
+
+        Object.assign(window, {
+            addEvent,
+            removeEvent,
+            moveEvent,
+            addDialogueLine,
+            removeDialogueLine,
+            syncTimeline,
+            refreshStage,
+            playPreview,
+            stopPreview,
+            generateExport,
+            copyExport,
+            seedTutorialTimeline
+        });
+
+        try {
+            seedTutorialTimeline();
+            loadCombatMapTemplates();
+        } catch (error) {
+            const output = document.getElementById("export-output");
+            if (output) output.value = `Quest Studio startup error: ${error.message}`;
+            console.error(error);
+        }
+    </script>
+</body>
+</html>

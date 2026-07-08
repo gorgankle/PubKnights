@@ -510,7 +510,6 @@
             <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
                 <button onclick="openStudioTool('pixel-studio.html')" style="background: #e67e22; border-color: #d35400; padding: 10px; font-size: 14px; margin: 0;">🎨 Art Studio</button>
                 <button onclick="openStudioTool('beat-studio.html')" style="background: #2980b9; border-color: #3498db; padding: 10px; font-size: 14px; margin: 0;">🎵 Music Studio</button>
-                <button onclick="openStudioTool('quest-movie-studio.html')" style="background: #236743; border-color: #2ecc71; padding: 10px; font-size: 14px; margin: 0;">Quest Movie Studio</button>
             </div>
         </div>
 
@@ -843,35 +842,29 @@
             filter: grayscale(0.35);
         }
     </style>
-    <div id="quest-cinematic-shell" style="width:min(100%, 1000px); background:#1a1512; border:3px solid #8b5a2b; border-radius:8px; box-shadow:0 15px 45px rgba(0,0,0,0.95); padding:15px; box-sizing:border-box;">
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px;">
+    <div id="quest-cinematic-shell" style="width:min(100%, 980px); background:#1a1512; border:3px solid #8b5a2b; border-radius:8px; box-shadow:0 15px 45px rgba(0,0,0,0.95); overflow:hidden;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 14px; border-bottom:1px dashed #634e3d; background:#110d0a;">
             <div>
                 <div id="quest-cinematic-title" style="color:#ffcc66; font-weight:bold; font-size:15px; text-transform:uppercase;">Training</div>
                 <div id="quest-cinematic-subtitle" style="color:#bbaaa0; font-size:11px; margin-top:3px;">Mock quest scene</div>
             </div>
             <button id="quest-cinematic-skip-btn" onclick="QuestCinematics.skipCurrent()" style="background:#443a32; border-color:#634e3d; padding:7px 12px; margin:0;">Skip</button>
         </div>
-        <canvas id="quest-cinematic-canvas" width="864" height="540" onclick="QuestCinematics.canvasClick(event)" style="display:block; width:100%; max-width:864px; height:auto; margin:0 auto 15px; background:#0a0806; image-rendering:pixelated; cursor:crosshair;"></canvas>
-        <div id="quest-action-interface" style="width:100%; max-width:960px; margin:0 auto; background:#221a14; padding:15px; border-radius:6px; border:1px solid #634e3d; box-sizing:border-box;">
-            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px dashed #4a3b2c; padding-bottom:8px; margin-bottom:12px;">
-                <span id="quest-cinematic-phase" style="font-size:14px; font-weight:bold; color:#ffcc66; text-transform:uppercase;">PLAYER TURN</span>
-                <span id="quest-cinematic-status" style="font-size:11px; color:#bbaaa0; text-transform:uppercase;">Listen to Kreg</span>
+        <canvas id="quest-cinematic-canvas" width="864" height="540" onclick="QuestCinematics.canvasClick(event)" style="display:block; width:100%; height:auto; background:#0a0806; image-rendering:pixelated; cursor:crosshair;"></canvas>
+        <div style="display:grid; grid-template-columns:1fr 1.3fr; gap:10px; padding:12px 14px; border-top:1px dashed #634e3d; background:#221a14;">
+            <div style="background:#110d0a; border:1px solid #4a3b2c; border-radius:4px; padding:9px;">
+                <div id="quest-cinematic-phase" style="color:#3498db; font-size:12px; font-weight:bold; text-transform:uppercase;">Player Turn</div>
+                <div id="quest-cinematic-target" style="color:#2ecc71; font-size:12px; margin-top:5px; font-weight:bold;">No target</div>
+                <div id="quest-cinematic-status" style="color:#bbaaa0; font-size:11px; margin-top:5px;">Listen to Kreg</div>
             </div>
-            <div id="quest-combat-top-bars" style="margin-bottom:12px;"></div>
-            <div id="quest-cinematic-target" style="color:#2ecc71; font-size:12px; margin-bottom:8px; font-weight:bold; text-transform:uppercase;">No target</div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
-                <button id="quest-mock-attack-btn" onclick="QuestCinematics.performAction('attack')" style="padding:12px; font-size:15px;">Standard Attack</button>
-                <button id="quest-mock-brace-btn" onclick="QuestCinematics.performAction('brace')" style="padding:12px; font-size:15px;">Weapon Skill</button>
+            <div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:7px;">
+                <button id="quest-mock-attack-btn" onclick="QuestCinematics.performAction('attack')" style="background:#8b5a2b; border-color:#b87934; padding:8px 6px; margin:0;">Attack</button>
+                <button id="quest-mock-pass-btn" onclick="QuestCinematics.performAction('pass')" style="background:#3f5f7d; border-color:#4f9ddd; padding:8px 6px; margin:0;">Pass Turn</button>
+                <button disabled style="background:#443a32; border-color:#634e3d; padding:8px 6px; margin:0;">Flee</button>
+                <button id="quest-mock-brew-btn" onclick="QuestCinematics.performAction('brew')" style="background:#236743; border-color:#2ecc71; padding:8px 6px; margin:0;">Drink Brew</button>
+                <button id="quest-mock-bomb-btn" onclick="QuestCinematics.performAction('prepBomb')" style="background:#9a4f18; border-color:#e67e22; padding:8px 6px; margin:0;">Throw Bomb</button>
+                <button id="quest-mock-brace-btn" onclick="QuestCinematics.performAction('brace')" style="background:#7d2f2f; border-color:#e74c3c; padding:8px 6px; margin:0;">Brace</button>
             </div>
-            <div id="quest-combat-inventory-list" style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
-                <button id="quest-mock-brew-btn" onclick="QuestCinematics.performAction('brew')" style="padding:10px; background:#8b5a2b;">Prop Backpack: Drink Brew</button>
-                <button id="quest-mock-bomb-btn" onclick="QuestCinematics.performAction('prepBomb')" style="padding:10px; background:#8e44ad; border-color:#9b59b6;">Prop Backpack: Throw Bomb</button>
-            </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:15px;">
-                <button id="quest-mock-pass-btn" onclick="QuestCinematics.performAction('pass')" style="padding:12px; font-size:15px; background:#e67e22; border:2px solid #d35400; font-weight:bold; text-shadow:1px 1px 2px #000;">Pass Turn</button>
-                <button disabled style="padding:12px; font-size:15px; background:#c0392b; border:2px solid #e74c3c; font-weight:bold; text-shadow:1px 1px 2px #000;">Flee</button>
-            </div>
-            <div id="quest-combat-bottom-stats" style="border-top:1px dashed #4a3b2c; padding-top:15px; display:grid; grid-template-columns:1fr 1fr; gap:15px;"></div>
         </div>
     </div>
 </div>
