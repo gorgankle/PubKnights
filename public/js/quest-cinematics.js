@@ -6,9 +6,7 @@ const QuestCinematics = (() => {
     const DEFAULT_TILE_SIZE = 54;
     const DEFAULT_GRID = { cols: 16, rows: 10 };
     const DEFAULT_FLOOR = "ground_wilderness";
-    const DEFAULT_ACTORS = {
-        kregStart: { x: 1, y: 4 }
-    };
+    const DEFAULT_ACTORS = {};
 
     let active = false;
     let previousGameState = "KNIGHT";
@@ -103,6 +101,8 @@ const QuestCinematics = (() => {
 
         if (scene.requiredAction === "selectTarget") mockTargetSelected = false;
         if (scene.effects && scene.effects.includes("fadeIn")) flashUntil = performance.now() + 240;
+        applyBackgroundZone(scene.backgroundZone || currentScript.backgroundZone);
+        if (scene.audioCue && typeof queueMusicTrack === "function") queueMusicTrack(scene.audioCue);
 
         applySceneUI();
         playDialogueSequence(scene.dialogue || [], () => {
@@ -274,6 +274,9 @@ const QuestCinematics = (() => {
 
         setText("quest-cinematic-title", scene.title || currentScript.title || "Quest Scene");
         setText("quest-cinematic-subtitle", scene.subtitle || "Mock quest scene");
+        const showCombatUi = scene.showCombatUi !== false;
+        const combatInterface = document.querySelector("#quest-cinematic-overlay .quest-action-interface");
+        if (combatInterface) combatInterface.style.display = showCombatUi ? "" : "none";
         setCombatHeader(scene);
         renderMockCombatInterface(scene);
 
@@ -337,11 +340,16 @@ const QuestCinematics = (() => {
     function renderMockCombatInterface(scene) {
         const topBars = document.getElementById("quest-combat-top-bars");
         const bottomStats = document.getElementById("quest-combat-bottom-stats");
+        if (!scene.player || scene.showCombatUi === false) {
+            if (topBars) topBars.innerHTML = "";
+            if (bottomStats) bottomStats.innerHTML = "";
+            return;
+        }
         if (topBars) {
             topBars.innerHTML = `
                 <div class="combat-grid-2-col">
-                    ${mockStatBar("VITALITY:", scene.player.hp, scene.player.maxHp, "HP", "#27ae60")}
-                    ${mockStatBar("STAMINA:", scene.player.stamina, scene.player.maxStamina, "STAM", "#e67e22")}
+                    ${scene.player.showHp !== false ? mockStatBar("VITALITY:", scene.player.hp, scene.player.maxHp, "HP", "#27ae60") : ""}
+                    ${scene.player.showStamina !== false ? mockStatBar("STAMINA:", scene.player.stamina, scene.player.maxStamina, "STAM", "#e67e22") : ""}
                 </div>
             `;
         }
@@ -530,13 +538,15 @@ const QuestCinematics = (() => {
     }
 
     function drawKreg(ctx, pulse) {
-        const kreg = actors.kregStart || DEFAULT_ACTORS.kregStart;
+        const kreg = actors.kregStart;
+        if (!kreg) return;
         drawSprite(ctx, "npc_kreg", kreg.x * tileSize, (kreg.y * tileSize) - (pulse * 4), tileSize);
         drawNameplate(ctx, "Kreg", kreg.x, kreg.y - 0.25, "#f1c40f");
     }
 
     function drawMockPlayer(ctx, scene, actionElapsed, pulse) {
         const p = scene.player;
+        if (!p) return;
         let offsetX = 0;
         let offsetY = -pulse * 3;
 
@@ -588,6 +598,9 @@ const QuestCinematics = (() => {
         if (scene.highlightTile) {
             drawTilePulse(ctx, scene.highlightTile.x, scene.highlightTile.y, 1, "#f1c40f", pulse);
         }
+        if (Array.isArray(scene.highlightTiles)) {
+            scene.highlightTiles.forEach(tile => drawTilePulse(ctx, tile.x, tile.y, 1, "#f1c40f", pulse));
+        }
 
         if (mockTargetSelected && scene.enemy) {
             drawTilePulse(ctx, scene.enemy.x, scene.enemy.y, scene.enemy.size || 1, "#f1c40f", pulse * 0.5);
@@ -597,6 +610,16 @@ const QuestCinematics = (() => {
     function drawEffect(ctx, scene, actionElapsed) {
         const p = scene.player;
         const e = scene.enemy || {};
+
+        if (scene.mode === "effects" && Array.isArray(scene.effectBursts)) {
+            scene.effectBursts.forEach(burst => {
+                if (burst.type === "EXPLOSION") drawAoe(ctx, burst.x, burst.y);
+                if (burst.type === "SLASH") drawSlash(ctx, burst.x, burst.y, "#f4ebd9");
+                if (burst.type === "FLASH") drawTilePulse(ctx, burst.x, burst.y, 1, "#ffffff", 1);
+            });
+            return;
+        }
+        if (!p) return;
 
         if (scene.mode === "attack" && actionTriggered) {
             const progress = Math.min(actionElapsed / 450, 1);
@@ -627,9 +650,22 @@ const QuestCinematics = (() => {
     }
 
     function drawHud(ctx, scene) {
-        drawBar(ctx, 16, 16, 190, scene.player.hp, scene.player.maxHp, "#27ae60", "PROP HP");
-        drawBar(ctx, 16, 42, 190, scene.player.stamina, scene.player.maxStamina, "#e67e22", "PROP STAMINA");
-        if (scene.enemy) drawBar(ctx, 658, 16, 190, scene.enemy.hp, scene.enemy.maxHp, "#c0392b", "PROP TARGET");
+        if (scene.showCombatUi !== false && scene.player) {
+            let playerBarY = 16;
+            if (scene.player.showHp !== false) {
+                drawBar(ctx, 16, playerBarY, 190, scene.player.hp, scene.player.maxHp, "#27ae60", "PROP HP");
+                playerBarY += 26;
+            }
+            if (scene.player.showStamina !== false) drawBar(ctx, 16, playerBarY, 190, scene.player.stamina, scene.player.maxStamina, "#e67e22", "PROP STAMINA");
+        }
+        if (scene.showCombatUi !== false && scene.enemy) {
+            let enemyBarY = 16;
+            if (scene.enemy.showHp !== false) {
+                drawBar(ctx, 658, enemyBarY, 190, scene.enemy.hp, scene.enemy.maxHp, "#c0392b", "PROP TARGET");
+                enemyBarY += 26;
+            }
+            if (scene.enemy.showStamina) drawBar(ctx, 658, enemyBarY, 190, scene.enemy.stamina, scene.enemy.maxStamina, "#e67e22", "TARGET STAMINA");
+        }
 
         ctx.fillStyle = "rgba(17, 13, 10, 0.78)";
         ctx.fillRect(16, 484, 832, 38);
@@ -818,6 +854,27 @@ const QuestCinematics = (() => {
                 if (!active) overlay.style.display = "none";
             }, 260);
         }
+    }
+
+    function applyBackgroundZone(zone) {
+        const overlay = document.getElementById("quest-cinematic-overlay");
+        if (!overlay) return;
+        const backgrounds = {
+            TOWN: "tavern-bg.png",
+            VAULT: "vault-bg.png",
+            WILDERNESS: "wilds-bg.png",
+            CELLARS: "cellars-bg.png",
+            ARENA: "arena-bg.png",
+            GORILLA_ARENA: "arena-bg.png",
+            TRAINING_GROUNDS: "training-grounds-bg.png",
+            MINIGAME_LUMBER: "main-bg.png",
+            MINIGAME_FISHING: "main-bg.png",
+            MINIGAME_HOPS: "gilded-bg.png"
+        };
+        const image = backgrounds[zone];
+        overlay.style.backgroundImage = image
+            ? `linear-gradient(rgba(0,0,0,0.24), rgba(0,0,0,0.24)), url('assets/images/${image}')`
+            : "linear-gradient(rgba(8,6,5,0.92), rgba(8,6,5,0.92))";
     }
 
     function clearPendingAdvance() {

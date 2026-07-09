@@ -4,6 +4,9 @@
 
 const NpcDatabase = {
     // Wilderness
+    "goblin_axeling": { name: "Goblin Axeling", type: "MELEE", hp: 18, maxHp: 18, attackRange: 1, offense: 1, defense: 1, speed: 3, icon: "G", size: 1 },
+    "peanut_slinger": { name: "Peanut Slinger", type: "RANGED", hp: 14, maxHp: 14, attackRange: 5, offense: 1, defense: 0, speed: 3, icon: "S", size: 1, projectileSprite: "icon_peanut" },
+    "magic_banana": { name: "Magic Banana", type: "RANGED", hp: 22, maxHp: 22, attackRange: 5, offense: 2, defense: 1, speed: 2, icon: "B", size: 1, spellId: "poison_shot", spellFx: { type: "beam", style: "poison", density: 8, spread: 10, speed: 10 } },
     "wild_ravager": { name: "Wild Ravager", type: "MELEE", hp: 15, maxHp: 15, attackRange: 1, offense: 1, defense: 1, speed: 3, icon: "👾", size: 1 },
     "publing": { name: "Wild Publing", type: "MELEE", hp: 50, maxHp: 50, attackRange: 1, offense: 2, defense: 2, speed: 3, icon: "🐻", size: 1 },
     "alpha_poacher": { name: "Wilderness Alpha-Poacher", type: "RANGED", hp: 75, maxHp: 75, attackRange: 10, offense: 2, defense: 1, speed: 3, icon: "🏹", size: 1 },
@@ -43,6 +46,9 @@ function createEnemy(id, x, y, customPrefix = "", statMult = 1.0) {
         // Defense remains unscaled linearly to prevent unkillable abyssal tanks
         defense: template.defense, 
         speed: template.speed,
+        projectileSprite: template.projectileSprite,
+        spellId: template.spellId,
+        spellFx: template.spellFx,
         alive: true,
         icon: template.icon,
         x: x,

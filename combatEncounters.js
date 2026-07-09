@@ -17,6 +17,14 @@ function addEnemyFromSlot(combatState, slot, prefix = "", statMult = 1) {
     combatState.enemies.push(enemy);
 }
 
+function getWildernessEnemyId(runLvl, spawnIndex) {
+    if (runLvl <= 2) return spawnIndex % 3 === 1 ? "peanut_slinger" : "goblin_axeling";
+    if (runLvl < 10) return ["goblin_axeling", "peanut_slinger", "wild_ravager", "magic_banana"][spawnIndex % 4];
+    if (spawnIndex % 5 === 2) return "peanut_slinger";
+    if (spawnIndex % 7 === 3) return "magic_banana";
+    return "wild_ravager";
+}
+
 function createCombatEncounter(player, data) {
     const zone = sanitizeToken(data.zoneChoice, 'WILDERNESS');
     if (!VALID_ZONES.includes(zone)) return null;
@@ -90,12 +98,12 @@ function createCombatEncounter(player, data) {
             else if (runLvl === 10) publingsToSpawn = 2;
             else if (runLvl === 15) publingsToSpawn = 3;
 
-            template.enemySlots.slice(0, swarmSize).forEach(slot => {
+            template.enemySlots.slice(0, swarmSize).forEach((slot, spawnIndex) => {
                 if (publingsToSpawn > 0) {
                     addEnemyFromSlot(combatState, { ...slot, id: "publing" }, prefixLabel, baitMultiplier);
                     publingsToSpawn--;
                 } else {
-                    addEnemyFromSlot(combatState, { ...slot, id: "wild_ravager" }, prefixLabel, baitMultiplier);
+                    addEnemyFromSlot(combatState, { ...slot, id: getWildernessEnemyId(runLvl, spawnIndex) }, prefixLabel, baitMultiplier);
                 }
             });
 

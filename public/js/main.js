@@ -477,19 +477,23 @@ socket.on('enemyTurnReceipt', (receipt) => {
             }
             else if (ev.type === 'hit') {
                 let executeHit = () => {
+                    const rangedLabel = ev.isRangedAttack ? " (Ranged)" : "";
                     if (ev.isCrit) {
-                        logMessage(`💥 CRITICAL STRIKE! ${ev.enemyName} hits you for ${ev.damage} DMG!${ev.isPoacher ? " (Deflected)" : ""}`);
+                        logMessage(`💥 CRITICAL STRIKE! ${ev.enemyName} hits you for ${ev.damage} DMG!${rangedLabel}`);
                         FXEngine.spawnText(player.x, player.y, `-${ev.damage}!`, { color: "#9b59b6", isCrit: true });
                         if (typeof playRetroSound === 'function') playRetroSound('enemyCrit');
                     } else {
-                        logMessage(`⚔️ ${ev.enemyName} hits you for ${ev.damage} DMG.${ev.isPoacher ? " (Deflected)" : ""}`);
+                        logMessage(`⚔️ ${ev.enemyName} hits you for ${ev.damage} DMG.${rangedLabel}`);
                         FXEngine.spawnText(player.x, player.y, `-${ev.damage}`, { color: "#e74c3c" });
                         if (typeof playRetroSound === 'function') playRetroSound('playerHit');
                     }
                 };
 
-                if (ev.isPoacher) {
-                    FXEngine.spawnProjectile(ev.ex, ev.ey, player.x, player.y, 'icon_arrow', { arc: 0, spin: false, frames: 20, onComplete: executeHit });
+                if (ev.spellFx && ev.spellFx.type === 'beam') {
+                    FXEngine.spawnBeam(ev.ex, ev.ey, player.x, player.y, ev.spellFx);
+                    setTimeout(executeHit, 350);
+                } else if (ev.projectileSprite) {
+                    FXEngine.spawnProjectile(ev.ex, ev.ey, player.x, player.y, ev.projectileSprite, { arc: 0, spin: false, frames: 20, onComplete: executeHit });
                 } else {
                     // Instantly execute melee hits
                     executeHit(); 

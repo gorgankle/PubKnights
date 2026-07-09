@@ -3,6 +3,37 @@
 
 const LootTables = {
 // === WILDERNESS MOBS ===
+    "goblin_axeling": {
+        xpDrop: 12,
+        dropChance: 0.75,
+        pools: [
+            { itemId: "rusty_mace", weight: 20 },
+            { itemId: "leather_tunic", weight: 20 },
+            { itemId: "leather_mitts", weight: 20 },
+            { itemId: "hide_boots", weight: 20 },
+            { itemId: "scavenged_machete", weight: 10 },
+            { itemId: "stout", weight: 5 }
+        ]
+    },
+    "peanut_slinger": {
+        xpDrop: 14,
+        dropChance: 0.75,
+        pools: [
+            { itemId: "hunter_bow", weight: 8 },
+            { itemId: "sturdy_boots", weight: 18 },
+            { itemId: "rusty_coif", weight: 18 },
+            { itemId: "leather_tunic", weight: 18 },
+            { itemId: "leather_mitts", weight: 18 },
+            { itemId: "hide_boots", weight: 20 }
+        ]
+    },
+    "magic_banana": {
+        xpDrop: 28,
+        dropChance: 1.0,
+        pools: [
+            { itemId: "scroll_poison_shot", weight: 100 }
+        ]
+    },
     "wild_ravager": {
         xpDrop: 20,
         dropChance: 0.9, 

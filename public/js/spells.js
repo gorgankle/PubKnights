@@ -17,6 +17,22 @@ const SpellDatabase = {
             spread: 15,      // How wild the fire looks
             speed: 15        // Travel speed (ms per frame)
         }
+    },
+    "poison_shot": {
+        name: "Poison Shot",
+        type: "line",
+        cost: 15,
+        range: 5,
+        damageFlat: 24,
+        ignoresLoS: false,
+        desc: "Launches a toxic beam that splashes venom through a straight line.",
+        fx: {
+            type: 'beam',
+            style: 'poison',
+            density: 8,
+            spread: 10,
+            speed: 10
+        }
     }
 };
 

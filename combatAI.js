@@ -135,7 +135,8 @@ function executeEnemyTurn(socketId, combat, player, enemy, activeCombats) {
     }
 
     if (dist <= enemy.attackRange && hasLos) {
-        const isPoacher = enemy.attackRange > 1;
+        const isRangedAttack = enemy.type === 'RANGED' || !!enemy.projectileSprite || !!enemy.spellFx;
+        const projectileSprite = enemy.projectileSprite || (enemy.type === 'RANGED' && !enemy.spellFx ? 'icon_arrow' : null);
         const eOffense = enemy.offense * 10;
         const playerSpeed = getEffectiveStat(player, 'speed') * 10;
         const enemyHitPower = (eOffense * 0.5) + (Math.random() * eOffense * 0.5);
@@ -153,7 +154,19 @@ function executeEnemyTurn(socketId, combat, player, enemy, activeCombats) {
             else {
                 const isCrit = mitigatedDmg >= Math.floor(eOffense * 0.90);
                 player.hp -= mitigatedDmg;
-                turnEvents.push({ type: 'hit', uid: enemy.uid, enemyName: enemy.name, damage: mitigatedDmg, isCrit: isCrit, isPoacher: isPoacher, ex: enemy.x, ey: enemy.y });
+                turnEvents.push({
+                    type: 'hit',
+                    uid: enemy.uid,
+                    enemyName: enemy.name,
+                    damage: mitigatedDmg,
+                    isCrit: isCrit,
+                    isRangedAttack: isRangedAttack,
+                    projectileSprite: projectileSprite,
+                    spellFx: enemy.spellFx,
+                    spellId: enemy.spellId,
+                    ex: enemy.x,
+                    ey: enemy.y
+                });
 
                 if (player.hp <= 0) {
                     player.hp = 0;

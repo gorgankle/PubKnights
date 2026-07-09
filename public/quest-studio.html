@@ -254,11 +254,11 @@
                 <div class="section-title">Quest</div>
                 <label>
                     Quest ID
-                    <input id="quest-id" value="tutorial_kreg" spellcheck="false" oninput="generateExport()">
+                    <input id="quest-id" value="custom_quest" spellcheck="false" oninput="generateExport()">
                 </label>
                 <label>
                     Title
-                    <input id="quest-title" value="Kreg's Combat Primer" spellcheck="false" oninput="generateExport()">
+                    <input id="quest-title" value="Untitled Quest" spellcheck="false" oninput="generateExport()">
                 </label>
                 <label>
                     Combat Map Template
@@ -275,21 +275,36 @@
                         <option value="ground_arena">ground_arena</option>
                     </select>
                 </label>
+                <label>
+                    Background Zone
+                    <select id="background-zone" onchange="refreshAll()">
+                        <option value="TOWN">Town</option>
+                        <option value="VAULT">Vault</option>
+                        <option value="WILDERNESS">Wilderness</option>
+                        <option value="CELLARS">Cellars</option>
+                        <option value="ARENA">Arena</option>
+                        <option value="TRAINING_GROUNDS">Training Grounds</option>
+                        <option value="MINIGAME_LUMBER">Minigame: Lumber</option>
+                        <option value="MINIGAME_FISHING">Minigame: Fishing</option>
+                        <option value="MINIGAME_HOPS">Minigame: Hops</option>
+                        <option value="NONE">None</option>
+                    </select>
+                </label>
+                <div style="font-size:11px; line-height:1.45; color:var(--muted);">
+                    Custom uses the floor selected above and starts without template actors or obstacles.
+                    <a href="/map-architect.html" target="_blank" style="color:var(--gold);">Open Map Architect</a> to build reusable combat templates.
+                </div>
             </section>
 
             <section class="section">
                 <div class="section-title">Dialogue Bookends</div>
                 <label>
                     Intro Dialogue
-                    <textarea id="intro-dialogue" rows="5" oninput="generateExport()">Alright, fresh face. This is a harmless training fight using props only. No real gear, loot, health, stamina, or inventory will be touched.
-
-I will talk you through each move, then you will click the same kind of combat control you will use in the wilds.</textarea>
+                    <textarea id="intro-dialogue" rows="5" oninput="generateExport()"></textarea>
                 </label>
                 <label>
                     Outro Dialogue
-                    <textarea id="outro-dialogue" rows="5" oninput="generateExport()">In real combat, death can cost gear equipped on your Knight and items sitting in your backpack. Vaulted items stay safe.
-
-Now you are back in town. Try the Adventures board when you are ready.</textarea>
+                    <textarea id="outro-dialogue" rows="5" oninput="generateExport()"></textarea>
                 </label>
             </section>
 
@@ -313,7 +328,7 @@ Now you are back in town. Try the Adventures board when you are ready.</textarea
                         <input id="reward-xp" type="number" min="0" value="0" oninput="generateExport()">
                     </label>
                     <label class="span-2">
-                        Combat Zone
+                        Destination Combat Zone
                         <select id="combat-zone" onchange="generateExport()">
                             <option value="WILDERNESS">WILDERNESS</option>
                             <option value="CELLARS">CELLARS</option>
@@ -352,10 +367,12 @@ Now you are back in town. Try the Adventures board when you are ready.</textarea
                     <button class="btn-blue" onclick="addEvent('FADE')">Screen Fade</button>
                     <button class="btn-blue" onclick="addEvent('SET_SCENE')">Set Scene</button>
                     <button class="btn-orange" onclick="addEvent('SPAWN_ACTOR')">Spawn Actor</button>
+                    <button class="btn-red" onclick="addEvent('DESPAWN_ACTOR')">Despawn Actor</button>
                     <button class="btn-green" onclick="addEvent('DIALOGUE')">Dialogue</button>
                     <button class="btn-green" onclick="addEvent('HIGHLIGHT_TILE')">Map Tile</button>
                     <button class="btn-orange" onclick="addEvent('HIGHLIGHT_UI')">GUI Action</button>
                     <button class="btn-red" onclick="addEvent('PLAY_FX')">Effect</button>
+                    <button class="btn-gold" onclick="addEvent('QUEUE_MUSIC')">Queue Music</button>
                     <button class="btn-red" onclick="addEvent('SHAKE')">Shake</button>
                     <button onclick="addEvent('DELAY')">Wait</button>
                     <button class="btn-gold" onclick="addEvent('END_SCENE')">End Scene</button>
@@ -373,15 +390,15 @@ Now you are back in town. Try the Adventures board when you are ready.</textarea
         const TILE_SIZE = 54;
         const FALLBACK_MAP = {
             id: "CUSTOM",
-            zone: "WILDERNESS",
+            zone: "CUSTOM",
             name: "Custom Visual Map",
             gridSize: { cols: 16, rows: 10 },
             tileSize: TILE_SIZE,
             floorSpriteId: "ground_wilderness",
             floorTiles: [],
-            playerStart: { x: 2, y: 5 },
+            playerStart: null,
             enemies: [],
-            enemySlots: [{ id: "wild_ravager", x: 10, y: 5 }],
+            enemySlots: [],
             obstacles: []
         };
         const FLOOR_COLORS = {
@@ -435,12 +452,14 @@ Now you are back in town. Try the Adventures board when you are ready.</textarea
             const id = `${Date.now()}_${Math.floor(Math.random() * 1000)}`;
             const base = { id, type };
             if (type === "FADE") return { ...base, direction: "OUT", duration: 800, color: "#000000" };
-            if (type === "SET_SCENE") return { ...base, templateId: value("map-template", "CUSTOM"), title: "Set the scene" };
-            if (type === "SPAWN_ACTOR") return { ...base, actorId: "player", uid: "player", name: "Player", x: 2, y: 5, hp: 100, maxHp: 100, stamina: 80, maxStamina: 100, size: 1 };
+            if (type === "SET_SCENE") return { ...base, templateId: value("map-template", "CUSTOM"), backgroundZone: value("background-zone", "TOWN"), showCombatUi: false, title: "Set the scene" };
+            if (type === "SPAWN_ACTOR") return { ...base, actorId: "player", uid: "player", name: "Player", x: 2, y: 5, hp: 100, maxHp: 100, showHp: false, stamina: 80, maxStamina: 100, showStamina: false, size: 1 };
+            if (type === "DESPAWN_ACTOR") return { ...base, uid: "player" };
             if (type === "DIALOGUE") return { ...base, sequence: [{ speaker: "Kreg", portraitId: "npc_kreg", text: "Write the next instruction here." }] };
-            if (type === "HIGHLIGHT_TILE") return { ...base, targetX: 10, targetY: 5, style: "TARGET" };
+            if (type === "HIGHLIGHT_TILE") return { ...base, tiles: [{ x: 10, y: 5 }], targetX: 10, targetY: 5, style: "TARGET" };
             if (type === "HIGHLIGHT_UI") return { ...base, elementId: "pass", title: "Click the combat control" };
-            if (type === "PLAY_FX") return { ...base, fxType: "EXPLOSION", startX: 2, startY: 5, targetX: 10, targetY: 5 };
+            if (type === "PLAY_FX") return { ...base, bursts: [{ type: "EXPLOSION", x: 10, y: 5 }], startX: 2, startY: 5, fxType: "EXPLOSION", targetX: 10, targetY: 5 };
+            if (type === "QUEUE_MUSIC") return { ...base, track: "Tavern Grind" };
             if (type === "SHAKE") return { ...base, duration: 900, flash: true };
             if (type === "DELAY") return { ...base, duration: 900 };
             return { ...base, action: "RETURN_TOWN", title: "End scene" };
@@ -495,6 +514,8 @@ Now you are back in town. Try the Adventures board when you are ready.</textarea
                 } else if (event.type === "SET_SCENE") {
                     event.templateId = field(block, ".inp-template", "CUSTOM");
                     event.title = field(block, ".inp-title", "Set the scene");
+                    event.backgroundZone = field(block, ".inp-background-zone", value("background-zone", "TOWN"));
+                    event.showCombatUi = !!block.querySelector(".inp-combat-ui")?.checked;
                 } else if (event.type === "SPAWN_ACTOR") {
                     event.actorId = field(block, ".inp-actor", "player");
                     event.uid = field(block, ".inp-uid", event.actorId);
@@ -503,9 +524,13 @@ Now you are back in town. Try the Adventures board when you are ready.</textarea
                     event.y = intField(block, ".inp-y", 5);
                     event.hp = intField(block, ".inp-hp", 100);
                     event.maxHp = intField(block, ".inp-maxhp", 100);
+                    event.showHp = !!block.querySelector(".inp-show-hp")?.checked;
                     event.stamina = intField(block, ".inp-stamina", 80);
                     event.maxStamina = intField(block, ".inp-maxstamina", 100);
+                    event.showStamina = !!block.querySelector(".inp-show-stamina")?.checked;
                     event.size = intField(block, ".inp-size", 1);
+                } else if (event.type === "DESPAWN_ACTOR") {
+                    event.uid = field(block, ".inp-uid", "player");
                 } else if (event.type === "DIALOGUE") {
                     event.sequence = Array.from(block.querySelectorAll(".dialogue-row")).map(row => ({
                         speaker: field(row, ".inp-speaker", "Kreg"),
@@ -513,18 +538,24 @@ Now you are back in town. Try the Adventures board when you are ready.</textarea
                         text: field(row, ".inp-text", "")
                     })).filter(page => page.text.trim());
                 } else if (event.type === "HIGHLIGHT_TILE") {
-                    event.targetX = intField(block, ".inp-target-x", 0);
-                    event.targetY = intField(block, ".inp-target-y", 0);
+                    event.tiles = parsePoints(field(block, ".inp-tiles", ""));
+                    const firstTile = event.tiles[0] || { x: 0, y: 0 };
+                    event.targetX = firstTile.x;
+                    event.targetY = firstTile.y;
                     event.style = field(block, ".inp-style", "TARGET");
                 } else if (event.type === "HIGHLIGHT_UI") {
                     event.elementId = field(block, ".inp-ui", "pass");
                     event.title = field(block, ".inp-title", "Click the combat control");
                 } else if (event.type === "PLAY_FX") {
-                    event.fxType = field(block, ".inp-fx", "EXPLOSION");
                     event.startX = intField(block, ".inp-start-x", 2);
                     event.startY = intField(block, ".inp-start-y", 5);
-                    event.targetX = intField(block, ".inp-target-x", 10);
-                    event.targetY = intField(block, ".inp-target-y", 5);
+                    event.bursts = parseEffectBursts(field(block, ".inp-bursts", ""));
+                    const firstBurst = event.bursts[0] || { type: "EXPLOSION", x: 10, y: 5 };
+                    event.fxType = firstBurst.type;
+                    event.targetX = firstBurst.x;
+                    event.targetY = firstBurst.y;
+                } else if (event.type === "QUEUE_MUSIC") {
+                    event.track = field(block, ".inp-track", "");
                 } else if (event.type === "SHAKE") {
                     event.duration = intField(block, ".inp-duration", 900);
                     event.flash = block.querySelector(".inp-flash").checked;
@@ -544,7 +575,8 @@ Now you are back in town. Try the Adventures board when you are ready.</textarea
                 const block = document.createElement("div");
                 block.className = `event-block${event.id === selectedEventId ? " selected" : ""}`;
                 block.id = `event-${event.id}`;
-                block.onclick = () => {
+                block.onclick = clickEvent => {
+                    if (clickEvent.target.closest("input, select, textarea, button, label, a")) return;
                     selectedEventId = event.id;
                     renderTimeline();
                     refreshStage();
@@ -578,6 +610,10 @@ Now you are back in town. Try the Adventures board when you are ready.</textarea
                 return `
                     <label>Beat Title ${inputHtml("inp-title", event.title)}</label>
                     <label>Template ${mapTemplateSelect("inp-template", event.templateId || value("map-template", "CUSTOM"))}</label>
+                    <label>Background Zone ${selectHtml("inp-background-zone", backgroundZones(), event.backgroundZone || value("background-zone", "TOWN"))}</label>
+                    <label style="display:flex; align-items:center; grid-template-columns:22px 1fr; text-transform:none;">
+                        <input class="inp-combat-ui" type="checkbox" ${event.showCombatUi ? "checked" : ""} onchange="syncTimeline(); generateExport()" style="width:auto; min-height:auto;"> Show combat controls and stat panels
+                    </label>
                 `;
             }
             if (event.type === "SPAWN_ACTOR") {
@@ -591,9 +627,21 @@ Now you are back in town. Try the Adventures board when you are ready.</textarea
                         <label>Y ${inputHtml("inp-y", event.y, "number")}</label>
                         <label>HP ${inputHtml("inp-hp", event.hp, "number")}</label>
                         <label>Max HP ${inputHtml("inp-maxhp", event.maxHp, "number")}</label>
+                        <label class="span-2" style="display:flex; align-items:center; grid-template-columns:22px 1fr; text-transform:none;">
+                            <input class="inp-show-hp" type="checkbox" ${event.showHp ? "checked" : ""} onchange="syncTimeline(); generateExport()" style="width:auto; min-height:auto;"> Show this actor's HP
+                        </label>
                         <label>Stamina ${inputHtml("inp-stamina", event.stamina, "number")}</label>
                         <label>Max Stamina ${inputHtml("inp-maxstamina", event.maxStamina, "number")}</label>
+                        <label class="span-2" style="display:flex; align-items:center; grid-template-columns:22px 1fr; text-transform:none;">
+                            <input class="inp-show-stamina" type="checkbox" ${event.showStamina ? "checked" : ""} onchange="syncTimeline(); generateExport()" style="width:auto; min-height:auto;"> Show this actor's stamina
+                        </label>
                     </div>
+                `;
+            }
+            if (event.type === "DESPAWN_ACTOR") {
+                return `
+                    <label>Runtime ID ${inputHtml("inp-uid", event.uid || "player")}</label>
+                    <div style="font-size:11px; color:var(--muted);">Use the Runtime ID assigned by the Spawn Actor step.</div>
                 `;
             }
             if (event.type === "DIALOGUE") {
@@ -613,8 +661,9 @@ Now you are back in town. Try the Adventures board when you are ready.</textarea
             if (event.type === "HIGHLIGHT_TILE") {
                 return `
                     <div class="field-grid">
-                        <label>X ${inputHtml("inp-target-x", event.targetX, "number")}</label>
-                        <label>Y ${inputHtml("inp-target-y", event.targetY, "number")}</label>
+                        <label class="span-2">Tiles (x,y; x,y)
+                            <textarea class="inp-tiles" rows="2" oninput="syncTimeline(); refreshStage(); generateExport()">${escapeHtml(formatPoints(event.tiles || [{ x: event.targetX, y: event.targetY }]))}</textarea>
+                        </label>
                         <label class="span-2">Style ${selectHtml("inp-style", ["TARGET", "AIM", "GOAL", "MOVE"], event.style)}</label>
                     </div>
                 `;
@@ -628,13 +677,16 @@ Now you are back in town. Try the Adventures board when you are ready.</textarea
             if (event.type === "PLAY_FX") {
                 return `
                     <div class="field-grid">
-                        <label>Effect ${selectHtml("inp-fx", ["EXPLOSION", "SLASH", "FLASH"], event.fxType)}</label>
                         <label>Start X ${inputHtml("inp-start-x", event.startX, "number")}</label>
                         <label>Start Y ${inputHtml("inp-start-y", event.startY, "number")}</label>
-                        <label>Target X ${inputHtml("inp-target-x", event.targetX, "number")}</label>
-                        <label>Target Y ${inputHtml("inp-target-y", event.targetY, "number")}</label>
+                        <label class="span-2">Effects (TYPE,x,y; TYPE,x,y)
+                            <textarea class="inp-bursts" rows="2" oninput="syncTimeline(); refreshStage(); generateExport()">${escapeHtml(formatEffectBursts(event.bursts || [{ type: event.fxType, x: event.targetX, y: event.targetY }]))}</textarea>
+                        </label>
                     </div>
                 `;
+            }
+            if (event.type === "QUEUE_MUSIC") {
+                return `<label>Track ${selectHtml("inp-track", musicTrackNames(), event.track)}</label>`;
             }
             if (event.type === "SHAKE") {
                 return `
@@ -656,6 +708,8 @@ Now you are back in town. Try the Adventures board when you are ready.</textarea
         function compileTimelineToScenes() {
             const scenes = [];
             let state = makeWorldState(getActiveMapTemplate());
+            let backgroundZone = value("background-zone", "TOWN");
+            let showCombatUi = false;
             let pendingDialogue = [];
             let pendingHighlightTile = null;
 
@@ -677,9 +731,11 @@ Now you are back in town. Try the Adventures board when you are ready.</textarea
                     highlight: patch.highlight || action.highlight,
                     autoAdvanceMs: patch.autoAdvanceMs || 900,
                     dialogue: patch.dialogue || consumeDialogue(),
-                    player: { ...state.player },
+                    player: state.player ? { ...state.player } : null,
                     enemy: state.enemy ? { ...state.enemy } : null
                 };
+                scene.backgroundZone = patch.backgroundZone || backgroundZone;
+                scene.showCombatUi = patch.showCombatUi == null ? showCombatUi : patch.showCombatUi;
 
                 if (action.requiresTarget || patch.requiresTarget) scene.requiresTarget = true;
                 if (patch.effects && patch.effects.length) scene.effects = patch.effects;
@@ -687,6 +743,8 @@ Now you are back in town. Try the Adventures board when you are ready.</textarea
                 else if (pendingHighlightTile && scene.requiredAction === "bomb") scene.targetTile = { ...pendingHighlightTile };
                 if (pendingHighlightTile) scene.highlightTile = { ...pendingHighlightTile };
                 if (patch.audioCue) scene.audioCue = patch.audioCue;
+                if (patch.highlightTiles) scene.highlightTiles = patch.highlightTiles.map(tile => ({ ...tile }));
+                if (patch.effectBursts) scene.effectBursts = patch.effectBursts.map(burst => ({ ...burst }));
 
                 scenes.push(scene);
                 pendingHighlightTile = null;
@@ -696,9 +754,14 @@ Now you are back in town. Try the Adventures board when you are ready.</textarea
                 if (event.type === "SET_SCENE") {
                     const nextMap = mapTemplates[event.templateId] || getActiveMapTemplate();
                     state = makeWorldState(nextMap, state);
-                    pushScene(event, { title: event.title || "Set the scene", effects: ["fadeIn"], autoAdvanceMs: 500 });
+                    backgroundZone = event.backgroundZone || backgroundZone;
+                    showCombatUi = !!event.showCombatUi;
+                    pushScene(event, { title: event.title || "Set the scene", backgroundZone, showCombatUi, effects: ["fadeIn"], autoAdvanceMs: 500 });
                 } else if (event.type === "SPAWN_ACTOR") {
                     applyActorToState(state, event);
+                } else if (event.type === "DESPAWN_ACTOR") {
+                    despawnActorFromState(state, event.uid);
+                    pushScene(event, { title: `Despawn ${event.uid}`, mode: "observe", autoAdvanceMs: 300 });
                 } else if (event.type === "DIALOGUE") {
                     pendingDialogue.push(...(event.sequence || []).map(page => ({
                         speaker: page.speaker || "Kreg",
@@ -706,7 +769,8 @@ Now you are back in town. Try the Adventures board when you are ready.</textarea
                         text: page.text || ""
                     })).filter(page => page.text.trim()));
                 } else if (event.type === "HIGHLIGHT_TILE") {
-                    pendingHighlightTile = { x: event.targetX, y: event.targetY };
+                    const tiles = event.tiles && event.tiles.length ? event.tiles : [{ x: event.targetX, y: event.targetY }];
+                    pendingHighlightTile = { ...tiles[0] };
                     state.targetTile = { ...pendingHighlightTile };
                     if (event.style === "TARGET") {
                         pushScene(event, {
@@ -717,6 +781,14 @@ Now you are back in town. Try the Adventures board when you are ready.</textarea
                             mode: "select",
                             highlight: "target",
                             phase: "PLAYER TURN",
+                            highlightTiles: tiles,
+                            autoAdvanceMs: 700
+                        });
+                    } else {
+                        pushScene(event, {
+                            title: `${readableName(event.style)} Tiles`,
+                            mode: "observe",
+                            highlightTiles: tiles,
                             autoAdvanceMs: 700
                         });
                     }
@@ -731,15 +803,19 @@ Now you are back in town. Try the Adventures board when you are ready.</textarea
                         autoAdvanceMs: event.elementId === "brace" ? 2100 : 1000
                     });
                 } else if (event.type === "PLAY_FX") {
-                    const targetTile = { x: event.targetX, y: event.targetY };
+                    const bursts = event.bursts && event.bursts.length ? event.bursts : [{ type: event.fxType, x: event.targetX, y: event.targetY }];
+                    const targetTile = { x: bursts[0].x, y: bursts[0].y };
                     state.targetTile = targetTile;
                     pushScene(event, {
-                        title: readableName(event.fxType),
-                        mode: event.fxType === "EXPLOSION" ? "bomb" : "attack",
-                        effects: event.fxType === "FLASH" ? ["flash"] : [],
+                        title: bursts.length > 1 ? `${bursts.length} Effects` : readableName(bursts[0].type),
+                        mode: "effects",
+                        effects: bursts.some(burst => burst.type === "FLASH") ? ["flash"] : [],
+                        effectBursts: bursts,
                         targetTile,
                         autoAdvanceMs: 850
                     });
+                } else if (event.type === "QUEUE_MUSIC") {
+                    pushScene(event, { title: `Queue ${event.track}`, audioCue: event.track, autoAdvanceMs: 250 });
                 } else if (event.type === "SHAKE") {
                     const effects = ["shake"];
                     if (event.flash) effects.push("flash");
@@ -765,19 +841,19 @@ Now you are back in town. Try the Adventures board when you are ready.</textarea
         }
 
         function makeWorldState(map, previousState) {
-            const firstEnemy = (map.enemies && map.enemies[0]) || (map.enemySlots && map.enemySlots[0]) || { id: "wild_ravager", x: 10, y: 5 };
+            const firstEnemy = (map.enemies && map.enemies[0]) || (map.enemySlots && map.enemySlots[0]) || null;
             return {
                 map,
-                player: {
-                    x: (previousState && previousState.player.x) || (map.playerStart && map.playerStart.x) || 2,
-                    y: (previousState && previousState.player.y) || (map.playerStart && map.playerStart.y) || 5,
-                    hp: (previousState && previousState.player.hp) || 100,
-                    maxHp: (previousState && previousState.player.maxHp) || 100,
-                    stamina: (previousState && previousState.player.stamina) || 80,
-                    maxStamina: (previousState && previousState.player.maxStamina) || 100,
+                player: (previousState && previousState.player) || (map.playerStart ? {
+                    x: map.playerStart.x,
+                    y: map.playerStart.y,
+                    hp: 100,
+                    maxHp: 100,
+                    stamina: 80,
+                    maxStamina: 100,
                     atb: 100
-                },
-                enemy: {
+                } : null),
+                enemy: (previousState && previousState.enemy) || (firstEnemy ? {
                     x: (previousState && previousState.enemy && previousState.enemy.x) || firstEnemy.x || 10,
                     y: (previousState && previousState.enemy && previousState.enemy.y) || firstEnemy.y || 5,
                     id: (previousState && previousState.enemy && previousState.enemy.id) || firstEnemy.id || "wild_ravager",
@@ -786,10 +862,8 @@ Now you are back in town. Try the Adventures board when you are ready.</textarea
                     maxHp: (previousState && previousState.enemy && previousState.enemy.maxHp) || 100,
                     atb: 35,
                     size: firstEnemy.id && firstEnemy.id.includes("overlord") ? 2 : 1
-                },
-                actors: {
-                    kregStart: (previousState && previousState.actors && previousState.actors.kregStart) || { x: 1, y: 4 }
-                },
+                } : null),
+                actors: (previousState && previousState.actors) ? clone(previousState.actors) : {},
                 targetTile: null
             };
         }
@@ -800,22 +874,36 @@ Now you are back in town. Try the Adventures board when you are ready.</textarea
                 y: event.y,
                 hp: event.hp,
                 maxHp: event.maxHp,
+                showHp: !!event.showHp,
                 stamina: event.stamina,
                 maxStamina: event.maxStamina,
+                showStamina: !!event.showStamina,
                 atb: 100
             };
             if (event.actorId === "player" || event.uid === "player") {
-                state.player = { ...state.player, ...actor };
+                state.player = { ...state.player, ...actor, uid: event.uid || "player" };
             } else if (event.actorId === "npc_kreg" || event.uid === "kreg") {
                 state.actors.kregStart = { x: event.x, y: event.y };
+                state.actors.kregUid = event.uid || "kreg";
             } else {
                 state.enemy = {
                     ...actor,
+                    uid: event.uid || event.actorId,
                     id: event.actorId || "wild_ravager",
                     name: event.name || readableName(event.actorId),
                     size: event.size || 1
                 };
             }
+        }
+
+        function despawnActorFromState(state, uid) {
+            if (!uid) return;
+            if (uid === "player" || (state.player && state.player.uid === uid)) state.player = null;
+            if (uid === "kreg" || state.actors.kregUid === uid) {
+                delete state.actors.kregStart;
+                delete state.actors.kregUid;
+            }
+            if (state.enemy && (state.enemy.uid === uid || state.enemy.id === uid)) state.enemy = null;
         }
 
         function defaultScene(state) {
@@ -828,9 +916,11 @@ Now you are back in town. Try the Adventures board when you are ready.</textarea
                 requiredAction: "continue",
                 highlight: "continue",
                 autoAdvanceMs: 800,
-                dialogue: [{ speaker: "Kreg", portraitId: "npc_kreg", text: "Add dialogue and actions to build the quest." }],
-                player: { ...state.player },
-                enemy: { ...state.enemy }
+                showCombatUi: false,
+                backgroundZone: value("background-zone", "TOWN"),
+                dialogue: [],
+                player: state.player ? { ...state.player } : null,
+                enemy: state.enemy ? { ...state.enemy } : null
             };
         }
 
@@ -843,14 +933,15 @@ Now you are back in town. Try the Adventures board when you are ready.</textarea
                 title: value("quest-title", "Custom Quest"),
                 mapTemplateId: map.id !== "CUSTOM" ? map.id : null,
                 zone: map.zone || "WILDERNESS",
+                backgroundZone: value("background-zone", "TOWN"),
                 tileSize: map.tileSize || TILE_SIZE,
                 grid: map.gridSize || { cols: 16, rows: 10 },
                 floorSpriteId: map.floorSpriteId || value("floor-sprite", "ground_wilderness"),
                 floorTiles: map.floorTiles || [],
                 actors: {
-                    playerStart: map.playerStart || { x: 2, y: 5 },
-                    kregStart: world.actors.kregStart,
-                    ravagerStart: { x: world.enemy.x, y: world.enemy.y }
+                    playerStart: world.player ? { x: world.player.x, y: world.player.y } : null,
+                    ...world.actors,
+                    ravagerStart: world.enemy ? { x: world.enemy.x, y: world.enemy.y } : null
                 },
                 obstacles: normalizeObstacles(map),
                 interactables: map.interactables || [],
@@ -979,8 +1070,8 @@ Now you are back in town. Try the Adventures board when you are ready.</textarea
         }
 
         function drawActors(ctx, state, offsetX, offsetY, tile) {
-            drawActor(ctx, "npc_kreg", "KREG", state.actors.kregStart.x, state.actors.kregStart.y, 1, offsetX, offsetY, tile, "#f1c766");
-            drawActor(ctx, "player", "YOU", state.player.x, state.player.y, 1, offsetX, offsetY, tile, "#4f9ddd");
+            if (state.actors.kregStart) drawActor(ctx, "npc_kreg", "KREG", state.actors.kregStart.x, state.actors.kregStart.y, 1, offsetX, offsetY, tile, "#f1c766");
+            if (state.player) drawActor(ctx, "player", "YOU", state.player.x, state.player.y, 1, offsetX, offsetY, tile, "#4f9ddd");
             if (state.enemy) drawActor(ctx, state.enemy.id, state.enemy.name || "MOB", state.enemy.x, state.enemy.y, state.enemy.size || 1, offsetX, offsetY, tile, "#d95757");
         }
 
@@ -1020,11 +1111,15 @@ Now you are back in town. Try the Adventures board when you are ready.</textarea
             if (!event) return;
             if (event.type === "HIGHLIGHT_TILE") {
                 const color = event.style === "AIM" ? "#e67e22" : event.style === "MOVE" ? "#4f9ddd" : "#2ecc71";
-                drawTileOutline(ctx, event.targetX, event.targetY, 1, offsetX, offsetY, tile, color);
+                const tiles = event.tiles && event.tiles.length ? event.tiles : [{ x: event.targetX, y: event.targetY }];
+                tiles.forEach(point => drawTileOutline(ctx, point.x, point.y, 1, offsetX, offsetY, tile, color));
             }
             if (event.type === "PLAY_FX") {
-                drawTileOutline(ctx, event.targetX, event.targetY, 1, offsetX, offsetY, tile, "#e67e22");
-                drawAoe(ctx, event.targetX, event.targetY, offsetX, offsetY, tile);
+                const bursts = event.bursts && event.bursts.length ? event.bursts : [{ type: event.fxType, x: event.targetX, y: event.targetY }];
+                bursts.forEach(burst => {
+                    drawTileOutline(ctx, burst.x, burst.y, 1, offsetX, offsetY, tile, burst.type === "FLASH" ? "#f4ebd9" : "#e67e22");
+                    if (burst.type === "EXPLOSION") drawAoe(ctx, burst.x, burst.y, offsetX, offsetY, tile);
+                });
             }
             if (event.type === "DIALOGUE") drawDialoguePreview(ctx, event);
             if (event.type === "FADE" && event.direction === "OUT") drawCurtain(ctx, "FADE OUT");
@@ -1133,6 +1228,7 @@ Now you are back in town. Try the Adventures board when you are ready.</textarea
                 if (!event) continue;
                 if (event.type === "SET_SCENE" && mapTemplates[event.templateId]) state = makeWorldState(mapTemplates[event.templateId], state);
                 if (event.type === "SPAWN_ACTOR") applyActorToState(state, event);
+                if (event.type === "DESPAWN_ACTOR") despawnActorFromState(state, event.uid);
                 if (event.type === "HIGHLIGHT_TILE") state.targetTile = { x: event.targetX, y: event.targetY };
             }
             return state;
@@ -1238,6 +1334,39 @@ Now you are back in town. Try the Adventures board when you are ready.</textarea
             return "map_tree";
         }
 
+        function backgroundZones() {
+            return ["TOWN", "VAULT", "WILDERNESS", "CELLARS", "ARENA", "TRAINING_GROUNDS", "MINIGAME_LUMBER", "MINIGAME_FISHING", "MINIGAME_HOPS", "NONE"];
+        }
+
+        function musicTrackNames() {
+            return ["Tavern Grind", "Off on an adventure", "Cellar Dirge (Reimagined)", "Midnight Quest", "DOOM OF THE OVERLORD", "The True Overlord", "Hero's Return"];
+        }
+
+        function parsePoints(text) {
+            return String(text || "").split(/[;\n]+/).map(entry => {
+                const [x, y] = entry.split(",").map(value => parseInt(value.trim(), 10));
+                return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : null;
+            }).filter(Boolean);
+        }
+
+        function formatPoints(points) {
+            return (points || []).map(point => `${point.x},${point.y}`).join("; ");
+        }
+
+        function parseEffectBursts(text) {
+            return String(text || "").split(/[;\n]+/).map(entry => {
+                const [rawType, rawX, rawY] = entry.split(",");
+                const type = String(rawType || "").trim().toUpperCase();
+                const x = parseInt(String(rawX || "").trim(), 10);
+                const y = parseInt(String(rawY || "").trim(), 10);
+                return ["EXPLOSION", "SLASH", "FLASH"].includes(type) && Number.isFinite(x) && Number.isFinite(y) ? { type, x, y } : null;
+            }).filter(Boolean);
+        }
+
+        function formatEffectBursts(bursts) {
+            return (bursts || []).map(burst => `${burst.type},${burst.x},${burst.y}`).join("; ");
+        }
+
         function dialogueFromTextarea(id) {
             return value(id, "")
                 .split(/\n\s*\n/g)
@@ -1336,7 +1465,9 @@ Now you are back in town. Try the Adventures board when you are ready.</textarea
         });
 
         try {
-            seedTutorialTimeline();
+            timelineEvents = [];
+            selectedEventId = null;
+            refreshAll();
             loadCombatMapTemplates();
         } catch (error) {
             const output = document.getElementById("export-output");
