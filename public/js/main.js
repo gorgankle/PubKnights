@@ -459,6 +459,17 @@ socket.on('enemyTurnReceipt', (receipt) => {
 
     let delay = 0; // The playback timer!
 
+    function playEnemyAttackFx(ev, onComplete) {
+        if (ev.spellFx && ev.spellFx.type === 'beam') {
+            FXEngine.spawnBeam(ev.ex, ev.ey, player.x, player.y, ev.spellFx);
+            setTimeout(onComplete, 350);
+        } else if (ev.projectileSprite) {
+            FXEngine.spawnProjectile(ev.ex, ev.ey, player.x, player.y, ev.projectileSprite, { arc: 0, spin: false, frames: 20, onComplete: onComplete });
+        } else {
+            onComplete();
+        }
+    }
+
     // 2. Play the events sequentially on the screen
     events.forEach(ev => {
         setTimeout(() => {
@@ -471,9 +482,11 @@ socket.on('enemyTurnReceipt', (receipt) => {
                 logMessage(`💥 The massive ${ev.enemyName} crushes an obstacle in its path!`);
             }
             else if (ev.type === 'deflect') {
-                logMessage(`🛡️ Deflected attack from ${ev.enemyName}!`);
-                FXEngine.spawnText(player.x, player.y, "DEFLECT", { color: "#3498db" });
-                if (typeof playRetroSound === 'function') playRetroSound('deflect');
+                playEnemyAttackFx(ev, () => {
+                    logMessage(`Deflected attack from ${ev.enemyName}!`);
+                    FXEngine.spawnText(player.x, player.y, "DEFLECT", { color: "#3498db" });
+                    if (typeof playRetroSound === 'function') playRetroSound('deflect');
+                });
             }
             else if (ev.type === 'hit') {
                 let executeHit = () => {
@@ -489,15 +502,7 @@ socket.on('enemyTurnReceipt', (receipt) => {
                     }
                 };
 
-                if (ev.spellFx && ev.spellFx.type === 'beam') {
-                    FXEngine.spawnBeam(ev.ex, ev.ey, player.x, player.y, ev.spellFx);
-                    setTimeout(executeHit, 350);
-                } else if (ev.projectileSprite) {
-                    FXEngine.spawnProjectile(ev.ex, ev.ey, player.x, player.y, ev.projectileSprite, { arc: 0, spin: false, frames: 20, onComplete: executeHit });
-                } else {
-                    // Instantly execute melee hits
-                    executeHit(); 
-                }
+                playEnemyAttackFx(ev, executeHit);
             }
             else if (ev.type === 'steal') {
                 logMessage(`🍺 The Mimic intercepts your gear inventory and chugs one of your Stouts!`);

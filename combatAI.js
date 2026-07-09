@@ -137,20 +137,28 @@ function executeEnemyTurn(socketId, combat, player, enemy, activeCombats) {
     if (dist <= enemy.attackRange && hasLos) {
         const isRangedAttack = enemy.type === 'RANGED' || !!enemy.projectileSprite || !!enemy.spellFx;
         const projectileSprite = enemy.projectileSprite || (enemy.type === 'RANGED' && !enemy.spellFx ? 'icon_arrow' : null);
+        const attackFx = {
+            isRangedAttack: isRangedAttack,
+            projectileSprite: projectileSprite,
+            spellFx: enemy.spellFx,
+            spellId: enemy.spellId,
+            ex: enemy.x,
+            ey: enemy.y
+        };
         const eOffense = enemy.offense * 10;
         const playerSpeed = getEffectiveStat(player, 'speed') * 10;
         const enemyHitPower = (eOffense * 0.5) + (Math.random() * eOffense * 0.5);
         const playerSpeedMitigation = Math.random() * playerSpeed;
 
         if ((enemyHitPower - playerSpeedMitigation) <= 0) {
-            turnEvents.push({ type: 'deflect', enemyName: enemy.name });
+            turnEvents.push({ type: 'deflect', enemyName: enemy.name, ...attackFx });
         } else {
             const rawDamageRoll = Math.sqrt(Math.random()) * eOffense;
             const playerDef = getEffectiveStat(player, 'defense') * 10;
             const armorAbsorption = Math.pow(Math.random(), 2) * playerDef;
             const mitigatedDmg = Math.floor(rawDamageRoll - armorAbsorption);
 
-            if (mitigatedDmg <= 0) turnEvents.push({ type: 'deflect', enemyName: enemy.name });
+            if (mitigatedDmg <= 0) turnEvents.push({ type: 'deflect', enemyName: enemy.name, ...attackFx });
             else {
                 const isCrit = mitigatedDmg >= Math.floor(eOffense * 0.90);
                 player.hp -= mitigatedDmg;
@@ -160,12 +168,7 @@ function executeEnemyTurn(socketId, combat, player, enemy, activeCombats) {
                     enemyName: enemy.name,
                     damage: mitigatedDmg,
                     isCrit: isCrit,
-                    isRangedAttack: isRangedAttack,
-                    projectileSprite: projectileSprite,
-                    spellFx: enemy.spellFx,
-                    spellId: enemy.spellId,
-                    ex: enemy.x,
-                    ey: enemy.y
+                    ...attackFx
                 });
 
                 if (player.hp <= 0) {
