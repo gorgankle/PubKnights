@@ -3,6 +3,7 @@
 
 const { ItemDatabase } = require('./public/js/items.js');
 const { getGridDistance, getEffectiveStat } = require('./combatMath.js');
+const { applyPoison } = require('./combatStatus.js');
 
 function executeEnemyTurn(socketId, combat, player, enemy, activeCombats) {
     if (!enemy.alive || player.hp <= 0) return [];
@@ -162,12 +163,19 @@ function executeEnemyTurn(socketId, combat, player, enemy, activeCombats) {
             else {
                 const isCrit = mitigatedDmg >= Math.floor(eOffense * 0.90);
                 player.hp -= mitigatedDmg;
+                const poisonApplied = applyPoison(player, {
+                    chance: enemy.poisonChance || 0,
+                    turns: enemy.poisonTurns || 3,
+                    fallbackDamage: Math.max(2, Math.floor((enemy.offense || 1) * 2))
+                });
                 turnEvents.push({
                     type: 'hit',
                     uid: enemy.uid,
                     enemyName: enemy.name,
                     damage: mitigatedDmg,
                     isCrit: isCrit,
+                    statusApplied: poisonApplied ? "poison" : null,
+                    playerStatusEffects: player.statusEffects,
                     ...attackFx
                 });
 
@@ -184,6 +192,7 @@ function executeEnemyTurn(socketId, combat, player, enemy, activeCombats) {
                     player.pendingLoot = [];
                     player.pendingGold = 0;
                     player.pendingXp = 0;
+                    player.statusEffects = {};
 
                     delete activeCombats[socketId];
                     turnEvents.push({ type: 'death' });

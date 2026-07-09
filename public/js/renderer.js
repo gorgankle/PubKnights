@@ -82,6 +82,37 @@ function getActiveFloorSpriteId(tileX, tileY) {
     return 'ground_wilderness';
 }
 
+function drawCombatAura(target, gridX, gridY, size = 1) {
+    const poison = target && target.statusEffects && target.statusEffects.poison;
+    const aura = poison && poison.aura ? poison.aura : null;
+    if (!aura || aura.style !== "rise") return;
+
+    const colors = aura.colors || ["#273c24", "#8e44ad"];
+    const intensity = aura.intensity || 1;
+    const particleCount = Math.max(4, Math.floor(8 * intensity));
+    const centerX = (gridX + size / 2) * currentTileSize;
+    const baseY = gridY * currentTileSize;
+    const spread = currentTileSize * size * 0.55;
+    const maxRise = currentTileSize * (0.7 + (aura.radius || 0.2));
+
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    for (let i = 0; i < particleCount; i++) {
+        const phase = ((globalAnimClock * 0.018) + (i / particleCount)) % 1;
+        const wobble = Math.sin(globalAnimClock * 0.07 + i * 1.7) * spread * 0.16;
+        const px = centerX + (((i / Math.max(1, particleCount - 1)) - 0.5) * spread) + wobble;
+        const py = baseY + currentTileSize * 0.86 - (phase * maxRise);
+        const radius = Math.max(2, currentTileSize * (aura.radius || 0.2) * (0.25 + phase * 0.35));
+
+        ctx.globalAlpha = (1 - phase) * 0.42;
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.beginPath();
+        ctx.arc(px, py, radius, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    ctx.restore();
+}
+
 
 // === ENGINE HEARTBEAT LOOP ===
 function updateAnimationEngine() {
@@ -309,6 +340,8 @@ mapObstacles.forEach(o => {
 
     ctx.restore(); 
 
+drawCombatAura(player, player.visualX, player.visualY - (playerHopY / currentTileSize), 1);
+
 renderGridHealthBar(player.visualX, player.visualY - (playerHopY / currentTileSize), player.hp, getPlayerMaxHp(), 1, player.stamina, getPlayerMaxStamina(), player.visualAtb);
 
     if (selectedEnemy && selectedEnemy.alive) {
@@ -369,6 +402,8 @@ if (SpriteMatrices[e.id]) {
                 ctx.fillStyle = "#fff"; ctx.font = `${fontScale} Courier New`; ctx.fillText(e.icon, exPosition + xOffset, eyPosition + yOffset);
             }
             ctx.restore();
+
+            drawCombatAura(e, e.visualX, e.visualY - (enemyHopY / currentTileSize), sSize);
 
             renderGridHealthBar(e.visualX, e.visualY - (enemyHopY / currentTileSize), e.hp, e.maxHp, sSize, null, null, e.visualAtb);
         }

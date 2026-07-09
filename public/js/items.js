@@ -82,8 +82,8 @@ const ItemDatabase = {
         id: "mimic_fang_dagger", name: "Mimic Fang Dagger", slot: "weapon", type: "Sword", rarity: "Epic", 
         offense: 10, attackRange: 1, value: 150, spriteId: "weap_mimic_dagger",
         combat: {
-            standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash" },
-            special: { name: "Flurry", range: 1, staminaCost: 15, multiplier: 1.2, ignoresDefense: false, desc: "Strike rapidly targeting weak structural thresholds for 1.2x weapon value." }
+            standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "lunge_bash", poisonChance: 0.25, poisonTurns: 3 },
+            special: { name: "Flurry", range: 1, staminaCost: 15, multiplier: 1.2, ignoresDefense: false, poisonChance: 0.45, poisonTurns: 3, desc: "Strike rapidly targeting weak structural thresholds for 1.2x weapon value." }
         }
     },
     "cellar_striders": { id: "cellar_striders", name: "Cellar Striders", slot: "boots", rarity: "Epic", speed: 1, value: 100, spriteId: "boots_cellar" },

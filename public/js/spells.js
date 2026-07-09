@@ -24,6 +24,8 @@ const SpellDatabase = {
         cost: 15,
         range: 5,
         damageFlat: 24,
+        poisonChance: 0.45,
+        poisonTurns: 3,
         ignoresLoS: false,
         desc: "Launches a toxic beam that splashes venom through a straight line.",
         fx: {

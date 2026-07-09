@@ -2,6 +2,7 @@
 // Socket wiring for server-authoritative combat.
 
 const { SpellDatabase } = require('./public/js/spells.js');
+const { ItemDatabase } = require('./public/js/items.js');
 const { sanitizeToken, clampInt, getArrayIndex } = require('./serverSecurity.js');
 const {
     getGridDistance,
@@ -14,6 +15,7 @@ const {
 const { processSecureKill, claimCombatRewards } = require('./combatRewards.js');
 const { createCombatEncounter } = require('./combatEncounters.js');
 const { executeEnemyTurn } = require('./combatAI.js');
+const { applyPoison, tickPoison } = require('./combatStatus.js');
 
 module.exports = function(socket, io, activePlayers, activeCombats) {
     const combatContext = { activePlayers, activeCombats, io };
@@ -47,6 +49,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             p.pendingLoot = [];
             p.mapBaited = false;
             p.cellarsChummed = false;
+            p.statusEffects = {};
             p.hp = getMaxHp(p);
             p.stamina = getMaxStamina(p);
             delete activeCombats[socket.id];
@@ -83,6 +86,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
 
         p.idleJob = 'NONE';
         p.pendingXp = 0;
+        p.statusEffects = {};
 
         const combatState = createCombatEncounter(p, data);
         if (!combatState) return;
@@ -180,6 +184,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         if (!p) return;
 
         claimCombatRewards(p);
+        p.statusEffects = {};
         socket.emit('combatRewardsReceipt', { updatedPlayer: p });
     });
 
@@ -204,6 +209,44 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 });
 
                 if (combat.player.atbCharge >= 100) {
+                    const poisonTick = tickPoison(p);
+                    if (poisonTick) {
+                        io.to(socketId).emit('statusEffectReceipt', {
+                            events: [{
+                                type: 'statusTick',
+                                targetType: 'player',
+                                status: 'poison',
+                                damage: poisonTick.damage,
+                                killed: poisonTick.killed
+                            }],
+                            updatedPlayer: p,
+                            updatedCombatState: combat
+                        });
+                    }
+
+                    if (p.hp <= 0) {
+                        p.hp = 0;
+                        p.equipment = {
+                            helmet: null,
+                            armor: null,
+                            weapon: JSON.parse(JSON.stringify(ItemDatabase["rusty_mace"])),
+                            gloves: null,
+                            boots: null
+                        };
+                        p.inventory = [];
+                        p.pendingLoot = [];
+                        p.pendingGold = 0;
+                        p.pendingXp = 0;
+                        p.statusEffects = {};
+                        delete activeCombats[socketId];
+                        io.to(socketId).emit('enemyTurnReceipt', {
+                            events: [{ type: 'death' }],
+                            updatedPlayer: p,
+                            updatedCombatState: combat
+                        });
+                        continue;
+                    }
+
                     combat.atbPaused = true;
                     io.to(socketId).emit('ATB_READY');
                 } else {
@@ -214,6 +257,23 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
 
                         readyEnemies.forEach(enemy => {
                             enemy.atbCharge = 0;
+                            const poisonTick = tickPoison(enemy);
+                            if (poisonTick) {
+                                if (poisonTick.killed) {
+                                    enemy.alive = false;
+                                    processSecureKill(socketId, enemy, combatContext);
+                                }
+                                masterEventList.push({
+                                    type: 'statusTick',
+                                    targetType: 'enemy',
+                                    uid: enemy.uid,
+                                    enemyName: enemy.name,
+                                    status: 'poison',
+                                    damage: poisonTick.damage,
+                                    killed: poisonTick.killed
+                                });
+                                if (poisonTick.killed) return;
+                            }
                             const events = executeEnemyTurn(socketId, combat, p, enemy, activeCombats);
                             if (events && events.length > 0) masterEventList.push(...events);
                         });
@@ -339,6 +399,11 @@ function handleWeaponAction(socket, p, combat, data, secureKill) {
     const finalDmg = Math.floor(mitigatedDmg * combatRules.multiplier);
 
     serverEnemy.hp -= finalDmg;
+    const poisonApplied = applyPoison(serverEnemy, {
+        chance: combatRules.poisonChance || 0,
+        turns: combatRules.poisonTurns || 3,
+        fallbackDamage: Math.max(2, Math.floor(getEffectiveStat(p, 'offense') * 2))
+    });
     let killed = false;
     if (serverEnemy.hp <= 0) {
         serverEnemy.hp = 0;
@@ -351,7 +416,7 @@ function handleWeaponAction(socket, p, combat, data, secureKill) {
 
     socket.emit('combatResult', {
         type: 'hit', source: 'weapon', actionName: data.subType,
-        targets: [{ uid: serverEnemy.uid, damage: finalDmg, isCrit: isCrit, killed: killed }],
+        targets: [{ uid: serverEnemy.uid, damage: finalDmg, isCrit: isCrit, killed: killed, statusApplied: poisonApplied ? "poison" : null, statusEffects: serverEnemy.statusEffects }],
         fx: { tx: serverEnemy.x, ty: serverEnemy.y, spriteId: isRanged ? weapon.projectileSprite : weapon.spriteId, isProjectile: isRanged, isAoE: false },
         updatedPlayer: p
     });
@@ -453,9 +518,14 @@ function handleConsumableAction(socket, p, combat, data, secureKill) {
 
                 if (isHit) {
                     enemy.hp -= spellData.damageFlat;
+                    const poisonApplied = applyPoison(enemy, {
+                        chance: spellData.poisonChance || 0,
+                        turns: spellData.poisonTurns || 3,
+                        fallbackDamage: Math.max(2, Math.floor(spellData.damageFlat * 0.25))
+                    });
                     let killed = false;
                     if (enemy.hp <= 0) { enemy.hp = 0; enemy.alive = false; killed = true; secureKill(enemy); }
-                    hitTargets.push({ uid: enemy.uid, damage: spellData.damageFlat, isCrit: false, killed: killed });
+                    hitTargets.push({ uid: enemy.uid, damage: spellData.damageFlat, isCrit: false, killed: killed, statusApplied: poisonApplied ? "poison" : null, statusEffects: enemy.statusEffects });
                 }
             });
         }

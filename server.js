@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const path = require('path');
+const crypto = require('crypto');
 const { Server } = require('socket.io');
 const mongoose = require('mongoose');
 
@@ -29,6 +30,7 @@ const {
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+app.set('trust proxy', 1);
 
 // Global in-memory state
 const activePlayers = {};
@@ -50,7 +52,16 @@ mongoose.connect(dbURI, {
 
 const playerSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
-    password: { type: String, required: true }, 
+    password: { type: String },
+    authProviders: {
+        type: [{
+            provider: { type: String, required: true },
+            subject: { type: String, required: true },
+            email: { type: String },
+            displayName: { type: String }
+        }],
+        default: []
+    },
     saveData: { type: Object, default: {} },
     
 // === NEW: SOCIAL INFRASTRUCTURE ===
@@ -66,6 +77,7 @@ playerSchema.index(
     { username: 1 }, 
     { collation: { locale: 'en', strength: 2 } }
 );
+playerSchema.index({ 'authProviders.provider': 1, 'authProviders.subject': 1 }, { unique: true, sparse: true });
 
 const Player = mongoose.model('Player', playerSchema);
 
@@ -88,6 +100,14 @@ ugcSchema.index({ type: 1, createdAt: -1 });
 // ===================================
 
 const UGC = mongoose.model('UGC', ugcSchema);
+
+const googleOAuthStates = new Map();
+const ssoLoginTokens = new Map();
+const GOOGLE_ISSUERS = new Set(['https://accounts.google.com', 'accounts.google.com']);
+const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
+const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+const GOOGLE_CERTS_URL = 'https://www.googleapis.com/oauth2/v3/certs';
+let googleJwksCache = { expiresAt: 0, keys: [] };
 
 // === THE AUTOMATED ITEM LONGEVITY SANITIZER (STRICT HYDRATION) ===
 function sanitizeItemSchema(savedItem) {
@@ -125,6 +145,226 @@ function createSaveSnapshot(playerState) {
     delete snapshot.socialY;
 
     return snapshot;
+}
+
+function createDefaultSaveData(username) {
+    return {
+        username,
+        level: 1, xp: 0, xpToNext: 100, skillPoints: 0,
+        vitality: 1, hp: 25, stamina: 25, maxStamina: 1,
+        offense: 1, defense: 1, speed: 1,
+        vaultSlots: 10, gold: 0, hops: 0, wood: 0, fish: 0,
+        lumberPoints: 0, fishingPoints: 0, hopsPoints: 0,
+        pendingGold: 0, pendingXp: 0, pendingLoot: [],
+        wildernessLevel: 1, cellarLevel: 1, abyssDepth: 1,
+        appearance: { ...DEFAULT_APPEARANCE },
+        equipment: {
+            weapon: JSON.parse(JSON.stringify(ItemDatabase["rusty_mace"])),
+        },
+        inventory: [], stash: [],
+        buildings: { workerCabin: 1 },
+        workers: { total: 0, assigned: { wood: 0, fish: 0, hops: 0 } },
+        supplyCart: { wood: 0, fish: 0, hops: 0, max: 100, level: 1 },
+        maxInventorySlots: 5, backpackUpgrades: 0,
+        pet: { adopted: false, level: 1 },
+        quests: { completed: {} }
+    };
+}
+
+function hydratePlayerData(playerDoc) {
+    if (!playerDoc.saveData.appearance) {
+        playerDoc.saveData.appearance = { ...DEFAULT_APPEARANCE };
+    }
+
+    let pd = playerDoc.saveData;
+    pd.username = playerDoc.username;
+    pd.appearance = sanitizeAppearance(pd.appearance);
+    pd.friends = playerDoc.friends || [];
+    pd.ignored = playerDoc.ignored || [];
+    delete pd.activeMinigame;
+    delete pd._lastMinigameClaim;
+    delete pd.tradeStaging;
+    delete pd.tradeResources;
+    delete pd.tradeLocked;
+    delete pd.tradeConfirmed;
+    delete pd.activeTradePartner;
+    delete pd.activeQuestSession;
+    delete pd.currentZone;
+    delete pd.socialX;
+    delete pd.socialY;
+
+    if (pd.equipment) {
+        for (let slot in pd.equipment) {
+            pd.equipment[slot] = sanitizeItemSchema(pd.equipment[slot]);
+        }
+    }
+
+    if (pd.inventory) {
+        pd.inventory = pd.inventory.map(item => sanitizeItemSchema(item));
+    }
+
+    if (pd.stash) {
+        pd.stash = pd.stash.map(item => sanitizeItemSchema(item));
+    }
+
+    if (!pd.buildings) pd.buildings = { workerCabin: 1 };
+    if (!pd.quests) pd.quests = { completed: {} };
+    if (!pd.quests.completed) pd.quests.completed = {};
+    if (pd.workers && pd.workers.woodcutters !== undefined) {
+        let w = pd.workers.woodcutters || 0;
+        let f = pd.workers.fishermen || 0;
+        let h = pd.workers.farmers || 0;
+        pd.workers = { total: w + f + h, assigned: { wood: w, fish: f, hops: h } };
+    }
+
+    pd.hp = (pd.vitality || 1) * 25;
+    pd.stamina = (pd.maxStamina || 1) * 25;
+    return pd;
+}
+
+function rememberSocketLogin(socket, playerDoc) {
+    const pd = hydratePlayerData(playerDoc);
+    socket.data.username = playerDoc.username;
+    activePlayers[socket.id] = pd;
+    return pd;
+}
+
+function getPublicBaseUrl(req) {
+    return process.env.SSO_CALLBACK_BASE_URL || `${req.protocol}://${req.get('host')}`;
+}
+
+function getGoogleRedirectUri(req) {
+    return `${getPublicBaseUrl(req)}/auth/google/callback`;
+}
+
+function isGoogleSsoConfigured() {
+    return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+}
+
+function base64UrlToBuffer(value) {
+    const normalized = String(value).replace(/-/g, '+').replace(/_/g, '/');
+    return Buffer.from(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '='), 'base64');
+}
+
+function parseJwt(token) {
+    const parts = String(token || '').split('.');
+    if (parts.length !== 3) throw new Error('Malformed identity token.');
+    return {
+        header: JSON.parse(base64UrlToBuffer(parts[0]).toString('utf8')),
+        payload: JSON.parse(base64UrlToBuffer(parts[1]).toString('utf8')),
+        signingInput: `${parts[0]}.${parts[1]}`,
+        signature: base64UrlToBuffer(parts[2])
+    };
+}
+
+async function getGoogleJwks() {
+    const now = Date.now();
+    if (googleJwksCache.expiresAt > now && googleJwksCache.keys.length) {
+        return googleJwksCache.keys;
+    }
+
+    const response = await fetch(GOOGLE_CERTS_URL);
+    if (!response.ok) throw new Error('Could not load Google signing keys.');
+    const body = await response.json();
+    googleJwksCache = {
+        keys: body.keys || [],
+        expiresAt: now + 60 * 60 * 1000
+    };
+    return googleJwksCache.keys;
+}
+
+async function verifyGoogleIdToken(idToken, expectedNonce) {
+    const parsed = parseJwt(idToken);
+    if (parsed.header.alg !== 'RS256') throw new Error('Unexpected Google token signature algorithm.');
+
+    const keys = await getGoogleJwks();
+    const jwk = keys.find(key => key.kid === parsed.header.kid);
+    if (!jwk) throw new Error('Google signing key not found.');
+
+    const publicKey = crypto.createPublicKey({ key: jwk, format: 'jwk' });
+    const valid = crypto.verify(
+        'RSA-SHA256',
+        Buffer.from(parsed.signingInput),
+        publicKey,
+        parsed.signature
+    );
+    if (!valid) throw new Error('Invalid Google identity token signature.');
+
+    const claims = parsed.payload;
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    if (!GOOGLE_ISSUERS.has(claims.iss)) throw new Error('Unexpected Google token issuer.');
+    if (claims.aud !== process.env.GOOGLE_CLIENT_ID) throw new Error('Google token audience mismatch.');
+    if (claims.exp <= nowSeconds) throw new Error('Google identity token expired.');
+    if (claims.nonce !== expectedNonce) throw new Error('Google sign-in nonce mismatch.');
+    if (claims.email_verified !== true && claims.email_verified !== 'true') {
+        throw new Error('Google account email is not verified.');
+    }
+
+    return claims;
+}
+
+function normalizeSsoUsername(value) {
+    const cleaned = String(value || 'Knight')
+        .replace(/[^A-Za-z0-9 _-]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .substring(0, 18);
+    return normalizeUsername(cleaned) || 'Knight';
+}
+
+async function createUniqueSsoUsername(claims) {
+    const emailName = claims.email ? claims.email.split('@')[0] : '';
+    const base = normalizeSsoUsername(claims.name || emailName || 'Knight');
+
+    for (let attempt = 0; attempt < 8; attempt++) {
+        const suffix = attempt === 0 ? '' : ` ${crypto.randomInt(1000, 9999)}`;
+        const candidate = normalizeUsername(`${base}${suffix}`.substring(0, 24));
+        if (!candidate) continue;
+        const existing = await Player.findOne({ username: candidate }).collation({ locale: 'en', strength: 2 });
+        if (!existing) return candidate;
+    }
+
+    return `Knight ${crypto.randomInt(100000, 999999)}`;
+}
+
+async function findOrCreateGooglePlayer(claims) {
+    const existing = await Player.findOne({
+        authProviders: { $elemMatch: { provider: 'google', subject: claims.sub } }
+    });
+    if (existing) return existing;
+
+    const username = await createUniqueSsoUsername(claims);
+    const newPlayer = new Player({
+        username,
+        authProviders: [{
+            provider: 'google',
+            subject: claims.sub,
+            email: claims.email,
+            displayName: claims.name
+        }],
+        saveData: createDefaultSaveData(username)
+    });
+    await newPlayer.save();
+    return newPlayer;
+}
+
+function createSsoLoginToken(playerDoc) {
+    const token = crypto.randomBytes(32).toString('base64url');
+    ssoLoginTokens.set(token, {
+        playerId: playerDoc._id.toString(),
+        expiresAt: Date.now() + 2 * 60 * 1000
+    });
+    return token;
+}
+
+function pruneExpiredSsoState() {
+    const now = Date.now();
+    for (const [key, value] of googleOAuthStates) {
+        if (value.expiresAt <= now) googleOAuthStates.delete(key);
+    }
+    for (const [key, value] of ssoLoginTokens) {
+        if (value.expiresAt <= now) ssoLoginTokens.delete(key);
+    }
 }
 
 function getPublicCombatMapTemplates() {
@@ -165,6 +405,75 @@ app.get('/api/combat-map-templates', (req, res) => {
     res.json(getPublicCombatMapTemplates());
 });
 
+app.get('/auth/google', (req, res) => {
+    if (!isGoogleSsoConfigured()) {
+        return res.status(503).send('Google SSO is not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.');
+    }
+
+    pruneExpiredSsoState();
+    const state = crypto.randomBytes(24).toString('base64url');
+    const nonce = crypto.randomBytes(24).toString('base64url');
+    googleOAuthStates.set(state, {
+        nonce,
+        expiresAt: Date.now() + 10 * 60 * 1000
+    });
+
+    const params = new URLSearchParams({
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        redirect_uri: getGoogleRedirectUri(req),
+        response_type: 'code',
+        scope: 'openid email profile',
+        state,
+        nonce,
+        prompt: 'select_account'
+    });
+
+    res.redirect(`${GOOGLE_AUTH_URL}?${params.toString()}`);
+});
+
+app.get('/auth/google/callback', async (req, res) => {
+    try {
+        if (!isGoogleSsoConfigured()) {
+            return res.status(503).send('Google SSO is not configured.');
+        }
+
+        pruneExpiredSsoState();
+        const code = typeof req.query.code === 'string' ? req.query.code : '';
+        const state = typeof req.query.state === 'string' ? req.query.state : '';
+        const savedState = googleOAuthStates.get(state);
+        googleOAuthStates.delete(state);
+
+        if (!code || !savedState || savedState.expiresAt <= Date.now()) {
+            return res.status(400).send('Google sign-in expired. Please try again.');
+        }
+
+        const tokenResponse = await fetch(GOOGLE_TOKEN_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                code,
+                client_id: process.env.GOOGLE_CLIENT_ID,
+                client_secret: process.env.GOOGLE_CLIENT_SECRET,
+                redirect_uri: getGoogleRedirectUri(req),
+                grant_type: 'authorization_code'
+            })
+        });
+
+        if (!tokenResponse.ok) {
+            throw new Error(`Google token exchange failed with ${tokenResponse.status}.`);
+        }
+
+        const tokenPayload = await tokenResponse.json();
+        const claims = await verifyGoogleIdToken(tokenPayload.id_token, savedState.nonce);
+        const playerDoc = await findOrCreateGooglePlayer(claims);
+        const loginToken = createSsoLoginToken(playerDoc);
+        res.redirect(`/?ssoToken=${encodeURIComponent(loginToken)}`);
+    } catch (err) {
+        console.error('Google SSO error:', err);
+        res.status(500).send('Google sign-in failed. Please return to Pub Knights and try again.');
+    }
+});
+
 // === SOCKET.IO COMMUNICATION HUB ===
 io.on('connection', (socket) => {
     console.log(`⚔️  A Knight has connected: ${socket.id}`);
@@ -188,50 +497,17 @@ io.on('connection', (socket) => {
                 return socket.emit('loginError', 'Name already taken by another Knight.');
             }
 
-// Generate a secure default template on the server
-// === REPLACED ===
-const defaultTemplate = {
-                username,
-                level: 1, xp: 0, xpToNext: 100, skillPoints: 0,
-                vitality: 1, hp: 25, stamina: 25, maxStamina: 1, 
-                offense: 1, defense: 1, speed: 1,
-                vaultSlots: 10, gold: 0, hops: 0, wood: 0, fish: 0,
-                lumberPoints: 0, fishingPoints: 0, hopsPoints: 0,
-                pendingGold: 0, pendingXp: 0, pendingLoot: [],
-                wildernessLevel: 1, cellarLevel: 1, abyssDepth: 1,
-                appearance: { ...DEFAULT_APPEARANCE },
-                equipment: { 
-                    // PULL SECURELY FROM ITEM DATABASE!
-                    weapon: JSON.parse(JSON.stringify(ItemDatabase["rusty_mace"])),
-                },
-                inventory: [], stash: [], 
-                buildings: { workerCabin: 1 },
-                workers: { total: 0, assigned: { wood: 0, fish: 0, hops: 0 } },
-                supplyCart: { wood: 0, fish: 0, hops: 0, max: 100, level: 1 },
-                maxInventorySlots: 5, backpackUpgrades: 0,
-                pet: { adopted: false, level: 1 },
-                quests: { completed: {} }
-            };
-// ===================
-
             const newPlayer = new Player({
                 username,
                 password: hashPassword(password), 
-                saveData: defaultTemplate 
+                saveData: createDefaultSaveData(username)
             });
 
             await newPlayer.save();
 
             // === THE FIX: LOG THE PLAYER INTO RAM IMMEDIATELY ===
             // This ensures the server knows who they are when they click "Begin Adventure"
-            let pd = newPlayer.saveData;
-            pd.username = newPlayer.username;
-            pd.friends = [];
-            pd.ignored = [];
-            pd.hp = (pd.vitality || 1) * 25;
-            pd.stamina = (pd.maxStamina || 1) * 25;
-            socket.data.username = newPlayer.username;
-            activePlayers[socket.id] = pd;
+            rememberSocketLogin(socket, newPlayer);
             // ====================================================
 
             socket.emit('registerSuccess', { username: newPlayer.username });
@@ -295,70 +571,35 @@ if (data.saveData) {
                     await playerDoc.save();
                 }
 
-                if (!playerDoc.saveData.appearance) {
-                    playerDoc.saveData.appearance = { ...DEFAULT_APPEARANCE };
-                }
-
-                // ============================================
-                // === AUTOMATED LONGEVITY: SANITIZE LOADOUT ===
-                // ============================================
-                let pd = playerDoc.saveData;
-                pd.username = playerDoc.username;
-                pd.appearance = sanitizeAppearance(pd.appearance);
-                pd.friends = playerDoc.friends || [];
-                pd.ignored = playerDoc.ignored || [];
-                delete pd.activeMinigame;
-                delete pd._lastMinigameClaim;
-                delete pd.tradeStaging;
-                delete pd.tradeResources;
-                delete pd.tradeLocked;
-                delete pd.tradeConfirmed;
-                delete pd.activeTradePartner;
-                delete pd.currentZone;
-                delete pd.socialX;
-                delete pd.socialY;
-                
-                // 1. Sanitize Equipped Gear
-                if (pd.equipment) {
-                    for (let slot in pd.equipment) {
-                        pd.equipment[slot] = sanitizeItemSchema(pd.equipment[slot]);
-                    }
-                }
-                // 2. Sanitize Backpack
-                if (pd.inventory) {
-                    pd.inventory = pd.inventory.map(item => sanitizeItemSchema(item));
-                }
-              
-          // 3. Sanitize Stash/Vault
-                if (pd.stash) {
-                    pd.stash = pd.stash.map(item => sanitizeItemSchema(item));
-                }
-                // ============================================
-
-
-                // --- LEGACY SCHEMA MIGRATION ---
-                if (!pd.buildings) pd.buildings = { workerCabin: 1 };
-                if (!pd.quests) pd.quests = { completed: {} };
-                if (!pd.quests.completed) pd.quests.completed = {};
-                if (pd.workers && pd.workers.woodcutters !== undefined) {
-                    let w = pd.workers.woodcutters || 0;
-                    let f = pd.workers.fishermen || 0;
-                    let h = pd.workers.farmers || 0;
-                    pd.workers = { total: w + f + h, assigned: { wood: w, fish: f, hops: h } };
-                }
-
-                // === PHASE 0: RECONNECT SAFETY NET ===
-                // Recalculate true maxes to heal them instantly upon logging into the hub
-                pd.hp = (pd.vitality || 1) * 25;
-                pd.stamina = (pd.maxStamina || 1) * 25;
-                // =====================================
-
-                socket.data.username = playerDoc.username;
-                activePlayers[socket.id] = pd;
+                const pd = rememberSocketLogin(socket, playerDoc);
                 socket.emit('loginSuccess', pd);
             } catch (err) {
                 console.error(err);
                 socket.emit('loginError', 'Server error during login.');
+            }
+        });
+
+        socket.on('ssoLogin', async (data) => {
+            try {
+                pruneExpiredSsoState();
+                const token = data && typeof data.token === 'string' ? data.token : '';
+                const savedToken = ssoLoginTokens.get(token);
+                ssoLoginTokens.delete(token);
+
+                if (!savedToken || savedToken.expiresAt <= Date.now()) {
+                    return socket.emit('loginError', 'Single sign-on expired. Please sign in again.');
+                }
+
+                const playerDoc = await Player.findById(savedToken.playerId);
+                if (!playerDoc) {
+                    return socket.emit('loginError', 'Single sign-on account was not found.');
+                }
+
+                const pd = rememberSocketLogin(socket, playerDoc);
+                socket.emit('loginSuccess', pd);
+            } catch (err) {
+                console.error(err);
+                socket.emit('loginError', 'Server error during single sign-on.');
             }
         });
 

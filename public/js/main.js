@@ -115,6 +115,7 @@ socket.on('combatResult', (result) => {
                 
                 e.hp -= targetData.damage;
                 if (targetData.killed) { e.hp = 0; e.alive = false; }
+                if (targetData.statusEffects) e.statusEffects = targetData.statusEffects;
                 
                 // === THE FIX: Route spell damage text identical to throwables ===
                 if (result.source === 'throwable' || result.source === 'spell') {
@@ -128,6 +129,11 @@ socket.on('combatResult', (result) => {
                         logMessage(`⚔️ Executed ${result.actionName.toUpperCase()} strike onto ${e.name} for ${targetData.damage} DMG!`);
                         FXEngine.spawnText(e.x, e.y, `-${targetData.damage}`, { color: "#e74c3c" });
                     }
+                }
+
+                if (targetData.statusApplied === 'poison') {
+                    logMessage(`${e.name} is poisoned!`);
+                    FXEngine.spawnText(e.x, e.y, "POISON", { color: "#8e44ad" });
                 }
             });
 
@@ -391,12 +397,40 @@ socket.on('combatRewardsReceipt', (receipt) => {
 });
 // ============================================
 
+socket.on('statusEffectReceipt', (receipt) => {
+    if (!receipt || gameState !== 'COMBAT') return;
+    if (receipt.updatedPlayer) Object.assign(player, receipt.updatedPlayer);
+    if (receipt.updatedCombatState) {
+        enemies = receipt.updatedCombatState.enemies;
+        mapObstacles = receipt.updatedCombatState.obstacles;
+    }
+
+    (receipt.events || []).forEach(ev => {
+        if (ev.status === 'poison') {
+            if (ev.targetType === 'player') {
+                logMessage(`Poison burns you for ${ev.damage} DMG.`);
+                FXEngine.spawnText(player.x, player.y, `-${ev.damage}`, { color: "#8e44ad" });
+            } else if (ev.uid) {
+                const e = enemies.find(en => en.uid === ev.uid);
+                if (e) {
+                    logMessage(`${e.name} suffers ${ev.damage} poison DMG.`);
+                    FXEngine.spawnText(e.x, e.y, `-${ev.damage}`, { color: "#8e44ad" });
+                }
+            }
+        }
+    });
+
+    refreshSystemUI();
+    if (typeof drawGrid === 'function') drawGrid();
+});
+
 socket.on('combatDeployed', (serverCombatState) => {
     reachableTiles = null;
     hideTooltip();
     
     // Sync browser state to the Server's command
     player.idleJob = 'NONE';
+    player.statusEffects = {};
     gameState = 'COMBAT'; 
     
     // STRICT GAME LOGIC: Always start waiting for the server's ATB tick
@@ -490,6 +524,7 @@ socket.on('enemyTurnReceipt', (receipt) => {
             }
             else if (ev.type === 'hit') {
                 let executeHit = () => {
+                    if (ev.playerStatusEffects) player.statusEffects = ev.playerStatusEffects;
                     const rangedLabel = ev.isRangedAttack ? " (Ranged)" : "";
                     if (ev.isCrit) {
                         logMessage(`💥 CRITICAL STRIKE! ${ev.enemyName} hits you for ${ev.damage} DMG!${rangedLabel}`);
@@ -500,9 +535,30 @@ socket.on('enemyTurnReceipt', (receipt) => {
                         FXEngine.spawnText(player.x, player.y, `-${ev.damage}`, { color: "#e74c3c" });
                         if (typeof playRetroSound === 'function') playRetroSound('playerHit');
                     }
+
+                    if (ev.statusApplied === 'poison') {
+                        logMessage(`You are poisoned by ${ev.enemyName}!`);
+                        FXEngine.spawnText(player.x, player.y, "POISON", { color: "#8e44ad" });
+                    }
                 };
 
                 playEnemyAttackFx(ev, executeHit);
+            }
+            else if (ev.type === 'statusTick') {
+                if (ev.status === 'poison') {
+                    if (ev.targetType === 'enemy') {
+                        const e = enemies.find(en => en.uid === ev.uid);
+                        if (e) {
+                            e.hp = Math.max(0, e.hp - ev.damage);
+                            if (ev.killed) e.alive = false;
+                            logMessage(`${e.name} suffers ${ev.damage} poison DMG.`);
+                            FXEngine.spawnText(e.x, e.y, `-${ev.damage}`, { color: "#8e44ad" });
+                        }
+                    } else if (ev.targetType === 'player') {
+                        logMessage(`Poison burns you for ${ev.damage} DMG.`);
+                        FXEngine.spawnText(player.x, player.y, `-${ev.damage}`, { color: "#8e44ad" });
+                    }
+                }
             }
             else if (ev.type === 'steal') {
                 logMessage(`🍺 The Mimic intercepts your gear inventory and chugs one of your Stouts!`);
