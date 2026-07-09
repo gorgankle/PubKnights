@@ -87,6 +87,11 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         p.idleJob = 'NONE';
         p.pendingXp = 0;
         p.statusEffects = {};
+        if (p.activeCombatBuff) {
+            p.activeBuffs = Array.isArray(p.activeBuffs) ? p.activeBuffs : [];
+            if (!p.activeBuffs.includes(p.activeCombatBuff)) p.activeBuffs.push(p.activeCombatBuff);
+            p.activeCombatBuff = null;
+        }
 
         const combatState = createCombatEncounter(p, data);
         if (!combatState) return;

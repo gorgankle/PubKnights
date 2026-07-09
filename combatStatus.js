@@ -1,12 +1,7 @@
 // --- combatStatus.js ---
 // Shared server-side combat status helpers.
 
-const POISON_AURA = Object.freeze({
-    style: "rise",
-    radius: 0.2,
-    intensity: 1,
-    colors: ["#273c24", "#8e44ad"]
-});
+const { getAura } = require('./public/js/aura-assets.js');
 
 function ensureStatusTarget(target) {
     if (!target.statusEffects || typeof target.statusEffects !== 'object') target.statusEffects = {};
@@ -34,7 +29,8 @@ function applyPoison(target, config = {}) {
         name: "Poisoned",
         turns: existing ? Math.max(existing.turns || 0, turns) : turns,
         damage: existing ? Math.max(existing.damage || 0, damage) : damage,
-        aura: POISON_AURA
+        auraId: "poison",
+        aura: getAura("poison")
     };
 
     return true;
@@ -58,7 +54,6 @@ function tickPoison(target) {
 }
 
 module.exports = {
-    POISON_AURA,
     applyPoison,
     tickPoison
 };
