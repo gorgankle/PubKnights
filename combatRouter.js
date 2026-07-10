@@ -2,7 +2,6 @@
 // Socket wiring for server-authoritative combat.
 
 const { SpellDatabase } = require('./public/js/spells.js');
-const { ItemDatabase } = require('./public/js/items.js');
 const { sanitizeToken, clampInt, getArrayIndex } = require('./serverSecurity.js');
 const {
     getGridDistance,
@@ -16,6 +15,7 @@ const { processSecureKill, claimCombatRewards } = require('./combatRewards.js');
 const { createCombatEncounter } = require('./combatEncounters.js');
 const { executeActorTurn } = require('./combatAI.js');
 const { applyPoison, tickPoison } = require('./combatStatus.js');
+const { applyPlayerCombatDefeat } = require('./combatDefeat.js');
 const {
     syncCombatViews,
     syncPlayerActor,
@@ -254,24 +254,13 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                     }
 
                     if (p.hp <= 0) {
-                        p.hp = 0;
-                        p.equipment = {
-                            helmet: null,
-                            armor: null,
-                            weapon: JSON.parse(JSON.stringify(ItemDatabase["rusty_mace"])),
-                            gloves: null,
-                            boots: null
-                        };
-                        p.inventory = [];
-                        p.pendingLoot = [];
-                        p.pendingGold = 0;
-                        p.pendingXp = 0;
-                        p.statusEffects = {};
+                        applyPlayerCombatDefeat(p);
                         delete activeCombats[socketId];
                         io.to(socketId).emit('enemyTurnReceipt', {
                             events: [{ type: 'death' }],
                             updatedPlayer: p,
-                            updatedCombatState: combat
+                            updatedCombatState: null,
+                            combatDefeated: true
                         });
                         continue;
                     }
@@ -323,11 +312,13 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                         });
 
                         if (masterEventList.length > 0) {
-                            combat.playbackLock = true;
+                            const combatDefeated = masterEventList.some(ev => ev && ev.type === 'death');
+                            if (!combatDefeated) combat.playbackLock = true;
                             io.to(socketId).emit('enemyTurnReceipt', {
                                 events: masterEventList,
                                 updatedPlayer: p,
-                                updatedCombatState: syncCombatViews(combat, p)
+                                updatedCombatState: combatDefeated ? null : syncCombatViews(combat, p),
+                                combatDefeated
                             });
                         }
                     }

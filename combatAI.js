@@ -1,9 +1,9 @@
 // --- combatAI.js ---
 // Server-side actor movement, targeting, support, and attack resolution.
 
-const { ItemDatabase } = require('./public/js/items.js');
 const { getGridDistance, getEffectiveStat, getMaxHp } = require('./combatMath.js');
 const { applyPoison } = require('./combatStatus.js');
+const { applyPlayerCombatDefeat } = require('./combatDefeat.js');
 const {
     getAliveActors,
     getHostileActorsFor,
@@ -39,21 +39,9 @@ function setActorHp(actor, player, value) {
 
 function defeatActor(socketId, combat, player, actor, activeCombats, onActorDefeated, turnEvents) {
     if (isPlayerActor(actor)) {
-        player.hp = 0;
         actor.hp = 0;
         actor.alive = false;
-        player.equipment = {
-            helmet: null,
-            armor: null,
-            weapon: JSON.parse(JSON.stringify(ItemDatabase["rusty_mace"])),
-            gloves: null,
-            boots: null
-        };
-        player.inventory = [];
-        player.pendingLoot = [];
-        player.pendingGold = 0;
-        player.pendingXp = 0;
-        player.statusEffects = {};
+        applyPlayerCombatDefeat(player);
         delete activeCombats[socketId];
         turnEvents.push({ type: 'death' });
         return;

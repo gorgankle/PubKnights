@@ -514,6 +514,7 @@ socket.on('enemyTurnReceipt', (receipt) => {
     if (receipt.updatedPlayer) Object.assign(player, receipt.updatedPlayer);
 
     let events = receipt.events || [];
+    const combatDefeated = !!receipt.combatDefeated || events.some(ev => ev && ev.type === 'death');
     
     // === NEW: DYNAMIC FAST-FORWARD MATH ===
     // If there are hundreds of events (Gorilla Pit), compress the time!
@@ -644,6 +645,8 @@ socket.on('enemyTurnReceipt', (receipt) => {
                 if (typeof playRetroSound === 'function') playRetroSound('death');
                 setTimeout(() => {
                     transitionToTown();
+                    if (typeof saveGame === 'function') saveGame();
+                    refreshSystemUI();
                 }, 1500); 
             }
             refreshSystemUI();
@@ -657,6 +660,8 @@ socket.on('enemyTurnReceipt', (receipt) => {
 
     // 3. Finally, hand control back to the player!
     setTimeout(() => {
+        if (combatDefeated) return;
+
         // We only overwrite the grid with the server's truth AFTER the movie finishes playing!
         if (receipt.updatedCombatState) syncCombatCollectionsFromState(receipt.updatedCombatState);
 
