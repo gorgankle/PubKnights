@@ -432,6 +432,76 @@ if (SpriteMatrices[e.id]) {
         }
     });
 
+    function drawPetActorSprite(actor, x, y, size) {
+        const cosmetics = actor.petCosmetics || {};
+        const matrix = typeof PetMatrices !== 'undefined' ? PetMatrices[cosmetics.type || 'dog'] : null;
+        if (!matrix) return false;
+        const pixelSize = size / 24;
+        for (let row = 0; row < matrix.length; row++) {
+            for (let col = 0; col < matrix[row].length; col++) {
+                const colorKey = matrix[row][col];
+                let color = 'transparent';
+                if (colorKey === 'f') color = PetFurTones[cosmetics.furColor || 'brown'] || PetFurTones.brown;
+                else if (colorKey === 'c') color = PetCollarTones[cosmetics.collarColor || 'red'] || PetCollarTones.red;
+                else if (colorKey === 'b' || colorKey === 'o') color = '#111111';
+                else if (colorKey === 'w') color = (cosmetics.furColor === 'white') ? '#d1ccc0' : '#f4ebd9';
+                if (color !== 'transparent') {
+                    ctx.fillStyle = color;
+                    ctx.fillRect(x + (col * pixelSize), y + (row * pixelSize), Math.ceil(pixelSize), Math.ceil(pixelSize));
+                }
+            }
+        }
+        return true;
+    }
+
+    function drawNonEnemyActor(actor, palette) {
+        if (!actor.alive) return;
+        let sSize = actor.size || 1;
+        if (actor.visualAtb === undefined) actor.visualAtb = 0;
+        if (combatPhase === 'WAITING_FOR_ATB') {
+            let aSpeed = ((actor.speed || 1) * 3) + 5;
+            actor.visualAtb += (aSpeed * 5) / 60;
+            if (actor.visualAtb > 100) actor.visualAtb = 100;
+        }
+        if (actor.visualX === undefined) {
+            actor.visualX = actor.x; actor.visualY = actor.y; actor.moveAnimTimer = 0;
+        }
+        let deltaX = actor.x - actor.visualX; let deltaY = actor.y - actor.visualY;
+        let isMoving = Math.abs(deltaX) > 0.01 || Math.abs(deltaY) > 0.01;
+        if (isMoving) {
+            actor.visualX += deltaX * 0.15; actor.visualY += deltaY * 0.15;
+            actor.moveAnimTimer += 0.25;
+        } else {
+            actor.visualX = actor.x; actor.visualY = actor.y; actor.moveAnimTimer = 0;
+        }
+        let hopY = Math.abs(Math.sin(actor.moveAnimTimer)) * 10;
+        let ax = actor.visualX * currentTileSize;
+        let ay = (actor.visualY * currentTileSize) - hopY;
+
+        ctx.save();
+        if (actor.kind === 'pet' && drawPetActorSprite(actor, ax, ay, currentTileSize * sSize)) {
+            // Pet sprite rendered.
+        } else if (SpriteMatrices[actor.id]) {
+            drawOptimizedSprite(ctx, actor.id, SpriteMatrices[actor.id], ax, ay, currentTileSize * sSize);
+        } else {
+            ctx.fillStyle = palette.fill;
+            ctx.fillRect(ax + 1, ay + 1, (currentTileSize * sSize) - 2, (currentTileSize * sSize) - 2);
+            ctx.fillStyle = "#fff";
+            ctx.font = `${currentGridSize > 10 ? "13px" : "20px"} Courier New`;
+            ctx.fillText(actor.icon || "?", ax + 14, ay + 36);
+        }
+        ctx.restore();
+
+        ctx.strokeStyle = palette.stroke;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(actor.x * currentTileSize + 2, actor.y * currentTileSize + 2, (currentTileSize * sSize) - 4, (currentTileSize * sSize) - 4);
+        drawCombatAura(actor, actor.visualX, actor.visualY - (hopY / currentTileSize), sSize);
+        renderGridHealthBar(actor.visualX, actor.visualY - (hopY / currentTileSize), actor.hp, actor.maxHp, sSize, null, null, actor.visualAtb);
+    }
+
+    (allies || []).forEach(actor => drawNonEnemyActor(actor, { fill: "#216b4f", stroke: "#2ecc71" }));
+    (rogues || []).forEach(actor => drawNonEnemyActor(actor, { fill: "#5c2f18", stroke: "#e67e22" }));
+
   // === REPLACED: Dynamic Area of Effect Rendering ===
     if (combatPhase === 'TARGETING' && hoverTile && hoverTile.x >= 0) {
         ctx.fillStyle = "rgba(231, 76, 60, 0.4)"; 
@@ -590,7 +660,7 @@ canvas.addEventListener("mousemove", function(e) {
         }
     }
 
-    let mob = enemies.find(em => { let s = em.size || 1; return em.alive && tx >= em.x && tx < em.x + s && ty >= em.y && ty < em.y + s; });
+    let mob = [...(enemies || []), ...(rogues || []), ...(allies || [])].find(em => { let s = em.size || 1; return em.alive && tx >= em.x && tx < em.x + s && ty >= em.y && ty < em.y + s; });
     
     if (mob) {
         showTooltip(buildNpcTooltipHtml(mob), e);
@@ -644,7 +714,7 @@ canvas.addEventListener("click", function(e) {
         hoverTile = {x: -1, y: -1}; 
         return;
     }
-    let clickedMonster = enemies.find(em => { let s = em.size || 1; return em.alive && tx >= em.x && tx < em.x + s && ty >= em.y && ty < em.y + s; });
+    let clickedMonster = getPlayerAttackables().find(em => { let s = em.size || 1; return em.alive && tx >= em.x && tx < em.x + s && ty >= em.y && ty < em.y + s; });
 
     if (combatPhase === 'PHASE_1' || combatPhase === 'PHASE_3') {
         if (clickedMonster) {

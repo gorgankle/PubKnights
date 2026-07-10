@@ -293,7 +293,7 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
                 }
                 
                 if (isAttackPhase && (!hasTarget || !withinRange || !losClear)) {
-                    let autoEnemy = enemies.find(e => {
+                    let autoEnemy = getPlayerAttackables().find(e => {
                         if (!e.alive) return false;
                         let d = getGridDistance(player.x, player.y, e.x, e.y, e.size || 1);
                         if (d > range) return false;

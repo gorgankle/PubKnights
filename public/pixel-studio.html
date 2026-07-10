@@ -154,7 +154,6 @@
                               linear-gradient(45deg, #333 25%, transparent 25%, transparent 75%, #333 75%, #333);
             background-size: 10px 10px; background-position: 0 0, 5px 5px;
         }
-        
         /* Mobile Scaling */
         @media (max-width: 800px) {
             body { padding: 10px; }
@@ -207,7 +206,7 @@
             <!-- OPTIONS -->
             <div style="display: flex; gap: 10px;">
                 <div style="flex: 1;">
-                    <label style="color: #bbaaa0; font-size: 11px; font-weight: bold;">BACKGROUND:</label>
+                    <label style="color: #bbaaa0; font-size: 11px; font-weight: bold;">GHOST MODEL:</label>
                     <select id="bg-model-select" style="width: 100%; margin-top: 5px; padding: 8px;">
                         <option value="none">Ghost (Off)</option>
                         <option value="body_male">Male Base</option>
@@ -220,6 +219,17 @@
                         <option value="1">1x1 Pixel</option>
                         <option value="2">2x2 Block</option>
                         <option value="3">3x3 Block</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <div style="flex: 1;">
+                    <label style="color: #bbaaa0; font-size: 11px; font-weight: bold;">CANVAS BG:</label>
+                    <select id="canvas-bg-select" style="width: 100%; margin-top: 5px; padding: 8px;">
+                        <option value="brown">Brown Studio</option>
+                        <option value="white">White</option>
+                        <option value="black">Black</option>
                     </select>
                 </div>
             </div>
@@ -243,11 +253,17 @@
         const ctx = canvas.getContext('2d');
         const exportOutput = document.getElementById('export-output');
         const bgSelect = document.getElementById('bg-model-select');
+        const canvasBgSelect = document.getElementById('canvas-bg-select');
         const brushSelect = document.getElementById('brush-size-select');
         const activeColorName = document.getElementById('active-color-name');
 
         const GRID_SIZE = 24;
         const CELL_SIZE = canvas.width / GRID_SIZE;
+        const CANVAS_BACKGROUNDS = {
+            brown: '#1a1512',
+            white: '#ffffff',
+            black: '#000000'
+        };
         
         let grid = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill('.'));
         let isDrawing = false;
@@ -255,6 +271,11 @@
         let currentTool = 'brush'; // 'brush', 'fill', 'eyedropper'
 
         bgSelect.addEventListener('change', drawGrid);
+        canvasBgSelect.addEventListener('change', setCanvasBackground);
+
+        function setCanvasBackground() {
+            canvas.style.backgroundColor = CANVAS_BACKGROUNDS[canvasBgSelect.value] || CANVAS_BACKGROUNDS.brown;
+        }
 
         // --- NEW: TOOL MANAGEMENT ---
         function setTool(tool) {
@@ -526,6 +547,7 @@
         }
 
         window.onload = () => {
+            setCanvasBackground();
             initPalette();
             populateInjector();
             drawGrid();

@@ -14,14 +14,24 @@ const {
 } = require('./combatMath.js');
 const { processSecureKill, claimCombatRewards } = require('./combatRewards.js');
 const { createCombatEncounter } = require('./combatEncounters.js');
-const { executeEnemyTurn } = require('./combatAI.js');
+const { executeActorTurn } = require('./combatAI.js');
 const { applyPoison, tickPoison } = require('./combatStatus.js');
+const {
+    syncCombatViews,
+    syncPlayerActor,
+    getPlayerActor,
+    getAliveActors,
+    getEnemyActors,
+    getPlayerAttackTargets,
+    isActorAlive,
+    isBlockingActor
+} = require('./combatActors.js');
 
 module.exports = function(socket, io, activePlayers, activeCombats) {
     const combatContext = { activePlayers, activeCombats, io };
 
     function secureKill(serverEnemy) {
-        processSecureKill(socket.id, serverEnemy, combatContext);
+        return processSecureKill(socket.id, serverEnemy, combatContext);
     }
 
     socket.on('dispatchCombatAction', (data) => {
@@ -96,8 +106,8 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         const combatState = createCombatEncounter(p, data);
         if (!combatState) return;
 
-        activeCombats[socket.id] = combatState;
-        io.to(socket.id).emit('combatDeployed', combatState);
+        activeCombats[socket.id] = syncCombatViews(combatState, p);
+        io.to(socket.id).emit('combatDeployed', activeCombats[socket.id]);
     });
 
     socket.on('endPlayerTurn', () => {
@@ -105,7 +115,10 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         const combat = activeCombats[socket.id];
         if (!p || !combat) return;
 
+        syncPlayerActor(combat, p);
         combat.player.atbCharge = 0;
+        const playerActor = getPlayerActor(combat);
+        if (playerActor) playerActor.atbCharge = 0;
         combat.atbPaused = false;
     });
 
@@ -137,11 +150,13 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         if (combat.obstacles.some(o => o.x === tx && o.y === ty)) {
             return socket.emit('moveReceipt', { success: false, message: 'Server: Obstacle collision detected.', x: combat.player.x, y: combat.player.y });
         }
-        const hitEnemy = combat.enemies.some(e => {
-            const s = e.size || 1;
-            return e.alive && tx >= e.x && tx < e.x + s && ty >= e.y && ty < e.y + s;
+        syncCombatViews(combat, p);
+        const hitActor = getAliveActors(combat).some(actor => {
+            if (!isBlockingActor(actor) || actor.kind === 'player') return false;
+            const s = actor.size || 1;
+            return tx >= actor.x && tx < actor.x + s && ty >= actor.y && ty < actor.y + s;
         });
-        if (hitEnemy) {
+        if (hitActor) {
             return socket.emit('moveReceipt', { success: false, message: 'Server: Entity collision detected.', x: combat.player.x, y: combat.player.y });
         }
 
@@ -151,7 +166,12 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             p.stamina -= moveStaminaCost;
             combat.player.x = tx;
             combat.player.y = ty;
-            socket.emit('moveReceipt', { success: true, updatedPlayer: p });
+            const playerActor = getPlayerActor(combat);
+            if (playerActor) {
+                playerActor.x = tx;
+                playerActor.y = ty;
+            }
+            socket.emit('moveReceipt', { success: true, updatedPlayer: p, updatedCombatState: syncCombatViews(combat, p) });
         } else {
             socket.emit('moveReceipt', { success: false, message: `Server: Not enough stamina to move (${p.stamina}/${moveStaminaCost}).`, x: combat.player.x, y: combat.player.y });
         }
@@ -201,19 +221,23 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 const combat = activeCombats[socketId];
                 const p = activePlayers[socketId];
 
-                if (!p || !combat || combat.atbPaused) continue;
+                if (!p || !combat || combat.atbPaused || combat.playbackLock) continue;
+
+                syncCombatViews(combat, p);
+                const playerActor = getPlayerActor(combat);
+                if (!playerActor) continue;
 
                 const playerSpeed = (getEffectiveStat(p, 'speed') * 3) + 5;
-                combat.player.atbCharge = Math.min(100, (combat.player.atbCharge || 0) + playerSpeed);
+                playerActor.atbCharge = Math.min(100, (playerActor.atbCharge || 0) + playerSpeed);
+                combat.player.atbCharge = playerActor.atbCharge;
 
-                combat.enemies.forEach(enemy => {
-                    if (enemy.alive) {
-                        const eSpeed = ((enemy.speed || 1) * 3) + 5;
-                        enemy.atbCharge = Math.min(100, (enemy.atbCharge || 0) + eSpeed);
-                    }
+                getAliveActors(combat).forEach(actor => {
+                    if (actor.controller === 'player') return;
+                    const actorSpeed = (((actor.speed || 1) * 3) + 5);
+                    actor.atbCharge = Math.min(100, (actor.atbCharge || 0) + actorSpeed);
                 });
 
-                if (combat.player.atbCharge >= 100) {
+                if (playerActor.atbCharge >= 100) {
                     const poisonTick = tickPoison(p);
                     if (poisonTick) {
                         io.to(socketId).emit('statusEffectReceipt', {
@@ -225,7 +249,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                                 killed: poisonTick.killed
                             }],
                             updatedPlayer: p,
-                            updatedCombatState: combat
+                            updatedCombatState: syncCombatViews(combat, p)
                         });
                     }
 
@@ -255,31 +279,46 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                     combat.atbPaused = true;
                     io.to(socketId).emit('ATB_READY');
                 } else {
-                    const readyEnemies = combat.enemies.filter(enemy => enemy.alive && enemy.atbCharge >= 100);
+                    const readyActors = getAliveActors(combat)
+                        .filter(actor => actor.controller !== 'player' && actor.atbCharge >= 100);
 
-                    if (readyEnemies.length > 0) {
+                    if (readyActors.length > 0) {
                         const masterEventList = [];
+                        const onActorDefeated = (actor) => {
+                            if (!actor || actor.rewardsEligible === false) {
+                                syncCombatViews(combat, p);
+                                return { combatComplete: false };
+                            }
+                            return processSecureKill(socketId, actor, combatContext);
+                        };
 
-                        readyEnemies.forEach(enemy => {
-                            enemy.atbCharge = 0;
-                            const poisonTick = tickPoison(enemy);
+                        readyActors.forEach(actor => {
+                            if (!activeCombats[socketId]) return;
+                            actor.atbCharge = 0;
+                            const poisonTick = tickPoison(actor);
                             if (poisonTick) {
-                                if (poisonTick.killed) {
-                                    enemy.alive = false;
-                                    processSecureKill(socketId, enemy, combatContext);
-                                }
                                 masterEventList.push({
                                     type: 'statusTick',
-                                    targetType: 'enemy',
-                                    uid: enemy.uid,
-                                    enemyName: enemy.name,
+                                    targetType: actor.kind === 'player' ? 'player' : 'actor',
+                                    uid: actor.uid,
+                                    actorName: actor.name,
+                                    enemyName: actor.name,
                                     status: 'poison',
                                     damage: poisonTick.damage,
                                     killed: poisonTick.killed
                                 });
+                                if (poisonTick.killed) {
+                                    actor.alive = false;
+                                    if (actor.deathBehavior === 'retreat') {
+                                        actor.retreated = true;
+                                        masterEventList.push({ type: 'retreat', uid: actor.uid, actorName: actor.name, teamId: actor.teamId });
+                                    } else {
+                                        onActorDefeated(actor);
+                                    }
+                                }
                                 if (poisonTick.killed) return;
                             }
-                            const events = executeEnemyTurn(socketId, combat, p, enemy, activeCombats);
+                            const events = executeActorTurn(socketId, combat, p, actor, activeCombats, onActorDefeated);
                             if (events && events.length > 0) masterEventList.push(...events);
                         });
 
@@ -288,7 +327,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                             io.to(socketId).emit('enemyTurnReceipt', {
                                 events: masterEventList,
                                 updatedPlayer: p,
-                                updatedCombatState: combat
+                                updatedCombatState: syncCombatViews(combat, p)
                             });
                         }
                     }
@@ -297,6 +336,23 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         }, 200);
     }
 };
+
+function defeatCombatTarget(combat, p, target, secureKill) {
+    target.hp = 0;
+    target.alive = false;
+
+    if (target.deathBehavior === 'retreat') {
+        target.retreated = true;
+        return { combatComplete: false };
+    }
+
+    if (target.rewardsEligible === false) {
+        syncCombatViews(combat, p);
+        return { combatComplete: getEnemyActors(combat).every(enemy => !enemy.alive) };
+    }
+
+    return secureKill(target) || { combatComplete: false };
+}
 
 function handleWeaponAction(socket, p, combat, data, secureKill) {
     let weapon = p.equipment.weapon;
@@ -337,8 +393,9 @@ function handleWeaponAction(socket, p, combat, data, secureKill) {
         const finalBaseDmg = Math.floor(serverPower * combatRules.multiplier);
         const hitTargets = [];
 
-        combat.enemies.forEach(enemy => {
-            if (!enemy.alive) return;
+        let combatComplete = false;
+        getPlayerAttackTargets(combat).forEach(enemy => {
+            if (!isActorAlive(enemy)) return;
 
             const eDist = getGridDistance(data.tx, data.ty, enemy.x, enemy.y, enemy.size || 1);
 
@@ -350,7 +407,11 @@ function handleWeaponAction(socket, p, combat, data, secureKill) {
 
                 enemy.hp -= variedDmg;
                 let killed = false;
-                if (enemy.hp <= 0) { enemy.hp = 0; enemy.alive = false; killed = true; secureKill(enemy); }
+                if (enemy.hp <= 0) {
+                    killed = true;
+                    const killResult = defeatCombatTarget(combat, p, enemy, secureKill);
+                    combatComplete = combatComplete || !!(killResult && killResult.combatComplete);
+                }
 
                 hitTargets.push({ uid: enemy.uid, damage: variedDmg, isCrit: isCrit, killed: killed });
             }
@@ -359,13 +420,15 @@ function handleWeaponAction(socket, p, combat, data, secureKill) {
         return socket.emit('combatResult', {
             type: 'hit', source: 'weapon', actionName: data.subType, targets: hitTargets,
             fx: { tx: data.tx, ty: data.ty, spriteId: weapon.spriteId, isAoE: true, radius: combatRules.aoeRadius || 1 },
-            updatedPlayer: p
+            updatedPlayer: p,
+            updatedCombatState: syncCombatViews(combat, p),
+            combatComplete
         });
     }
 
     let serverEnemy = null;
     if (combat && data.targetEnemy) {
-        serverEnemy = combat.enemies.find(enemy => enemy.uid === data.targetEnemy.uid && enemy.alive);
+        serverEnemy = getPlayerAttackTargets(combat).find(enemy => enemy.uid === data.targetEnemy.uid && isActorAlive(enemy));
     }
 
     if (!serverEnemy) return socket.emit('combatResult', { type: 'error', message: 'Server: Target lost or already defeated.', newStamina: p.stamina });
@@ -410,11 +473,10 @@ function handleWeaponAction(socket, p, combat, data, secureKill) {
         fallbackDamage: Math.max(2, Math.floor(getEffectiveStat(p, 'offense') * 2))
     });
     let killed = false;
+    let killResult = { combatComplete: false };
     if (serverEnemy.hp <= 0) {
-        serverEnemy.hp = 0;
-        serverEnemy.alive = false;
         killed = true;
-        secureKill(serverEnemy);
+        killResult = defeatCombatTarget(combat, p, serverEnemy, secureKill);
     }
 
     const isRanged = !!weapon.projectileSprite;
@@ -423,7 +485,9 @@ function handleWeaponAction(socket, p, combat, data, secureKill) {
         type: 'hit', source: 'weapon', actionName: data.subType,
         targets: [{ uid: serverEnemy.uid, damage: finalDmg, isCrit: isCrit, killed: killed, statusApplied: poisonApplied ? "poison" : null, statusEffects: serverEnemy.statusEffects }],
         fx: { tx: serverEnemy.x, ty: serverEnemy.y, spriteId: isRanged ? weapon.projectileSprite : weapon.spriteId, isProjectile: isRanged, isAoE: false },
-        updatedPlayer: p
+        updatedPlayer: p,
+        updatedCombatState: syncCombatViews(combat, p),
+        combatComplete: !!(killResult && killResult.combatComplete)
     });
 }
 
@@ -477,13 +541,18 @@ function handleConsumableAction(socket, p, combat, data, secureKill) {
         p.stamina -= rules.staminaCost || 0;
 
         const hitTargets = [];
-        combat.enemies.forEach(enemy => {
-            if (!enemy.alive) return;
+        let combatComplete = false;
+        getPlayerAttackTargets(combat).forEach(enemy => {
+            if (!isActorAlive(enemy)) return;
             const dist = getGridDistance(data.tx, data.ty, enemy.x, enemy.y, enemy.size || 1);
             if (dist <= rules.aoeRadius) {
                 enemy.hp -= rules.damageFlat;
                 let killed = false;
-                if (enemy.hp <= 0) { enemy.hp = 0; enemy.alive = false; killed = true; secureKill(enemy); }
+                if (enemy.hp <= 0) {
+                    killed = true;
+                    const killResult = defeatCombatTarget(combat, p, enemy, secureKill);
+                    combatComplete = combatComplete || !!(killResult && killResult.combatComplete);
+                }
                 hitTargets.push({ uid: enemy.uid, damage: rules.damageFlat, isCrit: false, killed: killed });
             }
         });
@@ -491,7 +560,9 @@ function handleConsumableAction(socket, p, combat, data, secureKill) {
         return socket.emit('combatResult', {
             type: 'hit', source: 'throwable', actionName: item.name, targets: hitTargets,
             fx: { tx: data.tx, ty: data.ty, spriteId: item.spriteId || "icon_bomb_small", isAoE: true, radius: rules.aoeRadius },
-            updatedPlayer: p
+            updatedPlayer: p,
+            updatedCombatState: syncCombatViews(combat, p),
+            combatComplete
         });
     }
 
@@ -508,11 +579,12 @@ function handleConsumableAction(socket, p, combat, data, secureKill) {
         p.stamina -= spellData.cost;
 
         const hitTargets = [];
+        let combatComplete = false;
         if (spellData.type === 'line') {
             const blastPath = getLineOfEffectPath(combat.player.x, combat.player.y, data.tx, data.ty, spellData.range, !spellData.ignoresLoS, combat);
 
-            combat.enemies.forEach(enemy => {
-                if (!enemy.alive) return;
+            getPlayerAttackTargets(combat).forEach(enemy => {
+                if (!isActorAlive(enemy)) return;
                 let isHit = false;
                 const s = enemy.size || 1;
                 for (let bx = enemy.x; bx < enemy.x + s; bx++) {
@@ -529,7 +601,11 @@ function handleConsumableAction(socket, p, combat, data, secureKill) {
                         fallbackDamage: Math.max(2, Math.floor(spellData.damageFlat * 0.25))
                     });
                     let killed = false;
-                    if (enemy.hp <= 0) { enemy.hp = 0; enemy.alive = false; killed = true; secureKill(enemy); }
+                    if (enemy.hp <= 0) {
+                        killed = true;
+                        const killResult = defeatCombatTarget(combat, p, enemy, secureKill);
+                        combatComplete = combatComplete || !!(killResult && killResult.combatComplete);
+                    }
                     hitTargets.push({ uid: enemy.uid, damage: spellData.damageFlat, isCrit: false, killed: killed, statusApplied: poisonApplied ? "poison" : null, statusEffects: enemy.statusEffects });
                 }
             });
@@ -542,7 +618,9 @@ function handleConsumableAction(socket, p, combat, data, secureKill) {
                 density: spellData.fx ? spellData.fx.density : 12, spread: spellData.fx ? spellData.fx.spread : 15,
                 speed: spellData.fx ? spellData.fx.speed : 15, tx: data.tx, ty: data.ty
             },
-            updatedPlayer: p
+            updatedPlayer: p,
+            updatedCombatState: syncCombatViews(combat, p),
+            combatComplete
         });
     }
 }

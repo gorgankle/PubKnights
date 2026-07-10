@@ -379,6 +379,14 @@ function isValidPlayerMovePath(targetX, targetY) {
                 }
             }
         });
+        [...(allies || []), ...(rogues || [])].forEach(actor => {
+            if (actor.alive && actor.blocksMovement !== false) {
+                let s = actor.size || 1;
+                for (let bx = actor.x; bx < actor.x + s; bx++) {
+                    for (let by = actor.y; by < actor.y + s; by++) blockedSet.add(`${bx},${by}`);
+                }
+            }
+        });
 
         while (queue.length > 0) {
             let curr = queue.shift();

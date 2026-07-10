@@ -6,6 +6,27 @@ const socket = io();
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
+function syncCombatCollectionsFromState(serverCombatState) {
+    if (!serverCombatState) return;
+    if (serverCombatState.player) {
+        player.x = serverCombatState.player.x;
+        player.y = serverCombatState.player.y;
+    }
+    enemies = serverCombatState.enemies || [];
+    allies = serverCombatState.allies || [];
+    rogues = serverCombatState.rogues || [];
+    mapObstacles = serverCombatState.obstacles || mapObstacles || [];
+}
+
+function getCombatActorByUid(uid) {
+    if (!uid) return null;
+    return [...(enemies || []), ...(allies || []), ...(rogues || [])].find(actor => actor.uid === uid) || null;
+}
+
+function getPlayerAttackables() {
+    return [...(enemies || []), ...(rogues || [])].filter(actor => actor && actor.alive);
+}
+
 // === SERVER-AUTHORITATIVE SYNC ===
 
 socket.on('serverTick', (serverData) => {
@@ -35,6 +56,7 @@ socket.on('combatResult', (result) => {
     if (!result || gameState !== 'COMBAT') return;
 
     if (result.updatedPlayer) Object.assign(player, result.updatedPlayer); // Instantly sync stamina
+    const resultCombatState = result.updatedCombatState || null;
 
     // === THE FIX: HANDLE ERRORS & PASS TURN ===
     if (result.type === 'error') {
@@ -110,7 +132,7 @@ socket.on('combatResult', (result) => {
 
             // Loop through EVERY enemy hit by this attack and process damage dynamically
             result.targets.forEach(targetData => {
-                let e = enemies.find(en => en.uid === targetData.uid);
+                let e = getCombatActorByUid(targetData.uid);
                 if (!e) return;
                 
                 e.hp -= targetData.damage;
@@ -138,9 +160,10 @@ socket.on('combatResult', (result) => {
             });
 
             // Cleanup & Victory Checks
+            if (resultCombatState) syncCombatCollectionsFromState(resultCombatState);
             if (selectedEnemy && !selectedEnemy.alive) selectedEnemy = null;
             
-            if (enemies.every(e => !e.alive)) {
+            if (result.combatComplete || enemies.every(e => !e.alive)) {
                 logMessage("🏆 VICTORY Conditions verified.");
                 if (typeof playRetroSound === 'function') playRetroSound('victory');
                 
@@ -222,6 +245,7 @@ socket.on('combatItemReceipt', (receipt) => {
     }
 
     if (receipt.updatedPlayer) Object.assign(player, receipt.updatedPlayer); // Magic bullet sync
+    if (receipt.updatedCombatState) syncCombatCollectionsFromState(receipt.updatedCombatState);
     
     logMessage(receipt.message);
     if (receipt.message.includes("gear")) {
@@ -256,6 +280,7 @@ socket.on('moveReceipt', (receipt) => {
             player.stamina = receipt.updatedPlayer.stamina;
             refreshSystemUI();
         }
+        if (receipt.updatedCombatState) syncCombatCollectionsFromState(receipt.updatedCombatState);
     }
 });
 
@@ -367,6 +392,20 @@ if (data.item) {
     }
 });
 
+socket.on('rogueLootTheft', (data) => {
+    if (!data) return;
+    pendingLoot.length = 0;
+    if (Array.isArray(data.pendingLoot)) {
+        player.pendingLoot = data.pendingLoot;
+        pendingLoot.push(...data.pendingLoot);
+    }
+    logMessage(`${data.thiefName || 'A rogue'} slipped away with ${data.itemName || 'a prize'}!`);
+    if (typeof playRetroSound === 'function') playRetroSound('error');
+    if (document.getElementById("loot-screen").style.display === "block" && typeof refreshLootUI === 'function') {
+        refreshLootUI();
+    }
+});
+
 // === REPLACED ===
 socket.on('combatRewardsReceipt', (receipt) => {
     if (receipt.updatedPlayer) {
@@ -400,10 +439,7 @@ socket.on('combatRewardsReceipt', (receipt) => {
 socket.on('statusEffectReceipt', (receipt) => {
     if (!receipt || gameState !== 'COMBAT') return;
     if (receipt.updatedPlayer) Object.assign(player, receipt.updatedPlayer);
-    if (receipt.updatedCombatState) {
-        enemies = receipt.updatedCombatState.enemies;
-        mapObstacles = receipt.updatedCombatState.obstacles;
-    }
+    if (receipt.updatedCombatState) syncCombatCollectionsFromState(receipt.updatedCombatState);
 
     (receipt.events || []).forEach(ev => {
         if (ev.status === 'poison') {
@@ -411,7 +447,7 @@ socket.on('statusEffectReceipt', (receipt) => {
                 logMessage(`Poison burns you for ${ev.damage} DMG.`);
                 FXEngine.spawnText(player.x, player.y, `-${ev.damage}`, { color: "#8e44ad" });
             } else if (ev.uid) {
-                const e = enemies.find(en => en.uid === ev.uid);
+                const e = getCombatActorByUid(ev.uid);
                 if (e) {
                     logMessage(`${e.name} suffers ${ev.damage} poison DMG.`);
                     FXEngine.spawnText(e.x, e.y, `-${ev.damage}`, { color: "#8e44ad" });
@@ -446,8 +482,7 @@ socket.on('combatDeployed', (serverCombatState) => {
     currentTileSize = serverCombatState.tileSize;
     player.x = serverCombatState.player.x;
     player.y = serverCombatState.player.y;
-    enemies = serverCombatState.enemies;
-    mapObstacles = serverCombatState.obstacles;
+    syncCombatCollectionsFromState(serverCombatState);
     selectedEnemy = null;
     
     activeCombatZone = serverCombatState.zone;
@@ -493,12 +528,14 @@ socket.on('enemyTurnReceipt', (receipt) => {
 
     let delay = 0; // The playback timer!
 
-    function playEnemyAttackFx(ev, onComplete) {
+    function playEnemyAttackFx(ev, onComplete, targetActor = null) {
+        const targetX = targetActor ? targetActor.x : player.x;
+        const targetY = targetActor ? targetActor.y : player.y;
         if (ev.spellFx && ev.spellFx.type === 'beam') {
-            FXEngine.spawnBeam(ev.ex, ev.ey, player.x, player.y, ev.spellFx);
+            FXEngine.spawnBeam(ev.ex, ev.ey, targetX, targetY, ev.spellFx);
             setTimeout(onComplete, 350);
         } else if (ev.projectileSprite) {
-            FXEngine.spawnProjectile(ev.ex, ev.ey, player.x, player.y, ev.projectileSprite, { arc: 0, spin: false, frames: 20, onComplete: onComplete });
+            FXEngine.spawnProjectile(ev.ex, ev.ey, targetX, targetY, ev.projectileSprite, { arc: 0, spin: false, frames: 20, onComplete: onComplete });
         } else {
             onComplete();
         }
@@ -508,7 +545,7 @@ socket.on('enemyTurnReceipt', (receipt) => {
     events.forEach(ev => {
         setTimeout(() => {
             if (ev.type === 'move') {
-                let e = ev.uid ? enemies.find(en => en.uid === ev.uid) : enemies.find(en => en.name === ev.name);
+                let e = ev.uid ? getCombatActorByUid(ev.uid) : [...enemies, ...allies, ...rogues].find(en => en.name === ev.name);
                 if (e) { e.x = ev.finalX; e.y = ev.finalY; }
             } 
             else if (ev.type === 'crush') {
@@ -546,8 +583,8 @@ socket.on('enemyTurnReceipt', (receipt) => {
             }
             else if (ev.type === 'statusTick') {
                 if (ev.status === 'poison') {
-                    if (ev.targetType === 'enemy') {
-                        const e = enemies.find(en => en.uid === ev.uid);
+                    if (ev.targetType === 'enemy' || ev.targetType === 'actor') {
+                        const e = getCombatActorByUid(ev.uid);
                         if (e) {
                             e.hp = Math.max(0, e.hp - ev.damage);
                             if (ev.killed) e.alive = false;
@@ -559,6 +596,45 @@ socket.on('enemyTurnReceipt', (receipt) => {
                         FXEngine.spawnText(player.x, player.y, `-${ev.damage}`, { color: "#8e44ad" });
                     }
                 }
+            }
+            else if (ev.type === 'actorDeflect') {
+                const target = getCombatActorByUid(ev.targetUid);
+                playEnemyAttackFx(ev, () => {
+                    if (target) FXEngine.spawnText(target.x, target.y, "DEFLECT", { color: "#3498db" });
+                    logMessage(`${ev.targetName} deflected ${ev.sourceName}'s attack.`);
+                    if (typeof playRetroSound === 'function') playRetroSound('deflect');
+                }, target);
+            }
+            else if (ev.type === 'actorHit') {
+                const target = getCombatActorByUid(ev.targetUid);
+                playEnemyAttackFx(ev, () => {
+                    if (target) {
+                        target.hp = Math.max(0, target.hp - ev.damage);
+                        if (ev.killed) target.alive = false;
+                        if (ev.statusEffects) target.statusEffects = ev.statusEffects;
+                        FXEngine.spawnText(target.x, target.y, ev.isCrit ? `-${ev.damage}!` : `-${ev.damage}`, {
+                            color: ev.sourceTeamId === 'PLAYER' ? "#f1c40f" : "#e74c3c",
+                            isCrit: ev.isCrit
+                        });
+                        if (ev.statusApplied === 'poison') FXEngine.spawnText(target.x, target.y, "POISON", { color: "#8e44ad" });
+                    }
+                    logMessage(`${ev.sourceName} hits ${ev.targetName} for ${ev.damage} DMG.`);
+                    if (typeof playRetroSound === 'function') playRetroSound(ev.sourceTeamId === 'PLAYER' ? 'attack' : 'playerHit');
+                }, target);
+            }
+            else if (ev.type === 'heal') {
+                player.hp = ev.hp || player.hp;
+                logMessage(`${ev.sourceName} patches you up for ${ev.amount} HP.`);
+                FXEngine.spawnText(player.x, player.y, `+${ev.amount}`, { color: "#2ecc71" });
+                if (typeof playRetroSound === 'function') playRetroSound('chug');
+            }
+            else if (ev.type === 'retreat') {
+                const actor = getCombatActorByUid(ev.uid);
+                if (actor) {
+                    actor.alive = false;
+                    actor.retreated = true;
+                }
+                logMessage(`${ev.actorName} retreats to safety.`);
             }
             else if (ev.type === 'steal') {
                 logMessage(`🍺 The Mimic intercepts your gear inventory and chugs one of your Stouts!`);
@@ -575,17 +651,14 @@ socket.on('enemyTurnReceipt', (receipt) => {
 
         // === NEW: MULTIPLY THE DELAY BY OUR TIME COMPRESSION ===
         if (ev.type === 'move') delay += (100 * timeCompression);
-        else if (ev.type === 'hit' || ev.type === 'deflect') delay += (350 * timeCompression);
+        else if (ev.type === 'hit' || ev.type === 'deflect' || ev.type === 'actorHit' || ev.type === 'actorDeflect') delay += (350 * timeCompression);
         else delay += (50 * timeCompression);
     });
 
     // 3. Finally, hand control back to the player!
     setTimeout(() => {
         // We only overwrite the grid with the server's truth AFTER the movie finishes playing!
-        if (receipt.updatedCombatState) {
-            enemies = receipt.updatedCombatState.enemies;
-            mapObstacles = receipt.updatedCombatState.obstacles;
-        }
+        if (receipt.updatedCombatState) syncCombatCollectionsFromState(receipt.updatedCombatState);
 
         if (player.hp > 0) {
             reachableTiles = null;
@@ -611,6 +684,8 @@ let combatPhase = 'MOVE';
 let activeCombatZone = 'WILDERNESS'; 
 let activeCombatFloorSpriteId = 'ground_wilderness';
 let activeCombatFloorTiles = [];
+let allies = [];
+let rogues = [];
 
 
 // Target Tracking

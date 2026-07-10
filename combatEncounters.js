@@ -4,6 +4,17 @@
 const { createEnemy } = require('./public/js/npc-database.js');
 const { sanitizeToken, clampInt } = require('./serverSecurity.js');
 const { getTemplateForEncounter, obstacleStyleForZone } = require('./combatMapTemplates.js');
+const {
+    addCombatActor,
+    createPlayerActor,
+    createEnemyActor,
+    createPetActor,
+    createKregActor,
+    createCellarDwellerActor,
+    getEnemyActors,
+    findOpenTileNear,
+    syncCombatViews
+} = require('./combatActors.js');
 
 const VALID_ZONES = Object.freeze(['WILDERNESS', 'CELLARS', 'ABYSS', 'GORILLA_ARENA']);
 
@@ -14,7 +25,7 @@ function addEnemyFromSlot(combatState, slot, prefix = "", statMult = 1) {
     const enemy = createEnemy(enemyId, slot.x, slot.y, slot.prefix ?? prefix, slot.statMult ?? statMult);
     if (!enemy) return;
     if (slot.name) enemy.name = slot.name;
-    combatState.enemies.push(enemy);
+    addCombatActor(combatState, createEnemyActor(enemy));
 }
 
 function getWildernessEnemyId(runLvl, spawnIndex) {
@@ -51,7 +62,11 @@ function createCombatEncounter(player, data) {
         floorSpriteId: template.floorSpriteId || "ground_wilderness",
         floorTiles: template.floorTiles || [],
         player: { x: template.playerStart.x, y: template.playerStart.y, atbCharge: 0 },
+        actors: [],
         enemies: [],
+        allies: [],
+        rogues: [],
+        nextActorId: 0,
         obstacles: (template.obstacles || []).map(obstacle => ({
             x: obstacle.x,
             y: obstacle.y,
@@ -60,6 +75,7 @@ function createCombatEncounter(player, data) {
         })),
         atbPaused: false
     };
+    addCombatActor(combatState, createPlayerActor(player, template.playerStart));
 
     const baitMultiplier = (zone === 'WILDERNESS' && player.mapBaited) ? 1.4 : 1.0;
     const prefixLabel = (zone === 'WILDERNESS' && player.mapBaited) ? "Frenzied " : "";
@@ -113,12 +129,37 @@ function createCombatEncounter(player, data) {
         }
     }
 
-    combatState.enemies.forEach((enemy, idx) => {
+    getEnemyActors(combatState).forEach((enemy, idx) => {
         enemy.uid = `mob_${idx}`;
         enemy.atbCharge = 0;
     });
 
-    return combatState;
+    if (player.pet && player.pet.adopted) {
+        const petTile = findOpenTileNear(combatState, template.playerStart, [
+            { x: template.playerStart.x, y: template.playerStart.y + 1 },
+            { x: template.playerStart.x, y: template.playerStart.y - 1 }
+        ]);
+        if (petTile) addCombatActor(combatState, createPetActor(player, petTile));
+    }
+
+    if (zone === 'WILDERNESS' && runLvl === 20) {
+        const kregTile = findOpenTileNear(combatState, template.playerStart, [
+            { x: template.playerStart.x + 1, y: template.playerStart.y + 1 },
+            { x: template.playerStart.x + 1, y: template.playerStart.y - 1 }
+        ]);
+        if (kregTile) addCombatActor(combatState, createKregActor(kregTile));
+    }
+
+    if (zone === 'CELLARS' && runLvl === 20) {
+        const rogueTile = findOpenTileNear(combatState, { x: 7, y: 4 }, [
+            { x: 7, y: 4 },
+            { x: 8, y: 4 },
+            { x: 7, y: 5 }
+        ]);
+        if (rogueTile) addCombatActor(combatState, createCellarDwellerActor(rogueTile));
+    }
+
+    return syncCombatViews(combatState, player);
 }
 
 module.exports = {

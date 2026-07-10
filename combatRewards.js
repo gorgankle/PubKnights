@@ -4,12 +4,36 @@
 const { ItemDatabase } = require('./public/js/items.js');
 const { LootTables } = require('./public/js/lootTables.js');
 const { getMaxHp, getMaxStamina } = require('./combatMath.js');
+const { getEnemyActors, getAliveRogueActors, syncCombatViews } = require('./combatActors.js');
+
+const ROGUE_STEAL_RARITIES = new Set(['Epic', 'Unique', 'Relic', 'Gorilla']);
+
+function applyRogueLootTheft(socketId, player, combat, io) {
+    if (combat.zone !== 'CELLARS' || combat.activeLevel !== 20) return null;
+    const thief = getAliveRogueActors(combat).find(actor => actor.stealsBossLoot);
+    if (!thief || !Array.isArray(player.pendingLoot) || player.pendingLoot.length === 0) return null;
+
+    const stealIndex = player.pendingLoot.findIndex(item => item && ROGUE_STEAL_RARITIES.has(item.rarity));
+    if (stealIndex < 0) return null;
+
+    const stolenItem = player.pendingLoot.splice(stealIndex, 1)[0];
+    io.to(socketId).emit('rogueLootTheft', {
+        thiefName: thief.name,
+        itemName: stolenItem.name,
+        pendingLoot: player.pendingLoot
+    });
+    return stolenItem;
+}
 
 function processSecureKill(socketId, serverEnemy, context) {
     const { activePlayers, activeCombats, io } = context;
     const p = activePlayers[socketId];
     const combat = activeCombats[socketId];
     if (!p || !combat) return;
+    if (serverEnemy.rewardsEligible === false) {
+        syncCombatViews(combat, p);
+        return { combatComplete: getEnemyActors(combat).every(e => !e.alive) };
+    }
 
     const multiplier = p.monumentBuilt ? 2 : 1;
     const isGorilla = (combat.zone === 'GORILLA_ARENA');
@@ -45,7 +69,7 @@ function processSecureKill(socketId, serverEnemy, context) {
         gold: goldReward, xp: xpReward, item: droppedItemObj, isPet: false, enemyName: serverEnemy.name
     });
 
-    if (combat.enemies.every(e => !e.alive)) {
+    if (getEnemyActors(combat).every(e => !e.alive)) {
         let zoneGoldReward = 0;
         if (combat.zone === 'GORILLA_ARENA') zoneGoldReward += 5000;
         else if (combat.zone === 'ABYSS') {
@@ -60,8 +84,14 @@ function processSecureKill(socketId, serverEnemy, context) {
         }
         if (zoneGoldReward > 0) p.pendingGold = (p.pendingGold || 0) + zoneGoldReward;
 
+        applyRogueLootTheft(socketId, p, combat, io);
+        syncCombatViews(combat, p);
         delete activeCombats[socketId];
+        return { combatComplete: true };
     }
+
+    syncCombatViews(combat, p);
+    return { combatComplete: false };
 }
 
 function claimCombatRewards(player) {
