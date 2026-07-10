@@ -5,6 +5,8 @@ const { ItemDatabase } = require('./public/js/items.js');
 const { LootTables } = require('./public/js/lootTables.js');
 const { getMaxHp, getMaxStamina } = require('./combatMath.js');
 const { getEnemyActors, getAliveRogueActors, syncCombatViews } = require('./combatActors.js');
+const { sanitizeLifetimeXp } = require('./xpMath.js');
+const { applyLifetimeXpLevelUps } = require('./playerProgression.js');
 
 const ROGUE_STEAL_RARITIES = new Set(['Epic', 'Unique', 'Relic', 'Gorilla']);
 
@@ -95,38 +97,16 @@ function processSecureKill(socketId, serverEnemy, context) {
 }
 
 function claimCombatRewards(player) {
-    const MAX_PLAYER_LEVEL = 50;
-    const SP_PER_LEVEL = 5;
-
     player.gold = player.gold || 0;
-    player.xp = player.xp || 0;
-    player.level = player.level || 1;
-    player.xpToNext = player.xpToNext || 100;
+    player.xp = sanitizeLifetimeXp(player.xp);
 
     if (player.pendingGold > 0) player.gold += player.pendingGold;
 
     if (player.pendingXp > 0) {
-        player.xp += player.pendingXp;
-
-        while (player.xp >= player.xpToNext && player.level < MAX_PLAYER_LEVEL) {
-            player.xp -= player.xpToNext;
-            player.level += 1;
-            player.skillPoints = (player.skillPoints || 0) + SP_PER_LEVEL;
-
-            const base = 100;
-            const multiplier = Math.pow(1.15, player.level - 1);
-            const flatBump = player.level * 50;
-            player.xpToNext = Math.floor((base * multiplier) + flatBump);
-
-            player.hp = getMaxHp(player);
-            player.stamina = getMaxStamina(player);
-        }
-
-        if (player.level >= MAX_PLAYER_LEVEL) {
-            player.xp = 0;
-            player.xpToNext = "MAX";
-        }
+        player.xp += sanitizeLifetimeXp(player.pendingXp);
     }
+
+    applyLifetimeXpLevelUps(player);
 
     player.hp = getMaxHp(player);
     player.stamina = getMaxStamina(player);

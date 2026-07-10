@@ -200,27 +200,46 @@ function animateCombatRewards() {
     let xpText = document.getElementById("loot-xp-text");
 
     let targetGold = player.pendingGold || 0;
-    let targetXp = player.pendingXp || 0;
+    let targetXp = sanitizeLifetimeXp(player.pendingXp || 0);
 
     if (goldDisplay) goldDisplay.innerText = `+${targetGold}g`;
     if (xpDisplay) xpDisplay.innerText = `+${targetXp} XP`;
 
     if (!xpBar || !xpText) return;
 
-    let currentXp = player.xp || 0;
-    let currentLevel = player.level || 1;
-    let xpToNext = calculateNextLevelXp(currentLevel);
+    let displayXp = sanitizeLifetimeXp(player.xp || 0);
+    let currentLevel = normalizePlayerLevel(player.level || 1);
+    let targetTotalXp = displayXp + targetXp;
+    const formatXp = value => Math.floor(Number(value) || 0).toLocaleString();
 
-    // If max level, freeze the bar
-    if (currentLevel >= MAX_PLAYER_LEVEL) {
-        xpText.innerText = `Lvl ${MAX_PLAYER_LEVEL} (MAX)`;
-        xpBar.style.width = `100%`;
-        xpBar.style.background = `linear-gradient(90deg, #f1c40f, #e67e22)`; // Gold max level bar
-        return;
-    }
+    const updateXpBar = () => {
+        if (currentLevel >= MAX_PLAYER_LEVEL) {
+            xpText.innerText = `Lvl ${MAX_PLAYER_LEVEL} (MAX) - ${formatXp(displayXp)} Total XP`;
+            xpBar.style.width = `100%`;
+            xpBar.style.background = `linear-gradient(90deg, #f1c40f, #e67e22)`;
+            return;
+        }
 
-    xpText.innerText = `Lvl ${currentLevel}: ${Math.floor(currentXp)}/${xpToNext}`;
-    xpBar.style.width = `${(currentXp / xpToNext) * 100}%`;
+        const progress = getLevelXpProgress(displayXp, currentLevel);
+        xpText.innerText = `Lvl ${currentLevel}: ${formatXp(progress.progress)}/${formatXp(progress.needed)} (${formatXp(progress.total)} total)`;
+        xpBar.style.width = `${Math.max(0, Math.min(100, progress.pct))}%`;
+        xpBar.style.background = `linear-gradient(90deg, #27ae60, #2ecc71)`;
+    };
+
+    const advanceVisualLevel = () => {
+        let leveled = false;
+        while (currentLevel < MAX_PLAYER_LEVEL) {
+            const nextLevelXp = calculateNextLevelXp(currentLevel);
+            if (nextLevelXp === "MAX" || displayXp < nextLevelXp) break;
+            currentLevel++;
+            leveled = true;
+            if (typeof playRetroSound === 'function') playRetroSound('statUp');
+        }
+        return leveled;
+    };
+
+    advanceVisualLevel();
+    updateXpBar();
 
     if (targetXp > 0) {
         let ticks = 45; 
@@ -228,43 +247,16 @@ function animateCombatRewards() {
         let tickCount = 0;
 
         let animInterval = setInterval(() => {
-            if (currentLevel >= MAX_PLAYER_LEVEL) {
-                clearInterval(animInterval);
-                return;
-            }
+            tickCount++;
+            displayXp = tickCount >= ticks ? targetTotalXp : Math.min(targetTotalXp, displayXp + xpPerTick);
 
-            currentXp += xpPerTick;
-
-            if (currentXp >= xpToNext) {
-                currentXp -= xpToNext;
-                currentLevel++;
-                
-                // === GRANT NEW SKILL POINTS ===
-                player.skillPoints = (player.skillPoints || 0) + SP_PER_LEVEL;
-                
-                if (currentLevel >= MAX_PLAYER_LEVEL) {
-                    currentXp = 0;
-                    xpToNext = "MAX";
-                    xpText.innerText = `Lvl ${MAX_PLAYER_LEVEL} (MAX)`;
-                    xpBar.style.width = `100%`;
-                    xpBar.style.background = `linear-gradient(90deg, #f1c40f, #e67e22)`;
-                    if (typeof playRetroSound === 'function') playRetroSound('statUp');
-                    clearInterval(animInterval);
-                    return;
-                }
-
-                xpToNext = calculateNextLevelXp(currentLevel);
-                if (typeof playRetroSound === 'function') playRetroSound('statUp'); 
-            } else if (tickCount % 3 === 0) {
+            const leveled = advanceVisualLevel();
+            if (!leveled && tickCount % 3 === 0) {
                 if (typeof playRetroSound === 'function') playRetroSound('xpTick');
             }
 
-            if (currentLevel < MAX_PLAYER_LEVEL) {
-                xpText.innerText = `Lvl ${currentLevel}: ${Math.floor(currentXp)}/${xpToNext}`;
-                xpBar.style.width = `${(currentXp / xpToNext) * 100}%`;
-            }
+            updateXpBar();
 
-            tickCount++;
             if (tickCount >= ticks) clearInterval(animInterval);
         }, 30);
     }

@@ -750,13 +750,15 @@ if (hopsScreen) hopsScreen.style.display = "none";
                 
                 let xpString = "";
                 let xpPct = 0;
+                let lifetimeXp = sanitizeLifetimeXp(player.xp || 0);
                 
                 if (player.level >= MAX_PLAYER_LEVEL) {
-                    xpString = `MAX LEVEL`;
+                    xpString = `${lifetimeXp.toLocaleString()} Total XP - MAX`;
                     xpPct = 100;
                 } else {
-                    xpPct = Math.floor((player.xp / player.xpToNext) * 100);
-                    xpString = `${player.xp}/${player.xpToNext} XP - ${xpPct}%`;
+                    const progress = getLevelXpProgress(lifetimeXp, player.level || 1);
+                    xpPct = progress.pct;
+                    xpString = `${lifetimeXp.toLocaleString()} Total XP - ${xpPct}% to next`;
                 }
                 
                 // === UPDATED: Calculate total SP correctly based on the new 5 SP limit ===

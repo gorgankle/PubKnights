@@ -5,6 +5,8 @@ const crypto = require('crypto');
 const mongoose = require('mongoose');
 const { sanitizeToken } = require('./serverSecurity.js');
 const { getQuestDefinition } = require('./questDefinitions.js');
+const { sanitizeLifetimeXp } = require('./xpMath.js');
+const { applyLifetimeXpLevelUps } = require('./playerProgression.js');
 
 function ensureQuestState(player) {
     if (!player.quests || typeof player.quests !== 'object') {
@@ -30,7 +32,8 @@ function applyQuestRewards(player, rewards) {
         granted.push({ type: 'gold', amount: rewards.gold });
     }
     if (Number.isInteger(rewards.xp) && rewards.xp > 0) {
-        player.xp = (player.xp || 0) + rewards.xp;
+        player.xp = sanitizeLifetimeXp(player.xp) + rewards.xp;
+        applyLifetimeXpLevelUps(player);
         granted.push({ type: 'xp', amount: rewards.xp });
     }
 

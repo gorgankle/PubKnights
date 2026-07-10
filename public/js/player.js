@@ -40,12 +40,69 @@ maxInventorySlots: 5, backpackUpgrades: 0,
     autoClaimEnabled: false
 };
 
-function calculateNextLevelXp(currentLevel) {
-    if (currentLevel >= MAX_PLAYER_LEVEL) return "MAX"; // Cap out the UI
+function normalizePlayerLevel(level) {
+    return Math.max(1, Math.min(MAX_PLAYER_LEVEL, Math.floor(Number(level) || 1)));
+}
+
+function sanitizeLifetimeXp(xp) {
+    return Math.max(0, Math.floor(Number(xp) || 0));
+}
+
+function getXpRequirementForLevel(level) {
+    let currentLevel = normalizePlayerLevel(level);
+    if (currentLevel <= 1) return 100;
+
     let base = 100;
     let multiplier = Math.pow(1.15, currentLevel - 1);
     let flatBump = currentLevel * 50;
     return Math.floor((base * multiplier) + flatBump);
+}
+
+function getTotalXpForLevel(level) {
+    let targetLevel = normalizePlayerLevel(level);
+    let total = 0;
+
+    for (let currentLevel = 1; currentLevel < targetLevel; currentLevel++) {
+        total += getXpRequirementForLevel(currentLevel);
+    }
+
+    return total;
+}
+
+function calculateNextLevelXp(currentLevel) {
+    let level = normalizePlayerLevel(currentLevel);
+    if (level >= MAX_PLAYER_LEVEL) return "MAX"; // Cap out the UI
+    return getTotalXpForLevel(level + 1);
+}
+
+function getLevelXpProgress(totalXp, currentLevel) {
+    let level = normalizePlayerLevel(currentLevel);
+    let lifetimeXp = sanitizeLifetimeXp(totalXp);
+
+    if (level >= MAX_PLAYER_LEVEL) {
+        return {
+            levelStart: getTotalXpForLevel(MAX_PLAYER_LEVEL),
+            nextLevel: "MAX",
+            progress: 1,
+            needed: 1,
+            pct: 100,
+            total: lifetimeXp
+        };
+    }
+
+    let levelStart = getTotalXpForLevel(level);
+    let nextLevel = calculateNextLevelXp(level);
+    let needed = Math.max(1, nextLevel - levelStart);
+    let progress = Math.max(0, Math.min(needed, lifetimeXp - levelStart));
+
+    return {
+        levelStart,
+        nextLevel,
+        progress,
+        needed,
+        pct: Math.floor((progress / needed) * 100),
+        total: lifetimeXp
+    };
 }
 
 
@@ -142,7 +199,7 @@ function saveGame(manualNotify = false) {
     if (!currentUsername) return;
 
     const saveData = {
-        level: player.level || 1, xp: player.xp || 0, xpToNext: player.xpToNext || 100, skillPoints: player.skillPoints || 0,
+        level: player.level || 1, xp: player.xp || 0, xpToNext: player.xpToNext || calculateNextLevelXp(player.level || 1), skillPoints: player.skillPoints || 0,
         vitality: player.vitality || 70, hp: player.hp || 70, stamina: player.stamina || 50, maxStamina: player.maxStamina || 50,
         
         // === THE NEW CORE 5 ===

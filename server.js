@@ -14,6 +14,15 @@ const injectQuestRouter = require('./questRouter.js');
 const { CombatMapTemplates, obstacleStyleForZone } = require('./combatMapTemplates.js');
 const { ItemDatabase } = require('./public/js/items.js');
 const {
+    MAX_PLAYER_LEVEL,
+    normalizeLevel,
+    sanitizeLifetimeXp,
+    getXpRequirementForLevel,
+    getTotalXpForLevel,
+    getTotalXpForNextLevel
+} = require('./xpMath.js');
+const { applyLifetimeXpLevelUps } = require('./playerProgression.js');
+const {
     DEFAULT_APPEARANCE,
     normalizeUsername,
     validatePassword,
@@ -147,10 +156,45 @@ function createSaveSnapshot(playerState) {
     return snapshot;
 }
 
+function migrateLifetimeXp(pd) {
+    if (!pd || typeof pd !== 'object') return;
+
+    pd.level = normalizeLevel(pd.level);
+    const storedXp = sanitizeLifetimeXp(pd.xp);
+    const storedNext = Number(pd.xpToNext);
+    const levelStartXp = getTotalXpForLevel(pd.level);
+
+    pd.xp = storedXp;
+
+    if (pd.level >= MAX_PLAYER_LEVEL) {
+        if (pd.xp < levelStartXp) {
+            pd.xp += levelStartXp;
+        }
+        pd.xpToNext = "MAX";
+        return;
+    }
+
+    const cumulativeNextXp = getTotalXpForNextLevel(pd.level);
+    const oldPerLevelNextXp = getXpRequirementForLevel(pd.level);
+    const hasOldPerLevelThreshold = Number.isFinite(storedNext)
+        && storedNext > 0
+        && storedNext < cumulativeNextXp;
+    const looksLikeOldPerLevelProgress = pd.level > 1
+        && hasOldPerLevelThreshold
+        && storedXp < Math.max(storedNext, oldPerLevelNextXp);
+    const isBelowLifetimeFloor = pd.level > 1 && storedXp < levelStartXp;
+
+    if (looksLikeOldPerLevelProgress || isBelowLifetimeFloor) {
+        pd.xp = levelStartXp + storedXp;
+    }
+
+    applyLifetimeXpLevelUps(pd, { restoreVitals: false });
+}
+
 function createDefaultSaveData(username) {
     return {
         username,
-        level: 1, xp: 0, xpToNext: 100, skillPoints: 0,
+        level: 1, xp: 0, xpToNext: getTotalXpForNextLevel(1), skillPoints: 0,
         vitality: 1, hp: 25, stamina: 25, maxStamina: 1,
         offense: 1, defense: 1, speed: 1,
         vaultSlots: 10, gold: 0, hops: 0, wood: 0, fish: 0,
@@ -181,6 +225,7 @@ function hydratePlayerData(playerDoc) {
     pd.appearance = sanitizeAppearance(pd.appearance);
     pd.friends = playerDoc.friends || [];
     pd.ignored = playerDoc.ignored || [];
+    migrateLifetimeXp(pd);
     delete pd.activeMinigame;
     delete pd._lastMinigameClaim;
     delete pd.tradeStaging;
