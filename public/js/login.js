@@ -41,22 +41,6 @@ function startNewGame() {
     socket.emit('register', { username, password });
 }
 
-function startGoogleSignIn() {
-    window.location.href = '/auth/google';
-}
-
-function consumeSsoLoginToken() {
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get('ssoToken');
-    if (!token) return;
-
-    params.delete('ssoToken');
-    const cleanQuery = params.toString();
-    const cleanUrl = `${window.location.pathname}${cleanQuery ? `?${cleanQuery}` : ''}${window.location.hash}`;
-    window.history.replaceState({}, document.title, cleanUrl);
-    socket.emit('ssoLogin', { token });
-}
-
 // Triggered after the player finishes customizing
 function finalizeCharacter() {
     if (typeof saveGame === 'function') saveGame(true); 
@@ -86,5 +70,3 @@ socket.on('loginSuccess', (serverSaveData) => {
     Object.assign(player, serverSaveData);
     enterGameUI();
 });
-
-consumeSsoLoginToken();
