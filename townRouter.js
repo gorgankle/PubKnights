@@ -29,18 +29,89 @@ function rollSecureCrateLoot(crateId) {
     return chosenEntry;
 }
 
+const STARTER_COMPANION_ID = 'marlow_shieldhand';
+const STARTER_COMPANION_COST = 250;
+
+function cloneItem(itemId) {
+    return ItemDatabase[itemId] ? JSON.parse(JSON.stringify(ItemDatabase[itemId])) : null;
+}
+
+function createStarterCompanion() {
+    return {
+        id: STARTER_COMPANION_ID,
+        name: 'Marlow Shieldhand',
+        role: 'Frontliner',
+        level: 1,
+        hired: true,
+        active: true,
+        icon: 'M',
+        spriteId: 'companion_marlow',
+        stats: { vitality: 3, offense: 2, defense: 2, speed: 3 },
+        equipment: {
+            weapon: cloneItem('rusty_mace'),
+            helmet: cloneItem('rusty_coif'),
+            armor: cloneItem('leather_tunic'),
+            accessory: null
+        }
+    };
+}
+
+function normalizeRosterState(player) {
+    const roster = player.roster && typeof player.roster === 'object' ? player.roster : {};
+    const companions = Array.isArray(roster.companions) ? roster.companions : [];
+    const seen = new Set();
+    player.roster = {
+        companions: companions.filter(companion => {
+            if (!companion || !companion.id || seen.has(companion.id)) return false;
+            seen.add(companion.id);
+            companion.hired = companion.hired !== false;
+            companion.equipment = companion.equipment && typeof companion.equipment === 'object' ? companion.equipment : {};
+            ['weapon', 'helmet', 'armor', 'accessory'].forEach(slot => {
+                if (!Object.prototype.hasOwnProperty.call(companion.equipment, slot)) companion.equipment[slot] = null;
+            });
+            companion.stats = companion.stats && typeof companion.stats === 'object' ? companion.stats : { vitality: 3, offense: 2, defense: 2, speed: 3 };
+            return true;
+        }),
+        activeIds: Array.isArray(roster.activeIds) ? roster.activeIds.filter(id => seen.has(id)).slice(0, 1) : []
+    };
+    player.roster.companions.forEach(companion => { companion.active = player.roster.activeIds.includes(companion.id); });
+}
+function getLegacyWorkerContactCount(player) {
+    const workers = player.workers && typeof player.workers === 'object' ? player.workers : {};
+    if (workers.woodcutters !== undefined || workers.fishermen !== undefined || workers.farmers !== undefined) {
+        return clampInt(workers.woodcutters, 0, Number.MAX_SAFE_INTEGER, 0)
+            + clampInt(workers.fishermen, 0, Number.MAX_SAFE_INTEGER, 0)
+            + clampInt(workers.farmers, 0, Number.MAX_SAFE_INTEGER, 0);
+    }
+    return clampInt(workers.total, 0, Number.MAX_SAFE_INTEGER, 0);
+}
+
+function normalizeWorkerState(player) {
+    const contactCount = player.tavernContacts && typeof player.tavernContacts === 'object'
+        ? clampInt(player.tavernContacts.total, 0, Number.MAX_SAFE_INTEGER, 0)
+        : getLegacyWorkerContactCount(player);
+    const refundGold = player.tavernContacts && typeof player.tavernContacts === 'object'
+        ? clampInt(player.tavernContacts.refundGold, 0, Number.MAX_SAFE_INTEGER, 0)
+        : clampInt(player.workerRefundGold, 0, Number.MAX_SAFE_INTEGER, 0);
+
+    player.tavernContacts = { total: contactCount, refundGold };
+    player.workers = { total: 0, assigned: { wood: 0, fish: 0, hops: 0 }, retired: true };
+}
+
 function ensurePlayerContainers(player) {
     player.inventory = Array.isArray(player.inventory) ? player.inventory : [];
     player.stash = Array.isArray(player.stash) ? player.stash : [];
     player.equipment = player.equipment && typeof player.equipment === 'object' ? player.equipment : {};
     player.buildings = player.buildings && typeof player.buildings === 'object' ? player.buildings : { workerCabin: 1 };
-    player.workers = player.workers && typeof player.workers === 'object'
-        ? player.workers
-        : { total: 0, assigned: { wood: 0, fish: 0, hops: 0 } };
-    player.workers.assigned = player.workers.assigned || { wood: 0, fish: 0, hops: 0 };
+    normalizeWorkerState(player);
     player.supplyCart = player.supplyCart && typeof player.supplyCart === 'object'
         ? player.supplyCart
         : { wood: 0, fish: 0, hops: 0, max: 100, level: 1 };
+    player.supplyCart.wood = clampInt(player.supplyCart.wood, 0, Number.MAX_SAFE_INTEGER, 0);
+    player.supplyCart.fish = clampInt(player.supplyCart.fish, 0, Number.MAX_SAFE_INTEGER, 0);
+    player.supplyCart.hops = clampInt(player.supplyCart.hops, 0, Number.MAX_SAFE_INTEGER, 0);
+    player.supplyCart.max = clampInt(player.supplyCart.max, 1, Number.MAX_SAFE_INTEGER, 100);
+    player.supplyCart.level = clampInt(player.supplyCart.level, 1, Number.MAX_SAFE_INTEGER, 1);
 }
 
 function reorderCollection(collection, fromValue, toValue) {
@@ -243,6 +314,22 @@ if (data.action === 'equip') {
                 socket.emit('inventoryReceipt', { success: false, message: "🎒 Backpack is full." });
             }
         }
+        else if (data.action === 'depositEquipment') {
+            const validSlots = ["weapon", "helmet", "armor", "gloves", "boots"];
+            const slotKey = sanitizeToken(data.slotKey, '');
+            if (!validSlots.includes(slotKey)) return;
+
+            const worn = p.equipment[slotKey];
+            if (!worn) return socket.emit('inventoryReceipt', { success: false, message: "No equipped item in that slot." });
+
+            if (p.stash.length < (p.vaultSlots || 10)) {
+                p.stash.push(worn);
+                p.equipment[slotKey] = null;
+                socket.emit('inventoryReceipt', { success: true, action: 'deposit', updatedPlayer: p, message: "Equipped item deposited into Vault." });
+            } else {
+                socket.emit('inventoryReceipt', { success: false, message: "Vault is full." });
+            }
+        }
         else if (data.action === 'reorderBackpack') {
             if (reorderCollection(p.inventory, data.fromIndex, data.toIndex)) {
                 socket.emit('inventoryReceipt', { success: true, action: 'reorder', updatedPlayer: p });
@@ -327,6 +414,40 @@ if (data.action === 'equip') {
                 socket.emit('townReceipt', { success: false, message: "❌ Insufficient funds to adopt a companion (Requires 10 Gold)." });
             }
         }
+        else if (data.action === 'hireCompanion') {
+            const companionId = sanitizeToken(data.companionId, STARTER_COMPANION_ID);
+            if (companionId !== STARTER_COMPANION_ID) return socket.emit('townReceipt', { success: false, message: 'That companion is not available yet.' });
+            if (p.roster.companions.some(companion => companion.id === STARTER_COMPANION_ID)) {
+                return socket.emit('townReceipt', { success: false, action: 'hireCompanion', updatedPlayer: p, message: 'Marlow is already on your roster.' });
+            }
+            if (p.gold < STARTER_COMPANION_COST) {
+                return socket.emit('townReceipt', { success: false, message: `Marlow asks for ${STARTER_COMPANION_COST}g up front.` });
+            }
+
+            p.gold -= STARTER_COMPANION_COST;
+            const companion = createStarterCompanion();
+            p.roster.companions.push(companion);
+            p.roster.activeIds = [companion.id];
+            normalizeRosterState(p);
+            socket.emit('townReceipt', { success: true, action: 'hireCompanion', updatedPlayer: p, message: 'Marlow Shieldhand joins your party. Manage active companions from the Knight screen.' });
+        }
+        else if (data.action === 'setActiveCompanion') {
+            const companionId = sanitizeToken(data.companionId, '');
+            normalizeRosterState(p);
+            const companion = p.roster.companions.find(entry => entry.id === companionId);
+            if (!companion) return socket.emit('townReceipt', { success: false, message: 'That companion is not on your roster.' });
+            p.roster.activeIds = [companion.id];
+            normalizeRosterState(p);
+            socket.emit('townReceipt', { success: true, action: 'setActiveCompanion', updatedPlayer: p, message: `${companion.name} is now active.` });
+        }
+        else if (data.action === 'benchCompanion') {
+            const companionId = sanitizeToken(data.companionId, '');
+            normalizeRosterState(p);
+            p.roster.activeIds = p.roster.activeIds.filter(id => id !== companionId);
+            normalizeRosterState(p);
+            socket.emit('townReceipt', { success: true, action: 'benchCompanion', updatedPlayer: p, message: 'Companion moved to inactive roster.' });
+        }
+
 		
         // 4. PET TRAINING
         else if (data.action === 'trainPet') {
@@ -347,41 +468,13 @@ if (data.action === 'equip') {
         else if (data.action === 'exportFish') {
             if (p.fish >= 100) {
                 p.fish -= 100; p.gold += 120;
-                socket.emit('townReceipt', { success: true, action: 'exportFish', updatedPlayer: p, message: "🐟 Wholesale Export Complete: Traded 100 fish for 150g!" });
+                socket.emit('townReceipt', { success: true, action: 'exportFish', updatedPlayer: p, message: "🐟 Wholesale Export Complete: Traded 100 fish for 120g!" });
             } else socket.emit('townReceipt', { success: false, message: "❌ Wholesalers require a clean batch of 100 Fish." });
         }
-        // 6. WORKER HOUSING & RECRUITMENT
-        else if (data.action === 'hireWorker') {
-            let maxWorkers = (p.buildings.workerCabin || 1) * 10;
-            if ((p.workers.total || 0) >= maxWorkers) {
-                return socket.emit('townReceipt', { success: false, message: `❌ Housing full. Upgrade Worker Cabin (Max ${maxWorkers}).` });
-            }
-            if (p.gold >= 100) {
-                p.gold -= 100;
-                p.workers.total = (p.workers.total || 0) + 1;
-                socket.emit('townReceipt', { success: true, action: 'hireWorker', updatedPlayer: p, message: `👷 Hired a new worker! Assign them to a resource.` });
-            } else socket.emit('townReceipt', { success: false, message: "❌ Insufficient gold reserves to recruit." });
-        }
-        else if (data.action === 'upgradeCabin') {
-            let lvl = p.buildings.workerCabin || 1;
-            if (lvl >= 20) return socket.emit('townReceipt', { success: false, message: "❌ Cabin is at maximum level (20)." });
-            
-            let cost = Math.floor(100 * Math.pow(1.3, lvl)); 
-            if (p.wood >= cost && p.gold >= cost) {
-                p.wood -= cost; p.gold -= cost;
-                p.buildings.workerCabin++;
-                socket.emit('townReceipt', { success: true, action: 'upgradeCabin', updatedPlayer: p, message: `🏠 Worker Cabin upgraded to Lvl ${p.buildings.workerCabin}! Housing increased.` });
-            } else socket.emit('townReceipt', { success: false, message: `❌ Requires ${cost}W, ${cost}g.` });
-        }
-        else if (data.action === 'assignWorker') {
-            let totalWorkers = p.workers.total || 0;
-            let reqW = clampInt(data.wood, 0, totalWorkers, 0);
-            let reqF = clampInt(data.fish, 0, totalWorkers, 0);
-            let reqH = clampInt(data.hops, 0, totalWorkers, 0);
-            if ((reqW + reqF + reqH) > (p.workers.total || 0)) return socket.emit('townReceipt', { success: false, message: "❌ Cannot exceed total hired workers." });
-            
-            p.workers.assigned = { wood: reqW, fish: reqF, hops: reqH };
-            socket.emit('townReceipt', { success: true, action: 'assignWorker', updatedPlayer: p, message: "👷 Labor pool reallocated." });
+        // 6. RETIRED WORKER HOUSING & RECRUITMENT
+        else if (data.action === 'hireWorker' || data.action === 'upgradeCabin' || data.action === 'assignWorker') {
+            normalizeWorkerState(p);
+            socket.emit('townReceipt', { success: false, action: data.action, updatedPlayer: p, message: 'Worker management has been retired. Chopping, fishing, and hops minigames now drive the tavern economy.' });
         }
         // 7. CLAIM SUPPLY CART (Flat Wage Model)
         else if (data.action === 'claimCart') {
@@ -405,7 +498,7 @@ if (data.action === 'equip') {
         else if (data.action === 'happyHour') {
             if (p.hops >= 40 && p.gold >= 100) {
                 p.hops -= 40; p.gold -= 100; p.happyHourTicks = 60;
-                socket.emit('townReceipt', { success: true, action: 'happyHour', updatedPlayer: p, message: "🎉 HAPPY HOUR ACTIVE! Town production doubled for 3 minutes!" });
+                socket.emit('townReceipt', { success: true, action: 'happyHour', updatedPlayer: p, message: "🎉 HAPPY HOUR ACTIVE! Minigame rewards are the main economy now, but the tavern still loves the party." });
             } else socket.emit('townReceipt', { success: false, message: "❌ Lacking materials to launch a workforce festival." });
         }
         // 9. BAIT / CHUM MAPS
@@ -471,52 +564,54 @@ if (data.action === 'equip') {
             } else socket.emit('townReceipt', { success: false, message: "❌ No Skill Points available." });
         }
 // ===================
-// 13. CRAFT BOMB
+// 13. RETIRED: THROWABLES
         else if (data.action === 'craftBomb') {
-            let tier = clampInt(data.tier, 1, 2, 1);
-            let costW = tier === 1 ? 10 : 25;   
-            let costH = tier === 1 ? 100 : 250; 
-            
-            if (p.wood >= costW && p.hops >= costH) {
-                p.maxInventorySlots = p.maxInventorySlots || 5;
-                if (p.inventory.length < p.maxInventorySlots) {
-                    p.wood -= costW; p.hops -= costH;
-                    
-                    // PULL SECURELY FROM ITEM DATABASE!
-                    let bombId = tier === 1 ? "bomb_small" : "bomb_heavy";
-                    let bomb = JSON.parse(JSON.stringify(ItemDatabase[bombId]));
-                    
-                    p.inventory.push(bomb);
-                    socket.emit('townReceipt', { success: true, action: 'craftBomb', updatedPlayer: p, message: `💣 Crafted ${bomb.name}!` });
-                } else socket.emit('townReceipt', { success: false, message: "🎒 Backpack is full." });
-            } else socket.emit('townReceipt', { success: false, message: "❌ Insufficient materials for bomb." });
+            socket.emit('townReceipt', { success: false, message: 'Keg bombs have been retired. Ranged and AOE tactics now come from weapons.' });
         }
 // 14. CRAFT BREWS 
         else if (data.action === 'craftBrew') {
             p.maxInventorySlots = p.maxInventorySlots || 5;
-            if (p.inventory.length >= p.maxInventorySlots) return socket.emit('townReceipt', { success: false, message: "🎒 Backpack is full." });
+            if (p.inventory.length >= p.maxInventorySlots) return socket.emit('townReceipt', { success: false, message: '🎒 Backpack is full.' });
             const brewType = sanitizeToken(data.brewType, '');
-            if (!['STOUT', 'IPA', 'LAGER', 'RESERVE'].includes(brewType)) return;
-            
+            if (!['STOUT', 'IPA', 'LAGER', 'RESERVE', 'IRONWALL', 'CLEARWATER', 'STAUNCH'].includes(brewType)) return;
+
+            const craftItem = (itemId, message) => {
+                p.inventory.push(JSON.parse(JSON.stringify(ItemDatabase[itemId])));
+                socket.emit('townReceipt', { success: true, action: 'craftBrew', updatedPlayer: p, message });
+            };
+
             if (brewType === 'STOUT') {
-                if (p.hops >= 1 && p.gold >= 10) { p.hops -= 1; p.gold -= 10; p.inventory.push(JSON.parse(JSON.stringify(ItemDatabase["stout"]))); socket.emit('townReceipt', { success: true, action: 'craftBrew', updatedPlayer: p, message: "🍺 Crafted a Combat Stout!" }); }
-                else socket.emit('townReceipt', { success: false, message: "❌ Lacking resources for Stout." });
+                if (p.hops >= 1 && p.gold >= 10) { p.hops -= 1; p.gold -= 10; craftItem('stout', '🍺 Crafted a stronger Combat Stout!'); }
+                else socket.emit('townReceipt', { success: false, message: '❌ Lacking resources for Stout.' });
             }
             else if (brewType === 'IPA') {
-                if (p.hops >= 1 && p.wood >= 5) { p.hops -= 1; p.wood -= 5; p.inventory.push(JSON.parse(JSON.stringify(ItemDatabase["ipa"]))); socket.emit('townReceipt', { success: true, action: 'craftBrew', updatedPlayer: p, message: "🍺 Crafted a Furious IPA!" }); }
-                else socket.emit('townReceipt', { success: false, message: "❌ Lacking resources for IPA." });
+                if (p.hops >= 2 && p.wood >= 10) { p.hops -= 2; p.wood -= 10; craftItem('ipa', '🍺 Crafted a Furious IPA!'); }
+                else socket.emit('townReceipt', { success: false, message: '❌ Lacking resources for IPA.' });
             }
             else if (brewType === 'LAGER') {
-                if (p.hops >= 2 && p.fish >= 5) { p.hops -= 2; p.fish -= 5; p.inventory.push(JSON.parse(JSON.stringify(ItemDatabase["lager"]))); socket.emit('townReceipt', { success: true, action: 'craftBrew', updatedPlayer: p, message: "🍺 Crafted a Swift Lager!" }); }
-                else socket.emit('townReceipt', { success: false, message: "❌ Lacking resources for Lager." });
+                if (p.hops >= 2 && p.fish >= 10) { p.hops -= 2; p.fish -= 10; craftItem('lager', '🍺 Crafted a Swift Lager!'); }
+                else socket.emit('townReceipt', { success: false, message: '❌ Lacking resources for Lager.' });
             }
             else if (brewType === 'RESERVE') {
-                if (p.hops >= 200 && p.gold >= 50) { p.hops -= 200; p.gold -= 50; p.inventory.push(JSON.parse(JSON.stringify(ItemDatabase["reserve"]))); socket.emit('townReceipt', { success: true, action: 'craftBrew', updatedPlayer: p, message: "🍷 Crafted Grandmaster Reserve!" }); }
-                else socket.emit('townReceipt', { success: false, message: "❌ Lacking resources for Reserve." });
+                if (p.hops >= 500 && p.gold >= 250) { p.hops -= 500; p.gold -= 250; craftItem('reserve', '🍷 Crafted a scarce Grandmaster Reserve!'); }
+                else socket.emit('townReceipt', { success: false, message: '❌ Lacking resources for Reserve.' });
+            }
+            else if (brewType === 'IRONWALL') {
+                if (p.hops >= 8 && p.wood >= 25 && p.gold >= 25) { p.hops -= 8; p.wood -= 25; p.gold -= 25; craftItem('ironwall_porter', '🛡️ Crafted an Ironwall Porter!'); }
+                else socket.emit('townReceipt', { success: false, message: '❌ Lacking resources for Ironwall Porter.' });
+            }
+            else if (brewType === 'CLEARWATER') {
+                if (p.hops >= 4 && p.fish >= 20) { p.hops -= 4; p.fish -= 20; craftItem('clearwater_tonic', '💧 Crafted a Clearwater Tonic!'); }
+                else socket.emit('townReceipt', { success: false, message: '❌ Lacking resources for Clearwater Tonic.' });
+            }
+            else if (brewType === 'STAUNCH') {
+                if (p.hops >= 12 && p.fish >= 30 && p.gold >= 50) { p.hops -= 12; p.fish -= 30; p.gold -= 50; craftItem('staunching_bitter', '🩸 Crafted a Staunching Bitter!'); }
+                else socket.emit('townReceipt', { success: false, message: '❌ Lacking resources for Staunching Bitter.' });
             }
         }
         // 15. DRINK BREW IN TOWN
         else if (data.action === 'drinkBrew') {
+            return socket.emit('townReceipt', { success: false, message: "Brews can only be consumed from the combat backpack." });
             let brewIndex = getArrayIndex(data.idx, p.inventory);
             if (brewIndex < 0) return;
             let item = p.inventory[brewIndex];
@@ -594,7 +689,7 @@ if (data.action === 'equip') {
             if (!p.tradeRoutesExpanded) return socket.emit('townReceipt', { success: false, message: "❌ Trade routes are not expanded." });
             if (p.fish >= 1000) {
                 p.fish -= 1000; p.gold += 1200;
-                socket.emit('townReceipt', { success: true, action: 'sellFishBulk', updatedPlayer: p, message: "🚢 Exported 1,000 Fish to distant lands for 1,500 Gold." });
+                socket.emit('townReceipt', { success: true, action: 'sellFishBulk', updatedPlayer: p, message: "🚢 Exported 1,000 Fish to distant lands for 1,200 Gold." });
             } else socket.emit('townReceipt', { success: false, message: "❌ Not enough stock. The merchant ships require exactly 1,000 Fish." });
         }
 // === REPLACED ===

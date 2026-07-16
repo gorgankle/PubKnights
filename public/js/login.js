@@ -68,5 +68,6 @@ socket.on('registerSuccess', (payload) => {
 socket.on('loginSuccess', (serverSaveData) => {
     currentUsername = serverSaveData.username || document.getElementById("char-name-input").value.trim();
     Object.assign(player, serverSaveData);
+    if (typeof normalizeClientPlayerContainers === 'function') normalizeClientPlayerContainers();
     enterGameUI();
 });

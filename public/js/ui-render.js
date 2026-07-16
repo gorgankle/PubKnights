@@ -176,6 +176,8 @@ function refreshCombatSidebar() {
 
 function refreshSystemUI() {
     try {
+        if (typeof normalizeClientPlayerContainers === 'function') normalizeClientPlayerContainers();
+
         const topNavBar = document.getElementById("top-nav-bar");
         const townVaultView = document.getElementById("town-vault-view");
         const combatScreen = document.getElementById("combat-screen");
@@ -313,7 +315,7 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
                 }
 
                 let phaseLabel = combatPhase.replace('_', ' '); 
-                let instructions = (combatPhase === 'PHASE_2') ? "Select Target or Bomb" : "Select Tile to Stride";
+                let instructions = (combatPhase === 'PHASE_2') ? "Select Target" : "Select Tile to Stride";
                 
                 if (uiHeader) {
                     if (pendingMove) {
@@ -553,6 +555,7 @@ if (hopsScreen) hopsScreen.style.display = "none";
                             // Re-hook the tooltip logic
                             el.onmouseenter = (e) => showItemTooltip(e, item, slotKey, 'equipment');
                             el.onmouseleave = hideTooltip;
+                            bindInventoryDoubleClick(el, (e) => handleEquipmentDoubleClick(e, slotKey, el.id && el.id.indexOf('vault-slot-') === 0));
                         } else {
                             // Slot is empty - restore the vanilla placeholder state
                             el.draggable = false;
@@ -561,6 +564,7 @@ if (hopsScreen) hopsScreen.style.display = "none";
                             el.innerHTML = slotPlaceholders[slotKey]; // Injects H, A, W, G, or B
                             el.onmouseenter = null;
                             el.onmouseleave = null;
+                            bindInventoryDoubleClick(el, null);
                         }
                     }
                 });
@@ -596,17 +600,12 @@ if (hopsScreen) hopsScreen.style.display = "none";
 
             let packCost = getBackpackUpgradeCost();
 
-            const bomb1Btn = document.getElementById("craft-bomb-1-btn");
-            if (bomb1Btn) bomb1Btn.disabled = (player.wood < 5 || player.hops < 15 || player.inventory.length >= (player.maxInventorySlots || 5));
-
-            const bomb2Btn = document.getElementById("craft-bomb-2-btn");
-            if (bomb2Btn) bomb2Btn.disabled = (player.wood < 10 || player.hops < 30 || player.inventory.length >= (player.maxInventorySlots || 5));
                    
             let brewBtn = document.getElementById("brewmaster-btn");
             if (brewBtn) brewBtn.disabled = (player.hops < 1 || player.gold < 10 || player.inventory.length >= (player.maxInventorySlots || 5)); 
             
             const resBtn = document.getElementById("reserve-btn");
-            if (resBtn) resBtn.disabled = (player.hops < 200 || player.gold < 50 || player.inventory.length >= (player.maxInventorySlots || 5));
+            if (resBtn) resBtn.disabled = (player.hops < 500 || player.gold < 250 || player.inventory.length >= (player.maxInventorySlots || 5));
 
             let baitBtn = document.getElementById("bait-btn");
             if(baitBtn) baitBtn.disabled = (player.fish < 15 || player.mapBaited); 
@@ -618,11 +617,19 @@ if (hopsScreen) hopsScreen.style.display = "none";
             if(chumBtn) chumBtn.disabled = (player.fish < 100 || player.cellarsChummed || !player.cellarsUnlocked);
 
             let ipaBtn = document.getElementById("ipa-btn");
-            if(ipaBtn) ipaBtn.disabled = (player.hops < 1 || player.wood < 5);
+            if(ipaBtn) ipaBtn.disabled = (player.hops < 2 || player.wood < 10 || player.inventory.length >= (player.maxInventorySlots || 5));
             
             let lagBtn = document.getElementById("lager-btn");
-            if(lagBtn) lagBtn.disabled = (player.hops < 2 || player.fish < 5);
+            if(lagBtn) lagBtn.disabled = (player.hops < 2 || player.fish < 10 || player.inventory.length >= (player.maxInventorySlots || 5));
             
+            let ironBtn = document.getElementById("ironwall-btn");
+            if(ironBtn) ironBtn.disabled = (player.hops < 8 || player.wood < 25 || player.gold < 25 || player.inventory.length >= (player.maxInventorySlots || 5));
+
+            let clearBtn = document.getElementById("clearwater-btn");
+            if(clearBtn) clearBtn.disabled = (player.hops < 4 || player.fish < 20 || player.inventory.length >= (player.maxInventorySlots || 5));
+
+            let staunchBtn = document.getElementById("staunch-btn");
+            if(staunchBtn) staunchBtn.disabled = (player.hops < 12 || player.fish < 30 || player.gold < 50 || player.inventory.length >= (player.maxInventorySlots || 5));
             let hhBtn = document.getElementById("happy-hour-btn");
             if(hhBtn) hhBtn.disabled = (player.hops < 40 || player.gold < 100);
             
@@ -704,32 +711,43 @@ if (hopsScreen) hopsScreen.style.display = "none";
                 upCartBtn.disabled = (player.gold < cartCost.gold || player.wood < cartCost.wood);
             }
 
-            let maxW = (player.buildings && player.buildings.workerCabin ? player.buildings.workerCabin : 1) * 10;
-            
-            let wTot = document.getElementById("worker-total-count");
-            if (wTot) wTot.innerText = player.workers.total || 0;
-            let wMax = document.getElementById("worker-max-count");
-            if (wMax) wMax.innerText = maxW;
-            
-            let wWood = document.getElementById("worker-wood-count");
-            if(wWood) wWood.innerText = (player.workers && player.workers.assigned && player.workers.assigned.wood) ? player.workers.assigned.wood : 0;
-            
-            let wFish = document.getElementById("worker-fish-count");
-            if(wFish) wFish.innerText = (player.workers && player.workers.assigned && player.workers.assigned.fish) ? player.workers.assigned.fish : 0;
-            
-            let wHop = document.getElementById("worker-hop-count");
-            if(wHop) wHop.innerText = (player.workers && player.workers.assigned && player.workers.assigned.hops) ? player.workers.assigned.hops : 0;
-
-            let hBtn = document.getElementById("hire-worker-btn");
-            if (hBtn) hBtn.disabled = (player.gold < 100 || (player.workers.total || 0) >= maxW);
-            
-            let upCabBtn = document.getElementById("upgrade-cabin-btn");
-            if (upCabBtn) {
-                let lvl = (player.buildings && player.buildings.workerCabin) ? player.buildings.workerCabin : 1;
-                let cost = Math.floor(100 * Math.pow(1.3, lvl));
-                upCabBtn.innerText = `Lvl ${lvl + 1} Cabin (${cost}W, ${cost}g)`;
-                upCabBtn.disabled = (lvl >= 20 || player.wood < cost || player.gold < cost);
+            const roster = player.roster && typeof player.roster === 'object' ? player.roster : { companions: [], activeIds: [] };
+            const companions = Array.isArray(roster.companions) ? roster.companions : [];
+            const activeIds = Array.isArray(roster.activeIds) ? roster.activeIds : [];
+            const partyList = document.getElementById("party-roster-list");
+            if (partyList) {
+                if (companions.length === 0) {
+                    partyList.innerHTML = `<div style="color:#7f8c8d; font-size: 12px; text-align:center; padding: 14px 6px;">No party members hired yet.</div>`;
+                } else {
+                    partyList.innerHTML = companions.map(companion => {
+                        const isActive = activeIds.includes(companion.id);
+                        const stats = companion.stats || {};
+                        const action = isActive
+                            ? `<button onclick="benchCompanion('${companion.id}')" style="margin:0; padding:6px 8px; background:#7f3f1d; border-color:#d35400; font-size:11px;">Bench</button>`
+                            : `<button onclick="setActiveCompanion('${companion.id}')" style="margin:0; padding:6px 8px; background:#216b4f; border-color:#2ecc71; font-size:11px;">Activate</button>`;
+                        return `<div style="display:grid; grid-template-columns: 1fr auto; gap: 8px; align-items:center; background:#1a1512; border:1px solid ${isActive ? '#2ecc71' : '#3a2f26'}; border-radius:4px; padding:8px;">
+                            <div style="min-width:0;">
+                                <div style="color:${isActive ? '#2ecc71' : '#ffcc66'}; font-weight:bold; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${companion.name || 'Companion'} ${isActive ? '(Active)' : '(Inactive)'}</div>
+                                <div style="color:#bbaaa0; font-size:10px; margin-top:3px;">${companion.role || 'Companion'} | HP ${Math.max(1, stats.vitality || 3) * 25} | ATK ${stats.offense || 2} | DEF ${stats.defense || 2}</div>
+                            </div>
+                            ${action}
+                        </div>`;
+                    }).join('');
+                }
             }
+            const hireMarlowBtn = document.getElementById("hire-marlow-btn");
+            if (hireMarlowBtn) {
+                const hasMarlow = companions.some(companion => companion.id === 'marlow_shieldhand');
+                hireMarlowBtn.disabled = hasMarlow || player.gold < 250;
+                hireMarlowBtn.innerText = hasMarlow ? 'Marlow hired - manage on Knight screen' : 'Hire Marlow Shieldhand (250g)';
+            }
+            let contacts = player.tavernContacts || {};
+            let contactTotal = typeof contacts === "number" ? contacts : (contacts.total || 0);
+            let refundGold = typeof contacts === "object" ? (contacts.refundGold || player.workerRefundGold || 0) : (player.workerRefundGold || 0);
+            let contactCountEl = document.getElementById("tavern-contact-count");
+            if (contactCountEl) contactCountEl.innerText = contactTotal.toLocaleString();
+            let refundGoldEl = document.getElementById("worker-refund-gold");
+            if (refundGoldEl) refundGoldEl.innerText = refundGold.toLocaleString();
 
             let invC = document.getElementById("inv-count");
             if(invC) invC.innerText = player.inventory.length;
@@ -890,6 +908,7 @@ function renderBackpackList(domContainer, showVaultOption) {
             // The New Tooltip Hook
             slotDiv.onmouseenter = (e) => showItemTooltip(e, item, idx, 'backpack');
             slotDiv.onmouseleave = hideTooltip;
+            bindInventoryDoubleClick(slotDiv, (e) => handleBackpackDoubleClick(e, idx, item, showVaultOption));
 
             // Render the 24x24 Sprite Matrix!
             let imgUrl = getItemSpriteURL(item);
@@ -936,6 +955,7 @@ function renderVaultStorageList() {
             // The New Tooltip Hook
             slotDiv.onmouseenter = (e) => showItemTooltip(e, item, idx, 'vault');
             slotDiv.onmouseleave = hideTooltip;
+            bindInventoryDoubleClick(slotDiv, (e) => handleVaultItemDoubleClick(e, idx));
 
             // Render the 24x24 Sprite Matrix!
             let imgUrl = getItemSpriteURL(item);
@@ -1173,7 +1193,6 @@ function renderCombatModal(filter = 'DRINK') {
 
     const filters = [
         { id: 'DRINK', icon: '🍺', text: 'Drinks' },
-        { id: 'THROW', icon: '💣', text: 'Throw' },
         { id: 'EQUIP', icon: '🛡️', text: 'Gear' }
     ];
 
@@ -1201,8 +1220,7 @@ function renderCombatModal(filter = 'DRINK') {
         if (!item) continue; 
         
         let showItem = false;
-        if (filter === 'DRINK' && item.slot === 'consumable' && item.combat && (item.combat.actionType === 'heal' || item.combat.actionType === 'buff')) showItem = true;
-        else if (filter === 'THROW' && item.slot === 'consumable' && item.combat && item.combat.actionType === 'throwable') showItem = true;
+        if (filter === 'DRINK' && item.slot === 'consumable' && item.combat && ['heal', 'buff', 'cleanse', 'staunch'].includes(item.combat.actionType)) showItem = true;
         else if (filter === 'EQUIP' && item.slot !== 'consumable' && item.type !== 'crate') showItem = true;
 
         if (!showItem) continue; 

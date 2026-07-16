@@ -403,7 +403,12 @@
             </div>
         </div>
 
-        <!-- MODULE 3: Knight's Backpack -->
+        <!-- MODULE 3: Party Roster -->
+        <div class="dashboard-panel" style="margin-bottom: 0; display: flex; flex-direction: column;">
+            <h3 style="color: #2ecc71; border-bottom: 1px dashed #27ae60;">Party Roster</h3>
+            <div id="party-roster-list" style="background: #110d0a; padding: 10px; border-radius: 4px; border: 1px solid #3a2f26; min-height: 96px; display: grid; gap: 8px;"></div>
+        </div>
+        <!-- MODULE 4: Knight's Backpack -->
         <div class="dashboard-panel" id="main-backpack-panel" style="margin-bottom: 0; display: flex; flex-direction: column;">
             <h3 style="color: #3498db; border-bottom: 1px dashed #2980b9;">🎒 Knight's Backpack</h3>
             <div id="inventory-list" style="background: #110d0a; padding: 10px; border-radius: 4px; border: 1px solid #3a2f26; min-height: 74px; flex-grow: 1;"></div>
@@ -462,44 +467,18 @@
             </div>
         </div>
 
-        <!-- MODULE 3: Labor Pool -->
+        <!-- MODULE 3: Tavern Contacts -->
         <div class="dashboard-panel" style="margin-bottom: 0;">
-            <h3 style="color: #3498db; border-bottom: 1px dashed #2980b9;">👷 Labor Pool</h3>
-            <div style="background: #1a1512; padding: 10px; border-radius: 4px; border: 1px solid #4a3b2c;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <span style="font-size: 12px; color: #f1c40f; font-weight: bold;">Workers: <span id="worker-total-count">0</span> / <span id="worker-max-count">10</span></span>
+            <h3 style="color: #3498db; border-bottom: 1px dashed #2980b9;">🤝 Tavern Contacts</h3>
+            <div style="background: #1a1512; padding: 10px; border-radius: 4px; border: 1px solid #4a3b2c; display: grid; gap: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                    <span style="font-size: 12px; color: #f1c40f; font-weight: bold;">Contacts: <span id="tavern-contact-count">0</span></span>
+                    <span style="font-size: 11px; color: #2ecc71;">Refunded: <span id="worker-refund-gold">0</span>g</span>
                 </div>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
-                    <button id="hire-worker-btn" onclick="hireWorker()" style="padding: 8px; font-size: 11px; margin: 0; background: #27ae60;">Hire Worker (100g)</button>
-                    <button id="upgrade-cabin-btn" onclick="upgradeCabin()" style="padding: 8px; font-size: 11px; margin: 0; background: #e67e22;">Upgrade Cabin</button>
-                </div>
-
                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; font-size: 11px; text-align: center;">
-                    <div style="background: #221a14; padding: 6px; border-radius: 3px; border: 1px solid #3a2f26;">
-                        <div style="margin-bottom: 6px; color: #bbaaa0;">🪓 Timber</div>
-                        <div style="display: flex; justify-content: center; align-items: center; gap: 4px;">
-                            <button onclick="adjustWorker('wood', -1)" style="padding: 4px 8px; margin: 0; font-size: 12px; background: #c0392b; border-color: #e74c3c;">-</button>
-                            <strong id="worker-wood-count" style="color: #ffcc66; width: 20px; font-size: 13px;">0</strong>
-                            <button onclick="adjustWorker('wood', 1)" style="padding: 4px 8px; margin: 0; font-size: 12px; background: #27ae60; border-color: #2ecc71;">+</button>
-                        </div>
-                    </div>
-                    <div style="background: #221a14; padding: 6px; border-radius: 3px; border: 1px solid #3a2f26;">
-                        <div style="margin-bottom: 6px; color: #bbaaa0;">🎣 Fish</div>
-                        <div style="display: flex; justify-content: center; align-items: center; gap: 4px;">
-                            <button onclick="adjustWorker('fish', -1)" style="padding: 4px 8px; margin: 0; font-size: 12px; background: #c0392b; border-color: #e74c3c;">-</button>
-                            <strong id="worker-fish-count" style="color: #ffcc66; width: 20px; font-size: 13px;">0</strong>
-                            <button onclick="adjustWorker('fish', 1)" style="padding: 4px 8px; margin: 0; font-size: 12px; background: #27ae60; border-color: #2ecc71;">+</button>
-                        </div>
-                    </div>
-                    <div style="background: #221a14; padding: 6px; border-radius: 3px; border: 1px solid #3a2f26;">
-                        <div style="margin-bottom: 6px; color: #bbaaa0;">🌾 Hops</div>
-                        <div style="display: flex; justify-content: center; align-items: center; gap: 4px;">
-                            <button onclick="adjustWorker('hops', -1)" style="padding: 4px 8px; margin: 0; font-size: 12px; background: #c0392b; border-color: #e74c3c;">-</button>
-                            <strong id="worker-hop-count" style="color: #ffcc66; width: 20px; font-size: 13px;">0</strong>
-                            <button onclick="adjustWorker('hops', 1)" style="padding: 4px 8px; margin: 0; font-size: 12px; background: #27ae60; border-color: #2ecc71;">+</button>
-                        </div>
-                    </div>
+                    <div style="background: #221a14; padding: 7px; border-radius: 3px; border: 1px solid #3a2f26; color: #bbaaa0;">🪓 Chop<br><span style="color:#ffcc66;">Timber Pts</span></div>
+                    <div style="background: #221a14; padding: 7px; border-radius: 3px; border: 1px solid #3a2f26; color: #bbaaa0;">🎣 Fish<br><span style="color:#74b9ff;">Export Stock</span></div>
+                    <div style="background: #221a14; padding: 7px; border-radius: 3px; border: 1px solid #3a2f26; color: #bbaaa0;">🌾 Harvest<br><span style="color:#a29bfe;">Brew Hops</span></div>
                 </div>
             </div>
         </div>
@@ -622,14 +601,13 @@
         <div class="dashboard-panel" style="margin-bottom: 0;">
             <h3 style="color: #3498db; border-bottom: 1px dashed #2980b9;">🛍️ Provisioner Counter</h3>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px;">
-                <button id="craft-bomb-1-btn" onclick="craftKegBomb(1)" style="margin: 0; padding: 8px;" onmouseenter="showSystemTooltip('bomb_small', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Small Keg Bomb<br><span style="font-size: 9px; color: #bbaaa0;">10W, 100H</span></button>
-                <button id="craft-bomb-2-btn" onclick="craftKegBomb(2)" style="margin: 0; padding: 8px;" onmouseenter="showSystemTooltip('bomb_heavy', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Heavy Keg Bomb<br><span style="font-size: 9px; color: #bbaaa0;">25W, 250H</span></button>
                 <button id="market-trader-btn" onclick="tradeHopsForGear()" style="grid-column: span 2; margin: 0; padding: 8px; background: #2c3e50; border-color: #34495e;" onmouseenter="showSystemTooltip('black_market', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🪙 Black Market Gear (50 Hops)</button>
+                <button id="hire-marlow-btn" onclick="hireTavernCompanion()" style="grid-column: span 2; margin: 0; padding: 8px; background: #216b4f; border-color: #2ecc71;">Hire Marlow Shieldhand (250g)</button>
             </div>
             
             <div style="display: grid; grid-template-columns: 1fr; gap: 6px;">
-                <button id="wholesale-btn" onclick="exportFishWholesale()" style="margin: 0; padding: 10px; background: #2980b9; border-color: #3498db;" onmouseenter="showSystemTooltip('fish_wholesale', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🐟 Export Fish (Sell 100 ➔ 120g)</button>
-                <button id="btn-sell-fish-bulk" onclick="sellFishBulk()" style="display: none; margin: 0; padding: 10px; background: #8e44ad; border-color: #9b59b6;">🚢 Bulk Export (-1000 🐟 ➔ 1200g)</button>
+                <button id="wholesale-btn" onclick="exportFishWholesale()" style="margin: 0; padding: 10px; background: #2980b9; border-color: #3498db;" onmouseenter="showSystemTooltip('fish_wholesale', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🐟 Export Fish (Sell 100 -> 120g)</button>
+                <button id="btn-sell-fish-bulk" onclick="sellFishBulk()" style="display: none; margin: 0; padding: 10px; background: #8e44ad; border-color: #9b59b6;">🚢 Bulk Export (-1000 Fish -> 1200g)</button>
             </div>
         </div>
 
@@ -638,9 +616,12 @@
             <h3 style="color: #f39c12; border-bottom: 1px dashed #e67e22;">🍺 Brewmaster Services</h3>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
                 <button id="brewmaster-btn" onclick="hireBrewmasterServices()" style="margin: 0; padding: 8px;" onmouseenter="showSystemTooltip('craft_stout', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🍺 Craft Stout<br><span style="font-size: 9px; color: #bbaaa0;">1H, 10g</span></button>
-                <button id="ipa-btn" onclick="craftSpecialtyBrew('IPA')" style="margin: 0; padding: 8px;" onmouseenter="showSystemTooltip('ipa', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🍺 Furious IPA<br><span style="font-size: 9px; color: #bbaaa0;">1H, 5W</span></button>
-                <button id="lager-btn" onclick="craftSpecialtyBrew('LAGER')" style="margin: 0; padding: 8px;" onmouseenter="showSystemTooltip('lager', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🍺 Swift Lager<br><span style="font-size: 9px; color: #bbaaa0;">2H, 5F</span></button>
-                <button id="reserve-btn" onclick="craftReserveBrew()" style="grid-column: span 2; margin: 0; padding: 10px; background: #8e44ad; border-color: #9b59b6;" onmouseenter="showSystemTooltip('reserve', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🍷 Grandmaster Reserve (200H, 50g)</button>
+                <button id="ipa-btn" onclick="craftSpecialtyBrew('IPA')" style="margin: 0; padding: 8px;" onmouseenter="showSystemTooltip('ipa', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🍺 Furious IPA<br><span style="font-size: 9px; color: #bbaaa0;">2H, 10W</span></button>
+                <button id="lager-btn" onclick="craftSpecialtyBrew('LAGER')" style="margin: 0; padding: 8px;" onmouseenter="showSystemTooltip('lager', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🍺 Swift Lager<br><span style="font-size: 9px; color: #bbaaa0;">2H, 10F</span></button>
+                <button id="ironwall-btn" onclick="craftSpecialtyBrew('IRONWALL')" style="margin: 0; padding: 8px; background: #34495e; border-color: #7f8c8d;">🛡️ Ironwall Porter<br><span style="font-size: 9px; color: #bbaaa0;">8H, 25W, 25g</span></button>
+                <button id="clearwater-btn" onclick="craftSpecialtyBrew('CLEARWATER')" style="margin: 0; padding: 8px; background: #16a085; border-color: #1abc9c;">💧 Clearwater Tonic<br><span style="font-size: 9px; color: #bbaaa0;">4H, 20F</span></button>
+                <button id="staunch-btn" onclick="craftSpecialtyBrew('STAUNCH')" style="margin: 0; padding: 8px; background: #c0392b; border-color: #e74c3c;">🩸 Staunching Bitter<br><span style="font-size: 9px; color: #bbaaa0;">12H, 30F, 50g</span></button>
+                <button id="reserve-btn" onclick="craftReserveBrew()" style="grid-column: span 2; margin: 0; padding: 10px; background: #8e44ad; border-color: #9b59b6;" onmouseenter="showSystemTooltip('reserve', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🍷 Grandmaster Reserve (500H, 250g)</button>
             </div>
         </div>
 

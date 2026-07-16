@@ -96,6 +96,8 @@ function createPetActor(player, tile) {
         size: 1,
         hp: maxHp,
         maxHp,
+        stamina: getCompanionEquipmentStat(companion, 'maxStamina', 2) * 25,
+        maxStamina: getCompanionEquipmentStat(companion, 'maxStamina', 2) * 25,
         offense: Math.max(1, 1 + Math.floor(level / 4)),
         defense: Math.max(1, 1 + Math.floor(level / 6)),
         speed: Math.max(3, Math.min(7, 3 + Math.floor(level / 8))),
@@ -116,6 +118,59 @@ function createPetActor(player, tile) {
     };
 }
 
+function getCompanionEquipmentStat(companion, statKey, fallback = 1) {
+    const stats = companion && companion.stats && typeof companion.stats === 'object' ? companion.stats : {};
+    const equipment = companion && companion.equipment && typeof companion.equipment === 'object' ? companion.equipment : {};
+    let value = Math.max(0, Math.trunc(Number(stats[statKey]) || fallback));
+
+    Object.values(equipment).forEach(item => {
+        if (!item) return;
+        if (statKey === 'maxStamina' && item.stamina) value += Math.trunc(Number(item.stamina) || 0);
+        else if (item[statKey]) value += Math.trunc(Number(item[statKey]) || 0);
+    });
+
+    return Math.max(1, value);
+}
+
+function createCompanionActor(companion, tile) {
+    const equipment = companion && companion.equipment && typeof companion.equipment === 'object' ? companion.equipment : {};
+    const weapon = equipment.weapon || {};
+    const standardAttack = weapon.combat && weapon.combat.standard ? weapon.combat.standard : {};
+    const maxHp = getCompanionEquipmentStat(companion, 'vitality', 3) * 25;
+
+    return {
+        uid: `ally_${(companion && companion.id) || 'companion'}`,
+        id: (companion && companion.spriteId) || 'companion_marlow',
+        kind: 'companion',
+        controller: 'player_companion',
+        teamId: TEAM_PLAYER,
+        disposition: 'party',
+        name: (companion && companion.name) || 'Companion',
+        x: tile.x,
+        y: tile.y,
+        size: 1,
+        hp: maxHp,
+        maxHp,
+        stamina: getCompanionEquipmentStat(companion, 'maxStamina', 2) * 25,
+        maxStamina: getCompanionEquipmentStat(companion, 'maxStamina', 2) * 25,
+        offense: getCompanionEquipmentStat(companion, 'offense', 2),
+        defense: getCompanionEquipmentStat(companion, 'defense', 2),
+        speed: getCompanionEquipmentStat(companion, 'speed', 3),
+        attackRange: Math.max(1, Math.trunc(Number(standardAttack.range || weapon.attackRange) || 1)),
+        projectileSprite: weapon.projectileSprite || null,
+        spellFx: weapon.spellFx || null,
+        icon: (companion && companion.icon) || 'M',
+        alive: true,
+        deathBehavior: 'retreat',
+        targetable: true,
+        targetableByEnemies: true,
+        targetableByPlayer: false,
+        rewardsEligible: false,
+        blocksMovement: true,
+        companionId: companion && companion.id,
+        equipment
+    };
+}
 function createKregActor(tile) {
     return {
         uid: 'ally_kreg',
@@ -319,6 +374,7 @@ module.exports = {
     createPlayerActor,
     createEnemyActor,
     createPetActor,
+    createCompanionActor,
     createKregActor,
     createCellarDwellerActor,
     ensureCombatActors,

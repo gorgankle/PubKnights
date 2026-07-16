@@ -6,7 +6,7 @@ function showSystemTooltip(type, event) {
     let item = typeof type === 'object' ? type : null;
 
     if (type === 'tavern_enter') {
-        html = `<h3>🍻 The Tavern</h3>Step inside to visit the Provisioner and Brewmaster. Craft bombs, brew combat drinks, and trade on the Black Market.`;
+        html = `<h3>🍻 The Tavern</h3>Step inside to visit the Provisioner and Brewmaster. Brew combat drinks, trade on the Black Market, and prepare for expeditions.`;
     }
 	else if (type === 'trade_routes') {
         html = `<h3>🗺️ Expand Trade Routes</h3>Fund a massive infrastructure project to clear roads and build merchant cargo ships. <br><br>🔓 <b>Unlocks:</b> Bulk Fish Exports (Sell 1,000 Fish at once).<br>💰 Cost: 25,000 Gold`;
@@ -36,17 +36,23 @@ else if (item && item.slot === "consumable") {
         html = `<h3>🏦 Structural Expansion</h3>Adds <b>+5 secure vault frames</b>.<br>💰 Cost: ${gCost}g, ${wCost} Wood`;
     }
     else if (type === 'craft_stout') {
-        html = `<h3>🍺 Craft Combat Stout</h3>Hire the Brewmaster to ferment your hops into a vital healing action charge for battle maps.<br>⚖️ Requires: 1 Hops, 10 Gold Pieces`;
+        html = `<h3>🍺 Craft Combat Stout</h3>Hire the Brewmaster to ferment your hops into a 40% Max HP healing action for battle maps.<br>⚖️ Requires: 1 Hops, 10 Gold Pieces`;
     }
  // === REPLACED ===
     else if (type === 'ipa') {
-        html = `<h3>🔥 Furious IPA</h3>Concoct a strong, oak-aged specialty ale. Your <b>NEXT</b> expedition run gains a permanent <b>1.10x Offense Multiplier</b>.<br>⚖️ Requires: 1 Hops, 5 Timber`;
+        html = `<h3>Furious IPA</h3>Concoct a strong, oak-aged specialty ale. Drink it from the combat backpack to gain a <b>1.25x Offense Multiplier</b> for that fight.<br>Requires: 2 Hops, 10 Timber`;
+        showTooltip(html, event);
+        return;
+        html = `<h3>🔥 Furious IPA</h3>Concoct a strong, oak-aged specialty ale. Your <b>NEXT</b> expedition run gains a permanent <b>1.25x Offense Multiplier</b>.<br>⚖️ Requires: 2 Hops, 10 Timber`;
     }
     else if (type === 'lager') {
-        html = `<h3>🏃 Swift Lager</h3>Ferment a light, refreshing utility lager. Your <b>NEXT</b> expedition run awards <b>+1 Speed Level</b>.<br>⚖️ Requires: 2 Hops, 5 Fish`;
+        html = `<h3>Swift Lager</h3>Ferment a light, refreshing utility lager. Drink it from the combat backpack to gain <b>+1 Speed Level</b> and an <b>ATB surge</b> for that fight.<br>Requires: 2 Hops, 10 Fish`;
+        showTooltip(html, event);
+        return;
+        html = `<h3>🏃 Swift Lager</h3>Ferment a light, refreshing utility lager. Drink it from the combat backpack for <b>+1 Speed Level</b> and an <b>ATB surge</b>.<br>⚖️ Requires: 2 Hops, 10 Fish`;
     }
 	else if (type === 'reserve') {
-        html = `<h3>🍷 Grandmaster Reserve</h3>Ferment a legendary, ultra-dense vintage that heavily mends wounds in battle.<br>❤️ Restores: <b>25% Max HP</b><br>⚖️ Requires: 200 Hops, 50 Gold Pieces`;
+        html = `<h3>🍷 Grandmaster Reserve</h3>Ferment a legendary, ultra-dense vintage that heavily mends wounds in battle.<br>❤️ Restores: <b>90% Max HP</b> and cleanses negative effects.<br>⚖️ Requires: 500 Hops, 250 Gold Pieces`;
     }
 	else if (type === 'gilded_tavern') {
         html = `<h3>✨ Gilded Tavern Metamorphosis</h3>Pay the ultimate tribute to the Guild. Imbues the pub walls with gold filigree and automates supply clearing.<br>💰 Cost: <b>10,000 Gold</b>`;
@@ -90,7 +96,7 @@ else if (item && item.slot === "consumable") {
         html = `<h3>💤 Rest Bar</h3>Take a break in the tavern to passively regenerate <b>+5 HP</b> per tick.`;
     }
     else if (type === 'idle_wood') {
-        html = `<h3>🪓 Gather Wood</h3>Venture into the forest to passively collect <b>Timber</b> for crafting bombs and upgrades.`;
+        html = `<h3>🪓 Gather Wood</h3>Venture into the forest to passively collect <b>Timber</b> for upgrades and trade.`;
     }
     else if (type === 'idle_fish') {
         html = `<h3>🎣 Catch Fish</h3>Relax by the lake to passively reel in <b>Fish</b> for trading and zone bait.`;
@@ -111,12 +117,6 @@ else if (item && item.slot === "consumable") {
     }
     else if (type === 'claim_cart') {
         html = `<h3>🧺 Claim Supplies</h3>Empty the town's production cart and deposit all gathered Timber, Fish, and Hops directly into your vault balance.`;
-    }
-    else if (type === 'bomb_small') {
-        html = `<h3>🧨 Small Keg Bomb</h3>Craft a volatile explosive dealing <b>45 DMG</b> across a 3x3 radius upon detonation.<br>⚖️ Requires: 10 Wood, 25 Hops`;
-    }
-    else if (type === 'bomb_heavy') {
-        html = `<h3>💣 Heavy Keg Bomb</h3>Craft a massive destructive payload dealing <b>120 DMG</b> across a 3x3 radius upon detonation.<br>⚖️ Requires: 25 Wood, 100 Hops`;
     }
     // === NEW: COMBAT ACTIONS ===
     else if (type === 'combat_slash') {
@@ -162,14 +162,8 @@ function getItemTooltip(item) {
     } 
 // ============================================
     else if (item.slot === "consumable" && item.combat) {
-        // Data-Driven Consumables parsing!
-        if (item.combat.actionType === "throwable") {
-            html += `🧨 <b>Explosive Yield:</b> ${item.combat.damageFlat} DMG<br>` +
-                    `📏 <b>Blast Radius:</b> ${item.combat.aoeRadius === 1 ? '3x3' : '5x5'} Grid Area<br>`;
-        } else if (item.combat.actionType === "buff" || item.combat.actionType === "heal") {
             html += `🍺 <b>Combat Effect:</b> ${item.combat.desc}<br>`;
         }
-    }
     
     html += `<div class='meta-value'>💰 Trader Appraisal Value: ${itemValue} Gold Pieces</div>`;
     return html;
@@ -288,15 +282,15 @@ function showItemTooltip(event, item, index, location) {
             statsHtml += `<div style='margin-top:6px; padding:6px; background:#1e1712; border-radius: 3px; font-size:10px; border-left:2px solid ${rarityColor}; color:#e0caad; line-height: 1.4;'>` + 
                          `${getWeaponSpecialDesc(item)}</div>`;
         }
-    } else if (item.slot === "consumable") {
-        if (item.type === "bomb") {
-            statsHtml += `🧨 <b>Explosive Yield:</b> ${item.combat ? item.combat.damageFlat : item.damage} DMG<br>` +
-                         `📏 <b>Blast Radius:</b> 3x3 Grid Area<br>`;
-        } else if (item.type === "brew") {
-            if (item.id === 'ipa') statsHtml += `🍺 <b>Combat Effect:</b> +1.10x Offense Multiplier.<br>`;
-            else if (item.id === 'lager') statsHtml += `🍺 <b>Combat Effect:</b> +1 Speed Level for movement.<br>`;
-            else if (item.id === 'reserve') statsHtml += `🍷 <b>Combat Effect:</b> Instantly restores 25% of Maximum Vitality.<br>`;
-            else statsHtml += `🍺 <b>Combat Effect:</b> Instantly restores 10% of Maximum Vitality.<br>`;
+    } else if (item.slot === 'consumable') {
+        if (item.type === 'brew') {
+            if (item.id === 'ipa') statsHtml += 'Combat Effect: +1.25x Offense Multiplier.<br>';
+            else if (item.id === 'lager') statsHtml += 'Combat Effect: +1 Speed Level and +35 ATB.<br>';
+            else if (item.id === 'reserve') statsHtml += 'Combat Effect: Restores 90% Max HP and cleanses status.<br>';
+            else if (item.id === 'ironwall_porter') statsHtml += 'Combat Effect: +1.25x Defense Multiplier.<br>';
+            else if (item.id === 'clearwater_tonic') statsHtml += 'Combat Effect: Cleanses negative status effects.<br>';
+            else if (item.id === 'staunching_bitter') statsHtml += 'Combat Effect: Sets HP to at least 30% and cleanses status.<br>';
+            else statsHtml += 'Combat Effect: Instantly restores 40% of Maximum Vitality.<br>';
         }
     }
 // ============================================
@@ -325,9 +319,6 @@ function showItemTooltip(event, item, index, location) {
         if (equippableSlots.includes(item.slot) && !isCombat) {
             actionsHtml += `<button onclick="equipItem(${index})" style="background: #27ae60; border-color: #2ecc71; padding: 6px; flex-grow: 1;">Equip</button>`;
         }
-        if (item.type === 'brew') {
-            actionsHtml += `<button onclick="drinkBrewFromInventory(${index})" style="background: #3498db; border-color: #2980b9; padding: 6px; flex-grow: 1;">Consume</button>`;
-        }
         if (item.id && item.id.includes('crate') && !isCombat) {
             actionsHtml += `<button onclick="openCrate(${index}, '${item.id}')" style="background: #e67e22; border-color: #d35400; padding: 6px; flex-grow: 1;">Unbox</button>`;
         }
@@ -349,13 +340,15 @@ function showItemTooltip(event, item, index, location) {
                 actionsHtml += `<div style="color: #e74c3c; font-size: 10px; font-weight: bold; width: 100%; text-align: center;">Awaiting Action Phase...</div>`;
             } else {
                 // Parse items.js data definitions
-                if (item.combat) {
-                    if (item.combat.actionType === "throwable" && combatPhase === 'PHASE_2') {
-                        actionsHtml += `<button onclick="closeCombatModal(); prepTargetAction(${index})" style="background: #c0392b; border-color: #e74c3c; padding: 6px; flex-grow: 1;">Throw (${item.combat.damageFlat} DMG)</button>`;
-                    } else if (item.combat.actionType === "heal" || item.combat.actionType === "buff") {
-                        actionsHtml += `<button onclick="closeCombatModal(); consumeBrew(${index})" style="background: #2980b9; border-color: #3498db; padding: 6px; flex-grow: 1;">Drink</button>`;
-                    }
-                } else if (item.slot !== "consumable" && item.type !== "crate") {
+                const combatActionType = item.combat ? item.combat.actionType : null;
+                let actionAdded = false;
+
+                if (combatActionType === "heal" || combatActionType === "buff") {
+                    actionsHtml += `<button onclick="closeCombatModal(); consumeBrew(${index})" style="background: #2980b9; border-color: #3498db; padding: 6px; flex-grow: 1;">Drink</button>`;
+                    actionAdded = true;
+                }
+
+                if (!actionAdded && equippableSlots.includes(item.slot)) {
                     actionsHtml += `<button onclick="closeCombatModal(); handleCombatEquip(${index})" style="background: #27ae60; border-color: #2ecc71; padding: 6px; flex-grow: 1;">Equip</button>`;
                 }
             }

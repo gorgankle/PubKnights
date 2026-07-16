@@ -99,9 +99,12 @@ ugcSchema.index({ type: 1, createdAt: -1 });
 
 const UGC = mongoose.model('UGC', ugcSchema);
 
+const RETIRED_ITEM_IDS = new Set(['bomb_small', 'bomb_heavy', 'scroll_fireball', 'scroll_poison_shot']);
+
 // === THE AUTOMATED ITEM LONGEVITY SANITIZER (STRICT HYDRATION) ===
 function sanitizeItemSchema(savedItem) {
     if (!savedItem || !savedItem.id) return savedItem;
+    if (RETIRED_ITEM_IDS.has(savedItem.id)) return null;
     
     // 1. Grab the fresh, 100% up-to-date template from items.js
     let masterTemplate = ItemDatabase[savedItem.id];
@@ -188,11 +191,132 @@ function createDefaultSaveData(username) {
         },
         inventory: [], stash: [],
         buildings: { workerCabin: 1 },
-        workers: { total: 0, assigned: { wood: 0, fish: 0, hops: 0 } },
+        workers: { total: 0, assigned: { wood: 0, fish: 0, hops: 0 }, retired: true },
+        tavernContacts: { total: 0, refundGold: 0 },
+        economyMigrationVersion: 3,
         supplyCart: { wood: 0, fish: 0, hops: 0, max: 100, level: 1 },
         maxInventorySlots: 5, backpackUpgrades: 0,
         pet: { adopted: false, level: 1 },
         quests: { completed: {} }
+    };
+}
+
+function getLegacyWorkerSnapshot(pd) {
+    const workers = pd.workers && typeof pd.workers === 'object' ? pd.workers : {};
+
+    if (workers.woodcutters !== undefined || workers.fishermen !== undefined || workers.farmers !== undefined) {
+        const wood = Math.max(0, Math.trunc(Number(workers.woodcutters) || 0));
+        const fish = Math.max(0, Math.trunc(Number(workers.fishermen) || 0));
+        const hops = Math.max(0, Math.trunc(Number(workers.farmers) || 0));
+        return { total: wood + fish + hops, assigned: { wood, fish, hops } };
+    }
+
+    const assigned = workers.assigned && typeof workers.assigned === 'object' ? workers.assigned : {};
+    const total = Math.max(0, Math.trunc(Number(workers.total) || 0));
+    let wood = Math.max(0, Math.min(total, Math.trunc(Number(assigned.wood) || 0)));
+    let fish = Math.max(0, Math.min(total, Math.trunc(Number(assigned.fish) || 0)));
+    let hops = Math.max(0, Math.min(total, Math.trunc(Number(assigned.hops) || 0)));
+
+    if (wood + fish + hops > total) {
+        let remaining = total;
+        wood = Math.min(wood, remaining);
+        remaining -= wood;
+        fish = Math.min(fish, remaining);
+        remaining -= fish;
+        hops = Math.min(hops, remaining);
+    }
+
+    return { total, assigned: { wood, fish, hops } };
+}
+
+function calculateLegacyCabinRefund(cabinLevel) {
+    let refund = 0;
+    const level = Math.max(1, Math.trunc(Number(cabinLevel) || 1));
+    for (let lvl = 1; lvl < level; lvl++) {
+        refund += Math.floor(100 * Math.pow(1.3, lvl));
+    }
+    return refund;
+}
+
+function normalizeSavedWorkerState(pd) {
+    if (!pd.buildings || typeof pd.buildings !== 'object') pd.buildings = { workerCabin: 1 };
+
+    const snapshot = getLegacyWorkerSnapshot(pd);
+    const cabinLevel = Math.max(1, Math.trunc(Number(pd.buildings.workerCabin) || 1));
+    const migrationVersion = Math.max(0, Math.trunc(Number(pd.economyMigrationVersion) || 0));
+
+    if (migrationVersion < 3) {
+        const refundGold = (snapshot.total * 100) + calculateLegacyCabinRefund(cabinLevel);
+        if (refundGold > 0) {
+            pd.gold = Math.max(0, Math.trunc(Number(pd.gold) || 0)) + refundGold;
+            pd.workerRefundGold = Math.max(0, Math.trunc(Number(pd.workerRefundGold) || 0)) + refundGold;
+        }
+        pd.tavernContacts = { total: snapshot.total, refundGold };
+        pd.economyMigrationVersion = 3;
+    } else if (!pd.tavernContacts || typeof pd.tavernContacts !== 'object') {
+        pd.tavernContacts = { total: 0, refundGold: Math.max(0, Math.trunc(Number(pd.workerRefundGold) || 0)) };
+    }
+
+    pd.workers = { total: 0, assigned: { wood: 0, fish: 0, hops: 0 }, retired: true };
+    pd.buildings.workerCabin = 1;
+}
+
+function normalizeSavedRoster(pd) {
+    const roster = pd.roster && typeof pd.roster === 'object' ? pd.roster : {};
+    const companions = Array.isArray(roster.companions) ? roster.companions : [];
+    const seen = new Set();
+
+    const normalizedCompanions = companions
+        .filter(companion => companion && typeof companion === 'object' && companion.id)
+        .map(companion => {
+            const id = sanitizeToken(companion.id, '');
+            if (!id || seen.has(id)) return null;
+            seen.add(id);
+
+            const equipment = companion.equipment && typeof companion.equipment === 'object' ? companion.equipment : {};
+            const normalizedEquipment = {
+                weapon: sanitizeItemSchema(equipment.weapon) || null,
+                helmet: sanitizeItemSchema(equipment.helmet) || null,
+                armor: sanitizeItemSchema(equipment.armor) || null,
+                accessory: sanitizeItemSchema(equipment.accessory) || null
+            };
+
+            return {
+                id,
+                name: String(companion.name || 'Companion').slice(0, 32),
+                role: String(companion.role || 'Companion').slice(0, 32),
+                level: Math.max(1, Math.min(50, Math.trunc(Number(companion.level) || 1))),
+                hired: companion.hired !== false,
+                active: companion.active === true,
+                icon: String(companion.icon || 'M').slice(0, 2),
+                spriteId: sanitizeToken(companion.spriteId, ''),
+                stats: {
+                    vitality: Math.max(1, Math.trunc(Number(companion.stats && companion.stats.vitality) || 3)),
+                    offense: Math.max(1, Math.trunc(Number(companion.stats && companion.stats.offense) || 2)),
+                    defense: Math.max(1, Math.trunc(Number(companion.stats && companion.stats.defense) || 2)),
+                    speed: Math.max(1, Math.trunc(Number(companion.stats && companion.stats.speed) || 3))
+                },
+                equipment: normalizedEquipment
+            };
+        })
+        .filter(Boolean);
+
+    const activeIds = Array.isArray(roster.activeIds) ? roster.activeIds.map(id => sanitizeToken(id, '')).filter(Boolean) : [];
+    const validIds = new Set(normalizedCompanions.map(companion => companion.id));
+    pd.roster = {
+        companions: normalizedCompanions,
+        activeIds: activeIds.filter((id, index) => validIds.has(id) && activeIds.indexOf(id) === index).slice(0, 1)
+    };
+    pd.roster.companions.forEach(companion => { companion.active = pd.roster.activeIds.includes(companion.id); });
+}
+function normalizeSavedSupplyCart(pd) {
+    const cart = pd.supplyCart && typeof pd.supplyCart === 'object' ? pd.supplyCart : {};
+    pd.supplyCart = {
+        wood: Math.max(0, Math.trunc(Number(cart.wood) || 0)),
+        fish: Math.max(0, Math.trunc(Number(cart.fish) || 0)),
+        hops: Math.max(0, Math.trunc(Number(cart.hops) || 0)),
+        max: Math.max(1, Math.trunc(Number(cart.max) || 100)),
+        level: Math.max(1, Math.trunc(Number(cart.level) || 1))
     };
 }
 
@@ -226,23 +350,19 @@ function hydratePlayerData(playerDoc) {
     }
 
     if (pd.inventory) {
-        pd.inventory = pd.inventory.map(item => sanitizeItemSchema(item));
+        pd.inventory = pd.inventory.map(item => sanitizeItemSchema(item)).filter(Boolean);
     }
 
     if (pd.stash) {
-        pd.stash = pd.stash.map(item => sanitizeItemSchema(item));
+        pd.stash = pd.stash.map(item => sanitizeItemSchema(item)).filter(Boolean);
     }
 
-    if (!pd.buildings) pd.buildings = { workerCabin: 1 };
     if (!pd.quests) pd.quests = { completed: {} };
     if (!pd.quests.completed) pd.quests.completed = {};
-    if (pd.workers && pd.workers.woodcutters !== undefined) {
-        let w = pd.workers.woodcutters || 0;
-        let f = pd.workers.fishermen || 0;
-        let h = pd.workers.farmers || 0;
-        pd.workers = { total: w + f + h, assigned: { wood: w, fish: f, hops: h } };
-    }
-
+    normalizeSavedWorkerState(pd);
+    normalizeSavedSupplyCart(pd);
+    pd.activeBuffs = [];
+    pd.activeCombatBuff = null;
     pd.hp = (pd.vitality || 1) * 25;
     pd.stamina = (pd.maxStamina || 1) * 25;
     return pd;
@@ -463,26 +583,8 @@ setInterval(() => {
         let p = activePlayers[socketId];
         if (!p) continue;
 
-        // 1. Process Workers & Supply Cart
-        let productionCycles = (p.happyHourTicks > 0) ? 2 : 1;
+        // Worker production is retired. Minigame points now feed resources, crates, and fish exports.
         if (p.happyHourTicks > 0) p.happyHourTicks--;
-
-        for (let cycle = 0; cycle < productionCycles; cycle++) {
-            if (p.workers && p.workers.assigned && p.supplyCart) {
-                // Exponential generation math for long-term balance
-                let genWood = p.workers.assigned.wood > 0 ? Math.floor(Math.pow(1.15, p.workers.assigned.wood)) : 0;
-                let genFish = p.workers.assigned.fish > 0 ? Math.floor(Math.pow(1.15, p.workers.assigned.fish)) : 0;
-                let genHops = p.workers.assigned.hops > 0 ? Math.floor(Math.pow(1.15, p.workers.assigned.hops)) : 0;
-                
-                let currentTotal = p.supplyCart.wood + p.supplyCart.fish + (p.supplyCart.hops || 0);
-                
-                if (currentTotal < p.supplyCart.max) p.supplyCart.wood = Math.min(p.supplyCart.wood + genWood, p.supplyCart.max);
-                currentTotal = p.supplyCart.wood + p.supplyCart.fish + (p.supplyCart.hops || 0);
-                if (currentTotal < p.supplyCart.max) p.supplyCart.fish = Math.min(p.supplyCart.fish + genFish, p.supplyCart.max);
-                currentTotal = p.supplyCart.wood + p.supplyCart.fish + (p.supplyCart.hops || 0);
-                if (currentTotal < p.supplyCart.max) p.supplyCart.hops = Math.min(p.supplyCart.hops + genHops, p.supplyCart.max);
-            }
-        }
 
         io.to(socketId).emit('serverTick', {
             hp: p.hp, 

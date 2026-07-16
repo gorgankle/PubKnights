@@ -9,6 +9,7 @@ const {
     createPlayerActor,
     createEnemyActor,
     createPetActor,
+    createCompanionActor,
     createKregActor,
     createCellarDwellerActor,
     getEnemyActors,
@@ -18,6 +19,14 @@ const {
 
 const VALID_ZONES = Object.freeze(['WILDERNESS', 'CELLARS', 'ABYSS', 'GORILLA_ARENA']);
 
+function getActiveCompanions(player) {
+    const roster = player && player.roster && typeof player.roster === 'object' ? player.roster : {};
+    const companions = Array.isArray(roster.companions) ? roster.companions : [];
+    const activeIds = new Set(Array.isArray(roster.activeIds) ? roster.activeIds : []);
+    return companions
+        .filter(companion => companion && companion.hired !== false && activeIds.has(companion.id))
+        .slice(0, 1);
+}
 function addEnemyFromSlot(combatState, slot, prefix = "", statMult = 1) {
     const enemyId = slot.id;
     if (!enemyId) return;
@@ -76,6 +85,15 @@ function createCombatEncounter(player, data) {
         atbPaused: false
     };
     addCombatActor(combatState, createPlayerActor(player, template.playerStart));
+
+    getActiveCompanions(player).forEach(companion => {
+        const companionTile = findOpenTileNear(combatState, template.playerStart, [
+            { x: template.playerStart.x + 1, y: template.playerStart.y },
+            { x: template.playerStart.x, y: template.playerStart.y + 1 },
+            { x: template.playerStart.x, y: template.playerStart.y - 1 }
+        ]);
+        if (companionTile) addCombatActor(combatState, createCompanionActor(companion, companionTile));
+    });
 
     const baitMultiplier = (zone === 'WILDERNESS' && player.mapBaited) ? 1.4 : 1.0;
     const prefixLabel = (zone === 'WILDERNESS' && player.mapBaited) ? "Frenzied " : "";

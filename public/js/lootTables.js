@@ -12,7 +12,8 @@ const LootTables = {
             { itemId: "leather_mitts", weight: 20 },
             { itemId: "hide_boots", weight: 20 },
             { itemId: "scavenged_machete", weight: 10 },
-            { itemId: "stout", weight: 5 }
+            { itemId: "stout", weight: 5 },
+            { itemId: "clearwater_tonic", weight: 3 }
         ]
     },
     "peanut_slinger": {
@@ -31,7 +32,7 @@ const LootTables = {
         xpDrop: 28,
         dropChance: 1.0,
         pools: [
-            { itemId: "scroll_poison_shot", weight: 100 }
+            { itemId: "bogwood_staff", weight: 100 }
         ]
     },
     "wild_ravager": {
@@ -47,7 +48,7 @@ const LootTables = {
             // Added Starter Leather Gear
             { itemId: "leather_tunic", weight: 15 },
             { itemId: "leather_mitts", weight: 15 },
-			{ itemId: "scroll_fireball", weight: 5 },
+			{ itemId: "apprentice_staff", weight: 5 },
             { itemId: "hide_boots", weight: 20 }
         ]
     },
@@ -108,7 +109,8 @@ const LootTables = {
             { itemId: "beerglass_cuirass", weight: 10 },
             { itemId: "beerglass_cleats", weight: 10 },
             // Occasional healing drop
-            { itemId: "stout", weight: 5 }
+            { itemId: "stout", weight: 5 },
+            { itemId: "clearwater_tonic", weight: 3 }
         ]
     },
     "pub_crawl_mimic": {
@@ -124,7 +126,8 @@ const LootTables = {
             { itemId: "tankard_helm", weight: 10 },
             { itemId: "tankard_gauntlets", weight: 10 },
             // Ultimate healing brew
-            { itemId: "reserve", weight: 5 }
+            { itemId: "reserve", weight: 2 },
+            { itemId: "staunching_bitter", weight: 5 }
         ]
     },
     "vintage_behemoth": {
@@ -178,7 +181,8 @@ const LootTables = {
             // Drops the Evasion/Glass Cannon gear and IPAs
             { itemId: "beerglass_shiv", weight: 30 },
             { itemId: "beerglass_visor", weight: 30 },
-            { itemId: "ipa", weight: 20 },
+            { itemId: "ipa", weight: 16 },
+            { itemId: "lager", weight: 12 },
             // The elusive Relic Drop: 2% relative chance!
             { itemId: "blackout_blinders", weight: 2 }
         ]
@@ -190,7 +194,8 @@ const LootTables = {
             // Drops the Brawler gear and standard Stouts
             { itemId: "pubserker_knuckles", weight: 30 },
             { itemId: "pubserker_stompers", weight: 30 },
-            { itemId: "stout", weight: 20 },
+            { itemId: "stout", weight: 16 },
+            { itemId: "ironwall_porter", weight: 10 },
             // The elusive Relic Drops!
             { itemId: "blackout_staggers", weight: 2 },
             { itemId: "blackout_wraps", weight: 2 }
@@ -202,7 +207,8 @@ const LootTables = {
         pools: [
             { itemId: "tankard_plating", weight: 30 },
             { itemId: "tankard_maul", weight: 30 },
-            { itemId: "reserve", weight: 20 },
+            { itemId: "reserve", weight: 10 },
+            { itemId: "staunching_bitter", weight: 10 },
             { itemId: "blackout_trench", weight: 2 },
             { itemId: "blackout_axe", weight: 2 } 
         ]

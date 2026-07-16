@@ -4,6 +4,40 @@
 let activeTargetIndex   = -1;
 let previousCombatPhase = 'PHASE_1';
 let pendingLoot = []; 
+let activeCombatActorUid = 'player_0';
+
+function getActiveCombatant() {
+    if (!activeCombatActorUid || activeCombatActorUid === 'player_0') {
+        return { uid: 'player_0', kind: 'player', name: player.username || 'Knight', x: player.x, y: player.y, stamina: player.stamina, equipment: player.equipment, speed: getPlayerSwiftness() };
+    }
+    return (allies || []).find(actor => actor.uid === activeCombatActorUid) || { uid: 'player_0', kind: 'player', name: player.username || 'Knight', x: player.x, y: player.y, stamina: player.stamina, equipment: player.equipment, speed: getPlayerSwiftness() };
+}
+
+function getActiveCombatantPosition() {
+    const actor = getActiveCombatant();
+    return { x: actor.x, y: actor.y, size: actor.size || 1 };
+}
+
+function getActiveCombatantWeapon() {
+    const actor = getActiveCombatant();
+    return actor && actor.equipment ? actor.equipment.weapon : player.equipment.weapon;
+}
+
+function getActiveCombatantStamina() {
+    const actor = getActiveCombatant();
+    return actor && typeof actor.stamina === 'number' ? actor.stamina : player.stamina;
+}
+
+function getActiveCombatantMoveRange() {
+    const actor = getActiveCombatant();
+    return Math.max(1, Math.min(12, actor && actor.speed ? actor.speed : getPlayerSwiftness()));
+}
+
+function getActiveCombatantName() {
+    const actor = getActiveCombatant();
+    return actor && actor.name ? actor.name : 'Knight';
+}
+
 
 
 // Data-Driven Special Descriptions
@@ -27,7 +61,7 @@ function executeCombatAction(actionType) {
             }
            if (!selectedEnemy || !selectedEnemy.alive) return;
             
-            let weapon = player.equipment.weapon;
+            let weapon = getActiveCombatantWeapon();
             
             // === PHASE 0: UNARMED CLIENT FALLBACK ===
             // Injects a mock weapon dynamically so it passes validation and emits to the server
@@ -59,7 +93,7 @@ function executeCombatAction(actionType) {
             let staminaCost = combatRules.staminaCost;
             let range = combatRules.range;
             
-            if (player.stamina < staminaCost) {
+            if (getActiveCombatantStamina() < staminaCost) {
                 logMessage(`❌ Legs are too heavy. Not enough stamina (${staminaCost} required).`);
                 if (typeof playRetroSound === 'function') playRetroSound('error');
                 return;
@@ -91,6 +125,7 @@ if (actionType !== 'end') combatPhase = 'WAITING_FOR_SERVER';
 
         // ONE unified payload to rule them all
         socket.emit('dispatchCombatAction', { 
+            actorUid: activeCombatActorUid,
             actionCategory: actionType === 'end' ? 'pass' : 'weapon',
             subType: actionType, 
             targetEnemy: selectedEnemy ? { 
@@ -110,11 +145,11 @@ function endPlayerTurn() {
     combatPhase = 'WAITING_FOR_ATB'; // <--- THE LOCK
     selectedEnemy = null; 
     pendingMove = null; 
-    player.visualAtb = 0;            // <--- RESET VISUAL BAR
+    if (activeCombatActorUid === 'player_0') player.visualAtb = 0;            // <--- RESET VISUAL BAR
     refreshSystemUI(); 
     
     // Pass control securely to the Server AI, and sync our final X/Y position!
-    socket.emit('endPlayerTurn', { playerPos: { x: player.x, y: player.y } });
+    socket.emit('endPlayerTurn', { actorUid: activeCombatActorUid, playerPos: { x: player.x, y: player.y } });
 }
 
 function fleeCombat() {
@@ -140,7 +175,7 @@ function consumeBrew(invIndex) {
     // === THE FIX: ENFORCE PHASE LOCK ON CONSUMABLES ===
     combatPhase = 'WAITING_FOR_SERVER'; 
     
-    socket.emit('dispatchCombatAction', { actionCategory: 'consumable', invIndex: invIndex });
+    socket.emit('dispatchCombatAction', { actorUid: activeCombatActorUid, actionCategory: 'consumable', invIndex: invIndex });
 }
 
 
@@ -150,7 +185,7 @@ window.prepTargetAction = function(idx) {
     
     // === THE FIX: Enforce Phase 2 for ALL throws and spells! ===
     if (combatPhase !== 'PHASE_2') {
-        logMessage("❌ Tactical Error: Spells and throwables can only be aimed during Phase 2.");
+        logMessage("❌ Tactical Error: Targeted actions can only be aimed during Phase 2.");
         if (typeof playRetroSound === 'function') playRetroSound('error');
         return;
     }
@@ -167,9 +202,9 @@ window.executeTargetAction = function(tx, ty) {
     
     // Route Weapon Specials vs Consumables!
     if (activeTargetIndex === 'weapon') {
-        socket.emit('dispatchCombatAction', { actionCategory: 'weapon', subType: 'special', tx: tx, ty: ty });
+        socket.emit('dispatchCombatAction', { actorUid: activeCombatActorUid, actionCategory: 'weapon', subType: 'special', tx: tx, ty: ty });
     } else {
-        socket.emit('dispatchCombatAction', { actionCategory: 'consumable', invIndex: activeTargetIndex, tx: tx, ty: ty });
+        socket.emit('dispatchCombatAction', { actorUid: activeCombatActorUid, actionCategory: 'consumable', invIndex: activeTargetIndex, tx: tx, ty: ty });
     }
     
     activeTargetIndex = -1;

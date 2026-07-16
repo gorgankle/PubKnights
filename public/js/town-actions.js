@@ -7,7 +7,7 @@ function resetStats() {
     socket.emit('townAction', { action: 'resetStats' });
 }
 
-function craftKegBomb(tier) { socket.emit('townAction', { action: 'craftBomb', tier: tier }); }
+function craftKegBomb() { logMessage('Keg bombs have been retired. Ranged and AOE tactics now come from weapons.'); }
 
 function upgradeBackpackCapacity() { socket.emit('townAction', { action: 'upgradeBackpack' }); }
 
@@ -16,8 +16,11 @@ function upgradeVaultCapacity() {
 }
 
 
-// === NEW: ITEM-BASED CONSUMPTION IN TOWN ===
-function drinkBrewFromInventory(idx) { socket.emit('townAction', { action: 'drinkBrew', idx: idx }); }
+// Brews are combat actions only.
+function drinkBrewFromInventory(idx) {
+    logMessage("Brews can only be consumed from the combat backpack.");
+    if (typeof playRetroSound === 'function') playRetroSound('error');
+}
 
 // === CRATE UNBOXING LOGIC ===
 function openCrate(index, crateId) {
@@ -39,6 +42,17 @@ function hireBrewmasterServices() { socket.emit('townAction', { action: 'craftBr
 
 function craftSpecialtyBrew(brewType) { socket.emit('townAction', { action: 'craftBrew', brewType: brewType }); }
 
+function hireTavernCompanion() {
+    socket.emit('townAction', { action: 'hireCompanion', companionId: 'marlow_shieldhand' });
+}
+
+function setActiveCompanion(companionId) {
+    socket.emit('townAction', { action: 'setActiveCompanion', companionId: companionId });
+}
+
+function benchCompanion(companionId) {
+    socket.emit('townAction', { action: 'benchCompanion', companionId: companionId });
+}
 function hostHappyHour() {
     socket.emit('townAction', { action: 'happyHour' });
 }
@@ -57,37 +71,15 @@ function chumForbiddenCellars() {
 }
 
 function hireWorker() {
-    socket.emit('townAction', { action: 'hireWorker' });
+    logMessage("Worker hiring has been retired. Earn resources through chopping, fishing, and hops minigames.");
 }
 
 function upgradeCabin() {
-    socket.emit('townAction', { action: 'upgradeCabin' });
+    logMessage("Worker cabins have been retired. Old investments are refunded into tavern contacts on login.");
 }
 
 function adjustWorker(type, delta) {
-    if (typeof gameState !== 'undefined' && gameState === 'COMBAT') {
-        logMessage("❌ You cannot reassign town workers while deployed in combat zones.");
-        return;
-    }
-    if (typeof combatPhase !== 'undefined' && combatPhase === 'WAITING_FOR_SERVER') return;
-    
-    let w = player.workers.assigned.wood || 0;
-    let f = player.workers.assigned.fish || 0;
-    let h = player.workers.assigned.hops || 0;
-    let totalAssigned = w + f + h;
-    let maxTotal = player.workers.total || 0;
-    
-    if (delta > 0 && totalAssigned >= maxTotal) return; 
-    
-    if (type === 'wood' && w + delta >= 0) w += delta;
-    if (type === 'fish' && f + delta >= 0) f += delta;
-    if (type === 'hops' && h + delta >= 0) h += delta;
-    
-    if (w + f + h <= maxTotal) {
-        player.workers.assigned = { wood: w, fish: f, hops: h };
-        refreshSystemUI(); // Optimistic UI update
-        socket.emit('townAction', { action: 'assignWorker', wood: w, fish: f, hops: h });
-    }
+    logMessage("Worker assignment has been retired. Use Quartermaster exchanges to turn minigame points into resources and crates.");
 }
 
 function upgradeCartCapacity() { socket.emit('townAction', { action: 'upgradeCart' }); }

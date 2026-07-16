@@ -62,15 +62,15 @@ socket.on('combatResult', (result) => {
     if (result.type === 'error') {
         logMessage(result.message);
         if (typeof playRetroSound === 'function') playRetroSound('error');
-        
+
         // Failsafe: If the server rejected a throw, unlock the client back to Phase 2!
-        if (combatPhase === 'WAITING_FOR_SERVER') combatPhase = 'PHASE_2'; 
-        
+        if (combatPhase === 'WAITING_FOR_SERVER') combatPhase = 'PHASE_2';
+
         refreshSystemUI();
         if (typeof drawGrid === 'function') drawGrid();
         return;
     }
-    
+
     if (result.type === 'pass') {
         logMessage(`⌛ Phase passed. Recovered ${result.recovered} stamina.`);
         advancePhase(); // Safely advances the turn!
@@ -82,11 +82,11 @@ socket.on('combatResult', (result) => {
     if (result.type === 'flee') {
         logMessage(`🏃 You fled the battlefield in terror!`);
         if (typeof playRetroSound === 'function') playRetroSound('step');
-        
+
         // Clear any pending escrow loot locally
         pendingLoot = [];
         if (player) player.pendingLoot = [];
-        
+
         setTimeout(transitionToTown, 500);
         return;
     }
@@ -94,36 +94,29 @@ socket.on('combatResult', (result) => {
 
     // --- 1. HANDLE EVASION ---
     if (result.type === 'miss') {
-        logMessage(`💨 Strike MISSED! Target evaded (${result.hitChance}% Hit Chance).`); 
-        if (typeof playRetroSound === 'function') playRetroSound('error'); 
-        if (selectedEnemy) FXEngine.spawnText(selectedEnemy.x, selectedEnemy.y, "MISS", { color: "#3498db" }); 
-        
+        logMessage(`💨 Strike MISSED! Target evaded (${result.hitChance}% Hit Chance).`);
+        if (typeof playRetroSound === 'function') playRetroSound('error');
+        if (selectedEnemy) FXEngine.spawnText(selectedEnemy.x, selectedEnemy.y, "MISS", { color: "#3498db" });
+
         advancePhase(); // Unlocks the Phase!
         refreshSystemUI();
         return;
-    } 
-    
-    // --- 2. HANDLE HITS (MELEE & MAGIC/BOMBS) ---
+    }
+
+    // --- 2. HANDLE HITS (WEAPONS & MAGIC) ---
     if (result.type === 'hit') {
         let fx = result.fx;
-        
+
         // Define animation physics based on the attack type
-        let animOptions = { arc: 0, spin: true, frames: 10 }; 
-        if (result.source === 'throwable') {
-            animOptions = { arc: 1.5, spin: true, frames: 30 }; 
-        }
+        let animOptions = { arc: 0, spin: true, frames: 10 };
 
         // What happens the exact millisecond the projectile finishes traveling?
         animOptions.onComplete = () => {
-            
+
             // Play physical impact visuals/audio
-            if (result.source === 'throwable') {
-                if (typeof playRetroSound === 'function') playRetroSound('explosion'); 
-                FXEngine.spawnExplosion(fx.tx, fx.ty, { radius: fx.radius + 1.25 });
-                if (result.targets.length === 0) logMessage("💨 Blast hit nothing.");
-            } else if (result.source === 'spell') {
+            if (result.source === 'spell') {
                 // === NEW: Spell Impact Sounds ===
-                if (typeof playRetroSound === 'function') playRetroSound('explosion'); 
+                if (typeof playRetroSound === 'function') playRetroSound('explosion');
                 if (result.targets.length === 0) logMessage("💨 Spell scorched nothing but the earth.");
             } else {
                 let isCrit = result.targets.length > 0 && result.targets[0].isCrit;
@@ -134,13 +127,12 @@ socket.on('combatResult', (result) => {
             result.targets.forEach(targetData => {
                 let e = getCombatActorByUid(targetData.uid);
                 if (!e) return;
-                
+
                 e.hp -= targetData.damage;
                 if (targetData.killed) { e.hp = 0; e.alive = false; }
                 if (targetData.statusEffects) e.statusEffects = targetData.statusEffects;
-                
-                // === THE FIX: Route spell damage text identical to throwables ===
-                if (result.source === 'throwable' || result.source === 'spell') {
+
+                if (result.source === 'spell') {
                     logMessage(`🔥 ${e.name} caught in blast for ${targetData.damage} DMG!`);
                     FXEngine.spawnText(e.x, e.y, `-${targetData.damage}`, { color: "#e74c3c" });
                 } else {
@@ -162,69 +154,73 @@ socket.on('combatResult', (result) => {
             // Cleanup & Victory Checks
             if (resultCombatState) syncCombatCollectionsFromState(resultCombatState);
             if (selectedEnemy && !selectedEnemy.alive) selectedEnemy = null;
-            
+
             if (result.combatComplete || enemies.every(e => !e.alive)) {
                 logMessage("🏆 VICTORY Conditions verified.");
                 if (typeof playRetroSound === 'function') playRetroSound('victory');
-                
-              
+
+
                 let retBtn = document.querySelector("#loot-screen button");
                 if (retBtn) retBtn.style.display = 'block';
-                setTimeout(showLootScreen, 1200); 
+                setTimeout(showLootScreen, 1200);
             } else {
                 advancePhase(); // Unlocks the Phase safely!
             }
-            
+
             refreshSystemUI();
         };
 
         // === THE MASTER ANIMATION TRIGGER ===
         if (result.source === 'spell' && fx && fx.type === 'beam') {
-            
+
             // THE FIX: Pass the entire 'fx' configuration object instead of just the style string!
             FXEngine.spawnBeam(player.x, player.y, fx.tx, fx.ty, fx);
-            
-            setTimeout(() => { 
-                if (typeof animOptions.onComplete === 'function') animOptions.onComplete(); 
+
+            setTimeout(() => {
+                if (typeof animOptions.onComplete === 'function') animOptions.onComplete();
             }, 350);
 
-       } else if (result.source === 'throwable' && fx && fx.spriteId) {
-            FXEngine.spawnProjectile(player.x, player.y, fx.tx, fx.ty, fx.spriteId, animOptions);
-            
+        } else if (result.source === 'spell' && fx && fx.type === 'burst') {
+            FXEngine.spawnMagicBurst(fx.tx, fx.ty, fx);
+
+            setTimeout(() => {
+                if (typeof animOptions.onComplete === 'function') animOptions.onComplete();
+            }, 350);
+
        // === NEW: ROUTE RANGED WEAPONS (BOWS/CROSSBOWS) ===
         } else if (result.source === 'weapon' && fx && fx.isProjectile) {
-            
+
             animOptions.arc = 0;         // Flat trajectory
             animOptions.spin = false;    // Arrows point directly at target
             animOptions.frames = 15;     // Quick flight speed
-            
+
             FXEngine.spawnProjectile(player.x, player.y, fx.tx, fx.ty, fx.spriteId, animOptions);
         // ===================================================
 
         } else {
             // 1. Determine if they used 'standard' or 'special'
             let profileKey = result.actionName === 'special' ? 'special' : 'standard';
-            
+
             // === THE FIX: UNARMED ANIMATION FALLBACK ===
             // Inject a mock weapon profile so the client doesn't crash when bare-handed!
             let weapon = player.equipment.weapon;
             if (!weapon || !weapon.combat) {
-                weapon = { 
-                    combat: { 
-                        standard: { animType: 'lunge_bash' }, 
-                        special: { animType: 'lunge_bash' } 
-                    } 
+                weapon = {
+                    combat: {
+                        standard: { animType: 'lunge_bash' },
+                        special: { animType: 'lunge_bash' }
+                    }
                 };
             }
-            
+
             // 2. Fetch the exact animation profile
             let weaponProfile = weapon.combat[profileKey];
             let animType = weaponProfile && weaponProfile.animType ? weaponProfile.animType : 'lunge_slash';
-            
+
             // 3. Trigger the lunge, and ONLY execute the damage math when the strike physically connects!
-            FXEngine.spawnMeleeStrike(player, fx.tx, fx.ty, animType, { 
-                frames: 15, 
-                onComplete: animOptions.onComplete 
+            FXEngine.spawnMeleeStrike(player, fx.tx, fx.ty, animType, {
+                frames: 15,
+                onComplete: animOptions.onComplete
             });
         }
         // ====================================
@@ -236,32 +232,32 @@ socket.on('combatItemReceipt', (receipt) => {
     if (!receipt.success) {
         logMessage(receipt.message);
         if (typeof playRetroSound === 'function') playRetroSound('error');
-        
+
         // === THE FIX: Unlock the phase if the server rejects the drink! ===
-        if (combatPhase === 'WAITING_FOR_SERVER') combatPhase = 'PHASE_2'; 
+        if (combatPhase === 'WAITING_FOR_SERVER') combatPhase = 'PHASE_2';
         refreshSystemUI();
-        
+
         return;
     }
 
     if (receipt.updatedPlayer) Object.assign(player, receipt.updatedPlayer); // Magic bullet sync
     if (receipt.updatedCombatState) syncCombatCollectionsFromState(receipt.updatedCombatState);
-    
+
     logMessage(receipt.message);
     if (receipt.message.includes("gear")) {
         if (typeof playRetroSound === 'function') playRetroSound('equip');
     } else {
         if (typeof playRetroSound === 'function') playRetroSound('chug');
     }
-    
+
     if (typeof saveGame === 'function') saveGame();
-    
+
     advancePhase(); // Updates HTML buttons & phases securely
-    
+
     // === THE MISSING CANVAS REPAINT ===
     // Forces the physical game board to instantly redraw the new movement/range tiles!
     if (typeof drawGrid === 'function') {
-        drawGrid(); 
+        drawGrid();
     }
     // ==================================
 });
@@ -284,11 +280,12 @@ socket.on('moveReceipt', (receipt) => {
     }
 });
 
-socket.on('ATB_READY', () => {
+socket.on('ATB_READY', (payload = {}) => {
     if (gameState !== 'COMBAT') return;
+    activeCombatActorUid = payload.actorUid || 'player_0';
     combatPhase = 'PHASE_1'; // The exact start of your tactical phase!
     currentTurn = 'PLAYER';
-    logMessage("⚡ ATB Gauge Full! Your tactical turn begins.");
+    logMessage(`⚡ ${payload.actorName || 'Party'} is ready! Tactical turn begins.`);
     if (typeof playRetroSound === 'function') playRetroSound('equip');
     refreshSystemUI();
     if (typeof drawGrid === 'function') drawGrid();
@@ -331,8 +328,8 @@ socket.on('townReceipt', (receipt) => {
     }
 
    logMessage(receipt.message);
-    if (typeof saveGame === 'function') saveGame(); 
-    refreshSystemUI(); 
+    if (typeof saveGame === 'function') saveGame();
+    refreshSystemUI();
 });
 
 // === SERVER-AUTHORITATIVE INVENTORY RECEIPT ===
@@ -353,7 +350,7 @@ socket.on('inventoryReceipt', (receipt) => {
         if (typeof playRetroSound === 'function') playRetroSound('equip');
     } else if (receipt.action === 'sell' || receipt.action === 'takeLoot') {
         if (typeof playRetroSound === 'function') playRetroSound('coin');
-        
+
         // === THE FIX: VISUALLY CLEAR THE ITEM FROM THE LOOT SCREEN ===
         pendingLoot.length = 0; // Wipe the old visual list
         if (player.pendingLoot) pendingLoot.push(...player.pendingLoot); // Sync with the server's truth
@@ -361,10 +358,10 @@ socket.on('inventoryReceipt', (receipt) => {
     }
 
     if (receipt.message) logMessage(receipt.message);
-    
+
     // Save to DB and re-render the visual UI grids
-    if (typeof saveGame === 'function') saveGame(); 
-    refreshSystemUI(); 
+    if (typeof saveGame === 'function') saveGame();
+    refreshSystemUI();
 });
 
 // === SERVER-AUTHORITATIVE ESCROW CATCHERS ===
@@ -373,12 +370,12 @@ socket.on('killConfirmed', (data) => {
     // The server holds the real secured values in its escrow.
     player.pendingGold = (player.pendingGold || 0) + data.gold;
     player.pendingXp = (player.pendingXp || 0) + data.xp;
-    
+
     if (data.xp > 0) logMessage(`💀 Terminated entity: ${data.enemyName} (Stored ${data.xp} XP)`);
 
 if (data.item) {
         pendingLoot.push(data.item); // For the visual UI
-        
+
         // === THE FIX: STORE IT IN THE PLAYER'S LOCAL MEMORY TOO ===
         player.pendingLoot = player.pendingLoot || [];
         player.pendingLoot.push(data.item);
@@ -410,28 +407,28 @@ socket.on('rogueLootTheft', (data) => {
 socket.on('combatRewardsReceipt', (receipt) => {
     if (receipt.updatedPlayer) {
         let oldLevel = player.level;
-        
+
         // === THE FIX: AUTO-SNAP ZONE UI ===
         // Track the old maximum levels before the magic sync
         let oldWild = player.wildernessLevel || 1;
         let oldCellar = player.cellarLevel || 1;
 
         Object.assign(player, receipt.updatedPlayer); // Magic bullet sync!
-        
+
         // If the server pushed your max level forward, snap the UI selector to match!
         if (player.wildernessLevel > oldWild) player.selectedWildernessLevel = player.wildernessLevel;
         if (player.cellarLevel > oldCellar) player.selectedCellarLevel = player.cellarLevel;
         // ==================================
-        
+
         if (player.level > oldLevel) {
-            if (typeof playRetroSound === 'function') playRetroSound('heavyAttack'); 
+            if (typeof playRetroSound === 'function') playRetroSound('heavyAttack');
             logMessage(`🎉 LEVEL UP! The Guild has verified you are now Level ${player.level}.`);
         }
-        
+
         // === THE FIX: FORCE A DATABASE COMMIT BEFORE LEAVING THE ARENA ===
         if (typeof saveGame === 'function') saveGame();
-        
-        transitionToTown(); 
+
+        transitionToTown();
     }
 });
 // ============================================
@@ -461,22 +458,23 @@ socket.on('statusEffectReceipt', (receipt) => {
 });
 
 socket.on('combatDeployed', (serverCombatState) => {
+    activeCombatActorUid = 'player_0';
     reachableTiles = null;
     hideTooltip();
-    
+
     // Sync browser state to the Server's command
     player.idleJob = 'NONE';
     player.statusEffects = {};
-    gameState = 'COMBAT'; 
-    
+    gameState = 'COMBAT';
+
     // STRICT GAME LOGIC: Always start waiting for the server's ATB tick
-    currentTurn = 'ENEMY';             
-    combatPhase = 'WAITING_FOR_ATB';   
-    player.visualAtb = 0;              
+    currentTurn = 'ENEMY';
+    combatPhase = 'WAITING_FOR_ATB';
+    player.visualAtb = 0;
 
     pendingMove = null;
     player.pendingXp = 0;
-    
+
     // Load the physical grid variables
     currentGridSize = serverCombatState.gridSize;
     currentTileSize = serverCombatState.tileSize;
@@ -484,26 +482,26 @@ socket.on('combatDeployed', (serverCombatState) => {
     player.y = serverCombatState.player.y;
     syncCombatCollectionsFromState(serverCombatState);
     selectedEnemy = null;
-    
+
     activeCombatZone = serverCombatState.zone;
     activeCombatFloorSpriteId = serverCombatState.floorSpriteId || "ground_wilderness";
     activeCombatFloorTiles = serverCombatState.floorTiles || [];
-    
+
     // Automatically rip the loot screen away if it's open
     const lootOverlay = document.getElementById("loot-screen");
     if (lootOverlay) lootOverlay.style.display = "none";
-    
+
     if (typeof playRetroSound === 'function') playRetroSound('combatStart');
-    
+
     // Display context messages based on zone
     if (activeCombatZone === 'GORILLA_ARENA') logMessage("🚨 GORILLA PIT INITIALIZED. Challenge parameters deployed.");
     else if (activeCombatZone === 'ABYSS') logMessage(`🌌 Descended to Abyss Depth ${player.abyssDepth || 1}. The pressure is crushing.`);
     else if (activeCombatZone === 'CELLARS' && (player.selectedCellarLevel || player.cellarLevel) === 20) logMessage("⚠️ THE FLOOR TREMBLES! An ancient, corrupted mega-cask awakens from its slumber!");
     else if (activeCombatZone === 'CELLARS' && player.cellarsChummed) logMessage("⚠️ SEAFOOD CODES LOADED: 5 Mimics burst out of the structural drain layers!");
     else if (activeCombatZone === 'WILDERNESS' && player.mapBaited && (player.selectedWildernessLevel || player.wildernessLevel) === 20) logMessage("⚠️ THE BOSS SMELLS THE FISH BAIT! CRITICAL COMBAT PARAMETERS ENGAGED.");
-    
+
     // Force the browser to draw the server's map
-    refreshSystemUI(); 
+    refreshSystemUI();
     drawGrid();
     window.scrollTo(0, 0);
 });
@@ -515,16 +513,16 @@ socket.on('enemyTurnReceipt', (receipt) => {
 
     let events = receipt.events || [];
     const combatDefeated = !!receipt.combatDefeated || events.some(ev => ev && ev.type === 'death');
-    
+
     // === NEW: DYNAMIC FAST-FORWARD MATH ===
     // If there are hundreds of events (Gorilla Pit), compress the time!
     let eventCount = events.length;
-    let timeCompression = 1.0; 
-    
+    let timeCompression = 1.0;
+
     // If there are more than 15 events, start speeding up the playback
     if (eventCount > 15) {
         // Caps the maximum speed at 15% of normal time (roughly 15ms per move)
-        timeCompression = Math.max(0.15, 15 / eventCount); 
+        timeCompression = Math.max(0.15, 15 / eventCount);
     }
 
     let delay = 0; // The playback timer!
@@ -548,7 +546,7 @@ socket.on('enemyTurnReceipt', (receipt) => {
             if (ev.type === 'move') {
                 let e = ev.uid ? getCombatActorByUid(ev.uid) : [...enemies, ...allies, ...rogues].find(en => en.name === ev.name);
                 if (e) { e.x = ev.finalX; e.y = ev.finalY; }
-            } 
+            }
             else if (ev.type === 'crush') {
                 if (typeof playRetroSound === 'function') playRetroSound('heavyAttack');
                 logMessage(`💥 The massive ${ev.enemyName} crushes an obstacle in its path!`);
@@ -647,7 +645,7 @@ socket.on('enemyTurnReceipt', (receipt) => {
                     transitionToTown();
                     if (typeof saveGame === 'function') saveGame();
                     refreshSystemUI();
-                }, 1500); 
+                }, 1500);
             }
             refreshSystemUI();
         }, delay);
@@ -670,8 +668,8 @@ socket.on('enemyTurnReceipt', (receipt) => {
             // (Ghost Unlock remains removed!)
             if (typeof saveGame === 'function') saveGame();
             refreshSystemUI();
-            if (typeof drawGrid === 'function') drawGrid(); 
-            
+            if (typeof drawGrid === 'function') drawGrid();
+
             // === THE FIX: THE MOVIE HANDSHAKE ===
             // Tell the server the visual animation is finished so it can unpause the ATB Heartbeat!
             socket.emit('clientPlaybackComplete');
@@ -681,12 +679,12 @@ socket.on('enemyTurnReceipt', (receipt) => {
 
 
 // Global Game States
-let currentGridSize = 8; 
-let currentTileSize = 60; 
-let gameState = 'KNIGHT'; 
+let currentGridSize = 8;
+let currentTileSize = 60;
+let gameState = 'KNIGHT';
 let currentTurn = 'PLAYER';
-let combatPhase = 'MOVE'; 
-let activeCombatZone = 'WILDERNESS'; 
+let combatPhase = 'MOVE';
+let activeCombatZone = 'WILDERNESS';
 let activeCombatFloorSpriteId = 'ground_wilderness';
 let activeCombatFloorTiles = [];
 let allies = [];
@@ -707,17 +705,17 @@ function logMessage(msg) {
 
 function setGameState(state) {
     hideTooltip();
-    
+
     // Remember where we just came from
-    let previousState = gameState; 
-    
+    let previousState = gameState;
+
     gameState = state;
-    
+
     // Play the door sound when shifting to a non-combat environment
     if (state === 'VAULT' || state === 'TOWN' || state === 'MERCHANT' || state === 'ADVENTURES') {
         if (typeof playRetroSound === 'function') playRetroSound('door');
     }
-    
+
     refreshSystemUI();
 
     // NEW: Only auto-scroll for major screen changes, ignoring right-column tab swaps
@@ -751,4 +749,3 @@ document.addEventListener("click", function startMusicOnce() {
 setInterval(() => {
     fetch('/').catch(err => console.log('Heartbeat skipped.'));
 }, 10 * 60 * 1000);
-    

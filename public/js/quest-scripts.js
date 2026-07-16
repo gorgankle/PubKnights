@@ -95,20 +95,20 @@ const QuestScripts = Object.freeze({
                 enemy: { x: 9, y: 5, id: "wild_ravager", name: "Training Ravager", hp: 78, maxHp: 100, atb: 30 }
             },
             {
-                id: "throw_bomb",
-                title: "AOE Bombs",
-                subtitle: "Backpack: Targeted Throwable",
-                phase: "TARGETING",
-                mode: "bomb",
-                requiredAction: "bomb",
-                highlight: "bomb",
+                id: "weapon_identity",
+                title: "Weapon Identity",
+                subtitle: "Phase 2: Weapon Range",
+                phase: "PLAYER TURN - PHASE 2",
+                mode: "attack",
+                requiredAction: "attack",
+                highlight: "attack",
                 autoAdvanceMs: 1200,
                 dialogue: [
-                    { speaker: "Kreg", portraitId: "npc_kreg", text: "Bombs live in Backpack under Throw. Open the Backpack, choose the prop bomb, then click the glowing target tile." }
+                    { speaker: "Kreg", portraitId: "npc_kreg", text: "No more pocket explosives. Range and splash now belong to the weapon in your hands. Bows, spears, axes, and later staffs define your tactical role." }
                 ],
                 player: { x: 6, y: 5, hp: 100, maxHp: 100, stamina: 68, maxStamina: 100, atb: 100 },
                 enemy: { x: 10, y: 5, id: "wild_ravager", name: "Training Ravager", hp: 46, maxHp: 100, atb: 30 },
-                targetTile: { x: 10, y: 5 }
+                weaponLesson: true
             },
             {
                 id: "boss_arrival",

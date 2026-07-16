@@ -152,8 +152,8 @@ Object.assign(SpriteMatrices, {
     "wild_ravager": buildSprite([
         "........................",
         "........................",
-        "......PPPP........PPPP..",
-        ".....vvvvPPPPPPPPvvvv...",
+        "......WWWW........WWWW..",
+        ".....vvvvWWWWWWWWvvvv...",
         ".....vvvvvvvvvvvvvvvv...",
         "......vvvvvvvvvvvvvv....",
         "........v@@@@@@@@v......",

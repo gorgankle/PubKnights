@@ -154,31 +154,52 @@ const ItemDatabase = {
     "tankard_sabatons": { id: "tankard_sabatons", name: "Tankard Sabatons", slot: "boots", rarity: "Epic", speed: -1, value: 90, spriteId: "boots_tankard" },
 	
     // === CONSUMABLES ===
-    "stout": { 
-        id: "stout", name: "Combat Stout", slot: "consumable", type: "brew", rarity: "Common", value: 5, spriteId: "stout",
-        combat: { actionType: "heal", targetType: "self", healPercent: 0.25, staminaCost: 0, desc: "Restores 25% of maximum Vitality." }
+    "stout": {
+        id: "stout", name: "Combat Stout", slot: "consumable", type: "brew", rarity: "Common", value: 12, spriteId: "stout",
+        desc: "A battlefield stout for staying upright. Restores 40% Max HP immediately.",
+        combat: { actionType: "heal", targetType: "self", futureTarget: "ally", healPercent: 0.40, staminaCost: 0, desc: "Restores 40% of maximum Vitality." }
     },
-    "reserve": { 
-        id: "reserve", name: "Grandmaster Reserve", slot: "consumable", type: "brew", rarity: "Epic", value: 45, spriteId: "icon_reserve",
-        combat: { actionType: "heal", targetType: "self", healPercent: 0.5, staminaCost: 0, desc: "Restores 50% of maximum Vitality." }
+    "reserve": {
+        id: "reserve", name: "Grandmaster Reserve", slot: "consumable", type: "brew", rarity: "Epic", value: 120, spriteId: "icon_reserve",
+        desc: "A scarce emergency vintage. Restores nearly all wounds and purges poison.",
+        combat: { actionType: "heal", targetType: "self", futureTarget: "ally", healPercent: 0.90, cleanse: true, staminaCost: 0, desc: "Restores 90% Max HP and cleanses negative status." }
     },
     "ipa": {
-        id: "ipa", name: "Furious IPA", slot: "consumable", type: "brew", rarity: "Uncommon", value: 45, spriteId: "icon_ipa",
-        desc: "A strong, oak-aged specialty ale. Grants a 10% multiplier to all outgoing physical damage.",
-        combat: { 
-            actionType: "buff", staminaCost: 0, buffType: "IPA", 
-            effectCategory: "offense", effectType: "multiplier", effectValue: 1.10,
-            msg: "🍺 Drank a Furious IPA! Damage multipliers amplified." 
+        id: "ipa", name: "Furious IPA", slot: "consumable", type: "brew", rarity: "Uncommon", value: 55, spriteId: "icon_ipa",
+        desc: "A strong, oak-aged specialty ale. Grants +25% outgoing damage for the deployment.",
+        combat: {
+            actionType: "buff", staminaCost: 0, buffType: "IPA",
+            effectCategory: "offense", effectType: "multiplier", effectValue: 1.25,
+            msg: "🍺 Drank a Furious IPA! Damage output increased by 25%."
         }
     },
     "lager": {
-        id: "lager", name: "Swift Lager", slot: "consumable", type: "brew", rarity: "Uncommon", value: 45, spriteId: "icon_lager",
-        desc: "A light, crisp lager brewed for agility. Grants +1 Tactical Stride range for the duration of the combat.",
-        combat: { 
-            actionType: "buff", staminaCost: 0, buffType: "LAGER", 
-            effectCategory: "speed", effectType: "flat", effectValue: 1,
-            msg: "🍺 Drank a Swift Lager! Stride movement capabilities expanded." 
+        id: "lager", name: "Swift Lager", slot: "consumable", type: "brew", rarity: "Uncommon", value: 55, spriteId: "icon_lager",
+        desc: "A light, crisp lager brewed for tempo. Grants +1 Speed and immediately charges ATB.",
+        combat: {
+            actionType: "buff", staminaCost: 0, buffType: "LAGER",
+            effectCategory: "speed", effectType: "flat", effectValue: 1, atbBoost: 35,
+            msg: "🍺 Drank a Swift Lager! Movement improved and initiative surged."
         }
+    },
+    "ironwall_porter": {
+        id: "ironwall_porter", name: "Ironwall Porter", slot: "consumable", type: "brew", rarity: "Rare", value: 70, spriteId: "icon_reserve",
+        desc: "A dense defensive porter. Grants +25% Defense for the deployment.",
+        combat: {
+            actionType: "buff", staminaCost: 0, buffType: "IRONWALL_PORTER",
+            effectCategory: "defense", effectType: "multiplier", effectValue: 1.25,
+            msg: "🛡️ Drank an Ironwall Porter! Defense increased by 25%."
+        }
+    },
+    "clearwater_tonic": {
+        id: "clearwater_tonic", name: "Clearwater Tonic", slot: "consumable", type: "brew", rarity: "Uncommon", value: 35, spriteId: "icon_lager",
+        desc: "A clean bitter tonic that removes poison and other negative status effects.",
+        combat: { actionType: "cleanse", targetType: "self", futureTarget: "ally", staminaCost: 0, desc: "Cleanses negative combat status effects." }
+    },
+    "staunching_bitter": {
+        id: "staunching_bitter", name: "Staunching Bitter", slot: "consumable", type: "brew", rarity: "Rare", value: 80, spriteId: "icon_ipa",
+        desc: "A harsh emergency brew for when the fight is slipping away. Cleanses and restores at least 30% Max HP.",
+        combat: { actionType: "staunch", targetType: "self", futureTarget: "downedAlly", healFloorPercent: 0.30, cleanse: true, staminaCost: 0, desc: "Emergency staunch: cleanse and raise HP to at least 30% Max HP." }
     },
 
     // === THE BLACKED-OUT SET (Abyssal Relic Tier) ===
@@ -200,26 +221,6 @@ const ItemDatabase = {
     "junk_boots": { id: "junk_boots", name: "Waterlogged Boot", slot: "consumable", type: "junk", rarity: "Common", value: 1, spriteId: "icon_junk" },
     "junk_vine": { id: "junk_vine", name: "Rotten Vine", slot: "consumable", type: "junk", rarity: "Common", value: 1, spriteId: "icon_junk" },
     "fish_wholesale": { id: "fish_wholesale", name: "Wholesale Export Voucher", slot: "consumable", type: "voucher", rarity: "Rare", value: 1500, spriteId: "icon_voucher" },
-    
-    // Bombs get their core stats maintained for UI rendering, but the authoritative math is inside combat!
-    "bomb_small": { 
-        id: "bomb_small", name: "Small Keg Bomb", slot: "consumable", type: "bomb", rarity: "Rare", damage: 45, aoe: 1, value: 10, spriteId: "icon_bomb_small",
-        combat: { actionType: "throwable", targetType: "aoe", range: 5, aoeRadius: 1, damageFlat: 45,
-// === NEW: TARGETING BEHAVIORS ===
-            ignoresLoS: true,    // Bombs arc over walls!
-            aoeShape: "radius",  // Standard circular blast
-            aoeRadius: 1,
-		staminaCost: 15, desc: "Detonates a 3x3 blast area for 45 DMG." }
-    },
-    "bomb_heavy": { 
-        id: "bomb_heavy", name: "Heavy Keg Bomb", slot: "consumable", type: "bomb", rarity: "Epic", damage: 120, aoe: 1, value: 30, spriteId: "icon_bomb_heavy",
-        combat: { actionType: "throwable", targetType: "aoe", range: 4, aoeRadius: 1, damageFlat: 120,
-// === NEW: TARGETING BEHAVIORS ===
-            ignoresLoS: true,    // Bombs arc over walls!
-            aoeShape: "radius",  // Standard circular blast
-            aoeRadius: 1,
-			staminaCost: 15, desc: "Detonates a 3x3 blast area for 120 DMG." }
-    },
     
     // === CRATE JACKPOT GEAR ===
     "axe_timberlord": { 
@@ -305,6 +306,39 @@ const ItemDatabase = {
         }
     },
 
+    // === STAFF WEAPONS ===
+    "apprentice_staff": {
+        id: "apprentice_staff", name: "Apprentice Tapstaff", slot: "weapon", type: "Staff", rarity: "Uncommon",
+        offense: 6, attackRange: 5, value: 90, spriteId: "weap_apprentice_staff",
+        combat: {
+            standard: { actionType: "spell", spellId: "arcane_bolt", range: 5, staminaCost: 6, multiplier: 1.0, animType: "cast", desc: "Cast a reliable single-target Arcane Bolt." },
+            special: { name: "Fireball Breath", actionType: "spell", spellId: "fireball_breath", range: 5, staminaCost: 20, multiplier: 1.0, targetType: "single", desc: "Burn a straight lane with a fiery beam from the staff." }
+        }
+    },
+    "bogwood_staff": {
+        id: "bogwood_staff", name: "Bogwood Hex Staff", slot: "weapon", type: "Staff", rarity: "Rare",
+        offense: 9, attackRange: 5, value: 180, spriteId: "weap_bogwood_staff",
+        combat: {
+            standard: { actionType: "spell", spellId: "arcane_bolt", range: 5, staminaCost: 6, multiplier: 1.0, animType: "cast", desc: "Cast a reliable single-target Arcane Bolt." },
+            special: { name: "Poison Shot", actionType: "spell", spellId: "poison_shot", range: 5, staminaCost: 15, multiplier: 1.0, targetType: "single", desc: "Thread poison through a line and try to infect each target hit." }
+        }
+    },
+    "stormcaller_staff": {
+        id: "stormcaller_staff", name: "Stormcaller Tapstaff", slot: "weapon", type: "Staff", rarity: "Epic",
+        offense: 14, attackRange: 5, value: 360, spriteId: "weap_stormcaller_staff",
+        combat: {
+            standard: { actionType: "spell", spellId: "frost_lance", range: 5, staminaCost: 16, multiplier: 1.0, animType: "cast", desc: "Pierce a lane with a cold lance." },
+            special: { name: "Storm Burst", actionType: "spell", spellId: "storm_burst", targetType: "aoe", aoeShape: "radius", aoeRadius: 1, range: 4, staminaCost: 28, multiplier: 1.0, animType: "cast", desc: "Call lightning into a 3x3 target area." }
+        }
+    },
+    "last_call_voidstaff": {
+        id: "last_call_voidstaff", name: "Last Call Voidstaff", slot: "weapon", type: "Staff", rarity: "Relic",
+        offense: 24, attackRange: 5, value: 1500, spriteId: "weap_last_call_voidstaff",
+        combat: {
+            standard: { actionType: "spell", spellId: "shadow_sear", range: 5, staminaCost: 14, multiplier: 1.0, animType: "cast", desc: "Sear one enemy with dark magic." },
+            special: { name: "Storm Burst", actionType: "spell", spellId: "storm_burst", targetType: "aoe", aoeShape: "radius", aoeRadius: 1, range: 4, staminaCost: 28, multiplier: 1.0, animType: "cast", desc: "Open a violent 3x3 storm at target location." }
+        }
+    },
     // === GAMBLE CRATES ===
     "timber_crate": {
         id: "timber_crate", name: "Sealed Timber Crate", slot: "consumable", type: "crate", rarity: "Epic", value: 1000, spriteId: "icon_crate_timber", 
@@ -318,37 +352,6 @@ const ItemDatabase = {
         id: "harvest_crate", name: "Overgrown Harvest Crate", slot: "consumable", type: "crate", rarity: "Epic", value: 1000, spriteId: "icon_crate_harvest",
         desc: "A crate wrapped in thick vines. Smells faintly of fermenting hops."
     },
-	
-	
-	// === Scrolls === //
-	
-	// Inside items.js
-"scroll_fireball": {
-    id: "scroll_fireball",
-    name: "Scroll: Fireball Breath",
-    type: "scroll",
-    slot: "consumable", // Keeps it in the main inventory
-    rarity: "Epic",
-    combat: { 
-        actionType: "spell", 
-        spellId: "fireball_breath" // <--- THE CRITICAL POINTER
-    },
-    desc: "A charred parchment radiating intense heat."
-},
-"scroll_poison_shot": {
-    id: "scroll_poison_shot",
-    name: "Scroll: Poison Shot",
-    type: "scroll",
-    slot: "consumable",
-    rarity: "Rare",
-    combat: {
-        actionType: "spell",
-        spellId: "poison_shot"
-    },
-    desc: "A spotted parchment slick with toxic banana sap."
-}
-	
-	
 };
 
 // The helper function stays safely OUTSIDE the database

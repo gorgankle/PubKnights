@@ -24,9 +24,12 @@ let player = {
         gloves: null, 
         boots: null 
     },
-    inventory: [], stash: [], 
+    inventory: [], stash: [],
+    roster: { companions: [], activeIds: [] },
     buildings: { workerCabin: 1 },
-    workers: { total: 0, assigned: { wood: 0, fish: 0, hops: 0 } },
+    workers: { total: 0, assigned: { wood: 0, fish: 0, hops: 0 }, retired: true },
+    tavernContacts: { total: 0, refundGold: 0 },
+    economyMigrationVersion: 3,
     supplyCart: { wood: 0, fish: 0, hops: 0, max: 100, level: 1 }, mapBaited: false,
 maxInventorySlots: 5, backpackUpgrades: 0,
     
@@ -39,6 +42,44 @@ maxInventorySlots: 5, backpackUpgrades: 0,
     gildedTavernUnlocked: false,
     autoClaimEnabled: false
 };
+
+function normalizeClientPlayerContainers() {
+    player.inventory = Array.isArray(player.inventory) ? player.inventory : [];
+    player.stash = Array.isArray(player.stash) ? player.stash : [];
+    player.equipment = player.equipment && typeof player.equipment === 'object' ? player.equipment : {};
+
+    ['helmet', 'armor', 'weapon', 'gloves', 'boots'].forEach(slot => {
+        if (!Object.prototype.hasOwnProperty.call(player.equipment, slot)) player.equipment[slot] = null;
+    });
+
+    player.buildings = player.buildings && typeof player.buildings === 'object' ? player.buildings : { workerCabin: 1 };
+    player.buildings.workerCabin = 1;
+
+    const contacts = player.tavernContacts && typeof player.tavernContacts === 'object' ? player.tavernContacts : {};
+    player.tavernContacts = {
+        total: Math.max(0, Math.trunc(Number(contacts.total) || 0)),
+        refundGold: Math.max(0, Math.trunc(Number(contacts.refundGold || player.workerRefundGold) || 0))
+    };
+    player.workers = { total: 0, assigned: { wood: 0, fish: 0, hops: 0 }, retired: true };
+
+    const roster = player.roster && typeof player.roster === 'object' ? player.roster : {};
+    const companions = Array.isArray(roster.companions) ? roster.companions : [];
+    const validIds = new Set(companions.filter(companion => companion && companion.id).map(companion => companion.id));
+    player.roster = {
+        companions,
+        activeIds: Array.isArray(roster.activeIds) ? roster.activeIds.filter(id => validIds.has(id)).slice(0, 1) : []
+    };
+    player.roster.companions.forEach(companion => { companion.active = player.roster.activeIds.includes(companion.id); });
+
+    const cart = player.supplyCart && typeof player.supplyCart === 'object' ? player.supplyCart : {};
+    player.supplyCart = {
+        wood: Math.max(0, Math.trunc(Number(cart.wood) || 0)),
+        fish: Math.max(0, Math.trunc(Number(cart.fish) || 0)),
+        hops: Math.max(0, Math.trunc(Number(cart.hops) || 0)),
+        max: Math.max(1, Math.trunc(Number(cart.max) || 100)),
+        level: Math.max(1, Math.trunc(Number(cart.level) || 1))
+    };
+}
 
 function normalizePlayerLevel(level) {
     return Math.max(1, Math.min(MAX_PLAYER_LEVEL, Math.floor(Number(level) || 1)));
@@ -197,6 +238,7 @@ function getPetTrainingCost() {
 function saveGame(manualNotify = false) {
     // Failsafe: Don't try to save if they aren't fully logged in yet
     if (!currentUsername) return;
+    if (typeof normalizeClientPlayerContainers === 'function') normalizeClientPlayerContainers();
 
     const saveData = {
         level: player.level || 1, xp: player.xp || 0, xpToNext: player.xpToNext || calculateNextLevelXp(player.level || 1), skillPoints: player.skillPoints || 0,
@@ -211,8 +253,9 @@ function saveGame(manualNotify = false) {
         abyssUnlocked: player.abyssUnlocked, abyssDepth: player.abyssDepth,
         appearance: player.appearance, 
         equipment: player.equipment, inventory: player.inventory, stash: player.stash,
+        roster: player.roster,
         buildings: player.buildings,
-        workers: player.workers, supplyCart: player.supplyCart, mapBaited: player.mapBaited,
+        workers: player.workers, tavernContacts: player.tavernContacts, economyMigrationVersion: player.economyMigrationVersion || 3, workerRefundGold: player.workerRefundGold || 0, supplyCart: player.supplyCart, mapBaited: player.mapBaited,
 		maxInventorySlots: player.maxInventorySlots, backpackUpgrades: player.backpackUpgrades,
         activeCombatBuff: player.activeCombatBuff, activeBuffs: player.activeBuffs, happyHourTicks: player.happyHourTicks, cellarsChummed: player.cellarsChummed,
         pet: player.pet,

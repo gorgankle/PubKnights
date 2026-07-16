@@ -1,7 +1,6 @@
 // --- combatDefeat.js ---
 // Shared server-side player defeat cleanup.
 
-const { ItemDatabase } = require('./public/js/items.js');
 const { getMaxHp, getMaxStamina } = require('./combatMath.js');
 
 function applyPlayerCombatDefeat(player) {
@@ -10,7 +9,7 @@ function applyPlayerCombatDefeat(player) {
     player.equipment = {
         helmet: null,
         armor: null,
-        weapon: JSON.parse(JSON.stringify(ItemDatabase["rusty_mace"])),
+        weapon: null,
         gloves: null,
         boots: null
     };
@@ -19,6 +18,8 @@ function applyPlayerCombatDefeat(player) {
     player.pendingGold = 0;
     player.pendingXp = 0;
     player.statusEffects = {};
+    player.activeBuffs = [];
+    player.activeCombatBuff = null;
 
     player.hp = getMaxHp(player);
     player.stamina = getMaxStamina(player);

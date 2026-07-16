@@ -5,6 +5,19 @@
 const FXEngine = {
     queue: [],
 
+    getMagicColors: function(style) {
+        const palettes = {
+            fire: ['#e74c3c', '#f1c40f', '#d35400'],
+            arcane: ['#9b59b6', '#8e44ad', '#3498db'],
+            poison: ['#2ecc71', '#27ae60', '#f1c40f'],
+            frost: ['#dff9fb', '#74b9ff', '#00cec9'],
+            storm: ['#f9ca24', '#7ed6df', '#686de0'],
+            shadow: ['#2c2c54', '#706fd3', '#b33939'],
+            holy: ['#fff6a3', '#f8c291', '#ffffff']
+        };
+        return palettes[style] || palettes.fire;
+    },
+
     // 1. Text Floaters (Damage, Healing, Misses)
     spawnText: function(gridX, gridY, text, config = {}) {
         let color = config.color || "#e74c3c";
@@ -57,9 +70,7 @@ const FXEngine = {
         let particleCount = Math.floor(distance / density); 
         if (particleCount < 1) particleCount = 1; 
         
-        let colors = style === 'fire' ? ['#e74c3c', '#f1c40f', '#d35400'] : 
-                     style === 'arcane' ? ['#9b59b6', '#8e44ad', '#3498db'] :
-                     style === 'poison' ? ['#2ecc71', '#27ae60', '#f1c40f'] : ['#ffffff'];
+        let colors = this.getMagicColors(style);
 
         for (let i = 0; i <= particleCount; i++) {
             setTimeout(() => {
@@ -95,6 +106,37 @@ const FXEngine = {
             life: 0,
             maxLife: config.frames || 25
         });
+    },
+
+    spawnMagicBurst: function(gridX, gridY, config = {}) {
+        let style = config.style || 'arcane';
+        let colors = this.getMagicColors(style);
+        let radius = config.radius || 1.35;
+        this.spawnExplosion(gridX, gridY, {
+            radius: radius,
+            colors: colors,
+            frames: config.frames || 22
+        });
+
+        if (typeof activeExplosions !== 'undefined') {
+            let cx = (gridX * currentTileSize) + (currentTileSize / 2);
+            let cy = (gridY * currentTileSize) + (currentTileSize / 2);
+            let particleCount = config.particles || 28;
+            let spread = radius * currentTileSize;
+
+            for (let i = 0; i < particleCount; i++) {
+                let angle = Math.random() * Math.PI * 2;
+                let distance = Math.random() * spread;
+                activeExplosions.push({
+                    x: cx + Math.cos(angle) * distance,
+                    y: cy + Math.sin(angle) * distance,
+                    radius: 5 + Math.random() * 12,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    life: 1.0,
+                    decay: 0.025 + (Math.random() * 0.04)
+                });
+            }
+        }
     },
 
     // 5. Melee Lunges

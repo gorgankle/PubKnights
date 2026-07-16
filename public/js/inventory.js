@@ -1,5 +1,91 @@
 // --- LOGIC: INVENTORY & VAULT ---
 
+const EQUIPPABLE_ITEM_SLOTS = ['weapon', 'helmet', 'armor', 'gloves', 'boots'];
+
+function isLootCrate(item) {
+    return !!(item && (item.type === 'crate' || (item.id && item.id.includes('crate'))));
+}
+
+function isVaultInteractionContext(explicitVaultContext) {
+    return !!explicitVaultContext || (typeof gameState !== 'undefined' && gameState === 'VAULT');
+}
+
+function bindInventoryDoubleClick(element, handler) {
+    if (!element) return;
+
+    if (typeof handler !== 'function') {
+        element.onpointerdown = null;
+        element.onpointerup = null;
+        element.onmousedown = null;
+        element.onmouseup = null;
+        element.ondblclick = null;
+        return;
+    }
+
+    let downX = 0;
+    let downY = 0;
+    let lastUpTime = 0;
+    let lastUpX = 0;
+    let lastUpY = 0;
+    let lastHandledAt = 0;
+
+    const getPoint = (event) => {
+        const touch = event.changedTouches && event.changedTouches[0];
+        return {
+            x: touch ? touch.clientX : event.clientX,
+            y: touch ? touch.clientY : event.clientY
+        };
+    };
+
+    const runHandler = (event) => {
+        const now = Date.now();
+        if (now - lastHandledAt < 250) return;
+        lastHandledAt = now;
+        handler(event);
+    };
+
+    const onDown = (event) => {
+        if (event.button !== undefined && event.button !== 0) return;
+        const point = getPoint(event);
+        downX = point.x;
+        downY = point.y;
+    };
+
+    const onUp = (event) => {
+        if (event.button !== undefined && event.button !== 0) return;
+        const point = getPoint(event);
+        if (Math.abs(point.x - downX) > 10 || Math.abs(point.y - downY) > 10) return;
+
+        const now = Date.now();
+        const closeEnough = Math.abs(point.x - lastUpX) <= 14 && Math.abs(point.y - lastUpY) <= 14;
+        if (now - lastUpTime <= 450 && closeEnough) {
+            lastUpTime = 0;
+            runHandler(event);
+            return;
+        }
+
+        lastUpTime = now;
+        lastUpX = point.x;
+        lastUpY = point.y;
+    };
+
+    if (window.PointerEvent) {
+        element.onpointerdown = onDown;
+        element.onpointerup = onUp;
+        element.onmousedown = null;
+        element.onmouseup = null;
+    } else {
+        element.onmousedown = onDown;
+        element.onmouseup = onUp;
+        element.onpointerdown = null;
+        element.onpointerup = null;
+    }
+
+    element.ondblclick = (event) => {
+        runHandler(event);
+    };
+}
+
 // === DRAG & DROP REORDERING ACTIONS ===
 function handleItemDragStart(event, index, listType) {
     event.dataTransfer.setData("text/plain", JSON.stringify({ index: index, type: listType }));
@@ -53,11 +139,18 @@ function handleItemDrop(event, toIndex, toType) {
 // === LOBOTOMIZED ACTIONS ===
 
 function depositToVault(idx) { 
+    hideTooltip();
     socket.emit('inventoryAction', { action: 'deposit', index: idx });
 }
 
 function withdrawFromVault(idx) { 
+    hideTooltip();
     socket.emit('inventoryAction', { action: 'withdraw', index: idx });
+}
+
+function depositEquipmentToVault(slotKey) {
+    hideTooltip();
+    socket.emit('inventoryAction', { action: 'depositEquipment', slotKey: slotKey });
 }
 
 function equipItem(index) {
@@ -73,4 +166,45 @@ function sellItem(index) {
 function unequipItem(slotKey) {
     hideTooltip(); 
     socket.emit('inventoryAction', { action: 'unequip', slotKey: slotKey });
+}
+
+function handleBackpackDoubleClick(event, index, item, explicitVaultContext) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    if (!item) return;
+
+    if (isVaultInteractionContext(explicitVaultContext)) {
+        depositToVault(index);
+        return;
+    }
+
+    if (EQUIPPABLE_ITEM_SLOTS.includes(item.slot)) {
+        equipItem(index);
+    } else if (isLootCrate(item)) {
+        openCrate(index, item.id);
+    }
+}
+
+function handleEquipmentDoubleClick(event, slotKey, explicitVaultContext) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+
+    if (isVaultInteractionContext(explicitVaultContext)) {
+        depositEquipmentToVault(slotKey);
+        return;
+    }
+
+    unequipItem(slotKey);
+}
+
+function handleVaultItemDoubleClick(event, index) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    withdrawFromVault(index);
 }
