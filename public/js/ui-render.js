@@ -267,29 +267,32 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
                 if (document.getElementById("end-btn")) document.getElementById("end-btn").disabled = true;
                 if (document.getElementById("flee-btn")) document.getElementById("flee-btn").disabled = true;
             } else {
-                let range = (player.equipment.weapon && player.equipment.weapon.combat && player.equipment.weapon.combat.standard.range) || 1;
+                const activeUiPos = typeof getActiveCombatantPosition === 'function' ? getActiveCombatantPosition() : { x: player.x, y: player.y, size: 1 };
+                const activeUiWeapon = typeof getActiveCombatantWeapon === 'function' ? getActiveCombatantWeapon() : player.equipment.weapon;
+                const activeUiName = typeof getActiveCombatantName === 'function' ? getActiveCombatantName() : 'Knight';
+                let range = (activeUiWeapon && activeUiWeapon.combat && activeUiWeapon.combat.standard.range) || 1;
                 let hasTarget = selectedEnemy && selectedEnemy.alive;
                 let withinRange = false; let losClear = false;
                 let isAttackPhase = (combatPhase === 'PHASE_2');
                 
                 if (hasTarget) {
-                    let dist = getGridDistance(player.x, player.y, selectedEnemy.x, selectedEnemy.y, selectedEnemy.size || 1);
+                    let dist = getGridDistance(activeUiPos.x, activeUiPos.y, selectedEnemy.x, selectedEnemy.y, selectedEnemy.size || 1);
                     withinRange = (dist <= range);
                     let sSize = selectedEnemy.size || 1;
                     for (let bx = selectedEnemy.x; bx < selectedEnemy.x + sSize; bx++) {
-                        for (let by = selectedEnemy.y; by < selectedEnemy.y + sSize; by++) if (hasLineOfSight(player.x, player.y, bx, by)) losClear = true;
+                        for (let by = selectedEnemy.y; by < selectedEnemy.y + sSize; by++) if (hasLineOfSight(activeUiPos.x, activeUiPos.y, bx, by)) losClear = true;
                     }
                 }
                 
                 if (isAttackPhase && (!hasTarget || !withinRange || !losClear)) {
                     let autoEnemy = getPlayerAttackables().find(e => {
                         if (!e.alive) return false;
-                        let d = getGridDistance(player.x, player.y, e.x, e.y, e.size || 1);
+                        let d = getGridDistance(activeUiPos.x, activeUiPos.y, e.x, e.y, e.size || 1);
                         if (d > range) return false;
                         let lClear = false;
                         let cSize = e.size || 1;
                         for (let bx = e.x; bx < e.x + cSize; bx++) {
-                            for (let by = e.y; by < e.y + cSize; by++) if (hasLineOfSight(player.x, player.y, bx, by)) lClear = true;
+                            for (let by = e.y; by < e.y + cSize; by++) if (hasLineOfSight(activeUiPos.x, activeUiPos.y, bx, by)) lClear = true;
                         }
                         return lClear;
                     });
@@ -309,10 +312,10 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
                         uiHeader.innerHTML = `\u{1F3C3} CONFIRM MOVE - Click green highlighted tile to jump`;
                         uiHeader.style.color = "#2ecc71";
                     } else if (selectedEnemy && selectedEnemy.alive && combatPhase === 'PHASE_2') {
-                        uiHeader.innerHTML = `\u{1F3AF} FOCUS: ${selectedEnemy.name} (${selectedEnemy.hp}/${selectedEnemy.maxHp} HP) - [${phaseLabel}]`;
+                        uiHeader.innerHTML = `\u{1F3AF} ${activeUiName} FOCUS: ${selectedEnemy.name} (${selectedEnemy.hp}/${selectedEnemy.maxHp} HP) - [${phaseLabel}]`;
                         uiHeader.style.color = "#2ecc71";
                     } else {
-                        uiHeader.innerHTML = `\u2694\uFE0F ${phaseLabel} - ${instructions}`;
+                        uiHeader.innerHTML = `\u2694\uFE0F ${activeUiName}: ${phaseLabel} - ${instructions}`;
                         uiHeader.style.color = "#3498db";
                     }
                 }
@@ -320,7 +323,7 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
                 let slashBtn = document.getElementById("slash-btn");
                 let heavyBtn = document.getElementById("heavy-btn");
                 let endBtn = document.getElementById("end-btn");
-                let weapon = player.equipment.weapon;
+                let weapon = activeUiWeapon;
 
                 if (slashBtn) {
                     slashBtn.disabled = !(hasTarget && withinRange && losClear && isAttackPhase);

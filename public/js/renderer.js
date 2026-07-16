@@ -154,15 +154,15 @@ function updateAnimationEngine() {
 function drawGrid() {
     if (gameState !== 'COMBAT') return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    let moveRange = getPlayerSwiftness();
-	// === DYNAMIC TARGETING ENGINE ===
-    let currentTargetRange = (player.equipment.weapon && player.equipment.weapon.combat && player.equipment.weapon.combat.standard.range) || 1;
+    const activeGridPos = typeof getActiveCombatantPosition === 'function' ? getActiveCombatantPosition() : { x: player.x, y: player.y, size: 1 };
+    const activeWeaponForGrid = typeof getActiveCombatantWeapon === 'function' ? getActiveCombatantWeapon() : player.equipment.weapon;
+    // === DYNAMIC TARGETING ENGINE ===
+    let currentTargetRange = (activeWeaponForGrid && activeWeaponForGrid.combat && activeWeaponForGrid.combat.standard.range) || 1;
     let currentIgnoresLoS = false;
 
     // THE FIX: If we are actively targeting with an item, override the melee weapon's range!
     if (combatPhase === 'TARGETING' && typeof activeTargetIndex !== 'undefined' && activeTargetIndex !== -1) {
-        let activeItem = activeTargetIndex === 'weapon' ? player.equipment.weapon : player.inventory[activeTargetIndex];
+        let activeItem = typeof getActiveCombatantItem === 'function' ? getActiveCombatantItem(activeTargetIndex) : (activeTargetIndex === 'weapon' ? player.equipment.weapon : player.inventory[activeTargetIndex]);
         if (activeItem && activeItem.combat) {
             if (activeItem.combat.actionType === 'spell') {
                 let spellData = typeof SpellDatabase !== 'undefined' ? SpellDatabase[activeItem.combat.spellId] : null;
@@ -243,7 +243,7 @@ if (SpriteMatrices[groundSprite]) {
                         ctx.strokeStyle = "#2ecc71"; ctx.lineWidth = 2;
                         ctx.strokeRect(x * currentTileSize, y * currentTileSize, currentTileSize, currentTileSize);
 
-                        let dist = getGridDistance(player.x, player.y, x, y);
+                        let dist = getGridDistance(activeGridPos.x, activeGridPos.y, x, y, activeGridPos.size || 1);
                         let swiftness = typeof getActiveCombatantMoveRange === 'function' ? getActiveCombatantMoveRange() : getPlayerSwiftness();
                         let estCost = Math.floor((dist / swiftness) * 10);
 
@@ -260,10 +260,10 @@ if (SpriteMatrices[groundSprite]) {
                 else if (combatPhase === 'PHASE_2' || combatPhase === 'TARGETING') {
 
                     // 2. Draw the Grid (Using the dynamically calculated currentTargetRange)
-                    if (Math.max(Math.abs(x - player.x), Math.abs(y - player.y)) <= currentTargetRange) {
+                    if (getGridDistance(activeGridPos.x, activeGridPos.y, x, y, activeGridPos.size || 1) <= currentTargetRange) {
 
                         // THE FIX: If it ignores LoS, it's always Yellow!
-                        if (currentIgnoresLoS || hasLineOfSight(player.x, player.y, x, y)) {
+                        if (currentIgnoresLoS || hasLineOfSight(activeGridPos.x, activeGridPos.y, x, y)) {
                             ctx.fillStyle = "rgba(241, 196, 15, 0.15)"; // Valid Yellow
                         } else {
                             ctx.fillStyle = "rgba(200, 0, 0, 0.15)"; // Blocked Red
@@ -475,8 +475,8 @@ if (SpriteMatrices[e.id]) {
             actor.visualX = actor.x; actor.visualY = actor.y; actor.moveAnimTimer = 0;
         }
         let hopY = Math.abs(Math.sin(actor.moveAnimTimer)) * 10;
-        let ax = actor.visualX * currentTileSize;
-        let ay = (actor.visualY * currentTileSize) - hopY;
+        let ax = (actor.visualX * currentTileSize) + (actor.lungeOffsetX || 0);
+        let ay = (actor.visualY * currentTileSize) - hopY + (actor.lungeOffsetY || 0) - (actor.lungeHop || 0);
 
         ctx.save();
         if (actor.kind === 'pet' && drawPetActorSprite(actor, ax, ay, currentTileSize * sSize)) {
@@ -506,7 +506,7 @@ if (SpriteMatrices[e.id]) {
     if (combatPhase === 'TARGETING' && hoverTile && hoverTile.x >= 0) {
         ctx.fillStyle = "rgba(231, 76, 60, 0.4)";
 
-        let activeItem = activeTargetIndex === 'weapon' ? player.equipment.weapon : player.inventory[activeTargetIndex];
+        let activeItem = typeof getActiveCombatantItem === 'function' ? getActiveCombatantItem(activeTargetIndex) : (activeTargetIndex === 'weapon' ? player.equipment.weapon : player.inventory[activeTargetIndex]);
         let isLineSpell = false;
         let spellRange = 5;
         let ignoresLoS = false;
@@ -523,7 +523,8 @@ if (SpriteMatrices[e.id]) {
 
       if (isLineSpell) {
             // === DRAW THE BRESENHAM BEAM ===
-            let blastPath = getLineOfEffectPath(player.x, player.y, hoverTile.x, hoverTile.y, spellRange, !ignoresLoS);
+            const activeBlastPos = typeof getActiveCombatantPosition === 'function' ? getActiveCombatantPosition() : { x: player.x, y: player.y, size: 1 };
+            let blastPath = getLineOfEffectPath(activeBlastPos.x, activeBlastPos.y, hoverTile.x, hoverTile.y, spellRange, !ignoresLoS);
             blastPath.forEach(tile => {
                 ctx.fillRect(tile.x * currentTileSize, tile.y * currentTileSize, currentTileSize, currentTileSize);
             });
@@ -635,7 +636,7 @@ canvas.addEventListener("mousemove", function(e) {
 
     // === REPLACED: Enforce targeting bounds on hover ===
     if (combatPhase === 'TARGETING') {
-        let activeItem = activeTargetIndex === 'weapon' ? player.equipment.weapon : player.inventory[activeTargetIndex];
+        let activeItem = typeof getActiveCombatantItem === 'function' ? getActiveCombatantItem(activeTargetIndex) : (activeTargetIndex === 'weapon' ? player.equipment.weapon : player.inventory[activeTargetIndex]);
         let maxRange = 4;
         let ignoresLoS = false;
 
@@ -688,7 +689,7 @@ canvas.addEventListener("click", function(e) {
 
     // === REPLACED: Client-side throw validation ===
     if (combatPhase === 'TARGETING') {
-        let activeItem = activeTargetIndex === 'weapon' ? player.equipment.weapon : player.inventory[activeTargetIndex];
+        let activeItem = typeof getActiveCombatantItem === 'function' ? getActiveCombatantItem(activeTargetIndex) : (activeTargetIndex === 'weapon' ? player.equipment.weapon : player.inventory[activeTargetIndex]);
         let maxRange = 4;
         let ignoresLoS = false;
 
@@ -748,7 +749,9 @@ if (isValidPlayerMovePath(tx, ty)) {
                     logMessage(`❌ Legs are too heavy. Not enough stamina (${moveStaminaCost} required).`); playRetroSound('error');
                     pendingMove = null; return;
                 }
-				player.stamina -= moveStaminaCost; player.x = tx; player.y = ty; pendingMove = null;
+                if (typeof applyActiveCombatantLocalMove === 'function') applyActiveCombatantLocalMove(tx, ty, moveStaminaCost);
+                else { player.stamina -= moveStaminaCost; player.x = tx; player.y = ty; }
+                pendingMove = null;
                 logMessage(`🏃 Strided to [${tx}, ${ty}] (Cost: ${moveStaminaCost} Stamina).`);
 
                 if (typeof playRetroSound === 'function') playRetroSound('step');
@@ -779,7 +782,7 @@ if (isValidPlayerMovePath(tx, ty)) {
         if (dist <= weaponRange) {
             let hasLos = false; let cSize = clickedMonster.size || 1;
             for (let bx = clickedMonster.x; bx < clickedMonster.x + cSize; bx++) {
-                for (let by = clickedMonster.y; by < clickedMonster.y + cSize; by++) if (hasLineOfSight(player.x, player.y, bx, by)) hasLos = true;
+                for (let by = clickedMonster.y; by < clickedMonster.y + cSize; by++) if (hasLineOfSight(activePosForAttack.x, activePosForAttack.y, bx, by)) hasLos = true;
             }
             if (hasLos) { selectedEnemy = clickedMonster; logMessage("🎯 Target Locked: " + clickedMonster.name + "."); }
             else { logMessage("❌ No line of sight to target."); playRetroSound('error'); }

@@ -20,6 +20,12 @@ function syncCombatCollectionsFromState(serverCombatState) {
 
 function getCombatActorByUid(uid) {
     if (!uid) return null;
+    if (uid === 'player_0') {
+        player.uid = 'player_0';
+        player.kind = 'player';
+        player.name = player.username || 'Knight';
+        return player;
+    }
     return [...(enemies || []), ...(allies || []), ...(rogues || [])].find(actor => actor.uid === uid) || null;
 }
 
@@ -94,7 +100,10 @@ socket.on('combatResult', (result) => {
 
     // --- 2. HANDLE HITS (WEAPONS & MAGIC) ---
     if (result.type === 'hit') {
-        let fx = result.fx;
+        let fx = result.fx || {};
+        const sourceActor = getCombatActorByUid(result.actorUid || fx.sourceUid || 'player_0') || player;
+        const sourceX = Number.isFinite(fx.sx) ? fx.sx : sourceActor.x;
+        const sourceY = Number.isFinite(fx.sy) ? fx.sy : sourceActor.y;
 
         // Define animation physics based on the attack type
         let animOptions = { arc: 0, spin: true, frames: 10 };
@@ -163,7 +172,7 @@ socket.on('combatResult', (result) => {
         if (result.source === 'spell' && fx && fx.type === 'beam') {
 
             // THE FIX: Pass the entire 'fx' configuration object instead of just the style string!
-            FXEngine.spawnBeam(player.x, player.y, fx.tx, fx.ty, fx);
+            FXEngine.spawnBeam(sourceX, sourceY, fx.tx, fx.ty, fx);
 
             setTimeout(() => {
                 if (typeof animOptions.onComplete === 'function') animOptions.onComplete();
@@ -183,7 +192,7 @@ socket.on('combatResult', (result) => {
             animOptions.spin = false;    // Arrows point directly at target
             animOptions.frames = 15;     // Quick flight speed
 
-            FXEngine.spawnProjectile(player.x, player.y, fx.tx, fx.ty, fx.spriteId, animOptions);
+            FXEngine.spawnProjectile(sourceX, sourceY, fx.tx, fx.ty, fx.spriteId, animOptions);
         // ===================================================
 
         } else {
@@ -207,7 +216,7 @@ socket.on('combatResult', (result) => {
             let animType = weaponProfile && weaponProfile.animType ? weaponProfile.animType : 'lunge_slash';
 
             // 3. Trigger the lunge, and ONLY execute the damage math when the strike physically connects!
-            FXEngine.spawnMeleeStrike(player, fx.tx, fx.ty, animType, {
+            FXEngine.spawnMeleeStrike(sourceActor, fx.tx, fx.ty, animType, {
                 frames: 15,
                 onComplete: animOptions.onComplete
             });
@@ -255,8 +264,11 @@ socket.on('combatItemReceipt', (receipt) => {
 socket.on('moveReceipt', (receipt) => {
     if (!receipt.success) {
         logMessage(receipt.message);
-        player.x = receipt.x;
-        player.y = receipt.y;
+        const failedMoveActor = receipt.actorUid && typeof getCombatActorByUid === 'function' ? getCombatActorByUid(receipt.actorUid) : player;
+        if (failedMoveActor && Number.isFinite(receipt.x) && Number.isFinite(receipt.y)) {
+            failedMoveActor.x = receipt.x;
+            failedMoveActor.y = receipt.y;
+        }
         if (typeof playRetroSound === 'function') playRetroSound('error');
         refreshSystemUI();
     } else {

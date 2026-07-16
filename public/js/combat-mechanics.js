@@ -5,10 +5,12 @@ let activeTargetIndex   = -1;
 let previousCombatPhase = 'PHASE_1';
 let pendingLoot = []; 
 function getActiveCombatant() {
-    if (!activeCombatActorUid || activeCombatActorUid === 'player_0') {
-        return { uid: 'player_0', kind: 'player', name: player.username || 'Knight', x: player.x, y: player.y, stamina: player.stamina, equipment: player.equipment, speed: getPlayerSwiftness() };
+    const activeUid = activeCombatActorUid || 'player_0';
+    if (typeof getCombatActorByUid === 'function') {
+        const actor = getCombatActorByUid(activeUid);
+        if (actor) return actor;
     }
-    return (allies || []).find(actor => actor.uid === activeCombatActorUid) || { uid: 'player_0', kind: 'player', name: player.username || 'Knight', x: player.x, y: player.y, stamina: player.stamina, equipment: player.equipment, speed: getPlayerSwiftness() };
+    return { uid: 'player_0', kind: 'player', name: player.username || 'Knight', x: player.x, y: player.y, stamina: player.stamina, equipment: player.equipment, speed: getPlayerSwiftness() };
 }
 
 function getActiveCombatantPosition() {
@@ -34,6 +36,24 @@ function getActiveCombatantMoveRange() {
 function getActiveCombatantName() {
     const actor = getActiveCombatant();
     return actor && actor.name ? actor.name : 'Knight';
+}
+
+function getActiveCombatantItem(activeIndex) {
+    if (activeIndex === 'weapon') return getActiveCombatantWeapon();
+    return player.inventory[activeIndex];
+}
+
+function applyActiveCombatantLocalMove(tx, ty, staminaCost) {
+    const actor = getActiveCombatant();
+    if (!actor || actor.uid === 'player_0' || actor.kind === 'player') {
+        player.stamina = Math.max(0, (player.stamina || 0) - staminaCost);
+        player.x = tx;
+        player.y = ty;
+        return;
+    }
+    actor.stamina = Math.max(0, (actor.stamina || 0) - staminaCost);
+    actor.x = tx;
+    actor.y = ty;
 }
 
 
@@ -96,8 +116,8 @@ function executeCombatAction(actionType) {
                 if (typeof playRetroSound === 'function') playRetroSound('error');
                 return;
             }
-            
-            let dist = getGridDistance(player.x, player.y, selectedEnemy.x, selectedEnemy.y, selectedEnemy.size || 1);
+            const activePosForAttack = getActiveCombatantPosition();
+            let dist = getGridDistance(activePosForAttack.x, activePosForAttack.y, selectedEnemy.x, selectedEnemy.y, selectedEnemy.size || 1);
             if (dist > range) { 
                 logMessage(`❌ Target outside weapon scope range (Max Range: ${range}).`); 
                 if (typeof playRetroSound === 'function') playRetroSound('error'); 
@@ -108,7 +128,7 @@ function executeCombatAction(actionType) {
             let sSize = selectedEnemy.size || 1;
             for (let bx = selectedEnemy.x; bx < selectedEnemy.x + sSize; bx++) {
                 for (let by = selectedEnemy.y; by < selectedEnemy.y + sSize; by++) {
-                    if (hasLineOfSight(player.x, player.y, bx, by)) losClear = true;
+                    if (hasLineOfSight(activePosForAttack.x, activePosForAttack.y, bx, by)) losClear = true;
                 }
             }
             if (!losClear) { 
@@ -147,7 +167,8 @@ function endPlayerTurn() {
     refreshSystemUI(); 
     
     // Pass control securely to the Server AI, and sync our final X/Y position!
-    socket.emit('endPlayerTurn', { actorUid: activeCombatActorUid, playerPos: { x: player.x, y: player.y } });
+    const activePos = getActiveCombatantPosition();
+    socket.emit('endPlayerTurn', { actorUid: activeCombatActorUid, actorPos: activePos });
 }
 
 function fleeCombat() {
@@ -164,7 +185,7 @@ function fleeCombat() {
 }
 
 function handleCombatEquip(idx) {
-    socket.emit('dispatchCombatAction', { actionCategory: 'equip', invIndex: idx });
+    socket.emit('dispatchCombatAction', { actorUid: activeCombatActorUid, actionCategory: 'equip', invIndex: idx });
 }
 
 function consumeBrew(invIndex) {
@@ -358,43 +379,42 @@ function finishLooting() {
 // === REPLACED ===
 // === NEW: TRUE PATHFINDING MOVEMENT VALIDATOR (OPTIMIZED CACHE) ===
 // A self-cleaning memory cache that prevents the browser from doing heavy math!
-let moveCache = { x: -1, y: -1, turn: '', speed: -1, buffs: '', tiles: new Set() };
+let moveCache = { uid: '', x: -1, y: -1, turn: '', speed: -1, buffs: '', tiles: new Set() };
 
 function isValidPlayerMovePath(targetX, targetY) {
-    let currentSpeed = getPlayerSwiftness(); // (Note: player.js securely routes this alias to the new 'speed' stat!)
+    const activeActor = getActiveCombatant();
+    const activeUid = activeActor.uid || 'player_0';
+    const activePos = getActiveCombatantPosition();
+    let currentSpeed = getActiveCombatantMoveRange();
+    let currentBuffs = ((activeActor && activeActor.activeBuffs) || (activeUid === 'player_0' ? player.activeBuffs : []) || []).join(',');
     
-    // Convert the array into a flat string so the engine can easily detect changes
-    let currentBuffs = (player.activeBuffs || []).join(',');
-    
-    // If the player moves, the turn swaps, speed changes, OR a visual buff is applied/removed... wipe the cache!
-    if (moveCache.x !== player.x || 
-        moveCache.y !== player.y || 
+    if (moveCache.uid !== activeUid ||
+        moveCache.x !== activePos.x || 
+        moveCache.y !== activePos.y || 
         moveCache.turn !== currentTurn || 
         moveCache.speed !== currentSpeed ||
         moveCache.buffs !== currentBuffs) {
         
-        moveCache.x = player.x;
-        moveCache.y = player.y;
+        moveCache.uid = activeUid;
+        moveCache.x = activePos.x;
+        moveCache.y = activePos.y;
         moveCache.turn = currentTurn;
         moveCache.speed = currentSpeed; 
-        moveCache.buffs = currentBuffs; // <--- STORE THE NEW VISUAL STATE
+        moveCache.buffs = currentBuffs;
         moveCache.tiles = new Set();
         
         let maxRange = currentSpeed; 
-        let queue = [{ x: player.x, y: player.y, dist: 0 }];
-        let visited = new Set([`${player.x},${player.y}`]);
-// ============================================
-        
-       let dirs = [
+        let queue = [{ x: activePos.x, y: activePos.y, dist: 0 }];
+        let visited = new Set([`${activePos.x},${activePos.y}`]);
+        let dirs = [
             {x: 0, y: -1}, {x: 1, y: 0}, {x: 0, y: 1}, {x: -1, y: 0},
             {x: -1, y: -1}, {x: 1, y: -1}, {x: 1, y: 1}, {x: -1, y: 1} 
         ];
 
-        // === THE FIX: SAFELY EXTRACT BOUNDARIES ===
         let cols = currentGridSize.cols || currentGridSize || 8;
         let rows = currentGridSize.rows || currentGridSize || 8;
-		
         let blockedSet = new Set();
+
         mapObstacles.forEach(o => blockedSet.add(`${o.x},${o.y}`));
         enemies.forEach(e => {
             if (e.alive) {
@@ -405,6 +425,7 @@ function isValidPlayerMovePath(targetX, targetY) {
             }
         });
         [...(allies || []), ...(rogues || [])].forEach(actor => {
+            if (actor.uid === activeUid) return;
             if (actor.alive && actor.blocksMovement !== false) {
                 let s = actor.size || 1;
                 for (let bx = actor.x; bx < actor.x + s; bx++) {
@@ -412,11 +433,11 @@ function isValidPlayerMovePath(targetX, targetY) {
                 }
             }
         });
+        if (activeUid !== 'player_0') blockedSet.add(`${player.x},${player.y}`);
 
         while (queue.length > 0) {
             let curr = queue.shift();
             moveCache.tiles.add(`${curr.x},${curr.y}`);
-            
             if (curr.dist >= maxRange) continue;
 
             for (let d of dirs) {
@@ -434,7 +455,6 @@ function isValidPlayerMovePath(targetX, targetY) {
         }
     }
     
-    // Instantly return the cached answer!
     return moveCache.tiles.has(`${targetX},${targetY}`);
 }
 // === THE PHASE CONTROLLER ===

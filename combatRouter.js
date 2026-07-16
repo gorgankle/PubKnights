@@ -34,11 +34,11 @@ function isPlayerControlledActor(actor) {
     return !!actor && (actor.kind === 'player' || actor.controller === 'player_companion');
 }
 
-function getCombatTurnActor(combat, player, data = {}) {
+function getCombatTurnActor(combat, player) {
     syncCombatViews(combat, player);
-    const requestedUid = sanitizeToken(combat.activeActorUid || data.actorUid || 'player_0', 'player_0');
-    let actor = getActorByUid(combat, requestedUid) || getPlayerActor(combat);
-    if (!isPlayerControlledActor(actor)) actor = getPlayerActor(combat);
+    const activeUid = sanitizeToken(combat.activeActorUid || '', '');
+    const actor = activeUid ? getActorByUid(combat, activeUid) : null;
+    if (!actor || !isPlayerControlledActor(actor) || !isActorAlive(actor)) return null;
     return actor;
 }
 
@@ -117,8 +117,8 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         data.subType = sanitizeToken(data.subType, 'standard');
 
         if (combat && data.tx !== undefined && data.ty !== undefined) {
-            data.tx = clampInt(data.tx, 0, combat.gridSize.cols - 1, combat.player.x);
-            data.ty = clampInt(data.ty, 0, combat.gridSize.rows - 1, combat.player.y);
+            data.tx = clampInt(data.tx, 0, combat.gridSize.cols - 1, 0);
+            data.ty = clampInt(data.ty, 0, combat.gridSize.rows - 1, 0);
         }
 
         if (!p) return socket.emit('combatResult', { type: 'error', message: 'Server connection lost. Please refresh the page.' });
@@ -142,8 +142,12 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             return socket.emit('combatResult', { type: 'flee', updatedPlayer: p });
         }
 
+        const activeActor = getCombatTurnActor(combat, p);
+        if (!activeActor) {
+            return socket.emit('combatResult', { type: 'error', message: 'Tactical Error: No active party member is ready.', newStamina: p.stamina, updatedCombatState: syncCombatViews(combat, p) });
+        }
+
         if (data.actionCategory === 'pass') {
-            const activeActor = getCombatTurnActor(combat, p, data);
             const maxStam = isPlayerActor(activeActor) ? getMaxStamina(p) : (activeActor.maxStamina || 25);
             const recover = Math.floor(maxStam * 0.15);
             if (isPlayerActor(activeActor)) p.stamina = Math.min(maxStam, (p.stamina || 0) + recover);
@@ -153,16 +157,19 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         }
 
         if (data.actionCategory === 'weapon') {
-            handleWeaponAction(socket, p, combat, data, secureKill);
+            if (isPlayerActor(activeActor)) handleWeaponAction(socket, p, combat, data, secureKill);
+            else handleActorWeaponAction(socket, p, combat, data, secureKill, activeActor);
             return;
         }
 
         if (data.actionCategory === 'consumable') {
-            handleConsumableAction(socket, p, combat, data, secureKill);
+            if (isPlayerActor(activeActor)) handleConsumableAction(socket, p, combat, data, secureKill);
+            else handleActorConsumableAction(socket, p, combat, data, activeActor);
             return;
         }
 
         if (data.actionCategory === 'equip') {
+            if (!isPlayerActor(activeActor)) return socket.emit('combatItemReceipt', { success: false, message: `${activeActor.name} cannot swap gear mid-combat yet.` });
             handleCombatEquip(socket, p, data);
         }
     });
@@ -191,7 +198,8 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         if (!p || !combat) return;
 
         syncPlayerActor(combat, p);
-        const activeActor = getCombatTurnActor(combat, p, data || {});
+        const activeActor = getCombatTurnActor(combat, p);
+        if (!activeActor) return;
         finishPlayerControlledTurn(combat, p, activeActor);
     });
 
@@ -211,7 +219,10 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             return socket.emit('moveReceipt', { success: false, message: 'Tactical Error: Cannot move out of turn.', x: combat.player.x, y: combat.player.y });
         }
 
-        const activeActor = getCombatTurnActor(combat, p, data);
+        const activeActor = getCombatTurnActor(combat, p);
+        if (!activeActor) {
+            return socket.emit('moveReceipt', { success: false, message: 'Tactical Error: No active party member is ready.', x: combat.player.x, y: combat.player.y });
+        }
         let speed = getActorStatValue(activeActor, p, 'speed');
         speed = Math.max(1, Math.min(12, speed));
         const tx = clampInt(data.tx, 0, combat.gridSize.cols - 1, activeActor.x);
@@ -219,10 +230,10 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         const dist = getGridDistance(activeActor.x, activeActor.y, tx, ty, activeActor.size || 1);
 
         if (tx < 0 || tx >= combat.gridSize.cols || ty < 0 || ty >= combat.gridSize.rows) {
-            return socket.emit('moveReceipt', { success: false, message: 'Server: Coordinates out of bounds.', x: combat.player.x, y: combat.player.y });
+            return socket.emit('moveReceipt', { success: false, message: 'Server: Coordinates out of bounds.', x: activeActor.x, y: activeActor.y, actorUid: activeActor.uid });
         }
         if (combat.obstacles.some(o => o.x === tx && o.y === ty)) {
-            return socket.emit('moveReceipt', { success: false, message: 'Server: Obstacle collision detected.', x: combat.player.x, y: combat.player.y });
+            return socket.emit('moveReceipt', { success: false, message: 'Server: Obstacle collision detected.', x: activeActor.x, y: activeActor.y, actorUid: activeActor.uid });
         }
         syncCombatViews(combat, p);
         const hitActor = getAliveActors(combat).some(actor => {
@@ -231,7 +242,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             return tx >= actor.x && tx < actor.x + s && ty >= actor.y && ty < actor.y + s;
         });
         if (hitActor) {
-            return socket.emit('moveReceipt', { success: false, message: 'Server: Entity collision detected.', x: combat.player.x, y: combat.player.y });
+            return socket.emit('moveReceipt', { success: false, message: 'Server: Entity collision detected.', x: activeActor.x, y: activeActor.y, actorUid: activeActor.uid });
         }
 
         const moveStaminaCost = Math.floor((dist / speed) * 10);
@@ -650,11 +661,13 @@ function handleActorWeaponAction(socket, p, combat, data, secureKill, actor) {
         combatComplete = !!(killResult && killResult.combatComplete);
     }
 
+    const isRanged = !!weapon.projectileSprite;
+
     socket.emit('combatResult', {
-        type: 'hit', source: 'weapon', actorUid: actor.uid, actorName: actor.name,
-        enemy: serverEnemy, damage: finalDmg, isCrit, killed, statusApplied: poisonApplied ? 'poison' : null,
+        type: 'hit', source: 'weapon', actionName: data.subType, actorUid: actor.uid, actorName: actor.name,
+        targets: [{ uid: serverEnemy.uid, damage: finalDmg, isCrit, killed, statusApplied: poisonApplied ? 'poison' : null, statusEffects: serverEnemy.statusEffects }],
         newStamina: getActorStaminaValue(actor, p),
-        fx: { sx: actor.x, sy: actor.y, sourceUid: actor.uid, spriteId: weapon.spriteId, isRangedAttack: !!weapon.projectileSprite, projectileSprite: weapon.projectileSprite || null, spellFx: weapon.spellFx || null },
+        fx: { tx: serverEnemy.x, ty: serverEnemy.y, sx: actor.x, sy: actor.y, sourceUid: actor.uid, spriteId: isRanged ? weapon.projectileSprite : weapon.spriteId, isProjectile: isRanged, isAoE: false },
         updatedPlayer: p,
         updatedCombatState: syncCombatViews(combat, p),
         combatComplete
