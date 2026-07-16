@@ -218,7 +218,7 @@ if (data.action === 'equip') {
             // STRICT VALIDATION: Only allow proper gear slots!
             const validSlots = ["weapon", "helmet", "armor", "gloves", "boots"];
             if (!validSlots.includes(toEquip.slot)) {
-                return socket.emit('inventoryReceipt', { success: false, message: "âŒ This item cannot be equipped." });
+                return socket.emit('inventoryReceipt', { success: false, message: "\u274C This item cannot be equipped." });
             }
             
             let slotKey = toEquip.slot;
@@ -229,7 +229,7 @@ if (data.action === 'equip') {
             if (worn) p.inventory[idx] = worn; 
             else p.inventory.splice(idx, 1);   
             
-            socket.emit('inventoryReceipt', { success: true, action: 'equip', updatedPlayer: p, message: "âš™ï¸ Gear equipped." });
+            socket.emit('inventoryReceipt', { success: true, action: 'equip', updatedPlayer: p, message: "\u2699\uFE0F Gear equipped." });
         }
         else if (data.action === 'unequip') {
             let slotKey = data.slotKey;
@@ -242,9 +242,9 @@ if (data.action === 'equip') {
             if (p.inventory.length < p.maxInventorySlots) {
                 p.inventory.push(worn);
                 p.equipment[slotKey] = null; // <--- FORCES CLIENT TO UPDATE
-                socket.emit('inventoryReceipt', { success: true, action: 'unequip', updatedPlayer: p, message: "âš™ï¸ Gear unequipped." });
+                socket.emit('inventoryReceipt', { success: true, action: 'unequip', updatedPlayer: p, message: "\u2699\uFE0F Gear unequipped." });
             } else {
-                socket.emit('inventoryReceipt', { success: false, message: "ðŸŽ’ Backpack is full. Make space first." });
+                socket.emit('inventoryReceipt', { success: false, message: "\u{1F392} Backpack is full. Make space first." });
             }
         }
         else if (data.action === 'sell') {
@@ -257,7 +257,7 @@ if (data.action === 'equip') {
             p.gold += val;
             p.inventory.splice(idx, 1);
             
-            socket.emit('inventoryReceipt', { success: true, action: 'sell', updatedPlayer: p, message: `ðŸ’° Sold item for ${val}g.` });
+            socket.emit('inventoryReceipt', { success: true, action: 'sell', updatedPlayer: p, message: `\u{1F4B0} Sold item for ${val}g.` });
         }
         else if (data.action === 'deposit') {
             let idx = getArrayIndex(data.index, p.inventory);
@@ -266,9 +266,9 @@ if (data.action === 'equip') {
             
             if (p.stash.length < (p.vaultSlots || 10)) {
                 p.stash.push(p.inventory.splice(idx, 1)[0]);
-                socket.emit('inventoryReceipt', { success: true, action: 'deposit', updatedPlayer: p, message: "ðŸ¦ Item deposited into Vault." });
+                socket.emit('inventoryReceipt', { success: true, action: 'deposit', updatedPlayer: p, message: "\u{1F3E6} Item deposited into Vault." });
             } else {
-                socket.emit('inventoryReceipt', { success: false, message: "ðŸ¦ Vault is full." });
+                socket.emit('inventoryReceipt', { success: false, message: "\u{1F3E6} Vault is full." });
             }
         }
         else if (data.action === 'withdraw') {
@@ -279,9 +279,9 @@ if (data.action === 'equip') {
             p.maxInventorySlots = p.maxInventorySlots || 5;
             if (p.inventory.length < p.maxInventorySlots) {
                 p.inventory.push(p.stash.splice(idx, 1)[0]);
-                socket.emit('inventoryReceipt', { success: true, action: 'withdraw', updatedPlayer: p, message: "ðŸŽ’ Item withdrawn to Backpack." });
+                socket.emit('inventoryReceipt', { success: true, action: 'withdraw', updatedPlayer: p, message: "\u{1F392} Item withdrawn to Backpack." });
             } else {
-                socket.emit('inventoryReceipt', { success: false, message: "ðŸŽ’ Backpack is full." });
+                socket.emit('inventoryReceipt', { success: false, message: "\u{1F392} Backpack is full." });
             }
         }
         else if (data.action === 'depositEquipment') {
@@ -297,7 +297,7 @@ if (data.action === 'equip') {
                 p.equipment[slotKey] = null;
                 socket.emit('inventoryReceipt', { success: true, action: 'deposit', updatedPlayer: p, message: "Equipped item deposited into Vault." });
             } else {
-                socket.emit('inventoryReceipt', { success: false, message: "Vault is full." });
+                socket.emit('inventoryReceipt', { success: false, message: "\u{1F3E6} Vault is full." });
             }
         }
         else if (data.action === 'reorderBackpack') {
@@ -342,7 +342,7 @@ if (data.action === 'equip') {
         }
         // 3.5 ADOPT PET SECURELY
         else if (data.action === 'adoptPet') {
-            if (p.pet && p.pet.adopted) return socket.emit('townReceipt', { success: false, message: "âŒ You already have a companion." });
+            if (p.pet && p.pet.adopted) return socket.emit('townReceipt', { success: false, message: "\u274C You already have a companion." });
             
             if (p.gold >= 10) {
                 p.gold -= 10;
@@ -355,9 +355,9 @@ if (data.action === 'equip') {
                     furColor: petCosmetics.furColor,
                     collarColor: petCosmetics.collarColor
                 };
-                socket.emit('townReceipt', { success: true, action: 'adoptPet', updatedPlayer: p, message: `ðŸ• You have officially adopted ${p.pet.name}!` });
+                socket.emit('townReceipt', { success: true, action: 'adoptPet', updatedPlayer: p, message: `\u{1F415} You have officially adopted ${p.pet.name}!` });
             } else {
-                socket.emit('townReceipt', { success: false, message: "âŒ Insufficient funds to adopt a companion (Requires 10 Gold)." });
+                socket.emit('townReceipt', { success: false, message: "\u274C Insufficient funds to adopt a companion (Requires 10 Gold)." });
             }
         }
         else if (data.action === 'hireCompanion') {
@@ -443,7 +443,7 @@ if (data.action === 'equip') {
             const SP_PER_LEVEL = 5;
             let totalExpectedSP = ((p.level || 1) - 1) * SP_PER_LEVEL;
             
-            if (p.skillPoints >= totalExpectedSP) return socket.emit('townReceipt', { success: false, message: "âŒ Your Knight's memory is already a blank slate." });
+            if (p.skillPoints >= totalExpectedSP) return socket.emit('townReceipt', { success: false, message: "\u274C Your Knight's memory is already a blank slate." });
             
             if (p.gold >= 1000) {
                 p.gold -= 1000;
@@ -452,8 +452,8 @@ if (data.action === 'equip') {
                 p.maxStamina = 1; p.stamina = Math.min(p.stamina, 25);
                 p.offense = 1; p.defense = 1; p.speed = 1; 
                 p.skillPoints = totalExpectedSP;
-                socket.emit('townReceipt', { success: true, action: 'resetStats', updatedPlayer: p, message: "ðŸ”„ Knight stats reset! Reallocate your Skill Points." });
-            } else socket.emit('townReceipt', { success: false, message: "âŒ Insufficient gold for a stat reset." });
+                socket.emit('townReceipt', { success: true, action: 'resetStats', updatedPlayer: p, message: "\u{1F504} Knight stats reset! Reallocate your Skill Points." });
+            } else socket.emit('townReceipt', { success: false, message: "\u274C Insufficient gold for a stat reset." });
         }
         // 12. ALLOCATE STAT
         else if (data.action === 'allocateStat') {
@@ -471,8 +471,8 @@ if (data.action === 'equip') {
                     case 'defense': p.defense += 1; break; 
                     case 'speed': p.speed += 1; break; 
                 }
-                socket.emit('townReceipt', { success: true, action: 'allocateStat', updatedPlayer: p, message: "ðŸŒŸ Stat point allocated!" });
-            } else socket.emit('townReceipt', { success: false, message: "âŒ No Skill Points available." });
+                socket.emit('townReceipt', { success: true, action: 'allocateStat', updatedPlayer: p, message: "\u{1F31F} Stat point allocated!" });
+            } else socket.emit('townReceipt', { success: false, message: "\u274C No Skill Points available." });
         }
 // ===================
 // 13. RETIRED: THROWABLES
@@ -508,18 +508,18 @@ if (data.action === 'equip') {
             let item = p.inventory[brewIndex];
             if (!item || item.type !== 'brew') return;
             if (item.id === 'stout') {
-                if (p.hp >= p.vitality) return socket.emit('townReceipt', { success: false, message: "âŒ Vitality already at max." });
+                if (p.hp >= p.vitality) return socket.emit('townReceipt', { success: false, message: "\u274C Vitality already at max." });
                 p.hp = Math.min(p.vitality, p.hp + Math.floor(p.vitality * 0.1));
                 p.inventory.splice(brewIndex, 1);
-                socket.emit('townReceipt', { success: true, action: 'drinkBrew', updatedPlayer: p, message: "ðŸº Chugged a Stout! Restored 10% HP." });
+                socket.emit('townReceipt', { success: true, action: 'drinkBrew', updatedPlayer: p, message: "\u{1F37A} Chugged a Stout! Restored 10% HP." });
             }
             else if (item.id === 'ipa') {
                 p.activeCombatBuff = 'IPA'; p.inventory.splice(brewIndex, 1);
-                socket.emit('townReceipt', { success: true, action: 'drinkBrew', updatedPlayer: p, message: "ðŸº Drank Furious IPA! Damage boosted for next run." });
+                socket.emit('townReceipt', { success: true, action: 'drinkBrew', updatedPlayer: p, message: "\u{1F37A} Drank Furious IPA! Damage boosted for next run." });
             }
             else if (item.id === 'lager') {
                 p.activeCombatBuff = 'LAGER'; p.inventory.splice(brewIndex, 1);
-                socket.emit('townReceipt', { success: true, action: 'drinkBrew', updatedPlayer: p, message: "ðŸº Drank Swift Lager! Movement boosted for next run." });
+                socket.emit('townReceipt', { success: true, action: 'drinkBrew', updatedPlayer: p, message: "\u{1F37A} Drank Swift Lager! Movement boosted for next run." });
             }
         }
         // 16. UPGRADES (BACKPACK & CART)

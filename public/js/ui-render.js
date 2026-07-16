@@ -154,7 +154,7 @@ function refreshCombatSidebar() {
     // 2. INJECT THE BOTTOM STATS (Loadout & Parameters)
     bottomStats.innerHTML = `
         <div style="background: #1a1512; padding: 12px; border-radius: 4px; border: 1px solid #4a3b2c;">
-            <h4 style="margin: 0 0 10px 0; font-size: 12px; color: #ffcc66; text-transform: uppercase; border-bottom: 1px dashed #4a3b2c; padding-bottom: 6px;">ðŸ›¡ï¸ Active Loadout</h4>
+            <h4 style="margin: 0 0 10px 0; font-size: 12px; color: #ffcc66; text-transform: uppercase; border-bottom: 1px dashed #4a3b2c; padding-bottom: 6px;">\u{1F6E1}\uFE0F Active Loadout</h4>
             <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12px; line-height: 1.4;">
                 <div style="cursor:help; width:max-content;" onmouseenter="showTooltip(getItemTooltip(player.equipment.helmet), event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"><b>Helmet:</b> ${helmDesc}</div>
                 <div style="cursor:help; width:max-content;" onmouseenter="showTooltip(getItemTooltip(player.equipment.armor), event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"><b>Armor:</b> ${armDesc}</div>
@@ -165,9 +165,9 @@ function refreshCombatSidebar() {
         </div>
         <div style="display: flex; flex-direction: column; gap: 10px;">
             <div style="background: #1a1512; padding: 12px; border-radius: 4px; border: 1px solid #4a3b2c; font-size: 12px; color: #bbaaa0; line-height: 1.6; height: 100%; box-sizing: border-box;">
-                ðŸ’¥ <b>Offense Output:</b> Lvl ${getPlayerTotalPower()} (Max ${getPlayerTotalPower() * 10} DMG)<br>
-                ðŸ›¡ï¸ <b>Defense (Absorption):</b> Lvl ${getPlayerDeflectChance()}<br>
-                ðŸƒ <b>Speed (Evasion):</b> Lvl ${getPlayerSwiftness()}
+                \u{1F4A5} <b>Offense Output:</b> Lvl ${getPlayerTotalPower()} (Max ${getPlayerTotalPower() * 10} DMG)<br>
+                \u{1F6E1}\uFE0F <b>Defense (Absorption):</b> Lvl ${getPlayerDeflectChance()}<br>
+                \u{1F3C3} <b>Speed (Evasion):</b> Lvl ${getPlayerSwiftness()}
             </div>
             ${buffHTML}
         </div>
@@ -396,7 +396,7 @@ const combatInvList = document.getElementById("combat-inventory-list");
         // Keep the Cancel button logic intact, but make it span both columns!
         if (combatPhase === 'TARGETING') {
             let cancelBtn = document.createElement("button");
-            cancelBtn.innerText = "âœ– Cancel Action";
+            cancelBtn.innerText = "\u2716\uFE0F Cancel Action";
             cancelBtn.style.background = "#443a32"; 
             cancelBtn.style.gridColumn = "span 2"; 
             cancelBtn.style.padding = "10px";
@@ -791,7 +791,7 @@ function renderBackpackList(domContainer, showVaultOption) {
                 // pointer-events: none ensures the drag/drop fires on the slot, not the image!
                 slotDiv.innerHTML = `<img src="${imgUrl}" style="width:36px;height:36px;image-rendering:pixelated;pointer-events:none;">`;
             } else {
-                slotDiv.innerHTML = `<span style="font-size:20px;pointer-events:none;">${item.type === 'crate' ? 'ðŸ“¦' : 'ðŸ›¡ï¸'}</span>`;
+                slotDiv.innerHTML = `<span style="font-size:20px;pointer-events:none;">${item.type === 'crate' ? '\u{1F4E6}' : '\u{1F6E1}\uFE0F'}</span>`;
             }
         } else {
             // Render Empty Slots for structure
@@ -837,7 +837,7 @@ function renderVaultStorageList() {
             if (imgUrl) {
                 slotDiv.innerHTML = `<img src="${imgUrl}" style="width:36px;height:36px;image-rendering:pixelated;pointer-events:none;">`;
             } else {
-                slotDiv.innerHTML = `<span style="font-size:20px;pointer-events:none;">${item.type === 'crate' ? 'ðŸ“¦' : 'ðŸ›¡ï¸'}</span>`;
+                slotDiv.innerHTML = `<span style="font-size:20px;pointer-events:none;">${item.type === 'crate' ? '\u{1F4E6}' : '\u{1F6E1}\uFE0F'}</span>`;
             }
         } else {
             // Render Empty Slots for structure
@@ -1121,7 +1121,7 @@ function renderCombatModal(filter = 'DRINK') {
         if (imgUrl) {
             slotDiv.innerHTML = `<img src="${imgUrl}" style="width:36px;height:36px;image-rendering:pixelated;pointer-events:none;">`;
         } else {
-            slotDiv.innerHTML = `<span style="font-size:20px;pointer-events:none;">${item.type === 'crate' ? 'ðŸ“¦' : 'ðŸ›¡ï¸'}</span>`;
+            slotDiv.innerHTML = `<span style="font-size:20px;pointer-events:none;">${item.type === 'crate' ? '\u{1F4E6}' : '\u{1F6E1}\uFE0F'}</span>`;
         }
         grid.appendChild(slotDiv);
     }

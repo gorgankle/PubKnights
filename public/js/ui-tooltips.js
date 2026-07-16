@@ -21,7 +21,7 @@ else if (type === 'pet_train') {
 	
 else if (item && item.slot === "consumable") {
         if (item.type === "crate") {
-            html += `📦 <b>Mystery Box:</b> Click to break the seal and reveal the loot inside.<br>`;
+            html += `\u{1F4E6} <b>Mystery Box:</b> Click to break the seal and reveal the loot inside.<br>`;
             html += `<span style="color: #bbaaa0; font-style: italic; font-size: 10px;">${item.desc}</span><br>`;
         }
 	} 	
@@ -310,7 +310,7 @@ function showItemTooltip(event, item, index, location) {
             actionsHtml += `<button onclick="equipItem(${index})" style="background: #27ae60; border-color: #2ecc71; padding: 6px; flex-grow: 1;">Equip</button>`;
         }
         if (item.id && item.id.includes('crate') && !isCombat) {
-            actionsHtml += `<button disabled style="background: #443a32; border-color: #634e3d; padding: 6px; flex-grow: 1;">Retired</button>`;
+            actionsHtml += `<button onclick="openCrate(${index}, '${item.id}')" style="background: #d35400; border-color: #f39c12; padding: 6px; flex-grow: 1;">\u{1F4E6} Open</button>`;
         }
         // Universally allow Vaulting and Selling outside of combat
         if (!isCombat) {
