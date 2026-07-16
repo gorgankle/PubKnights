@@ -99,7 +99,7 @@ ugcSchema.index({ type: 1, createdAt: -1 });
 
 const UGC = mongoose.model('UGC', ugcSchema);
 
-const RETIRED_ITEM_IDS = new Set(['bomb_small', 'bomb_heavy', 'scroll_fireball', 'scroll_poison_shot']);
+const RETIRED_ITEM_IDS = new Set(['bomb_small', 'bomb_heavy', 'scroll_fireball', 'scroll_poison_shot', 'timber_crate', 'angler_crate', 'harvest_crate']);
 
 // === THE AUTOMATED ITEM LONGEVITY SANITIZER (STRICT HYDRATION) ===
 function sanitizeItemSchema(savedItem) {
@@ -136,6 +136,12 @@ function createSaveSnapshot(playerState) {
     delete snapshot.currentZone;
     delete snapshot.socialX;
     delete snapshot.socialY;
+    delete snapshot.wood;
+    delete snapshot.fish;
+    delete snapshot.hops;
+    delete snapshot.lumberPoints;
+    delete snapshot.fishingPoints;
+    delete snapshot.hopsPoints;
 
     return snapshot;
 }
@@ -181,8 +187,7 @@ function createDefaultSaveData(username) {
         level: 1, xp: 0, xpToNext: getTotalXpForNextLevel(1), skillPoints: 0,
         vitality: 1, hp: 25, stamina: 25, maxStamina: 1,
         offense: 1, defense: 1, speed: 1,
-        vaultSlots: 10, gold: 0, hops: 0, wood: 0, fish: 0,
-        lumberPoints: 0, fishingPoints: 0, hopsPoints: 0,
+        vaultSlots: 10, gold: 0,
         pendingGold: 0, pendingXp: 0, pendingLoot: [],
         wildernessLevel: 1, cellarLevel: 1, abyssDepth: 1,
         appearance: { ...DEFAULT_APPEARANCE },
@@ -268,6 +273,12 @@ function hydratePlayerData(playerDoc) {
     delete pd.currentZone;
     delete pd.socialX;
     delete pd.socialY;
+    delete pd.wood;
+    delete pd.fish;
+    delete pd.hops;
+    delete pd.lumberPoints;
+    delete pd.fishingPoints;
+    delete pd.hopsPoints;
 
     if (pd.equipment) {
         for (let slot in pd.equipment) {
@@ -508,14 +519,12 @@ setInterval(() => {
         let p = activePlayers[socketId];
         if (!p) continue;
 
-        // Worker production is retired. Minigame points now feed resources, crates, and fish exports.
+        // Worker production and side-resource economies are retired.
         if (p.happyHourTicks > 0) p.happyHourTicks--;
 
         io.to(socketId).emit('serverTick', {
-            hp: p.hp, 
-            wood: p.wood, 
-            fish: p.fish, 
-            hops: p.hops,
+            hp: p.hp,
+            gold: p.gold,
             happyHourTicks: p.happyHourTicks,
             upgrades: p.upgrades
         });

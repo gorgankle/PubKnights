@@ -13,8 +13,7 @@ let player = {
     level: 1, xp: 0, xpToNext: 100, skillPoints: 0,
     vitality: 1, hp: 25, stamina: 25, maxStamina: 1, 
     offense: 1, defense: 1, speed: 1, // <--- PROPER LEVEL 1 START
-    vaultSlots: 10, gold: 0, hops: 0, wood: 0, fish: 0, 
-	lumberPoints: 0, fishingPoints: 0, hopsPoints: 0, 
+    vaultSlots: 10, gold: 0,
     wildernessLevel: 1, cellarsUnlocked: false, cellarLevel: 1,         
     
 	appearance: { gender: 'male', skin: 'light', hair: 'hair_messy', hairColor: 'brown', eyes: 'eyes_blue', shirtColor: 'blue', pantsColor: 'dark', bootsColor: 'leather' },
@@ -173,21 +172,13 @@ function getPlayerTotalAttack() { return getPlayerTotalPower(); }
 // === ECONOMY MATH HELPERS (MUST MATCH SERVER.JS) ===
 function getBackpackUpgradeCost() {
     let upg = player.backpackUpgrades || 0;
-    // Base cost: 250g/100w. Scales moderately by 1.2x.
-    return { 
-        gold: Math.floor(250 * Math.pow(1.2, upg)), 
-        wood: Math.floor(100 * Math.pow(1.2, upg)) 
-    };
+    return { gold: Math.floor(400 * Math.pow(1.2, upg)) };
 }
 
 function getVaultUpgradeCost() {
     let currentSlots = player.vaultSlots || 10;
     let upg = Math.floor((currentSlots - 10) / 5);
-    // Base cost: 100g/50w. Scales moderately by 1.2x.
-    return {
-        gold: Math.floor(100 * Math.pow(1.2, upg)),
-        wood: Math.floor(50 * Math.pow(1.2, upg))
-    };
+    return { gold: Math.floor(175 * Math.pow(1.2, upg)) };
 }
 
 function getPetTrainingCost() {
@@ -214,8 +205,7 @@ function saveGame(manualNotify = false) {
         // === THE NEW CORE 5 ===
         offense: player.offense || 15, defense: player.defense || 5, speed: player.speed || 3, 
         
-        vaultSlots: player.vaultSlots, gold: player.gold, hops: player.hops, wood: player.wood, fish: player.fish, 
-        lumberPoints: player.lumberPoints, fishingPoints: player.fishingPoints, hopsPoints: player.hopsPoints,
+        vaultSlots: player.vaultSlots, gold: player.gold,
         wildernessLevel: player.wildernessLevel, cellarsUnlocked: player.cellarsUnlocked, cellarLevel: player.cellarLevel, 
         abyssUnlocked: player.abyssUnlocked, abyssDepth: player.abyssDepth,
         appearance: player.appearance, 

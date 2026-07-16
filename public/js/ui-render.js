@@ -1,7 +1,7 @@
 // --- UI: RENDER & REFRESH MANAGER ---
 
 // --- UI: RENDER & REFRESH MANAGER ---
-let uiMemory = { gold: -1, wood: -1, fish: -1, hops: -1, cWood: -1, cFish: -1, cHops: -1 }
+let uiMemory = { gold: -1 }
 
 // === UI NAVIGATION ENGINE ===
 function switchTab(tabId) {
@@ -193,39 +193,20 @@ function refreshSystemUI() {
 
         if (!townVaultView || !combatScreen || !vaultScreen || !wallet || !townScreen || !merchantScreen) return;
 
-        // === CLEANED UP WALLET - ECONOMY ONLY ===
+        // === GOLD ECONOMY DISPLAY ===
         let animG = (uiMemory.gold !== -1 && player.gold > uiMemory.gold) ? 'resource-pop' : '';
-        let animW = (uiMemory.wood !== -1 && player.wood > uiMemory.wood) ? 'resource-pop' : '';
-        let animF = (uiMemory.fish !== -1 && player.fish > uiMemory.fish) ? 'resource-pop' : '';
-        let animH = (uiMemory.hops !== -1 && player.hops > uiMemory.hops) ? 'resource-pop' : '';
-        
-        uiMemory.gold = player.gold; uiMemory.wood = player.wood; 
-        uiMemory.fish = player.fish; uiMemory.hops = player.hops;
-
-        wallet.innerHTML = `
-            <div style="display: flex; justify-content: space-around; font-family: monospace; font-size: 12px; padding: 4px; color: #bbaaa0;">
-                <span class="${animG}">💰 Gold: <b style="font-size: 14px; color: #fff;">${(player.gold || 0).toLocaleString()}g</b></span>
-                <span class="${animW}">🌲 Timber: <b style="font-size: 14px; color: #fff;">${(player.wood || 0).toLocaleString()}</b></span>
-                <span class="${animF}">🐟 Fish: <b style="font-size: 14px; color: #fff;">${(player.fish || 0).toLocaleString()}</b></span>
-                <span class="${animH}">🌿 Hops: <b style="font-size: 14px; color: #fff;">${(player.hops || 0).toLocaleString()}</b></span>
-            </div>`;
+        uiMemory.gold = player.gold;
+        const staticGold = document.getElementById('static-gold-display');
+        if (staticGold) {
+            staticGold.className = animG;
+            staticGold.innerHTML = `Gold: <b style="color:#fff;">${(player.gold || 0).toLocaleString()}g</b>`;
+        }
+        if (wallet) wallet.style.display = 'none';
 
         if (gameState === 'COMBAT' && currentTurn === 'PLAYER') {
             if (combatPhase === 'MOVE' || combatPhase === 'ACTION') combatPhase = 'PHASE_1';
         }
 
-// === QUARTERMASTER POINTS UI UPDATE ===
-        let timberUi = document.getElementById('ui-timber-pts');
-        if (timberUi) timberUi.innerText = (player.lumberPoints || 0).toLocaleString();
-        
-        let fishUi = document.getElementById('ui-fish-pts');
-        if (fishUi) fishUi.innerText = (player.fishingPoints || 0).toLocaleString();
-        
-        let hopsUi = document.getElementById('ui-hops-pts');
-        if (hopsUi) hopsUi.innerText = (player.hopsPoints || 0).toLocaleString();
-
-
-// === FULL SCREEN EXCLUSIVE VIEWS ===
 const lumberScreen = document.getElementById("minigame-lumber-screen");
 const fishingScreen = document.getElementById("minigame-fishing-screen");
 const hopsScreen = document.getElementById("minigame-hops-screen");
@@ -477,8 +458,8 @@ if (hopsScreen) hopsScreen.style.display = "none";
                 let vaultBtn = document.getElementById("upgrade-vault-btn");
                 if (vaultBtn) {
                     // === THE FIX: Condense the text so it fits beautifully in the header ===
-                    vaultBtn.innerText = `➕ Expand (+5: ${vaultCost.gold}g, ${vaultCost.wood}W)`;
-                    vaultBtn.disabled = (player.gold < vaultCost.gold || player.wood < vaultCost.wood);
+                    vaultBtn.innerText = `Expand (+5: ${vaultCost.gold}g)`;
+                    vaultBtn.disabled = (player.gold < vaultCost.gold);
                 }
 
                 renderVaultStorageList();
@@ -602,45 +583,29 @@ if (hopsScreen) hopsScreen.style.display = "none";
 
                    
             let brewBtn = document.getElementById("brewmaster-btn");
-            if (brewBtn) brewBtn.disabled = (player.hops < 1 || player.gold < 10 || player.inventory.length >= (player.maxInventorySlots || 5)); 
+            if (brewBtn) brewBtn.disabled = (player.gold < 25 || player.inventory.length >= (player.maxInventorySlots || 5)); 
             
             const resBtn = document.getElementById("reserve-btn");
-            if (resBtn) resBtn.disabled = (player.hops < 500 || player.gold < 250 || player.inventory.length >= (player.maxInventorySlots || 5));
-
-            let baitBtn = document.getElementById("bait-btn");
-            if(baitBtn) baitBtn.disabled = (player.fish < 15 || player.mapBaited); 
+            if (resBtn) resBtn.disabled = (player.gold < 1000 || player.inventory.length >= (player.maxInventorySlots || 5)); 
 
             let wsBtn = document.getElementById("wholesale-btn");
-            if(wsBtn) wsBtn.disabled = (player.fish < 100);
-            
-            let chumBtn = document.getElementById("chum-btn");
-            if(chumBtn) chumBtn.disabled = (player.fish < 100 || player.cellarsChummed || !player.cellarsUnlocked);
+            if(wsBtn) wsBtn.disabled = true;
 
             let ipaBtn = document.getElementById("ipa-btn");
-            if(ipaBtn) ipaBtn.disabled = (player.hops < 2 || player.wood < 10 || player.inventory.length >= (player.maxInventorySlots || 5));
+            if(ipaBtn) ipaBtn.disabled = (player.gold < 75 || player.inventory.length >= (player.maxInventorySlots || 5));
             
             let lagBtn = document.getElementById("lager-btn");
-            if(lagBtn) lagBtn.disabled = (player.hops < 2 || player.fish < 10 || player.inventory.length >= (player.maxInventorySlots || 5));
+            if(lagBtn) lagBtn.disabled = (player.gold < 75 || player.inventory.length >= (player.maxInventorySlots || 5));
             
             let ironBtn = document.getElementById("ironwall-btn");
-            if(ironBtn) ironBtn.disabled = (player.hops < 8 || player.wood < 25 || player.gold < 25 || player.inventory.length >= (player.maxInventorySlots || 5));
+            if(ironBtn) ironBtn.disabled = (player.gold < 150 || player.inventory.length >= (player.maxInventorySlots || 5));
 
             let clearBtn = document.getElementById("clearwater-btn");
-            if(clearBtn) clearBtn.disabled = (player.hops < 4 || player.fish < 20 || player.inventory.length >= (player.maxInventorySlots || 5));
+            if(clearBtn) clearBtn.disabled = (player.gold < 150 || player.inventory.length >= (player.maxInventorySlots || 5));
 
             let staunchBtn = document.getElementById("staunch-btn");
-            if(staunchBtn) staunchBtn.disabled = (player.hops < 12 || player.fish < 30 || player.gold < 50 || player.inventory.length >= (player.maxInventorySlots || 5));
-            let hhBtn = document.getElementById("happy-hour-btn");
-            if(hhBtn) hhBtn.disabled = (player.hops < 40 || player.gold < 100);
-            
-            let markBtn = document.getElementById("market-trader-btn");
-            if(markBtn) markBtn.disabled = (player.hops < 50);
+            if(staunchBtn) staunchBtn.disabled = (player.gold < 250 || player.inventory.length >= (player.maxInventorySlots || 5));
 
-          const hhTimer = document.getElementById("happy-hour-timer");
-            if (hhTimer) {
-                if (player.happyHourTicks > 0) hhTimer.style.display = "inline";
-                else hhTimer.style.display = "none";
-            }
 
             const cellarGate = document.getElementById("cellar-gate-btn");
             if(cellarGate) {
@@ -690,11 +655,12 @@ if (hopsScreen) hopsScreen.style.display = "none";
                     }).join('');
                 }
             }
-            const hireMarlowBtn = document.getElementById("hire-marlow-btn");
-            if (hireMarlowBtn) {
-                const hasMarlow = companions.some(companion => companion.id === 'marlow_shieldhand');
-                hireMarlowBtn.disabled = hasMarlow || player.gold < 250;
-                hireMarlowBtn.innerText = hasMarlow ? 'Marlow hired - manage on Knight screen' : 'Hire Marlow Shieldhand (250g)';
+
+            const hireMercenaryBtn = document.getElementById("hire-mercenary-btn");
+            if (hireMercenaryBtn) {
+                const hasStarterMercenary = companions.some(companion => companion.id === 'starter_mercenary' || companion.id === 'marlow_shieldhand');
+                hireMercenaryBtn.disabled = hasStarterMercenary || player.gold < 250;
+                hireMercenaryBtn.innerText = hasStarterMercenary ? 'Mercenary hired - manage on Knight screen' : 'Hire Mercenary (250g)';
             }
 
             let invC = document.getElementById("inv-count");
@@ -704,7 +670,7 @@ if (hopsScreen) hopsScreen.style.display = "none";
            let backpackHeader = document.querySelector("#main-backpack-panel h3");
             if (backpackHeader) {
                 backpackHeader.innerHTML = `🎒 Knight's Backpack (<span id="inv-count">${player.inventory.length}</span>/${player.maxInventorySlots || 5} Slots) ` +
-                `<button onclick="upgradeBackpackCapacity()" style="font-size:8px; padding:2px; margin-left:5px; background:#e67e22;" ${player.gold < packCost.gold || player.wood < packCost.wood ? 'disabled' : ''} onmouseenter="showSystemTooltip('pack_up', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">➕ Expand (+1 Slot: ${packCost.gold}g, ${packCost.wood}W)</button>`;
+`<button onclick="upgradeBackpackCapacity()" style="font-size:8px; padding:2px; margin-left:5px; background:#e67e22;" ${player.gold < packCost.gold ? 'disabled' : ''} onmouseenter="showSystemTooltip('pack_up', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Expand (+1 Slot: ${packCost.gold}g)</button>`;
             }
 
             const lvlPanel = document.getElementById("level-up-panel");
@@ -762,9 +728,6 @@ if (hopsScreen) hopsScreen.style.display = "none";
                     </div>
                 `;
             }
-
-            const bulkFishBtn = document.getElementById("btn-sell-fish-bulk");
-            if (bulkFishBtn) bulkFishBtn.style.display = "block";
 
             if (gameState === 'KNIGHT' || gameState === 'TOWN' || gameState === 'VAULT' || gameState === 'MERCHANT' || gameState === 'ADVENTURES') {
                 if (typeof renderMainScreenSprites === 'function') renderMainScreenSprites();

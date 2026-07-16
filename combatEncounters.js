@@ -115,10 +115,7 @@ function createCombatEncounter(player, data) {
             template.enemySlots.slice(0, swarmSize).forEach(slot => {
                 addEnemyFromSlot(combatState, { ...slot, id: "corrupted_cask" });
             });
-
-            if (player.cellarsChummed) {
-                (template.chummedEnemies || []).forEach(slot => addEnemyFromSlot(combatState, slot, "Chummed "));
-            } else if (runLvl >= 5) {
+            if (runLvl >= 5) {
                 (template.mimicEnemies || []).forEach(slot => addEnemyFromSlot(combatState, slot));
             }
         }
@@ -140,10 +137,6 @@ function createCombatEncounter(player, data) {
                     addEnemyFromSlot(combatState, { ...slot, id: getWildernessEnemyId(runLvl, spawnIndex) }, prefixLabel, baitMultiplier);
                 }
             });
-
-            if (player.mapBaited) {
-                (template.baitedEnemies || []).forEach(slot => addEnemyFromSlot(combatState, slot));
-            }
         }
     }
 

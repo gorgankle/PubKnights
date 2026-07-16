@@ -16,7 +16,7 @@ function showSystemTooltip(type, event) {
     }
 else if (type === 'pet_train') {
         let cost = getPetTrainingCost();
-        html = `<h3>🦴 Hop-Infused Kibble</h3>Formulate a nutrient-dense superfood for your companion.<br>📈 <b>Reward:</b> +1% cumulative chance per level to dig up exclusive Pet-Only Loot after every combat victory!<br>💰 Cost: ${cost.hops} Hops, ${cost.fish} Fish, ${cost.gold}g`;
+        html = `<h3>Companion Kibble</h3>Train your companion's scavenging instincts.<br><b>Reward:</b> +1% cumulative chance per level to dig up exclusive Pet-Only Loot after every combat victory!<br>Cost: ${cost.gold}g`;
     }
 	
 else if (item && item.slot === "consumable") {
@@ -32,27 +32,21 @@ else if (item && item.slot === "consumable") {
         html = `<h3>🍷 Forbidden Cellars</h3>Descend into the forgotten, mold-covered storage vaults. Enemies here have thicker armor and hit harder than those in the Wilds.<br>⚠️ Danger: Beware of Mimics disguising themselves among the casks!`;
     }
     else if (type === 'vault_up') {
-        let gCost = player.vaultSlots * 5; let wCost = player.vaultSlots * 2;
-        html = `<h3>🏦 Structural Expansion</h3>Adds <b>+5 secure vault frames</b>.<br>💰 Cost: ${gCost}g, ${wCost} Wood`;
+        let cost = getVaultUpgradeCost();
+        html = `<h3>Structural Expansion</h3>Adds <b>+5 secure vault frames</b>.<br>Cost: ${cost.gold}g`;
     }
     else if (type === 'craft_stout') {
-        html = `<h3>🍺 Craft Combat Stout</h3>Hire the Brewmaster to ferment your hops into a 40% Max HP healing action for battle maps.<br>⚖️ Requires: 1 Hops, 10 Gold Pieces`;
+        html = `<h3>Craft Combat Stout</h3>Buy a battle-ready healing brew from the Brewmaster.<br>Cost: 25g`;
     }
  // === REPLACED ===
     else if (type === 'ipa') {
-        html = `<h3>Furious IPA</h3>Concoct a strong, oak-aged specialty ale. Drink it from the combat backpack to gain a <b>1.25x Offense Multiplier</b> for that fight.<br>Requires: 2 Hops, 10 Timber`;
-        showTooltip(html, event);
-        return;
-        html = `<h3>🔥 Furious IPA</h3>Concoct a strong, oak-aged specialty ale. Your <b>NEXT</b> expedition run gains a permanent <b>1.25x Offense Multiplier</b>.<br>⚖️ Requires: 2 Hops, 10 Timber`;
+        html = `<h3>Furious IPA</h3>Drink it from the combat backpack to gain a <b>1.25x Offense Multiplier</b> for that fight.<br>Cost: 75g`;
     }
     else if (type === 'lager') {
-        html = `<h3>Swift Lager</h3>Ferment a light, refreshing utility lager. Drink it from the combat backpack to gain <b>+1 Speed Level</b> and an <b>ATB surge</b> for that fight.<br>Requires: 2 Hops, 10 Fish`;
-        showTooltip(html, event);
-        return;
-        html = `<h3>🏃 Swift Lager</h3>Ferment a light, refreshing utility lager. Drink it from the combat backpack for <b>+1 Speed Level</b> and an <b>ATB surge</b>.<br>⚖️ Requires: 2 Hops, 10 Fish`;
+        html = `<h3>Swift Lager</h3>Drink it from the combat backpack to gain <b>+1 Speed Level</b> and an <b>ATB surge</b> for that fight.<br>Cost: 75g`;
     }
 	else if (type === 'reserve') {
-        html = `<h3>🍷 Grandmaster Reserve</h3>Ferment a legendary, ultra-dense vintage that heavily mends wounds in battle.<br>❤️ Restores: <b>90% Max HP</b> and cleanses negative effects.<br>⚖️ Requires: 500 Hops, 250 Gold Pieces`;
+        html = `<h3>Grandmaster Reserve</h3>Heavily mends wounds in battle and cleanses negative effects.<br>Cost: 1000g`;
     }
 	else if (type === 'gilded_tavern') {
         html = `<h3>✨ Gilded Tavern Metamorphosis</h3>Pay the ultimate tribute to the Guild. Imbues the pub walls with gold filigree and automates supply clearing.<br>💰 Cost: <b>10,000 Gold</b>`;
@@ -61,13 +55,13 @@ else if (item && item.slot === "consumable") {
         html = `<h3>🎉 Host Happy Hour</h3>Throw a massive festival to double your team's morale! Woodcutters, Fishermen, and Farmers harvest at <b>2x speed vectors for the next 3 minutes</b>.<br>⚖️ Requires: 40 Hops, 100 Gold Pieces`;
     }
     else if (type === 'black_market') {
-        html = `<h3>🦝 Black Market Cargo</h3>Trade a large shipment of raw hops to a shady traveling merchant for hidden smuggler gear.<br>🎁 Reward: 1 Guaranteed <b>Rare, Epic, or Unique piece of equipment</b>.<br>⚖️ Requires: 50 Hops`;
+        html = `<h3>Removed</h3>Black market trading has been removed.`;
     }
     else if (type === 'fish_wholesale') {
-        html = `<h3>🐟 Wholesale Fish Export</h3>Ship 100 surplus Fish cargo units to passing merchant fleets in exchange for quick liquid capital.<br>💰 Yields: 150 Gold Pieces`;
+        html = `<h3>Retired</h3>Fish exports have been retired in the gold economy.`;
     }
     else if (type === 'chum_cellars') {
-        html = `<h3>🛢️ Chum Subterranean Vaults</h3>Dump 100 ground Fish down the drainage pipes. Your next Forbidden Cellars exploration run will draw out <b>5 additional treasure-bearing Mimics</b>.<br>⚠️ Danger: Grid matrix crowding scales up intensely.`;
+        html = `<h3>Retired</h3>Cellar chumming has been retired for now.`;
     }
    else if (type === 'stat_vitality') {
         html = `<h3>❤️ Vitality</h3>Increases your maximum health pool.<br>📈 Gain <b>+25 Max HP</b> per level.`;
@@ -105,11 +99,11 @@ else if (item && item.slot === "consumable") {
         html = `<h3>🌾 Harvest Hops</h3>Work the fields to passively gather <b>Hops</b> for brewing and black market deals.`;
     }
     else if (type === 'bait_wilds') {
-        html = `<h3>🎣 Bait the Wilds</h3>Scatter 15 Fish to draw out larger, frenzied monster swarms.<br>⚠️ Danger: Enemies gain increased Vitality and Offense.<br>💰 Reward: Increased gold bounties per kill.`;
+        html = `<h3>Retired</h3>Wilds baiting has been retired for now.`;
     }
     else if (type === 'pack_up') {
         let pCost = getBackpackUpgradeCost();
-        html = `<h3>🎒 Expand Backpack</h3>Adds <b>+1 slot</b> to your personal combat inventory.<br>💰 Cost: ${pCost.gold}g, ${pCost.wood} Wood`;
+        html = `<h3>Expand Backpack</h3>Adds <b>+1 slot</b> to your personal combat inventory.<br>Cost: ${pCost.gold}g`;
     }
     else if (type === 'claim_cart') {
         html = `<h3>🧺 Claim Supplies</h3>Empty the town's production cart and deposit all gathered Timber, Fish, and Hops directly into your vault balance.`;
@@ -316,7 +310,7 @@ function showItemTooltip(event, item, index, location) {
             actionsHtml += `<button onclick="equipItem(${index})" style="background: #27ae60; border-color: #2ecc71; padding: 6px; flex-grow: 1;">Equip</button>`;
         }
         if (item.id && item.id.includes('crate') && !isCombat) {
-            actionsHtml += `<button onclick="openCrate(${index}, '${item.id}')" style="background: #e67e22; border-color: #d35400; padding: 6px; flex-grow: 1;">Unbox</button>`;
+            actionsHtml += `<button disabled style="background: #443a32; border-color: #634e3d; padding: 6px; flex-grow: 1;">Retired</button>`;
         }
         // Universally allow Vaulting and Selling outside of combat
         if (!isCombat) {

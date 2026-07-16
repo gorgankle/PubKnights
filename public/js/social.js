@@ -310,21 +310,14 @@ socket.on('tradeStarted', (data) => {
 
 function offerTradeResources() {
     socket.emit('modifyTradeResources', {
-        gold: document.getElementById('trade-in-gold').value,
-        wood: document.getElementById('trade-in-wood').value,
-        fish: document.getElementById('trade-in-fish').value,
-        hops: document.getElementById('trade-in-hops').value
+        gold: document.getElementById('trade-in-gold').value
     });
 }
 
 function formatResourceString(res) {
-    if (!res) return "";
     let str = [];
-    if (res.gold > 0) str.push(`${res.gold}g`);
-    if (res.wood > 0) str.push(`<span style="color:#e67e22">${res.wood} Wood</span>`);
-    if (res.fish > 0) str.push(`<span style="color:#3498db">${res.fish} Fish</span>`);
-    if (res.hops > 0) str.push(`<span style="color:#2ecc71">${res.hops} Hops</span>`);
-    return str.join(' | ');
+    if (res && res.gold > 0) str.push(`<span style="color:#f1c40f">${res.gold} Gold</span>`);
+    return str.length ? str.join(" | ") : `<span style="color:#7f8c8d">No gold offered</span>`;
 }
 
 socket.on('tradeUpdated', (data) => {
@@ -393,9 +386,6 @@ socket.on('tradeCompleted', (data) => {
     // NEW: Update resources!
     if (data.updatedStats) {
         player.gold = data.updatedStats.gold;
-        player.wood = data.updatedStats.wood;
-        player.fish = data.updatedStats.fish;
-        player.hops = data.updatedStats.hops;
         if (typeof refreshSystemUI === 'function') refreshSystemUI();
     }
     

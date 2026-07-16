@@ -33,20 +33,9 @@ socket.on('serverTick', (serverData) => {
     // Failsafe: Ignore background ticks if the player hasn't logged in yet
     if (document.getElementById('main-game-container').style.display !== 'flex') return;
 
-    // Only accept personal idle job resources if we are physically in the Town
-    if (gameState === 'TOWN' || gameState === 'VAULT') {
-        player.hp = serverData.hp;
-        player.wood = serverData.wood;
-        player.fish = serverData.fish;
-        player.hops = serverData.hops;
-    }
-
-    // Workers ALWAYS gather, regardless of what map the player is on
-    player.supplyCart = serverData.supplyCart;
+    // Server ticks keep durable town status in sync.
+    if (typeof serverData.gold === 'number') player.gold = serverData.gold;
     player.happyHourTicks = serverData.happyHourTicks;
-
-    // Re-trigger the gilded tavern auto-claim logic
-    if (typeof runAutoClaimCheck === 'function') runAutoClaimCheck();
 
     refreshSystemUI();
     updateTownUI(serverData);

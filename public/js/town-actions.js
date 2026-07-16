@@ -24,18 +24,8 @@ function drinkBrewFromInventory(idx) {
 
 // === CRATE UNBOXING LOGIC ===
 function openCrate(index, crateId) {
-    // 1. Hide the tooltip so it doesn't get stuck on screen
-    if (typeof hideTooltip === 'function') hideTooltip();
-    
-    // 2. Grab the crate data directly from the player's backpack
-    let crateItem = player.inventory[index];
-    
-    if (crateItem && crateItem.id === crateId) {
-        // 3. Route it directly into your awesome CS:GO Roulette sequence!
-        triggerUnboxing(index, crateItem);
-    } else {
-        logMessage("❌ You can only unbox crates from your active backpack.");
-    }
+    logMessage('Resource crates have been retired in the gold economy.');
+    if (typeof playRetroSound === 'function') playRetroSound('error');
 }
 
 function hireBrewmasterServices() { socket.emit('townAction', { action: 'craftBrew', brewType: 'STOUT' }); }
@@ -43,7 +33,9 @@ function hireBrewmasterServices() { socket.emit('townAction', { action: 'craftBr
 function craftSpecialtyBrew(brewType) { socket.emit('townAction', { action: 'craftBrew', brewType: brewType }); }
 
 function hireTavernCompanion() {
-    socket.emit('townAction', { action: 'hireCompanion', companionId: 'marlow_shieldhand' });
+    const nameInput = document.getElementById('mercenary-name-input');
+    const companionName = nameInput ? nameInput.value.trim() : '';
+    socket.emit('townAction', { action: 'hireCompanion', companionId: 'starter_mercenary', companionName: companionName });
 }
 
 function setActiveCompanion(companionId) {
@@ -54,21 +46,15 @@ function benchCompanion(companionId) {
     socket.emit('townAction', { action: 'benchCompanion', companionId: companionId });
 }
 function hostHappyHour() {
-    socket.emit('townAction', { action: 'happyHour' });
+    logMessage('Happy Hour has been retired from this alpha branch.');
 }
-function tradeHopsForGear() { socket.emit('townAction', { action: 'blackMarket' }); }
+function tradeHopsForGear() { logMessage('Black market trading has been removed.'); if (typeof playRetroSound === 'function') playRetroSound('error'); }
 
-function baitWildernessMap() {
-    socket.emit('townAction', { action: 'baitWilds' });
-}
+function baitWildernessMap() { logMessage('Wilds baiting has been retired for now.'); if (typeof playRetroSound === 'function') playRetroSound('error'); }
 
-function exportFishWholesale() {
-    socket.emit('townAction', { action: 'exportFish' });
-}
+function exportFishWholesale() { logMessage('Fish exports have been retired in the gold economy.'); }
 
-function chumForbiddenCellars() {
-    socket.emit('townAction', { action: 'chumCellars' });
-}
+function chumForbiddenCellars() { logMessage('Cellar chumming has been retired for now.'); if (typeof playRetroSound === 'function') playRetroSound('error'); }
 
 function hireWorker() { logMessage('Worker systems have been removed from this alpha branch.'); }
 function upgradeCabin() { logMessage('Worker systems have been removed from this alpha branch.'); }
@@ -95,29 +81,15 @@ function craftReserveBrew() { socket.emit('townAction', { action: 'craftBrew', b
 
 // === RETIRED TOWN UPGRADE ACTIONS ===
 function purchaseGildedTavern() { logMessage('Town prestige upgrades have been removed from this alpha branch.'); }
-function buyTradeRoutes() { logMessage('Trade route upgrades have been removed; fish exports are available from the Exchange.'); }
+function buyTradeRoutes() { logMessage('Trade route upgrades have been removed.'); }
 function purchaseMonument() { logMessage('The Golden Monument upgrade has been retired for this alpha branch.'); }
 
-function sellFishBulk() {
-    socket.emit('townAction', { action: 'sellFishBulk' });
-}
+function sellFishBulk() { logMessage('Bulk fish exports have been retired in the gold economy.'); }
 
 // === QUARTERMASTER EXCHANGE LOGIC ===
 function exchangePoints(type, tier) {
-    if (gameState === 'COMBAT') {
-        logMessage("❌ You cannot trade with the Quartermaster while in combat!");
-        return;
-    }
-    
-    // Play a nice click sound
-    if (typeof playRetroSound === 'function') playRetroSound('click');
-    
-    // Send the request directly to the secure server logic
-    socket.emit('townAction', { 
-        action: 'exchangePoints', 
-        exchangeType: type, 
-        tier: tier 
-    });
+    logMessage('Quartermaster resource exchanges have been retired in the gold economy.');
+    if (typeof playRetroSound === 'function') playRetroSound('error');
 }
 // === ROULETTE UNBOXING SEQUENCE ===
 function triggerUnboxing(inventoryIndex, crateItem) {
@@ -251,20 +223,8 @@ function trainPet() {
 
 // === QUARTERMASTER EXCHANGE LOGIC ===
 function exchangePoints(type, tier) {
-    if (gameState === 'COMBAT') {
-        logMessage("❌ You cannot trade with the Quartermaster while in combat!");
-        return;
-    }
-    
-    // Play a nice click sound
-    if (typeof playRetroSound === 'function') playRetroSound('click');
-    
-    // Send the request directly to the secure server logic
-    socket.emit('townAction', { 
-        action: 'exchangePoints', 
-        exchangeType: type, 
-        tier: tier 
-    });
+    logMessage('Quartermaster resource exchanges have been retired in the gold economy.');
+    if (typeof playRetroSound === 'function') playRetroSound('error');
 }
 
 // --- RENAISSANCE CORNER BRIDGE ---

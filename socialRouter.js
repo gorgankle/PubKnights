@@ -234,17 +234,11 @@ module.exports = function(socket, io, activePlayers) {
         if (p1 && p1.tradeStaging) {
             p1.inventory = p1.inventory.concat(p1.tradeStaging);
             p1.gold = (p1.gold || 0) + (p1.tradeResources?.gold || 0);
-            p1.wood = (p1.wood || 0) + (p1.tradeResources?.wood || 0);
-            p1.fish = (p1.fish || 0) + (p1.tradeResources?.fish || 0);
-            p1.hops = (p1.hops || 0) + (p1.tradeResources?.hops || 0);
             p1.tradeStaging = null; p1.tradeResources = null; p1.activeTradePartner = null;
         }
         if (p2 && p2.tradeStaging) {
             p2.inventory = p2.inventory.concat(p2.tradeStaging);
             p2.gold = (p2.gold || 0) + (p2.tradeResources?.gold || 0);
-            p2.wood = (p2.wood || 0) + (p2.tradeResources?.wood || 0);
-            p2.fish = (p2.fish || 0) + (p2.tradeResources?.fish || 0);
-            p2.hops = (p2.hops || 0) + (p2.tradeResources?.hops || 0);
             p2.tradeStaging = null; p2.tradeResources = null; p2.activeTradePartner = null;
         }
 
@@ -276,8 +270,8 @@ module.exports = function(socket, io, activePlayers) {
         requester.activeTradePartner = socket.id;
         
         // Initialize secure staging arrays and states
-        p.tradeStaging = []; p.tradeResources = { gold: 0, wood: 0, fish: 0, hops: 0 }; p.tradeLocked = false; p.tradeConfirmed = false;
-        requester.tradeStaging = []; requester.tradeResources = { gold: 0, wood: 0, fish: 0, hops: 0 }; requester.tradeLocked = false; requester.tradeConfirmed = false;
+        p.tradeStaging = []; p.tradeResources = { gold: 0 }; p.tradeLocked = false; p.tradeConfirmed = false;
+        requester.tradeStaging = []; requester.tradeResources = { gold: 0 }; requester.tradeLocked = false; requester.tradeConfirmed = false;
 
         io.to(socket.id).emit('tradeStarted', { partnerId: requesterId, partnerName: requester.username, myInventory: p.inventory });
         io.to(requesterId).emit('tradeStarted', { partnerId: socket.id, partnerName: p.username, myInventory: requester.inventory });
@@ -338,21 +332,12 @@ module.exports = function(socket, io, activePlayers) {
         partner.tradeLocked = false; partner.tradeConfirmed = false;
 
         // Secure Refund: Put the currently offered resources back in their wallet first
-        p.gold = (p.gold || 0) + p.tradeResources.gold; p.tradeResources.gold = 0;
-        p.wood = (p.wood || 0) + p.tradeResources.wood; p.tradeResources.wood = 0;
-        p.fish = (p.fish || 0) + p.tradeResources.fish; p.tradeResources.fish = 0;
-        p.hops = (p.hops || 0) + p.tradeResources.hops; p.tradeResources.hops = 0;
+        p.gold = (p.gold || 0) + (p.tradeResources.gold || 0); p.tradeResources.gold = 0;
 
         // Secure Deduction: Check limits and pull the new requested amounts
         let reqG = clampInt(data && data.gold, 0, p.gold || 0, 0);
-        let reqW = clampInt(data && data.wood, 0, p.wood || 0, 0);
-        let reqF = clampInt(data && data.fish, 0, p.fish || 0, 0);
-        let reqH = clampInt(data && data.hops, 0, p.hops || 0, 0);
 
         p.gold -= reqG; p.tradeResources.gold = reqG;
-        p.wood -= reqW; p.tradeResources.wood = reqW;
-        p.fish -= reqF; p.tradeResources.fish = reqF;
-        p.hops -= reqH; p.tradeResources.hops = reqH;
 
         // Blast updates
         io.to(socket.id).emit('tradeUpdated', { 
@@ -411,23 +396,17 @@ module.exports = function(socket, io, activePlayers) {
             partner.inventory = partner.inventory.concat(p.tradeStaging || []);
 
             // RESOURCE SWAP!
-            p.gold = (p.gold || 0) + partner.tradeResources.gold;
-            p.wood = (p.wood || 0) + partner.tradeResources.wood;
-            p.fish = (p.fish || 0) + partner.tradeResources.fish;
-            p.hops = (p.hops || 0) + partner.tradeResources.hops;
+            p.gold = (p.gold || 0) + (partner.tradeResources.gold || 0);
 
-            partner.gold = (partner.gold || 0) + p.tradeResources.gold;
-            partner.wood = (partner.wood || 0) + p.tradeResources.wood;
-            partner.fish = (partner.fish || 0) + p.tradeResources.fish;
-            partner.hops = (partner.hops || 0) + p.tradeResources.hops;
+            partner.gold = (partner.gold || 0) + (p.tradeResources.gold || 0);
 
             // Wipe staging so abortTrade doesn't dupe them
             p.tradeStaging = null; p.tradeResources = null;
             partner.tradeStaging = null; partner.tradeResources = null;
             p.activeTradePartner = null; partner.activeTradePartner = null;
 
-            io.to(socket.id).emit('tradeCompleted', { updatedInventory: p.inventory, updatedStats: {gold: p.gold, wood: p.wood, fish: p.fish, hops: p.hops} });
-            io.to(partnerSocketId).emit('tradeCompleted', { updatedInventory: partner.inventory, updatedStats: {gold: partner.gold, wood: partner.wood, fish: partner.fish, hops: partner.hops} });
+            io.to(socket.id).emit('tradeCompleted', { updatedInventory: p.inventory, updatedStats: {gold: p.gold} });
+            io.to(partnerSocketId).emit('tradeCompleted', { updatedInventory: partner.inventory, updatedStats: {gold: partner.gold} });
         }
     });
 

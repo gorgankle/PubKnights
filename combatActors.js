@@ -82,6 +82,7 @@ function createPetActor(player, tile) {
     const pet = player.pet || {};
     const level = Math.max(1, Math.min(50, pet.level || 1));
     const maxHp = 20 + (level * 5);
+    const maxStamina = Math.max(25, 25 + (Math.floor(level / 5) * 5));
 
     return {
         uid: 'ally_pet',
@@ -96,8 +97,8 @@ function createPetActor(player, tile) {
         size: 1,
         hp: maxHp,
         maxHp,
-        stamina: getCompanionEquipmentStat(companion, 'maxStamina', 2) * 25,
-        maxStamina: getCompanionEquipmentStat(companion, 'maxStamina', 2) * 25,
+        stamina: maxStamina,
+        maxStamina,
         offense: Math.max(1, 1 + Math.floor(level / 4)),
         defense: Math.max(1, 1 + Math.floor(level / 6)),
         speed: Math.max(3, Math.min(7, 3 + Math.floor(level / 8))),
@@ -137,6 +138,7 @@ function createCompanionActor(companion, tile) {
     const weapon = equipment.weapon || {};
     const standardAttack = weapon.combat && weapon.combat.standard ? weapon.combat.standard : {};
     const maxHp = getCompanionEquipmentStat(companion, 'vitality', 3) * 25;
+    const maxStamina = getCompanionEquipmentStat(companion, 'maxStamina', 2) * 25;
 
     return {
         uid: `ally_${(companion && companion.id) || 'companion'}`,
@@ -151,8 +153,8 @@ function createCompanionActor(companion, tile) {
         size: 1,
         hp: maxHp,
         maxHp,
-        stamina: getCompanionEquipmentStat(companion, 'maxStamina', 2) * 25,
-        maxStamina: getCompanionEquipmentStat(companion, 'maxStamina', 2) * 25,
+        stamina: maxStamina,
+        maxStamina,
         offense: getCompanionEquipmentStat(companion, 'offense', 2),
         defense: getCompanionEquipmentStat(companion, 'defense', 2),
         speed: getCompanionEquipmentStat(companion, 'speed', 3),
