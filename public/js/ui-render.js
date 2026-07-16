@@ -196,6 +196,12 @@ function refreshSystemUI() {
         // === GOLD ECONOMY DISPLAY ===
         let animG = (uiMemory.gold !== -1 && player.gold > uiMemory.gold) ? 'resource-pop' : '';
         uiMemory.gold = player.gold;
+        const timberPtsUi = document.getElementById('ui-timber-pts');
+        if (timberPtsUi) timberPtsUi.innerText = (player.lumberPoints || 0).toLocaleString();
+        const fishPtsUi = document.getElementById('ui-fish-pts');
+        if (fishPtsUi) fishPtsUi.innerText = (player.fishingPoints || 0).toLocaleString();
+        const hopsPtsUi = document.getElementById('ui-hops-pts');
+        if (hopsPtsUi) hopsPtsUi.innerText = (player.hopsPoints || 0).toLocaleString();
         const staticGold = document.getElementById('static-gold-display');
         if (staticGold) {
             staticGold.className = animG;
