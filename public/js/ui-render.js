@@ -486,12 +486,12 @@ if (hopsScreen) hopsScreen.style.display = "none";
             const knightStats = document.getElementById("knight-town-stats");
             if (knightStats) {
                 knightStats.innerHTML = `
-                    <div style="color: #2ecc71; margin-bottom: 2px; font-weight: bold;">â¤ï¸ ${player.hp} / ${getPlayerMaxHp()} HP</div>
-                    <div style="color: #f1c40f; margin-bottom: 4px; font-weight: bold;">âš¡ ${player.stamina} / ${getPlayerMaxStamina()} STAM</div>
+                    <div style="color: #2ecc71; margin-bottom: 2px; font-weight: bold;">HP: ${player.hp} / ${getPlayerMaxHp()}</div>
+                    <div style="color: #f1c40f; margin-bottom: 4px; font-weight: bold;">Stamina: ${player.stamina} / ${getPlayerMaxStamina()}</div>
                     <div style="color: #bbaaa0; border-top: 1px dashed #3a2f26; padding-top: 4px; line-height: 1.3;">
-                        âš”ï¸ <b>Offense:</b> Total ${getPlayerTotalPower()}<br>
-                        ðŸ›¡ï¸ <b>Defense:</b> Total ${getPlayerDeflectChance()}<br>
-                        ðŸƒ <b>Speed:</b> Total ${getPlayerSwiftness()}
+                        <b>Offense:</b> Total ${getPlayerTotalPower()}<br>
+                        <b>Defense:</b> Total ${getPlayerDeflectChance()}<br>
+                        <b>Speed:</b> Total ${getPlayerSwiftness()}
                     </div>`;
             }
 
@@ -560,7 +560,7 @@ if (hopsScreen) hopsScreen.style.display = "none";
             if (gateBtn) {
                 let activeWildLvl = player.selectedWildernessLevel || player.wildernessLevel;
                 if (activeWildLvl === 20) {
-                    gateBtn.innerText = "ðŸ’¥ Wilds (Lvl 20 BOSS)";
+                    gateBtn.innerText = "Wilds (Lvl 20 BOSS)";
                     gateBtn.style.background = "#b33939";
                 } else {
                     gateBtn.innerText = `Deploy Wilds (Lvl ${activeWildLvl})`;
@@ -574,7 +574,7 @@ if (hopsScreen) hopsScreen.style.display = "none";
                     statusBanner.innerText = "% PLACEMENT LAYER BUFFER ACTIVATED: SCALED RARITIES INDUCTION VECTORS";
                     statusBanner.style.color = "#ff9f43"; statusBanner.style.borderColor = "#d35400";
                 } else if (player.cellarsChummed) {
-                    statusBanner.innerText = "ðŸ›¢ï¸ CELLAR ALERT: SEAFOOD DISCHARGE DETECTED. HIGH DENSITY MIMIC ARRAYS ACTIVE";
+                    statusBanner.innerText = "CELLAR ALERT: SEAFOOD DISCHARGE DETECTED. HIGH DENSITY MIMIC ARRAYS ACTIVE";
                     statusBanner.style.color = "#1abc9c"; statusBanner.style.borderColor = "#16a085";
                 } else {
                     statusBanner.innerText = "TRACKING SIGNAL: NORMAL SURFACE RADAR";
@@ -615,10 +615,10 @@ if (hopsScreen) hopsScreen.style.display = "none";
                 let activeCellarLvl = player.selectedCellarLevel || player.cellarLevel;
                 if (player.cellarsUnlocked) {
                     cellarGate.disabled = false; cellarGate.style.background = "#7b1fa2";
-                    cellarGate.innerText = `ðŸ· Cellars (Lvl ${activeCellarLvl})`;
+                    cellarGate.innerText = `Cellars (Lvl ${activeCellarLvl})`;
                 } else { 
                     cellarGate.disabled = true; cellarGate.style.background = "#443a32";
-                    cellarGate.innerText = "ðŸ”’ Defeat Lvl 20 Wilds";
+                    cellarGate.innerText = "Defeat Lvl 20 Wilds";
                 }
             }
 
@@ -627,11 +627,11 @@ if (hopsScreen) hopsScreen.style.display = "none";
                 if (player.abyssUnlocked) {
                     abyssBtn.disabled = false;
                     abyssBtn.style.background = "#190a2e"; 
-                    abyssBtn.innerText = `ðŸŒŒ Descend into the Procedural Abyss (Depth ${player.abyssDepth || 1})`;
+                    abyssBtn.innerText = `Descend into the Procedural Abyss (Depth ${player.abyssDepth || 1})`;
                 } else {
                     abyssBtn.disabled = true;
                     abyssBtn.style.background = "#443a32"; 
-                    abyssBtn.innerText = "ðŸ”’ Defeat Lvl 20 Cellars";
+                    abyssBtn.innerText = "Defeat Lvl 20 Cellars";
                 }
             }
             const roster = player.roster && typeof player.roster === 'object' ? player.roster : { companions: [], activeIds: [] };
@@ -672,7 +672,7 @@ if (hopsScreen) hopsScreen.style.display = "none";
 
            let backpackHeader = document.querySelector("#main-backpack-panel h3");
             if (backpackHeader) {
-                backpackHeader.innerHTML = `ðŸŽ’ Knight's Backpack (<span id="inv-count">${player.inventory.length}</span>/${player.maxInventorySlots || 5} Slots) ` +
+                backpackHeader.innerHTML = `Knight's Backpack (<span id="inv-count">${player.inventory.length}</span>/${player.maxInventorySlots || 5} Slots) ` +
 `<button onclick="upgradeBackpackCapacity()" style="font-size:8px; padding:2px; margin-left:5px; background:#e67e22;" ${player.gold < packCost.gold ? 'disabled' : ''} onmouseenter="showSystemTooltip('pack_up', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Expand (+1 Slot: ${packCost.gold}g)</button>`;
             }
 
@@ -701,12 +701,12 @@ if (hopsScreen) hopsScreen.style.display = "none";
                 let canReset = player.gold >= 1000 && sp < totalSP;
                 let resetDisabledStr = canReset ? "" : "disabled";
                 
-                let chevron = statsExpanded ? "ðŸ”¼" : "ðŸ”½";
+                let chevron = statsExpanded ? "[-]" : "[+]";
                 let pulseClass = (sp > 0 && !statsExpanded) ? "pulse-sp-active" : ""; 
                 
                 lvlPanel.innerHTML = `
                     <button class="${pulseClass}" onclick="toggleStatsPanel()" style="width: 100%; background: #2c1e16; border: 1px solid #d35400; padding: 10px; text-align: left; display: flex; justify-content: space-between; align-items: center; border-radius: 4px; margin-bottom: ${statsExpanded ? '0' : '10px'}; cursor: pointer;" onmouseenter="showSystemTooltip('stats_panel', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">
-                        <span style="color: #ff9f43; font-weight: bold; font-family: 'Courier New', monospace; font-size: 13px;">ðŸŒŸ Lvl ${player.level} Knight (${xpString})</span>
+                        <span style="color: #ff9f43; font-weight: bold; font-family: 'Courier New', monospace; font-size: 13px;">Lvl ${player.level} Knight (${xpString})</span>
                         <span style="font-size: 11px; color: #f1c40f;"><span id="unspent-sp">${sp}</span> SP Available ${chevron}</span>
                     </button>
                     
@@ -727,7 +727,7 @@ if (hopsScreen) hopsScreen.style.display = "none";
                             <div style="cursor:help;" onmouseenter="showSystemTooltip('stat_swiftness', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"><b>Speed:</b> Lvl ${player.speed}</div> 
                             <button ${btnDisabled} onclick="allocateStat('speed')" style="padding: 2px 10px;" onmouseenter="showSystemTooltip('stat_swiftness', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">+1</button>
                         </div>
-                        <button ${resetDisabledStr} onclick="resetStats()" style="width: 100%; margin-top: 10px; background: #8e44ad; padding: 4px 0; border-color: #9b59b6;" onmouseenter="showSystemTooltip('stat_reset', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">ðŸ”„ Reset Stats (1000g)</button>
+                        <button ${resetDisabledStr} onclick="resetStats()" style="width: 100%; margin-top: 10px; background: #8e44ad; padding: 4px 0; border-color: #9b59b6;" onmouseenter="showSystemTooltip('stat_reset', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Reset Stats (1000g)</button>
                     </div>
                 `;
             }
@@ -1132,4 +1132,6 @@ window.closeCombatModal = function() {
     document.getElementById('combat-backpack-modal').style.display = 'none';
     hideTooltip();
 }
+
+
 

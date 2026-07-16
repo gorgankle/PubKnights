@@ -111,83 +111,6 @@
     }
     
     /* 2. On mobile screens, force a 3x2 grid layout */
-
-    /* Restored town UI framing after economy-pruning rebuild */
-    .game-panel {
-        max-width: 1080px;
-        margin: 12px auto;
-        padding: 14px;
-        box-sizing: border-box;
-        color: #f4ebd9;
-        background: rgba(31, 23, 17, 0.88);
-        border: 2px solid #634e3d;
-        border-radius: 6px;
-        box-shadow: 0 12px 28px rgba(0,0,0,0.62);
-        backdrop-filter: blur(1px);
-        flex-direction: column;
-        gap: 10px;
-    }
-    .section-header {
-        background: rgba(10, 8, 6, 0.86);
-        border-bottom: 1px dashed #8b5a2b;
-        color: #ffcc66;
-        padding: 10px 12px;
-        text-transform: uppercase;
-        letter-spacing: .5px;
-    }
-    .sub-panel {
-        background: rgba(18, 13, 9, 0.74);
-        border: 1px solid #4a3629;
-        border-radius: 5px;
-        padding: 12px;
-        min-width: 0;
-    }
-    .sub-panel h3 {
-        color: #ffcc66;
-        font-size: 12px;
-        text-transform: uppercase;
-        border-bottom: 1px dashed #634e3d;
-        padding-bottom: 7px;
-        margin: 0 0 10px 0;
-    }
-    .stat-card {
-        background: rgba(10, 8, 6, 0.86);
-        border: 1px solid #4a3629;
-        border-radius: 4px;
-        padding: 8px;
-        text-align: center;
-        color: #ffcc66;
-    }
-    .equip-slot {
-        width: 44px;
-        height: 44px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(10, 8, 6, 0.9);
-        border: 2px solid #634e3d;
-        border-radius: 4px;
-        color: #bbaaa0;
-        box-sizing: border-box;
-    }
-    #knight-screen > div:nth-child(2),
-    #town-screen > div:nth-child(2),
-    #vault-screen > div:nth-child(3) {
-        align-items: stretch;
-    }
-    #inventory-list, #vault-inventory-list, #vault-screen-list, #party-roster-list {
-        background: rgba(10, 8, 6, 0.58);
-        border: 1px dashed #4a3629;
-        border-radius: 4px;
-        padding: 8px;
-        box-sizing: border-box;
-    }
-    @media (max-width: 850px) {
-        .game-panel { margin: 8px; padding: 10px; }
-        #knight-screen > div:nth-child(2),
-        #town-screen > div:nth-child(2),
-        #vault-screen > div:nth-child(3) { grid-template-columns: 1fr !important; }
-    }
     @media (max-width: 650px) {
         .nav-bar button {
             flex: 1 1 30%; /* Forces 3 buttons per row */
@@ -269,154 +192,162 @@
 
 <!-- === RESTORED MAIN TAB WRAPPER === -->
 
-    <div id="minigame-lumber-screen" class="game-panel" style="display:none;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <h2 style="margin:0; color:#ffbd45;">Timber Trial</h2>
-            <button onclick="leaveMinigame()" class="danger-btn">Return to Adventures</button>
+    <div id="minigame-lumber-screen" class="panel" style="display:none; flex-direction:column; gap:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+            <h3 style="margin:0;">Timber Trial</h3>
+            <button onclick="leaveMinigame()">Return to Adventures</button>
         </div>
-        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; margin-bottom:10px;">
-            <div class="stat-card">Timer: <span id="lumber-timer">30</span>s</div>
-            <div class="stat-card">Score: <span id="lumber-points-display">0</span></div>
-            <div class="stat-card">Combo: <span id="lumber-combo-display">x1</span></div>
+        <div class="dashboard-panel" style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px; text-align:center;">
+            <div>Timer: <span id="lumber-timer">30</span>s</div>
+            <div>Score: <span id="lumber-points-display">0</span></div>
+            <div>Combo: <span id="lumber-combo-display">x1</span></div>
         </div>
-        <canvas id="lumber-canvas" width="900" height="360" style="width:100%; max-height:360px; background:#120c08; border:1px solid #8a5a2b;"></canvas>
-        <div style="display:flex; gap:8px; margin-top:10px;">
+        <canvas id="lumber-canvas" width="900" height="360" style="width:100%; max-width:900px; max-height:360px;"></canvas>
+        <div class="dashboard-panel" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
             <button id="lumber-start-btn" onclick="startLumberMinigame()">Start Timber Trial</button>
             <button id="lumber-chop-btn" onclick="executeChop()" style="display:none;">Chop</button>
-            <span id="lumber-feedback" style="align-self:center; color:#ffd36a;"></span>
+            <span id="lumber-feedback" style="color:#ffd36a;"></span>
         </div>
     </div>
 
-    <div id="minigame-fishing-screen" class="game-panel" style="display:none;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <h2 style="margin:0; color:#45b7ff;">Fishing Trial</h2>
-            <button onclick="leaveFishingMinigame()" class="danger-btn">Return to Adventures</button>
+    <div id="minigame-fishing-screen" class="panel" style="display:none; flex-direction:column; gap:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+            <h3 style="margin:0;">Fishing Trial</h3>
+            <button onclick="leaveFishingMinigame()">Return to Adventures</button>
         </div>
-        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; margin-bottom:10px;">
-            <div class="stat-card">Timer: <span id="fishing-timer">30</span>s</div>
-            <div class="stat-card">Catch: <span id="fishing-score">0</span></div>
-            <div class="stat-card">Points: <span id="fishing-points">0</span></div>
+        <div class="dashboard-panel" style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px; text-align:center;">
+            <div>Timer: <span id="fishing-timer">30</span>s</div>
+            <div>Catch: <span id="fishing-score">0</span></div>
+            <div>Points: <span id="fishing-points">0</span></div>
         </div>
-        <canvas id="fishing-pool-canvas" width="900" height="360" style="width:100%; max-height:360px; background:#06151f; border:1px solid #2f7f9f;"></canvas>
-        <div style="display:flex; gap:8px; margin-top:10px;">
+        <canvas id="fishing-pool-canvas" width="900" height="360" style="width:100%; max-width:900px; max-height:360px;"></canvas>
+        <div class="dashboard-panel" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
             <button id="fishing-start-btn" onclick="startFishingMinigame()">Start Fishing Trial</button>
-            <span id="fishing-feedback" style="align-self:center; color:#8bd8ff;"></span>
+            <span id="fishing-feedback" style="color:#8bd8ff;"></span>
         </div>
     </div>
 
-    <div id="minigame-hops-screen" class="game-panel" style="display:none;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <h2 style="margin:0; color:#88d45a;">Hops Trial</h2>
-            <button onclick="leaveHopsMinigame()" class="danger-btn">Return to Adventures</button>
+    <div id="minigame-hops-screen" class="panel" style="display:none; flex-direction:column; gap:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+            <h3 style="margin:0;">Hops Trial</h3>
+            <button onclick="leaveHopsMinigame()">Return to Adventures</button>
         </div>
-        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; margin-bottom:10px;">
-            <div class="stat-card">Timer: <span id="hops-timer">30</span>s</div>
-            <div class="stat-card">Harvest: <span id="hops-score">0</span></div>
-            <div class="stat-card">Points: <span id="hops-points">0</span></div>
+        <div class="dashboard-panel" style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px; text-align:center;">
+            <div>Timer: <span id="hops-timer">30</span>s</div>
+            <div>Harvest: <span id="hops-score">0</span></div>
+            <div>Points: <span id="hops-points">0</span></div>
         </div>
-        <canvas id="hops-farm-canvas" width="900" height="360" style="width:100%; max-height:360px; background:#0d1b0a; border:1px solid #5d8f31;"></canvas>
-        <div style="display:flex; gap:8px; margin-top:10px;">
+        <canvas id="hops-farm-canvas" width="900" height="360" style="width:100%; max-width:900px; max-height:360px;"></canvas>
+        <div class="dashboard-panel" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
             <button id="hops-start-btn" onclick="startHopsMinigame()">Start Hops Trial</button>
-            <span id="hops-feedback" style="align-self:center; color:#b8f28a;"></span>
+            <span id="hops-feedback" style="color:#b8f28a;"></span>
         </div>
     </div>
 
     <div id="town-vault-view">
-        <div id="knight-screen" class="game-panel" style="display:none;">
-            <div class="section-header" style="margin-bottom:10px;">
-                <strong id="knight-header-name">Knight</strong>
-            </div>
-            <div style="display:grid; grid-template-columns: 1.15fr 1fr; gap:12px;">
-                <div class="sub-panel">
-                    <h3>Loadout</h3>
-                    <div id="knight-town-stats" style="line-height:1.7; margin-bottom:12px;"></div>
-                    <div class="loadout-grid" style="display:grid; grid-template-columns:repeat(3,44px); gap:8px; justify-content:center; align-items:center; min-height:150px;">
-                        <div></div><div id="slot-helmet" class="equip-slot">H</div><div></div>
-                        <div id="slot-gloves" class="equip-slot">G</div><div id="slot-armor" class="equip-slot">A</div><div id="slot-weapon" class="equip-slot">W</div>
-                        <div></div><div id="slot-boots" class="equip-slot">B</div><div></div>
+        <div id="knight-screen" class="panel" style="display:none;">
+            <h3 id="knight-header-name">Knight</h3>
+            <div class="columns-container" style="align-items:flex-start;">
+                <div class="column-left">
+                    <div class="dashboard-panel">
+                        <h3>Loadout</h3>
+                        <div id="knight-town-stats" style="line-height:1.7; margin-bottom:10px;"></div>
+                        <div class="paper-doll-grid" style="margin:0 auto;">
+                            <div class="empty-cell"></div><div id="slot-helmet" class="equip-slot">H</div><div class="empty-cell"></div>
+                            <div id="slot-gloves" class="equip-slot">G</div><div id="slot-armor" class="equip-slot">A</div><div id="slot-weapon" class="equip-slot">W</div>
+                            <div class="empty-cell"></div><div id="slot-boots" class="equip-slot">B</div><div class="empty-cell"></div>
+                        </div>
+                    </div>
+                    <div class="dashboard-panel">
+                        <h3>Mercenary Roster</h3>
+                        <div id="party-roster-list" class="scroll-panel" style="min-height:110px;"></div>
+                        <button onclick="setGameState('TOWN')" style="margin-top:8px;">Visit Hire Board</button>
                     </div>
                 </div>
-                <div class="sub-panel">
-                    <h3>Pet Companion</h3>
-                    <div style="display:flex; gap:12px; align-items:center;">
-                        <canvas id="main-pet-canvas" width="96" height="96" style="width:96px; height:96px; image-rendering:pixelated; background:#120c08; border:1px solid #6b4523;"></canvas>
-                        <div style="flex:1;">
-                            <div id="pet-header-name" style="color:#ffbd45; margin-bottom:8px;">No pet adopted</div>
-                            <div id="pet-adoption-ui" style="display:flex; gap:6px; flex-wrap:wrap;">
-                                <input id="pet-name-input" placeholder="Name your pet" style="flex:1; min-width:120px;">
-                                <button id="confirm-pet-btn" onclick="confirmPetAdoption()">Adopt</button>
-                            </div>
-                            <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
-                                <button id="edit-pet-btn" onclick="editPetName()">Rename</button>
-                                <button id="train-pet-btn" onclick="trainPet()">Train Pet</button>
+                <div class="column-right">
+                    <div class="dashboard-panel">
+                        <h3>Pet Companion</h3>
+                        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+                            <canvas id="main-pet-canvas" width="96" height="96" style="width:96px; height:96px; image-rendering:pixelated; margin:0;"></canvas>
+                            <div style="flex:1; min-width:220px;">
+                                <div id="pet-header-name" style="color:#ffcc66; margin-bottom:8px;">No pet adopted</div>
+                                <div id="pet-adoption-ui" style="display:flex; gap:6px; flex-wrap:wrap;">
+                                    <input id="pet-name-input" placeholder="Name your pet" style="flex:1; min-width:130px;">
+                                    <button id="confirm-pet-btn" onclick="adoptPet()">Adopt</button>
+                                </div>
+                                <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
+                                    <button id="edit-pet-btn">Rename</button>
+                                    <button id="train-pet-btn" onclick="trainPet()">Train Pet</button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-                <div class="sub-panel">
-                    <h3>Mercenary Roster</h3>
-                    <div id="party-roster-list" style="min-height:120px;"></div>
-                    <button onclick="setGameState('TOWN')" style="margin-top:8px;">Visit Hire Board</button>
-                </div>
-                <div id="main-backpack-panel" class="sub-panel">
-                    <h3>Backpack (<span id="inventory-count">0</span>)</h3>
-                    <div id="inventory-list" style="min-height:160px;"></div>
+                    <div id="main-backpack-panel" class="dashboard-panel">
+                        <h3>Knight's Backpack (<span id="inventory-count">0</span>)</h3>
+                        <div id="inventory-list" class="inventory-grid"></div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div id="town-screen" class="game-panel" style="display:none;">
-            <div class="section-header"><strong>Town</strong></div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:12px;">
-                <div class="sub-panel">
-                    <h3>Renaissance Center</h3>
-                    <p style="opacity:.85;">Creative tools and future town systems live here.</p>
-                    <div style="display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:8px;">
-                        <button onclick="openStudioTool('pixel-studio.html')">Pixel Studio</button>
-                        <button onclick="openStudioTool('sprite-tester.html')">Sprite Tester</button>
-                        <button onclick="openStudioTool('quest-studio.html')">Quest Studio</button>
-                        <button onclick="openStudioTool('map-architect.html')">Map Architect</button>
-                        <button onclick="openStudioTool('particle-forge.html')">Particle Forge</button>
-                        <button onclick="openStudioTool('beat-studio.html')">Beat Studio</button>
+        <div id="town-screen" class="panel" style="display:none;">
+            <h3>Town</h3>
+            <div class="columns-container" style="align-items:flex-start;">
+                <div class="column-left">
+                    <div class="dashboard-panel">
+                        <h3>Renaissance Center</h3>
+                        <p style="color:#bbaaa0;">Creative tools and future town systems live here.</p>
+                        <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px;">
+                            <button onclick="openStudioTool('pixel-studio.html')">Pixel Studio</button>
+                            <button onclick="openStudioTool('sprite-tester.html')">Sprite Tester</button>
+                            <button onclick="openStudioTool('quest-studio.html')">Quest Studio</button>
+                            <button onclick="openStudioTool('map-architect.html')">Map Architect</button>
+                            <button onclick="openStudioTool('particle-forge.html')">Particle Forge</button>
+                            <button onclick="openStudioTool('beat-studio.html')">Beat Studio</button>
+                        </div>
                     </div>
                 </div>
-                <div class="sub-panel">
-                    <h3>Hire Mercenary</h3>
-                    <p style="opacity:.85;">Hire a tavern companion with gold.</p>
-                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                        <input id="mercenary-name-input" placeholder="Mercenary name" style="flex:1; min-width:180px;">
-                        <button id="hire-mercenary-btn" onclick="hireTavernCompanion()">Hire Mercenary</button>
+                <div class="column-right">
+                    <div class="dashboard-panel">
+                        <h3>Hire Mercenary</h3>
+                        <p style="color:#bbaaa0;">Hire a tavern companion with gold.</p>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                            <input id="mercenary-name-input" placeholder="Mercenary name" style="flex:1; min-width:180px;">
+                            <button id="hire-mercenary-btn" onclick="hireTavernCompanion()">Hire Mercenary</button>
+                        </div>
                     </div>
-                </div>
-                <div class="sub-panel" style="grid-column:1 / -1;">
-                    <h3>Town Notice</h3>
-                    <p>Resource trading, baiting, chumming, and black market services are retired for now. Gold is the active economy while future reward hooks are rebuilt.</p>
+                    <div class="dashboard-panel">
+                        <h3>Town Notice</h3>
+                        <p style="color:#bbaaa0; margin-bottom:0;">Black market, baiting, chumming, and raw resource trading are retired for now. Gold is the active purchase currency.</p>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div id="merchant-screen" class="game-panel" style="display:none;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                <h2 style="margin:0;">The Exchange</h2>
+        <div id="merchant-screen" class="panel" style="display:none;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+                <h3 style="margin:0;">The Exchange</h3>
                 <button onclick="setGameState('TOWN')">Return to Town</button>
             </div>
-            <h3 style="color:#ff9d00; border-bottom:1px dashed #ff9d00; padding-bottom:6px;">Brewmaster Services</h3>
-            <div style="display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:8px;">
-                <button onclick="craftSpecialtyBrew('stout')">Craft Stout<br><small>25g</small></button>
-                <button onclick="craftSpecialtyBrew('ipa')">Furious IPA<br><small>75g</small></button>
-                <button onclick="craftSpecialtyBrew('lager')">Swift Lager<br><small>75g</small></button>
-                <button onclick="craftSpecialtyBrew('porter')">Ironwall Porter<br><small>150g</small></button>
-                <button onclick="craftSpecialtyBrew('tonic')">Clearwater Tonic<br><small>150g</small></button>
-                <button onclick="craftSpecialtyBrew('bitter')">Staunching Bitter<br><small>250g</small></button>
-                <button onclick="craftSpecialtyBrew('reserve')" style="grid-column:1 / -1;">Grandmaster Reserve<br><small>1000g</small></button>
+            <div class="dashboard-panel" style="margin-top:10px;">
+                <h3>Brewmaster Services</h3>
+                <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px;">
+                    <button onclick="craftSpecialtyBrew('stout')">Craft Stout<br><small>25g</small></button>
+                    <button onclick="craftSpecialtyBrew('ipa')">Furious IPA<br><small>75g</small></button>
+                    <button onclick="craftSpecialtyBrew('lager')">Swift Lager<br><small>75g</small></button>
+                    <button onclick="craftSpecialtyBrew('porter')">Ironwall Porter<br><small>150g</small></button>
+                    <button onclick="craftSpecialtyBrew('tonic')">Clearwater Tonic<br><small>150g</small></button>
+                    <button onclick="craftSpecialtyBrew('bitter')">Staunching Bitter<br><small>250g</small></button>
+                    <button onclick="craftSpecialtyBrew('reserve')" style="grid-column:1 / -1;">Grandmaster Reserve<br><small>1000g</small></button>
+                </div>
             </div>
         </div>
 
-        <div id="adventures-screen" class="game-panel" style="display:none;">
-            <h2>Adventures</h2>
-            <div class="sub-panel" style="margin-bottom:12px;">
+        <div id="adventures-screen" class="panel" style="display:none;">
+            <h3>Adventures</h3>
+            <div class="dashboard-panel">
                 <h3>Combat Routes</h3>
-                <div style="display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:8px;">
+                <div style="display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px;">
                     <button id="gate-btn" onclick="startCombat('WILDERNESS')">Deploy Wilds</button>
                     <button id="cellar-gate-btn" onclick="startCombat('CELLARS')">Cellars</button>
                     <button id="abyss-btn" onclick="startCombat('ABYSS')">Descend Abyss</button>
@@ -424,10 +355,10 @@
                 </div>
                 <div id="tracking-signal" style="margin-top:10px; text-align:center; font-size:11px; border:1px solid #5f4634; padding:4px;">TRACKING SIGNAL: NORMAL SURFACE RADAR</div>
             </div>
-            <div class="sub-panel">
+            <div class="dashboard-panel">
                 <h3>Trials and Minigames</h3>
-                <p style="opacity:.85;">Resource payouts are offline, but trials remain available for crate and future reward hooks.</p>
-                <div style="display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px;">
+                <p style="color:#bbaaa0;">Resource payouts are offline, but trials remain available for crate and future reward hooks.</p>
+                <div style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px;">
                     <button onclick="setGameState('MINIGAME_LUMBER')">Timber Trial</button>
                     <button onclick="setGameState('MINIGAME_FISHING')">Fishing Trial</button>
                     <button onclick="setGameState('MINIGAME_HOPS')">Hops Trial</button>
@@ -435,41 +366,46 @@
             </div>
         </div>
 
-        <div id="upgrades-screen" class="game-panel" style="display:none;">
-            <h2>Upgrades</h2>
-            <p>Upgrade services have moved to their relevant stations: Vault expansion in Vault, Backpack on the Knight tab, pet training in Knight, and brews in the Exchange.</p>
+        <div id="upgrades-screen" class="panel" style="display:none;">
+            <h3>Upgrades</h3>
+            <div class="dashboard-panel">Upgrade services now live at their relevant stations: Vault expansion in Vault, Backpack on the Knight tab, pet training in Knight, and brews in the Exchange.</div>
         </div>
     </div>
 
-    <div id="vault-screen" class="game-panel" style="display:none;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <h2 style="margin:0;">Grand Town Vault</h2>
+    <div id="vault-screen" class="panel" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+            <h3 style="margin:0;">Grand Town Vault</h3>
             <button onclick="setGameState('TOWN')">Return to Town</button>
         </div>
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px;">
+        <div class="dashboard-panel" style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-top:10px;">
             <div>Vault: <span id="vault-screen-count">0</span>/<span id="vault-screen-max">0</span></div>
             <div>Backpack: <span id="vault-inv-count">0</span></div>
-            <button id="upgrade-vault-btn" onclick="upgradeVault()">Expand Vault</button>
+            <button id="upgrade-vault-btn" onclick="upgradeVaultCapacity()">Expand Vault</button>
         </div>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-            <div class="sub-panel">
-                <h3>Active Loadout</h3>
-                <div class="loadout-grid" style="display:grid; grid-template-columns:repeat(3,44px); gap:8px; justify-content:center; align-items:center; min-height:150px;">
-                    <div></div><div id="vault-slot-helmet" class="equip-slot">H</div><div></div>
-                    <div id="vault-slot-gloves" class="equip-slot">G</div><div id="vault-slot-armor" class="equip-slot">A</div><div id="vault-slot-weapon" class="equip-slot">W</div>
-                    <div></div><div id="vault-slot-boots" class="equip-slot">B</div><div></div>
+        <div class="columns-container" style="align-items:flex-start;">
+            <div class="column-left">
+                <div class="dashboard-panel">
+                    <h3>Active Loadout</h3>
+                    <div class="paper-doll-grid" style="margin:0 auto;">
+                        <div class="empty-cell"></div><div id="vault-slot-helmet" class="equip-slot">H</div><div class="empty-cell"></div>
+                        <div id="vault-slot-gloves" class="equip-slot">G</div><div id="vault-slot-armor" class="equip-slot">A</div><div id="vault-slot-weapon" class="equip-slot">W</div>
+                        <div class="empty-cell"></div><div id="vault-slot-boots" class="equip-slot">B</div><div class="empty-cell"></div>
+                    </div>
+                </div>
+                <div class="dashboard-panel">
+                    <h3>Backpack</h3>
+                    <div id="vault-inventory-list" class="inventory-grid"></div>
                 </div>
             </div>
-            <div class="sub-panel">
-                <h3>Backpack</h3>
-                <div id="vault-inventory-list" style="min-height:180px;"></div>
-            </div>
-            <div class="sub-panel" style="grid-column:1 / -1;">
-                <h3>Vault Storage</h3>
-                <div id="vault-screen-list" style="min-height:180px;"></div>
+            <div class="column-right">
+                <div class="dashboard-panel">
+                    <h3>Vault Storage</h3>
+                    <div id="vault-screen-list" class="inventory-grid"></div>
+                </div>
             </div>
         </div>
     </div>
+
 
 				
 	<div id="studio-screen" class="panel" style="display: none; width: 100%; margin-bottom: 0; height: 80vh; padding: 0; overflow: hidden; border: 2px solid #8e44ad;">
@@ -843,6 +779,8 @@ Social / Friends
 </div>
 </body>
 </html>
+
+
 
 
 
