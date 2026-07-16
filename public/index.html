@@ -190,7 +190,129 @@
         </div>
 
 
+<!-- === RESTORED MAIN TAB WRAPPER === -->
+<div id="town-vault-view" class="columns-container">
+    <div id="knight-screen" class="panel" style="display: none; width: 100%; margin-bottom: 0; min-height: 486px;">
+        <div class="dashboard-panel" style="margin-bottom: 0;">
+            <h3 id="knight-header-name" style="color: #ffcc66; border-bottom: 1px dashed #634e3d;">Your Knight</h3>
+            <div id="knight-town-stats" style="font-size: 12px; color: #bbaaa0; line-height: 1.5;"></div>
+            <div class="paper-doll-grid" style="margin-top: 12px;">
+                <div class="equip-slot empty-cell"></div>
+                <div class="equip-slot" id="slot-helmet">H</div>
+                <div class="equip-slot empty-cell"></div>
+                <div class="equip-slot" id="slot-gloves">G</div>
+                <div class="equip-slot" id="slot-armor">A</div>
+                <div class="equip-slot" id="slot-weapon">W</div>
+                <div class="equip-slot empty-cell"></div>
+                <div class="equip-slot" id="slot-boots">B</div>
+                <div class="equip-slot empty-cell"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="town-screen" class="panel" style="display: none; width: 100%; margin-bottom: 0; min-height: 486px;">
+        <div class="dashboard-panel" style="margin-bottom: 0;">
+            <h3 style="color: #27ae60; border-bottom: 1px dashed #2ecc71;">Town</h3>
+            <div style="font-size: 11px; color: #bbaaa0; line-height: 1.5;">Resource minigames, baiting, chumming, and black market trading have been retired. Gold now comes from combat, quests, and future adventure rewards.</div>
+        </div>
+    </div>
+
+    <div id="merchant-screen" class="panel" style="display: none; width: 100%; margin-bottom: 0; min-height: 486px; flex-direction: column; gap: 10px;">
+        <div class="dashboard-panel" style="background: #1a1512; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; margin-bottom: 5px; border: 1px solid #4a3b2c;">
+            <span style="color: #ffcc66; font-weight: bold; font-size:15px;">The Exchange</span>
+            <button onclick="setGameState('TOWN')" style="background: #c0392b; margin:0; padding:6px 14px; font-size: 12px;">Return to Town</button>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px; align-items: start;">
+            <div class="dashboard-panel" style="margin-bottom: 0;">
+                <h3 style="color: #f39c12; border-bottom: 1px dashed #e67e22;">Brewmaster Services</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                    <button id="brewmaster-btn" onclick="hireBrewmasterServices()" style="margin: 0; padding: 8px;" onmouseenter="showSystemTooltip('craft_stout', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Craft Stout<br><span style="font-size: 9px; color: #bbaaa0;">25g</span></button>
+                    <button id="ipa-btn" onclick="craftSpecialtyBrew('IPA')" style="margin: 0; padding: 8px;" onmouseenter="showSystemTooltip('ipa', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Furious IPA<br><span style="font-size: 9px; color: #bbaaa0;">75g</span></button>
+                    <button id="lager-btn" onclick="craftSpecialtyBrew('LAGER')" style="margin: 0; padding: 8px;" onmouseenter="showSystemTooltip('lager', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Swift Lager<br><span style="font-size: 9px; color: #bbaaa0;">75g</span></button>
+                    <button id="ironwall-btn" onclick="craftSpecialtyBrew('IRONWALL')" style="margin: 0; padding: 8px; background: #34495e; border-color: #7f8c8d;">Ironwall Porter<br><span style="font-size: 9px; color: #bbaaa0;">150g</span></button>
+                    <button id="clearwater-btn" onclick="craftSpecialtyBrew('CLEARWATER')" style="margin: 0; padding: 8px; background: #16a085; border-color: #1abc9c;">Clearwater Tonic<br><span style="font-size: 9px; color: #bbaaa0;">150g</span></button>
+                    <button id="staunch-btn" onclick="craftSpecialtyBrew('STAUNCH')" style="margin: 0; padding: 8px; background: #c0392b; border-color: #e74c3c;">Staunching Bitter<br><span style="font-size: 9px; color: #bbaaa0;">250g</span></button>
+                    <button id="reserve-btn" onclick="craftReserveBrew()" style="grid-column: span 2; margin: 0; padding: 10px; background: #8e44ad; border-color: #9b59b6;" onmouseenter="showSystemTooltip('reserve', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Grandmaster Reserve (1000g)</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="adventures-screen" class="panel" style="display: none; width: 100%; margin-bottom: 0; min-height: 486px;">
+        <div class="dashboard-panel" style="margin-bottom: 0;">
+            <h3 style="color: #e67e22; border-bottom: 1px dashed #d35400;">Adventures</h3>
+            <button id="gate-btn" onclick="startCombat('WILDERNESS')" style="margin: 0; padding: 10px;">Deploy Wilds</button>
+            <button id="cellar-gate-btn" onclick="startCombat('CELLARS')" style="margin: 6px 0 0 0; padding: 10px;">Cellars</button>
+            <div id="bait-status-banner" style="font-size: 9px; text-align: center; color: #bbaaa0; margin-top: 8px; font-weight: bold; border: 1px solid #443a32; padding: 4px; background: #1a1512; border-radius: 3px;">TRACKING SIGNAL: NORMAL SURFACE RADAR</div>
+        </div>
+    </div>
+
+    <div id="upgrades-screen" class="panel" style="display: none; width: 100%; margin-bottom: 0; min-height: 486px; flex-direction: column; gap: 10px;">
+        <div class="dashboard-panel" style="border: 1px solid #634e3d; background: #221a14; color: #d7c0a8; font-size: 12px; line-height: 1.5;">Town prestige, trade-route, worker, supply-cart, resource minigame, and crate systems have been removed for the gold-economy branch.</div>
+    </div>
+</div>
 <!-- === DEDICATED VAULT SCREEN (GRID REFACTOR) === -->
+<!-- === RESTORED MAIN TAB WRAPPER === -->
+<div id="town-vault-view" class="columns-container">
+    <div id="knight-screen" class="panel" style="display: none; width: 100%; margin-bottom: 0; min-height: 486px;">
+        <div class="dashboard-panel" style="margin-bottom: 0;">
+            <h3 id="knight-header-name" style="color: #ffcc66; border-bottom: 1px dashed #634e3d;">Your Knight</h3>
+            <div id="knight-town-stats" style="font-size: 12px; color: #bbaaa0; line-height: 1.5;"></div>
+            <div class="paper-doll-grid" style="margin-top: 12px;">
+                <div class="equip-slot empty-cell"></div>
+                <div class="equip-slot" id="slot-helmet">H</div>
+                <div class="equip-slot empty-cell"></div>
+                <div class="equip-slot" id="slot-gloves">G</div>
+                <div class="equip-slot" id="slot-armor">A</div>
+                <div class="equip-slot" id="slot-weapon">W</div>
+                <div class="equip-slot empty-cell"></div>
+                <div class="equip-slot" id="slot-boots">B</div>
+                <div class="equip-slot empty-cell"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="town-screen" class="panel" style="display: none; width: 100%; margin-bottom: 0; min-height: 486px;">
+        <div class="dashboard-panel" style="margin-bottom: 0;">
+            <h3 style="color: #27ae60; border-bottom: 1px dashed #2ecc71;">Town</h3>
+            <div style="font-size: 11px; color: #bbaaa0; line-height: 1.5;">Resource minigames, baiting, chumming, and black market trading have been retired. Gold now comes from combat, quests, and future adventure rewards.</div>
+        </div>
+    </div>
+
+    <div id="merchant-screen" class="panel" style="display: none; width: 100%; margin-bottom: 0; min-height: 486px; flex-direction: column; gap: 10px;">
+        <div class="dashboard-panel" style="background: #1a1512; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; margin-bottom: 5px; border: 1px solid #4a3b2c;">
+            <span style="color: #ffcc66; font-weight: bold; font-size:15px;">The Exchange</span>
+            <button onclick="setGameState('TOWN')" style="background: #c0392b; margin:0; padding:6px 14px; font-size: 12px;">Return to Town</button>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px; align-items: start;">
+            <div class="dashboard-panel" style="margin-bottom: 0;">
+                <h3 style="color: #f39c12; border-bottom: 1px dashed #e67e22;">Brewmaster Services</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                    <button id="brewmaster-btn" onclick="hireBrewmasterServices()" style="margin: 0; padding: 8px;" onmouseenter="showSystemTooltip('craft_stout', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Craft Stout<br><span style="font-size: 9px; color: #bbaaa0;">25g</span></button>
+                    <button id="ipa-btn" onclick="craftSpecialtyBrew('IPA')" style="margin: 0; padding: 8px;" onmouseenter="showSystemTooltip('ipa', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Furious IPA<br><span style="font-size: 9px; color: #bbaaa0;">75g</span></button>
+                    <button id="lager-btn" onclick="craftSpecialtyBrew('LAGER')" style="margin: 0; padding: 8px;" onmouseenter="showSystemTooltip('lager', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Swift Lager<br><span style="font-size: 9px; color: #bbaaa0;">75g</span></button>
+                    <button id="ironwall-btn" onclick="craftSpecialtyBrew('IRONWALL')" style="margin: 0; padding: 8px; background: #34495e; border-color: #7f8c8d;">Ironwall Porter<br><span style="font-size: 9px; color: #bbaaa0;">150g</span></button>
+                    <button id="clearwater-btn" onclick="craftSpecialtyBrew('CLEARWATER')" style="margin: 0; padding: 8px; background: #16a085; border-color: #1abc9c;">Clearwater Tonic<br><span style="font-size: 9px; color: #bbaaa0;">150g</span></button>
+                    <button id="staunch-btn" onclick="craftSpecialtyBrew('STAUNCH')" style="margin: 0; padding: 8px; background: #c0392b; border-color: #e74c3c;">Staunching Bitter<br><span style="font-size: 9px; color: #bbaaa0;">250g</span></button>
+                    <button id="reserve-btn" onclick="craftReserveBrew()" style="grid-column: span 2; margin: 0; padding: 10px; background: #8e44ad; border-color: #9b59b6;" onmouseenter="showSystemTooltip('reserve', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Grandmaster Reserve (1000g)</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="adventures-screen" class="panel" style="display: none; width: 100%; margin-bottom: 0; min-height: 486px;">
+        <div class="dashboard-panel" style="margin-bottom: 0;">
+            <h3 style="color: #e67e22; border-bottom: 1px dashed #d35400;">Adventures</h3>
+            <button id="gate-btn" onclick="startCombat('WILDERNESS')" style="margin: 0; padding: 10px;">Deploy Wilds</button>
+            <button id="cellar-gate-btn" onclick="startCombat('CELLARS')" style="margin: 6px 0 0 0; padding: 10px;">Cellars</button>
+            <div id="bait-status-banner" style="font-size: 9px; text-align: center; color: #bbaaa0; margin-top: 8px; font-weight: bold; border: 1px solid #443a32; padding: 4px; background: #1a1512; border-radius: 3px;">TRACKING SIGNAL: NORMAL SURFACE RADAR</div>
+        </div>
+    </div>
+
+    <div id="upgrades-screen" class="panel" style="display: none; width: 100%; margin-bottom: 0; min-height: 486px; flex-direction: column; gap: 10px;">
+        <div class="dashboard-panel" style="border: 1px solid #634e3d; background: #221a14; color: #d7c0a8; font-size: 12px; line-height: 1.5;">Town prestige, trade-route, worker, supply-cart, resource minigame, and crate systems have been removed for the gold-economy branch.</div>
+    </div>
+</div>
 <!-- === DEDICATED VAULT SCREEN (GRID REFACTOR) === -->
 <div id="vault-screen" class="panel" style="display: none; width: 100%; margin-bottom: 0; min-height: 486px; flex-direction: column; gap: 10px;">
     
