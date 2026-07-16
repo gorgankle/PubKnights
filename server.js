@@ -1,4 +1,4 @@
-require('dotenv').config();
+﻿require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const path = require('path');
@@ -54,8 +54,8 @@ const dbURI = process.env.MONGO_URI || 'mongodb://localhost:27017/pubknights';
 mongoose.connect(dbURI, {
     autoIndex: process.env.NODE_ENV !== 'production', // <--- THE OPTIMIZATION
 })
-    .then(() => console.log('🛡️  MongoDB Secured, Indexed & Connected'))
-    .catch(err => console.error('❌ MongoDB Connection Error:', err));
+    .then(() => console.log('ðŸ›¡ï¸  MongoDB Secured, Indexed & Connected'))
+    .catch(err => console.error('âŒ MongoDB Connection Error:', err));
 // ===============================================
 
 const playerSchema = new mongoose.Schema({
@@ -99,7 +99,7 @@ ugcSchema.index({ type: 1, createdAt: -1 });
 
 const UGC = mongoose.model('UGC', ugcSchema);
 
-const RETIRED_ITEM_IDS = new Set(['bomb_small', 'bomb_heavy', 'scroll_fireball', 'scroll_poison_shot', 'timber_crate', 'angler_crate', 'harvest_crate']);
+const RETIRED_ITEM_IDS = new Set(['bomb_small', 'bomb_heavy', 'scroll_fireball', 'scroll_poison_shot']);
 
 // === THE AUTOMATED ITEM LONGEVITY SANITIZER (STRICT HYDRATION) ===
 function sanitizeItemSchema(savedItem) {
@@ -139,9 +139,6 @@ function createSaveSnapshot(playerState) {
     delete snapshot.wood;
     delete snapshot.fish;
     delete snapshot.hops;
-    delete snapshot.lumberPoints;
-    delete snapshot.fishingPoints;
-    delete snapshot.hopsPoints;
 
     return snapshot;
 }
@@ -276,9 +273,6 @@ function hydratePlayerData(playerDoc) {
     delete pd.wood;
     delete pd.fish;
     delete pd.hops;
-    delete pd.lumberPoints;
-    delete pd.fishingPoints;
-    delete pd.hopsPoints;
 
     if (pd.equipment) {
         for (let slot in pd.equipment) {
@@ -388,7 +382,7 @@ app.get('/api/combat-map-templates', (req, res) => {
 
 // === SOCKET.IO COMMUNICATION HUB ===
 io.on('connection', (socket) => {
-    console.log(`⚔️  A Knight has connected: ${socket.id}`);
+    console.log(`âš”ï¸  A Knight has connected: ${socket.id}`);
 
     // --- REGISTER NEW KNIGHT ---
     socket.on('register', async (data) => {
@@ -457,7 +451,7 @@ if (data.saveData) {
                 { username: p.username },
                 { saveData: saveSnapshot }
             );
-            console.log(`💾 Secure save synced for Knight: ${p.username}`);
+            console.log(`ðŸ’¾ Secure save synced for Knight: ${p.username}`);
         } catch (err) {
             console.error('Error saving game data to MongoDB:', err);
         }
@@ -505,7 +499,7 @@ if (data.saveData) {
 
         // === RESTORED: DISCONNECT HANDLER ===
         socket.on('disconnect', () => {
-            console.log(`❌ A Knight disconnected: ${socket.id}`);
+            console.log(`âŒ A Knight disconnected: ${socket.id}`);
             releaseUsernameSession(socket);
             delete activePlayers[socket.id];
             delete activeCombats[socket.id];
@@ -536,5 +530,6 @@ setInterval(() => {
 // === SERVER BOOT ===
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`🍻 Pub Knights Server running on http://localhost:${PORT}`);
+    console.log(`ðŸ» Pub Knights Server running on http://localhost:${PORT}`);
 });
+

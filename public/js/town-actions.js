@@ -1,4 +1,4 @@
-// --- LOGIC: TOWN ECONOMY & ACTIONS ---
+﻿// --- LOGIC: TOWN ECONOMY & ACTIONS ---
 
 function allocateStat(statKey) { socket.emit('townAction', { action: 'allocateStat', statKey: statKey }); }
 
@@ -24,8 +24,13 @@ function drinkBrewFromInventory(idx) {
 
 // === CRATE UNBOXING LOGIC ===
 function openCrate(index, crateId) {
-    logMessage('Resource crates have been retired in the gold economy.');
-    if (typeof playRetroSound === 'function') playRetroSound('error');
+    const crateItem = player && player.inventory ? player.inventory[index] : null;
+    if (!crateItem || crateItem.id !== crateId) {
+        logMessage('Crate not found.');
+        if (typeof playRetroSound === 'function') playRetroSound('error');
+        return;
+    }
+    triggerUnboxing(index, crateItem);
 }
 
 function hireBrewmasterServices() { socket.emit('townAction', { action: 'craftBrew', brewType: 'STOUT' }); }
@@ -94,7 +99,7 @@ function exchangePoints(type, tier) {
 // === ROULETTE UNBOXING SEQUENCE ===
 function triggerUnboxing(inventoryIndex, crateItem) {
     if (gameState === 'COMBAT') {
-        logMessage("❌ You cannot open crates while in combat!");
+        logMessage("âŒ You cannot open crates while in combat!");
         return;
     }
 
@@ -139,14 +144,14 @@ function triggerUnboxing(inventoryIndex, crateItem) {
                 let borderCol = data.rarity === 'JACKPOT' ? '#f1c40f' : (data.rarity === 'Rare' ? '#9b59b6' : '#2ecc71');
                 html += `
                     <div style="width: 100px; height: 100%; margin-right: 10px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #2c3e50; border-bottom: 6px solid ${borderCol}; border-radius: 4px;">
-                        <div style="font-size: 36px; margin-bottom: 4px;">✨</div>
+                        <div style="font-size: 36px; margin-bottom: 4px;">âœ¨</div>
                         <div style="font-size: 10px; color: #fff; text-align: center; padding: 0 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%;">${data.rarity}</div>
                     </div>`;
             } else {
                 let rCol = fillerColors[Math.floor(Math.random() * fillerColors.length)];
                 html += `
                     <div style="width: 100px; height: 100%; margin-right: 10px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #1a1a1a; border-bottom: 6px solid ${rCol}; border-radius: 4px; opacity: 0.7;">
-                        <div style="font-size: 28px; opacity: 0.5;">❓</div>
+                        <div style="font-size: 28px; opacity: 0.5;">â“</div>
                     </div>`;
             }
         }
@@ -194,7 +199,7 @@ function finishUnboxing(data) {
     if (typeof playRetroSound === 'function') playRetroSound('victory');
     
     document.getElementById('unboxing-title').innerText = "Seal Broken!";
-    document.getElementById('unboxing-rarity-text').innerText = data.rarity === 'JACKPOT' ? '🌟 JACKPOT! 🌟' : 'Loot Acquired!';
+    document.getElementById('unboxing-rarity-text').innerText = data.rarity === 'JACKPOT' ? 'ðŸŒŸ JACKPOT! ðŸŒŸ' : 'Loot Acquired!';
     document.getElementById('unboxing-rarity-text').style.color = data.rarity === 'JACKPOT' ? '#f1c40f' : '#2ecc71';
     document.getElementById('unboxing-loot-desc').innerText = data.lootMessage;
     
@@ -246,3 +251,4 @@ window.addEventListener('message', (event) => {
         setGameState('TOWN');
     }
 });
+

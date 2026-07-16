@@ -1,4 +1,4 @@
-// --- townRouter.js ---
+﻿// --- townRouter.js ---
 // Handles all non-combat economy, inventory, and tavern management logic.
 
 // 1. Import the specific dictionaries this router needs
@@ -94,7 +94,11 @@ function reorderCollection(collection, fromValue, toValue) {
     return true;
 }
 
-const MINIGAME_CONFIG = Object.freeze({});
+const MINIGAME_CONFIG = Object.freeze({
+    lumber: { durationMs: 90000, graceMs: 15000, minEventMs: 125, maxScore: 50000, pointsKey: 'lumberPoints', label: 'Timber Trial' },
+    fishing: { durationMs: 90000, graceMs: 15000, minEventMs: 75, maxScore: 50000, pointsKey: 'fishingPoints', label: 'Fishing Trial' },
+    hops: { durationMs: 90000, graceMs: 15000, minEventMs: 75, maxScore: 50000, pointsKey: 'hopsPoints', label: 'Hops Trial' }
+});
 
 function createMinigameSession(player, type) {
     const config = MINIGAME_CONFIG[type];
@@ -214,7 +218,7 @@ if (data.action === 'equip') {
             // STRICT VALIDATION: Only allow proper gear slots!
             const validSlots = ["weapon", "helmet", "armor", "gloves", "boots"];
             if (!validSlots.includes(toEquip.slot)) {
-                return socket.emit('inventoryReceipt', { success: false, message: "❌ This item cannot be equipped." });
+                return socket.emit('inventoryReceipt', { success: false, message: "âŒ This item cannot be equipped." });
             }
             
             let slotKey = toEquip.slot;
@@ -225,7 +229,7 @@ if (data.action === 'equip') {
             if (worn) p.inventory[idx] = worn; 
             else p.inventory.splice(idx, 1);   
             
-            socket.emit('inventoryReceipt', { success: true, action: 'equip', updatedPlayer: p, message: "⚙️ Gear equipped." });
+            socket.emit('inventoryReceipt', { success: true, action: 'equip', updatedPlayer: p, message: "âš™ï¸ Gear equipped." });
         }
         else if (data.action === 'unequip') {
             let slotKey = data.slotKey;
@@ -238,9 +242,9 @@ if (data.action === 'equip') {
             if (p.inventory.length < p.maxInventorySlots) {
                 p.inventory.push(worn);
                 p.equipment[slotKey] = null; // <--- FORCES CLIENT TO UPDATE
-                socket.emit('inventoryReceipt', { success: true, action: 'unequip', updatedPlayer: p, message: "⚙️ Gear unequipped." });
+                socket.emit('inventoryReceipt', { success: true, action: 'unequip', updatedPlayer: p, message: "âš™ï¸ Gear unequipped." });
             } else {
-                socket.emit('inventoryReceipt', { success: false, message: "🎒 Backpack is full. Make space first." });
+                socket.emit('inventoryReceipt', { success: false, message: "ðŸŽ’ Backpack is full. Make space first." });
             }
         }
         else if (data.action === 'sell') {
@@ -253,7 +257,7 @@ if (data.action === 'equip') {
             p.gold += val;
             p.inventory.splice(idx, 1);
             
-            socket.emit('inventoryReceipt', { success: true, action: 'sell', updatedPlayer: p, message: `💰 Sold item for ${val}g.` });
+            socket.emit('inventoryReceipt', { success: true, action: 'sell', updatedPlayer: p, message: `ðŸ’° Sold item for ${val}g.` });
         }
         else if (data.action === 'deposit') {
             let idx = getArrayIndex(data.index, p.inventory);
@@ -262,9 +266,9 @@ if (data.action === 'equip') {
             
             if (p.stash.length < (p.vaultSlots || 10)) {
                 p.stash.push(p.inventory.splice(idx, 1)[0]);
-                socket.emit('inventoryReceipt', { success: true, action: 'deposit', updatedPlayer: p, message: "🏦 Item deposited into Vault." });
+                socket.emit('inventoryReceipt', { success: true, action: 'deposit', updatedPlayer: p, message: "ðŸ¦ Item deposited into Vault." });
             } else {
-                socket.emit('inventoryReceipt', { success: false, message: "🏦 Vault is full." });
+                socket.emit('inventoryReceipt', { success: false, message: "ðŸ¦ Vault is full." });
             }
         }
         else if (data.action === 'withdraw') {
@@ -275,9 +279,9 @@ if (data.action === 'equip') {
             p.maxInventorySlots = p.maxInventorySlots || 5;
             if (p.inventory.length < p.maxInventorySlots) {
                 p.inventory.push(p.stash.splice(idx, 1)[0]);
-                socket.emit('inventoryReceipt', { success: true, action: 'withdraw', updatedPlayer: p, message: "🎒 Item withdrawn to Backpack." });
+                socket.emit('inventoryReceipt', { success: true, action: 'withdraw', updatedPlayer: p, message: "ðŸŽ’ Item withdrawn to Backpack." });
             } else {
-                socket.emit('inventoryReceipt', { success: false, message: "🎒 Backpack is full." });
+                socket.emit('inventoryReceipt', { success: false, message: "ðŸŽ’ Backpack is full." });
             }
         }
         else if (data.action === 'depositEquipment') {
@@ -316,10 +320,20 @@ if (data.action === 'equip') {
         ensurePlayerContainers(p);
 
         if (data.action === 'startMinigame') {
-            return socket.emit('townReceipt', { success: false, message: 'Resource minigames have been retired in the gold economy.' });
+            const gameType = sanitizeToken(data.gameType, '');
+            const session = createMinigameSession(p, gameType);
+            if (!session) return socket.emit('townReceipt', { success: false, action: 'startMinigame', updatedPlayer: p, message: 'Invalid minigame.' });
+
+            socket.emit('minigameSessionStarted', {
+                gameType,
+                sessionId: session.id,
+                durationMs: MINIGAME_CONFIG[gameType].durationMs
+            });
+            return socket.emit('townReceipt', { success: true, action: 'startMinigame', updatedPlayer: p, message: `${MINIGAME_CONFIG[gameType].label} started.` });
         }
 
         if (data.action === 'recordMinigameEvent') {
+            recordMinigameEvent(p, data);
             return;
         }
         // 1. RETIRED TOWN PRESTIGE UPGRADES
@@ -328,7 +342,7 @@ if (data.action === 'equip') {
         }
         // 3.5 ADOPT PET SECURELY
         else if (data.action === 'adoptPet') {
-            if (p.pet && p.pet.adopted) return socket.emit('townReceipt', { success: false, message: "❌ You already have a companion." });
+            if (p.pet && p.pet.adopted) return socket.emit('townReceipt', { success: false, message: "âŒ You already have a companion." });
             
             if (p.gold >= 10) {
                 p.gold -= 10;
@@ -341,9 +355,9 @@ if (data.action === 'equip') {
                     furColor: petCosmetics.furColor,
                     collarColor: petCosmetics.collarColor
                 };
-                socket.emit('townReceipt', { success: true, action: 'adoptPet', updatedPlayer: p, message: `🐕 You have officially adopted ${p.pet.name}!` });
+                socket.emit('townReceipt', { success: true, action: 'adoptPet', updatedPlayer: p, message: `ðŸ• You have officially adopted ${p.pet.name}!` });
             } else {
-                socket.emit('townReceipt', { success: false, message: "❌ Insufficient funds to adopt a companion (Requires 10 Gold)." });
+                socket.emit('townReceipt', { success: false, message: "âŒ Insufficient funds to adopt a companion (Requires 10 Gold)." });
             }
         }
         else if (data.action === 'hireCompanion') {
@@ -429,7 +443,7 @@ if (data.action === 'equip') {
             const SP_PER_LEVEL = 5;
             let totalExpectedSP = ((p.level || 1) - 1) * SP_PER_LEVEL;
             
-            if (p.skillPoints >= totalExpectedSP) return socket.emit('townReceipt', { success: false, message: "❌ Your Knight's memory is already a blank slate." });
+            if (p.skillPoints >= totalExpectedSP) return socket.emit('townReceipt', { success: false, message: "âŒ Your Knight's memory is already a blank slate." });
             
             if (p.gold >= 1000) {
                 p.gold -= 1000;
@@ -438,8 +452,8 @@ if (data.action === 'equip') {
                 p.maxStamina = 1; p.stamina = Math.min(p.stamina, 25);
                 p.offense = 1; p.defense = 1; p.speed = 1; 
                 p.skillPoints = totalExpectedSP;
-                socket.emit('townReceipt', { success: true, action: 'resetStats', updatedPlayer: p, message: "🔄 Knight stats reset! Reallocate your Skill Points." });
-            } else socket.emit('townReceipt', { success: false, message: "❌ Insufficient gold for a stat reset." });
+                socket.emit('townReceipt', { success: true, action: 'resetStats', updatedPlayer: p, message: "ðŸ”„ Knight stats reset! Reallocate your Skill Points." });
+            } else socket.emit('townReceipt', { success: false, message: "âŒ Insufficient gold for a stat reset." });
         }
         // 12. ALLOCATE STAT
         else if (data.action === 'allocateStat') {
@@ -457,8 +471,8 @@ if (data.action === 'equip') {
                     case 'defense': p.defense += 1; break; 
                     case 'speed': p.speed += 1; break; 
                 }
-                socket.emit('townReceipt', { success: true, action: 'allocateStat', updatedPlayer: p, message: "🌟 Stat point allocated!" });
-            } else socket.emit('townReceipt', { success: false, message: "❌ No Skill Points available." });
+                socket.emit('townReceipt', { success: true, action: 'allocateStat', updatedPlayer: p, message: "ðŸŒŸ Stat point allocated!" });
+            } else socket.emit('townReceipt', { success: false, message: "âŒ No Skill Points available." });
         }
 // ===================
 // 13. RETIRED: THROWABLES
@@ -494,18 +508,18 @@ if (data.action === 'equip') {
             let item = p.inventory[brewIndex];
             if (!item || item.type !== 'brew') return;
             if (item.id === 'stout') {
-                if (p.hp >= p.vitality) return socket.emit('townReceipt', { success: false, message: "❌ Vitality already at max." });
+                if (p.hp >= p.vitality) return socket.emit('townReceipt', { success: false, message: "âŒ Vitality already at max." });
                 p.hp = Math.min(p.vitality, p.hp + Math.floor(p.vitality * 0.1));
                 p.inventory.splice(brewIndex, 1);
-                socket.emit('townReceipt', { success: true, action: 'drinkBrew', updatedPlayer: p, message: "🍺 Chugged a Stout! Restored 10% HP." });
+                socket.emit('townReceipt', { success: true, action: 'drinkBrew', updatedPlayer: p, message: "ðŸº Chugged a Stout! Restored 10% HP." });
             }
             else if (item.id === 'ipa') {
                 p.activeCombatBuff = 'IPA'; p.inventory.splice(brewIndex, 1);
-                socket.emit('townReceipt', { success: true, action: 'drinkBrew', updatedPlayer: p, message: "🍺 Drank Furious IPA! Damage boosted for next run." });
+                socket.emit('townReceipt', { success: true, action: 'drinkBrew', updatedPlayer: p, message: "ðŸº Drank Furious IPA! Damage boosted for next run." });
             }
             else if (item.id === 'lager') {
                 p.activeCombatBuff = 'LAGER'; p.inventory.splice(brewIndex, 1);
-                socket.emit('townReceipt', { success: true, action: 'drinkBrew', updatedPlayer: p, message: "🍺 Drank Swift Lager! Movement boosted for next run." });
+                socket.emit('townReceipt', { success: true, action: 'drinkBrew', updatedPlayer: p, message: "ðŸº Drank Swift Lager! Movement boosted for next run." });
             }
         }
         // 16. UPGRADES (BACKPACK & CART)
@@ -533,15 +547,21 @@ if (data.action === 'equip') {
 // === REPLACED ===
         // 19. MINIGAME PAYOUT SECURE HANDLER
         else if (data.action === 'claimLumberMinigame') {
-            return socket.emit('townReceipt', { success: false, message: 'Resource minigames have been retired in the gold economy.' });
+            const result = claimMinigameSession(p, 'lumber', sanitizeToken(data.sessionId, ''));
+            if (!result.success) return socket.emit('townReceipt', { success: false, action: 'minigameWin', updatedPlayer: p, message: result.message });
+            socket.emit('townReceipt', { success: true, action: 'minigameWin', updatedPlayer: p, message: `Timber Trial complete: +${result.points} Quartermaster points.` });
         }
         // 20. FISHING POND SECURE HANDLER
         else if (data.action === 'claimFishingMinigame') {
-            return socket.emit('townReceipt', { success: false, message: 'Resource minigames have been retired in the gold economy.' });
+            const result = claimMinigameSession(p, 'fishing', sanitizeToken(data.sessionId, ''));
+            if (!result.success) return socket.emit('townReceipt', { success: false, action: 'minigameWin', updatedPlayer: p, message: result.message });
+            socket.emit('townReceipt', { success: true, action: 'minigameWin', updatedPlayer: p, message: `Fishing Trial complete: +${result.points} Quartermaster points.` });
         }
         // 21. HOPS HARVESTING SECURE HANDLER
         else if (data.action === 'claimHopsMinigame') {
-            return socket.emit('townReceipt', { success: false, message: 'Resource minigames have been retired in the gold economy.' });
+            const result = claimMinigameSession(p, 'hops', sanitizeToken(data.sessionId, ''));
+            if (!result.success) return socket.emit('townReceipt', { success: false, action: 'minigameWin', updatedPlayer: p, message: result.message });
+            socket.emit('townReceipt', { success: true, action: 'minigameWin', updatedPlayer: p, message: `Hops Trial complete: +${result.points} Quartermaster points.` });
         }
 // ============================================
         // 22. QUARTERMASTER POINT EXCHANGE
@@ -550,9 +570,27 @@ if (data.action === 'equip') {
         }
 // 23. UNBOX GAMBLE CRATES
         else if (data.action === 'openCrate') {
-            socket.emit('townReceipt', { success: false, action: 'inventoryUpdate', updatedPlayer: p, message: 'Resource crates have been retired in the gold economy.' });
+            const idx = getArrayIndex(data.index, p.inventory);
+            const crateId = sanitizeToken(data.crateId, '');
+            if (idx < 0 || !p.inventory[idx] || p.inventory[idx].id !== crateId || p.inventory[idx].type !== 'crate') {
+                return socket.emit('crateOpened', { success: false, message: 'Invalid crate.' });
+            }
+
+            const drop = rollSecureCrateLoot(crateId);
+            if (!drop || !ItemDatabase[drop.itemId]) {
+                return socket.emit('crateOpened', { success: false, message: 'No eligible crate loot found.' });
+            }
+
+            const item = JSON.parse(JSON.stringify(ItemDatabase[drop.itemId]));
+            p.inventory.splice(idx, 1, item);
+
+            const rarity = drop.isJackpot ? 'JACKPOT' : (item.rarity || 'Common');
+            const lootMessage = drop.isJackpot ? `JACKPOT! ${item.name}` : `Found ${item.name}.`;
+            socket.emit('crateOpened', { success: true, updatedPlayer: p, item, itemId: item.id, rarity, lootMessage });
+            socket.emit('townReceipt', { success: true, action: 'inventoryUpdate', updatedPlayer: p, message: lootMessage });
         }
         // === WITH ===
         // (Idle Job Assignment Removed)
     });
 };
+
