@@ -70,19 +70,11 @@ function chumForbiddenCellars() {
     socket.emit('townAction', { action: 'chumCellars' });
 }
 
-function hireWorker() {
-    logMessage("Worker hiring has been retired. Earn resources through chopping, fishing, and hops minigames.");
-}
-
-function upgradeCabin() {
-    logMessage("Worker cabins have been retired. Old investments are refunded into tavern contacts on login.");
-}
-
-function adjustWorker(type, delta) {
-    logMessage("Worker assignment has been retired. Use Quartermaster exchanges to turn minigame points into resources and crates.");
-}
-
-function upgradeCartCapacity() { socket.emit('townAction', { action: 'upgradeCart' }); }
+function hireWorker() { logMessage('Worker systems have been removed from this alpha branch.'); }
+function upgradeCabin() { logMessage('Worker systems have been removed from this alpha branch.'); }
+function adjustWorker(type, delta) { logMessage('Worker systems have been removed from this alpha branch.'); }
+function upgradeCartCapacity() { logMessage('Supply cart upgrades have been removed.'); }
+function claimSupplyCart(isAuto = false) { logMessage('Supply cart claiming has been removed.'); }
 
 function changeZoneLevel(zone, dir) {
     if (zone === 'WILDERNESS') {
@@ -97,9 +89,6 @@ function changeZoneLevel(zone, dir) {
     refreshSystemUI();
 }
 
-function claimSupplyCart(isAuto = false) {
-    socket.emit('townAction', { action: 'claimCart', isAuto: isAuto });
-}
 
 // === NEW: GRANDMASTER RESERVE CRAFTING ===
 function craftReserveBrew() { socket.emit('townAction', { action: 'craftBrew', brewType: 'RESERVE' }); }
@@ -108,32 +97,6 @@ function craftReserveBrew() { socket.emit('townAction', { action: 'craftBrew', b
 // Function 1: Purchasing the Gilded Tavern
 function purchaseGildedTavern() {
     socket.emit('townAction', { action: 'purchaseGildedTavern' });
-}
-
-// Function 2: Toggling Auto-Claim On/Off
-function toggleAutoClaim(isEnabled) {
-    player.autoClaimEnabled = isEnabled;
-    if (isEnabled) {
-        logMessage("⚙️ Supply Cart Automation: ACTIVE. Reserves will be pulled automatically.");
-    } else {
-        logMessage("⚙️ Supply Cart Automation: SUSPENDED.");
-    }
-    saveGame();
-}
-
-// Function 3: The Auto-Claim Logic
-function runAutoClaimCheck() {
-    if (player && player.gildedTavernUnlocked && player.autoClaimEnabled) {
-        // Calculate the total items currently sitting in the cart
-        let totalCart = player.supplyCart.wood + player.supplyCart.fish + (player.supplyCart.hops || 0);
-        
-        // If the cart is full (or within 5 items of hitting the max capacity), claim it!
-        if (totalCart >= (player.supplyCart.max - 5)) {
-            if (typeof claimSupplyCart === 'function') {
-                claimSupplyCart(true); // <--- We pass TRUE here so the server knows it was automatic
-            }
-        }
-    }
 }
 
 // === TRADE ROUTES & MONUMENT UPGRADES ===

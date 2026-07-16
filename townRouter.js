@@ -76,42 +76,12 @@ function normalizeRosterState(player) {
     };
     player.roster.companions.forEach(companion => { companion.active = player.roster.activeIds.includes(companion.id); });
 }
-function getLegacyWorkerContactCount(player) {
-    const workers = player.workers && typeof player.workers === 'object' ? player.workers : {};
-    if (workers.woodcutters !== undefined || workers.fishermen !== undefined || workers.farmers !== undefined) {
-        return clampInt(workers.woodcutters, 0, Number.MAX_SAFE_INTEGER, 0)
-            + clampInt(workers.fishermen, 0, Number.MAX_SAFE_INTEGER, 0)
-            + clampInt(workers.farmers, 0, Number.MAX_SAFE_INTEGER, 0);
-    }
-    return clampInt(workers.total, 0, Number.MAX_SAFE_INTEGER, 0);
-}
-
-function normalizeWorkerState(player) {
-    const contactCount = player.tavernContacts && typeof player.tavernContacts === 'object'
-        ? clampInt(player.tavernContacts.total, 0, Number.MAX_SAFE_INTEGER, 0)
-        : getLegacyWorkerContactCount(player);
-    const refundGold = player.tavernContacts && typeof player.tavernContacts === 'object'
-        ? clampInt(player.tavernContacts.refundGold, 0, Number.MAX_SAFE_INTEGER, 0)
-        : clampInt(player.workerRefundGold, 0, Number.MAX_SAFE_INTEGER, 0);
-
-    player.tavernContacts = { total: contactCount, refundGold };
-    player.workers = { total: 0, assigned: { wood: 0, fish: 0, hops: 0 }, retired: true };
-}
 
 function ensurePlayerContainers(player) {
     player.inventory = Array.isArray(player.inventory) ? player.inventory : [];
     player.stash = Array.isArray(player.stash) ? player.stash : [];
     player.equipment = player.equipment && typeof player.equipment === 'object' ? player.equipment : {};
-    player.buildings = player.buildings && typeof player.buildings === 'object' ? player.buildings : { workerCabin: 1 };
-    normalizeWorkerState(player);
-    player.supplyCart = player.supplyCart && typeof player.supplyCart === 'object'
-        ? player.supplyCart
-        : { wood: 0, fish: 0, hops: 0, max: 100, level: 1 };
-    player.supplyCart.wood = clampInt(player.supplyCart.wood, 0, Number.MAX_SAFE_INTEGER, 0);
-    player.supplyCart.fish = clampInt(player.supplyCart.fish, 0, Number.MAX_SAFE_INTEGER, 0);
-    player.supplyCart.hops = clampInt(player.supplyCart.hops, 0, Number.MAX_SAFE_INTEGER, 0);
-    player.supplyCart.max = clampInt(player.supplyCart.max, 1, Number.MAX_SAFE_INTEGER, 100);
-    player.supplyCart.level = clampInt(player.supplyCart.level, 1, Number.MAX_SAFE_INTEGER, 1);
+    normalizeRosterState(player);
 }
 
 function reorderCollection(collection, fromValue, toValue) {
@@ -471,28 +441,8 @@ if (data.action === 'equip') {
                 socket.emit('townReceipt', { success: true, action: 'exportFish', updatedPlayer: p, message: "🐟 Wholesale Export Complete: Traded 100 fish for 120g!" });
             } else socket.emit('townReceipt', { success: false, message: "❌ Wholesalers require a clean batch of 100 Fish." });
         }
-        // 6. RETIRED WORKER HOUSING & RECRUITMENT
-        else if (data.action === 'hireWorker' || data.action === 'upgradeCabin' || data.action === 'assignWorker') {
-            normalizeWorkerState(p);
-            socket.emit('townReceipt', { success: false, action: data.action, updatedPlayer: p, message: 'Worker management has been retired. Chopping, fishing, and hops minigames now drive the tavern economy.' });
-        }
-        // 7. CLAIM SUPPLY CART (Flat Wage Model)
-        else if (data.action === 'claimCart') {
-            let w = p.supplyCart.wood || 0; let f = p.supplyCart.fish || 0; let h = p.supplyCart.hops || 0;
-            let totalClaimed = w + f + h;
-            if (totalClaimed === 0) return socket.emit('townReceipt', { success: false, message: "❌ Supply cart is empty." });
-            
-            let wageCost = totalClaimed * 1; // 1g per resource tax
-            
-            if (p.gold < wageCost) {
-                return socket.emit('townReceipt', { success: false, message: `❌ Insufficient gold for wages. Cart delivery requires ${wageCost}g.` });
-            }
-            
-            p.gold -= wageCost;
-            p.wood += w; p.fish += f; p.hops += h;
-            p.supplyCart.wood = 0; p.supplyCart.fish = 0; p.supplyCart.hops = 0;
-            
-            socket.emit('townReceipt', { success: true, action: 'claimCart', isAuto: data.isAuto, updatedPlayer: p, message: `🧺 Claimed Supplies: +${w} Timber, +${f} Fish, +${h} Hops. (Paid ${wageCost}g to drivers)` });
+        else if (data.action === 'hireWorker' || data.action === 'upgradeCabin' || data.action === 'assignWorker' || data.action === 'claimCart') {
+            socket.emit('townReceipt', { success: false, action: data.action, updatedPlayer: p, message: 'Workers and supply carts have been removed from this alpha branch.' });
         }
         // 8. HOST HAPPY HOUR
         else if (data.action === 'happyHour') {
@@ -644,19 +594,7 @@ if (data.action === 'equip') {
             } else socket.emit('townReceipt', { success: false, message: "❌ Insufficient gold or wood." });
         }
         else if (data.action === 'upgradeCart') {
-            let level = p.supplyCart.level || 1;
-            if (level >= 21) return socket.emit('townReceipt', { success: false, message: "❌ Cart has reached maximum capacity (400)." });
-            
-            let upg = level - 1;
-            // Bumped base cost and exponential curve to compensate for the level cap
-            let gCost = Math.floor(250 * Math.pow(1.25, upg)); 
-            let wCost = Math.floor(125 * Math.pow(1.25, upg));
-            
-            if (p.gold >= gCost && p.wood >= wCost) {
-                p.gold -= gCost; p.wood -= wCost;
-                p.supplyCart.max += 15; p.supplyCart.level = level + 1;
-                socket.emit('townReceipt', { success: true, action: 'upgradeCart', updatedPlayer: p, message: `📦 Cart capacity expanded to ${p.supplyCart.max}!` });
-            } else socket.emit('townReceipt', { success: false, message: "❌ Insufficient funds for Cart upgrade." });
+            socket.emit('townReceipt', { success: false, action: 'upgradeCart', updatedPlayer: p, message: 'Supply cart upgrades have been removed from this alpha branch.' });
         }
         // 17. BLACK MARKET (SERVER-SIDE LOOT ROLL)
         else if (data.action === 'blackMarket') {

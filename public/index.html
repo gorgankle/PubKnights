@@ -449,36 +449,16 @@
             </div>
         </div>
 
-        <!-- MODULE 2: Logistics (Cart) -->
+        <!-- MODULE 2: Tavern Economy -->
         <div class="dashboard-panel" style="margin-bottom: 0;">
-            <h3 style="color: #e67e22; border-bottom: 1px dashed #d35400;">🧺 Supply Cart</h3>
-            <div style="font-size: 11px; margin-bottom: 6px; background: #1a1512; padding: 10px; border-radius: 4px; border: 1px solid #4a3b2c; text-align: center;">
-                <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-                    <strong>Cart: [<span id="cart-total">0</span>/<span id="cart-max">100</span>]</strong>
-                    <span style="color: #bbaaa0; font-size: 10px;">🌲 <span id="cart-wood">0</span> | 🐟 <span id="cart-fish">0</span> | 🌿 <span id="cart-hops">0</span></span>
-                </div>
-                <button id="claim-cart-btn" onclick="claimSupplyCart()" style="width: 100%; background: #27ae60; padding: 10px 0; margin-bottom: 8px; font-size: 13px;" onmouseenter="showSystemTooltip('claim_cart', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🧺 Claim Supplies</button>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                    <button id="upgrade-cart-btn" onclick="upgradeCartCapacity()" style="padding: 8px 0; font-size: 11px; margin: 0;" onmouseenter="showSystemTooltip('cart_up', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">📦 Expand Cart</button>
-                    <button id="happy-hour-btn" onclick="hostHappyHour()" style="padding: 8px 0; font-size: 11px; margin: 0; background: #8e44ad; border-color: #9b59b6;" onmouseenter="showSystemTooltip('happy_hour', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🎉 Happy Hour</button>
-                </div>
-                <div id="happy-hour-timer" style="color: #ff9f43; font-weight: bold; display: none; margin-top: 8px; font-size: 10px;">🔥 HAPPY HOUR BOOSTING ACTIVE!</div>
-            </div>
-        </div>
-
-        <!-- MODULE 3: Tavern Contacts -->
-        <div class="dashboard-panel" style="margin-bottom: 0;">
-            <h3 style="color: #3498db; border-bottom: 1px dashed #2980b9;">🤝 Tavern Contacts</h3>
+            <h3 style="color: #e67e22; border-bottom: 1px dashed #d35400;">Tavern Economy</h3>
             <div style="background: #1a1512; padding: 10px; border-radius: 4px; border: 1px solid #4a3b2c; display: grid; gap: 8px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
-                    <span style="font-size: 12px; color: #f1c40f; font-weight: bold;">Contacts: <span id="tavern-contact-count">0</span></span>
-                    <span style="font-size: 11px; color: #2ecc71;">Refunded: <span id="worker-refund-gold">0</span>g</span>
-                </div>
+                <button id="happy-hour-btn" onclick="hostHappyHour()" style="padding: 10px 0; font-size: 12px; margin: 0; background: #8e44ad; border-color: #9b59b6;" onmouseenter="showSystemTooltip('happy_hour', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Happy Hour</button>
+                <div id="happy-hour-timer" style="color: #ff9f43; font-weight: bold; display: none; font-size: 10px; text-align:center;">HAPPY HOUR ACTIVE</div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; font-size: 11px; text-align: center;">
-                    <div style="background: #221a14; padding: 7px; border-radius: 3px; border: 1px solid #3a2f26; color: #bbaaa0;">🪓 Chop<br><span style="color:#ffcc66;">Timber Pts</span></div>
-                    <div style="background: #221a14; padding: 7px; border-radius: 3px; border: 1px solid #3a2f26; color: #bbaaa0;">🎣 Fish<br><span style="color:#74b9ff;">Export Stock</span></div>
-                    <div style="background: #221a14; padding: 7px; border-radius: 3px; border: 1px solid #3a2f26; color: #bbaaa0;">🌾 Harvest<br><span style="color:#a29bfe;">Brew Hops</span></div>
+                    <div style="background: #221a14; padding: 7px; border-radius: 3px; border: 1px solid #3a2f26; color: #bbaaa0;">Chop<br><span style="color:#ffcc66;">Timber Pts</span></div>
+                    <div style="background: #221a14; padding: 7px; border-radius: 3px; border: 1px solid #3a2f26; color: #bbaaa0;">Fish<br><span style="color:#74b9ff;">Exports</span></div>
+                    <div style="background: #221a14; padding: 7px; border-radius: 3px; border: 1px solid #3a2f26; color: #bbaaa0;">Harvest<br><span style="color:#a29bfe;">Brew Hops</span></div>
                 </div>
             </div>
         </div>
@@ -569,12 +549,7 @@
 <div class="dashboard-panel" style="border: 2px solid #f1c40f; background: #221a14;">
                         <h3 style="color: #f1c40f; margin-bottom: 6px;">👑 Epic Tavern Prestige & Upgrades</h3>
                         <div style="display: flex; flex-direction: column; gap: 6px;">
-                            <button id="gilded-tavern-btn" onclick="purchaseGildedTavern()" style="background: #7f8c8d; border-color: #f1c40f; padding: 10px; font-size: 12px; color: #fff;" onmouseenter="showSystemTooltip('gilded_tavern', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">✨ Gilded Tavern Metamorphosis (10,000g)<br><span style="font-size: 10px; color: #bbaaa0;">Transforms the tavern aesthetic and permanently automates supply cart claiming!</span></button>
-                            
-                            <div id="auto-claim-toggle-container" style="display: none; align-items: center; gap: 8px; background: #110d0a; padding: 6px; border-radius: 4px; border: 1px dashed #f1c40f;">
-                                <input type="checkbox" id="auto-claim-checkbox" onchange="toggleAutoClaim(this.checked)">
-                                <label for="auto-claim-checkbox" style="font-size: 11px; color: #f1c40f; font-weight: bold; cursor: pointer;">Enable Auto-Claim Supplies</label>
-                            </div>
+                            <button id="gilded-tavern-btn" onclick="purchaseGildedTavern()" style="background: #7f8c8d; border-color: #f1c40f; padding: 10px; font-size: 12px; color: #fff;" onmouseenter="showSystemTooltip('gilded_tavern', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">✨ Gilded Tavern Metamorphosis (10,000g)<br><span style="font-size: 10px; color: #bbaaa0;">Transforms the tavern aesthetic for this alpha branch.</span></button>
 
                             <!-- NEW TRADE ROUTES BUTTON -->
                             <button id="btn-upgrade-trade" onclick="buyTradeRoutes()" style="background: #8e44ad; border-color: #732d91; padding: 10px; font-size: 12px; color: #fff;">🗺️ Expand Trade Routes (25,000g)<br><span style="font-size: 10px; color: #d1d8e0;">Unlocks bulk fish exports at the docks.</span></button>

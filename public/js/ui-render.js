@@ -666,51 +666,6 @@ if (hopsScreen) hopsScreen.style.display = "none";
                     abyssBtn.innerText = "🔒 Defeat Lvl 20 Cellars";
                 }
             }
-            
-            let totalCart = player.supplyCart.wood + player.supplyCart.fish + (player.supplyCart.hops || 0);
-            let cartTotEl = document.getElementById("cart-total");
-            if(cartTotEl) cartTotEl.innerText = totalCart;
-            let cartMaxEl = document.getElementById("cart-max");
-            if(cartMaxEl) cartMaxEl.innerText = player.supplyCart.max;
-            
-            // --- NEW: DYNAMIC CART ANIMATIONS ---
-            function updateAndFlash(id, newValue, memKey) {
-                let el = document.getElementById(id);
-                if (el) {
-                    el.innerText = newValue;
-                    if (uiMemory[memKey] !== -1 && newValue > uiMemory[memKey]) {
-                        el.classList.remove('resource-pop');
-                        void el.offsetWidth; 
-                        el.classList.add('resource-pop');
-                    }
-                    uiMemory[memKey] = newValue;
-                }
-            }
-
-            updateAndFlash("cart-wood", player.supplyCart.wood, 'cWood');
-            updateAndFlash("cart-fish", player.supplyCart.fish, 'cFish');
-            updateAndFlash("cart-hops", player.supplyCart.hops || 0, 'cHops');
-            
-            let claimBtn = document.getElementById("claim-cart-btn");
-            if (claimBtn) {
-                claimBtn.disabled = (totalCart === 0);
-                if (totalCart >= player.supplyCart.max) {
-                claimBtn.classList.add("pulse-gold-btn");
-                claimBtn.innerText = `🧺 CART FULL (Cost: ${totalCart}g)`;
-            } else {
-                claimBtn.classList.remove("pulse-gold-btn");
-                claimBtn.innerText = `🧺 Claim Supplies (Cost: ${totalCart}g)`;
-            }
-            claimBtn.disabled = (totalCart === 0 || player.gold < totalCart);
-            }
-
-            let cartCost = getCartUpgradeCost();
-            let upCartBtn = document.getElementById("upgrade-cart-btn");
-            if (upCartBtn) {
-                upCartBtn.innerText = `📦 Expand Cart Capacity (Costs ${cartCost.gold}g, ${cartCost.wood}W)`;
-                upCartBtn.disabled = (player.gold < cartCost.gold || player.wood < cartCost.wood);
-            }
-
             const roster = player.roster && typeof player.roster === 'object' ? player.roster : { companions: [], activeIds: [] };
             const companions = Array.isArray(roster.companions) ? roster.companions : [];
             const activeIds = Array.isArray(roster.activeIds) ? roster.activeIds : [];
@@ -741,13 +696,6 @@ if (hopsScreen) hopsScreen.style.display = "none";
                 hireMarlowBtn.disabled = hasMarlow || player.gold < 250;
                 hireMarlowBtn.innerText = hasMarlow ? 'Marlow hired - manage on Knight screen' : 'Hire Marlow Shieldhand (250g)';
             }
-            let contacts = player.tavernContacts || {};
-            let contactTotal = typeof contacts === "number" ? contacts : (contacts.total || 0);
-            let refundGold = typeof contacts === "object" ? (contacts.refundGold || player.workerRefundGold || 0) : (player.workerRefundGold || 0);
-            let contactCountEl = document.getElementById("tavern-contact-count");
-            if (contactCountEl) contactCountEl.innerText = contactTotal.toLocaleString();
-            let refundGoldEl = document.getElementById("worker-refund-gold");
-            if (refundGoldEl) refundGoldEl.innerText = refundGold.toLocaleString();
 
             let invC = document.getElementById("inv-count");
             if(invC) invC.innerText = player.inventory.length;
@@ -815,12 +763,10 @@ if (hopsScreen) hopsScreen.style.display = "none";
                 `;
             }
             
-            const toggleContainer = document.getElementById("auto-claim-toggle-container");
             const gildedBtn = document.getElementById("gilded-tavern-btn");
             const upgradesPanel = document.querySelector("#upgrades-screen .dashboard-panel:nth-child(2)");
 
             if (player.gildedTavernUnlocked) {
-                if (toggleContainer) toggleContainer.style.display = "flex";
                 if (gildedBtn) {
                     gildedBtn.style.background = "#f1c40f";
                     gildedBtn.style.color = "#000";
@@ -831,8 +777,6 @@ if (hopsScreen) hopsScreen.style.display = "none";
                     upgradesPanel.style.border = "2px solid #f1c40f";
                     upgradesPanel.style.boxShadow = "0 0 20px rgba(241, 196, 15, 0.3)";
                 }
-                const checkbox = document.getElementById("auto-claim-checkbox");
-                if (checkbox) checkbox.checked = player.autoClaimEnabled || false;
                 
                 const townView = document.getElementById("town-vault-view");
                 if (townView) townView.style.setProperty("--active-town-bg", "url('assets/images/gilded-bg.png')");
@@ -1168,8 +1112,8 @@ window.cyclePetAppearance = function(part) {
 };
 
 function updateTownUI(data) {
-    // The core UI refresh now handles cart math directly via getCartUpgradeCost().
-    // This function remains available to catch future server-only Town data payloads.
+    // Reserved for future server-only Town data payloads.
+
 }
 
 

@@ -6,6 +6,8 @@ const MAX_PLAYER_LEVEL = 50;
 const SP_PER_LEVEL = 5;
 
 // === REPLACED ===
+let activeCombatActorUid = 'player_0';
+
 let player = { 
     x: 1, y: 1, 
     level: 1, xp: 0, xpToNext: 100, skillPoints: 0,
@@ -26,11 +28,7 @@ let player = {
     },
     inventory: [], stash: [],
     roster: { companions: [], activeIds: [] },
-    buildings: { workerCabin: 1 },
-    workers: { total: 0, assigned: { wood: 0, fish: 0, hops: 0 }, retired: true },
-    tavernContacts: { total: 0, refundGold: 0 },
-    economyMigrationVersion: 3,
-    supplyCart: { wood: 0, fish: 0, hops: 0, max: 100, level: 1 }, mapBaited: false,
+    mapBaited: false,
 maxInventorySlots: 5, backpackUpgrades: 0,
     
 // === MULTI-BUFF ARRAYS ADDED HERE ===
@@ -40,7 +38,7 @@ maxInventorySlots: 5, backpackUpgrades: 0,
     
     // === NEW: EPIC TAVERN PRESTIGE ===
     gildedTavernUnlocked: false,
-    autoClaimEnabled: false
+    // supply cart automation retired
 };
 
 function normalizeClientPlayerContainers() {
@@ -52,16 +50,6 @@ function normalizeClientPlayerContainers() {
         if (!Object.prototype.hasOwnProperty.call(player.equipment, slot)) player.equipment[slot] = null;
     });
 
-    player.buildings = player.buildings && typeof player.buildings === 'object' ? player.buildings : { workerCabin: 1 };
-    player.buildings.workerCabin = 1;
-
-    const contacts = player.tavernContacts && typeof player.tavernContacts === 'object' ? player.tavernContacts : {};
-    player.tavernContacts = {
-        total: Math.max(0, Math.trunc(Number(contacts.total) || 0)),
-        refundGold: Math.max(0, Math.trunc(Number(contacts.refundGold || player.workerRefundGold) || 0))
-    };
-    player.workers = { total: 0, assigned: { wood: 0, fish: 0, hops: 0 }, retired: true };
-
     const roster = player.roster && typeof player.roster === 'object' ? player.roster : {};
     const companions = Array.isArray(roster.companions) ? roster.companions : [];
     const validIds = new Set(companions.filter(companion => companion && companion.id).map(companion => companion.id));
@@ -70,15 +58,6 @@ function normalizeClientPlayerContainers() {
         activeIds: Array.isArray(roster.activeIds) ? roster.activeIds.filter(id => validIds.has(id)).slice(0, 1) : []
     };
     player.roster.companions.forEach(companion => { companion.active = player.roster.activeIds.includes(companion.id); });
-
-    const cart = player.supplyCart && typeof player.supplyCart === 'object' ? player.supplyCart : {};
-    player.supplyCart = {
-        wood: Math.max(0, Math.trunc(Number(cart.wood) || 0)),
-        fish: Math.max(0, Math.trunc(Number(cart.fish) || 0)),
-        hops: Math.max(0, Math.trunc(Number(cart.hops) || 0)),
-        max: Math.max(1, Math.trunc(Number(cart.max) || 100)),
-        level: Math.max(1, Math.trunc(Number(cart.level) || 1))
-    };
 }
 
 function normalizePlayerLevel(level) {
@@ -195,15 +174,6 @@ function getPlayerMoveRange() { return getPlayerSwiftness(); }
 function getPlayerTotalAttack() { return getPlayerTotalPower(); }
 
 // === ECONOMY MATH HELPERS (MUST MATCH SERVER.JS) ===
-function getCartUpgradeCost() {
-    let level = player.supplyCart ? (player.supplyCart.level || 1) : 1;
-    let upg = level - 1;
-    // Wave 5 Economy Balance: 250g/125w. Scales heavily by 1.25x.
-    return { 
-        gold: Math.floor(250 * Math.pow(1.25, upg)), 
-        wood: Math.floor(125 * Math.pow(1.25, upg)) 
-    };
-}
 function getBackpackUpgradeCost() {
     let upg = player.backpackUpgrades || 0;
     // Base cost: 250g/100w. Scales moderately by 1.2x.
@@ -254,12 +224,11 @@ function saveGame(manualNotify = false) {
         appearance: player.appearance, 
         equipment: player.equipment, inventory: player.inventory, stash: player.stash,
         roster: player.roster,
-        buildings: player.buildings,
-        workers: player.workers, tavernContacts: player.tavernContacts, economyMigrationVersion: player.economyMigrationVersion || 3, workerRefundGold: player.workerRefundGold || 0, supplyCart: player.supplyCart, mapBaited: player.mapBaited,
+        mapBaited: player.mapBaited,
 		maxInventorySlots: player.maxInventorySlots, backpackUpgrades: player.backpackUpgrades,
         activeCombatBuff: player.activeCombatBuff, activeBuffs: player.activeBuffs, happyHourTicks: player.happyHourTicks, cellarsChummed: player.cellarsChummed,
         pet: player.pet,
-        gildedTavernUnlocked: player.gildedTavernUnlocked, autoClaimEnabled: player.autoClaimEnabled,
+        gildedTavernUnlocked: player.gildedTavernUnlocked,
         tradeRoutesExpanded: player.tradeRoutesExpanded, monumentBuilt: player.monumentBuilt
     };
     

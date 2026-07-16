@@ -190,76 +190,12 @@ function createDefaultSaveData(username) {
             weapon: JSON.parse(JSON.stringify(ItemDatabase["rusty_mace"])),
         },
         inventory: [], stash: [],
-        buildings: { workerCabin: 1 },
-        workers: { total: 0, assigned: { wood: 0, fish: 0, hops: 0 }, retired: true },
-        tavernContacts: { total: 0, refundGold: 0 },
-        economyMigrationVersion: 3,
-        supplyCart: { wood: 0, fish: 0, hops: 0, max: 100, level: 1 },
         maxInventorySlots: 5, backpackUpgrades: 0,
         pet: { adopted: false, level: 1 },
         quests: { completed: {} }
     };
 }
 
-function getLegacyWorkerSnapshot(pd) {
-    const workers = pd.workers && typeof pd.workers === 'object' ? pd.workers : {};
-
-    if (workers.woodcutters !== undefined || workers.fishermen !== undefined || workers.farmers !== undefined) {
-        const wood = Math.max(0, Math.trunc(Number(workers.woodcutters) || 0));
-        const fish = Math.max(0, Math.trunc(Number(workers.fishermen) || 0));
-        const hops = Math.max(0, Math.trunc(Number(workers.farmers) || 0));
-        return { total: wood + fish + hops, assigned: { wood, fish, hops } };
-    }
-
-    const assigned = workers.assigned && typeof workers.assigned === 'object' ? workers.assigned : {};
-    const total = Math.max(0, Math.trunc(Number(workers.total) || 0));
-    let wood = Math.max(0, Math.min(total, Math.trunc(Number(assigned.wood) || 0)));
-    let fish = Math.max(0, Math.min(total, Math.trunc(Number(assigned.fish) || 0)));
-    let hops = Math.max(0, Math.min(total, Math.trunc(Number(assigned.hops) || 0)));
-
-    if (wood + fish + hops > total) {
-        let remaining = total;
-        wood = Math.min(wood, remaining);
-        remaining -= wood;
-        fish = Math.min(fish, remaining);
-        remaining -= fish;
-        hops = Math.min(hops, remaining);
-    }
-
-    return { total, assigned: { wood, fish, hops } };
-}
-
-function calculateLegacyCabinRefund(cabinLevel) {
-    let refund = 0;
-    const level = Math.max(1, Math.trunc(Number(cabinLevel) || 1));
-    for (let lvl = 1; lvl < level; lvl++) {
-        refund += Math.floor(100 * Math.pow(1.3, lvl));
-    }
-    return refund;
-}
-
-function normalizeSavedWorkerState(pd) {
-    if (!pd.buildings || typeof pd.buildings !== 'object') pd.buildings = { workerCabin: 1 };
-
-    const snapshot = getLegacyWorkerSnapshot(pd);
-    const cabinLevel = Math.max(1, Math.trunc(Number(pd.buildings.workerCabin) || 1));
-    const migrationVersion = Math.max(0, Math.trunc(Number(pd.economyMigrationVersion) || 0));
-
-    if (migrationVersion < 3) {
-        const refundGold = (snapshot.total * 100) + calculateLegacyCabinRefund(cabinLevel);
-        if (refundGold > 0) {
-            pd.gold = Math.max(0, Math.trunc(Number(pd.gold) || 0)) + refundGold;
-            pd.workerRefundGold = Math.max(0, Math.trunc(Number(pd.workerRefundGold) || 0)) + refundGold;
-        }
-        pd.tavernContacts = { total: snapshot.total, refundGold };
-        pd.economyMigrationVersion = 3;
-    } else if (!pd.tavernContacts || typeof pd.tavernContacts !== 'object') {
-        pd.tavernContacts = { total: 0, refundGold: Math.max(0, Math.trunc(Number(pd.workerRefundGold) || 0)) };
-    }
-
-    pd.workers = { total: 0, assigned: { wood: 0, fish: 0, hops: 0 }, retired: true };
-    pd.buildings.workerCabin = 1;
-}
 
 function normalizeSavedRoster(pd) {
     const roster = pd.roster && typeof pd.roster === 'object' ? pd.roster : {};
@@ -309,16 +245,6 @@ function normalizeSavedRoster(pd) {
     };
     pd.roster.companions.forEach(companion => { companion.active = pd.roster.activeIds.includes(companion.id); });
 }
-function normalizeSavedSupplyCart(pd) {
-    const cart = pd.supplyCart && typeof pd.supplyCart === 'object' ? pd.supplyCart : {};
-    pd.supplyCart = {
-        wood: Math.max(0, Math.trunc(Number(cart.wood) || 0)),
-        fish: Math.max(0, Math.trunc(Number(cart.fish) || 0)),
-        hops: Math.max(0, Math.trunc(Number(cart.hops) || 0)),
-        max: Math.max(1, Math.trunc(Number(cart.max) || 100)),
-        level: Math.max(1, Math.trunc(Number(cart.level) || 1))
-    };
-}
 
 function hydratePlayerData(playerDoc) {
     if (!playerDoc.saveData.appearance) {
@@ -359,8 +285,7 @@ function hydratePlayerData(playerDoc) {
 
     if (!pd.quests) pd.quests = { completed: {} };
     if (!pd.quests.completed) pd.quests.completed = {};
-    normalizeSavedWorkerState(pd);
-    normalizeSavedSupplyCart(pd);
+    normalizeSavedRoster(pd);
     pd.activeBuffs = [];
     pd.activeCombatBuff = null;
     pd.hp = (pd.vitality || 1) * 25;
@@ -591,7 +516,6 @@ setInterval(() => {
             wood: p.wood, 
             fish: p.fish, 
             hops: p.hops,
-            supplyCart: p.supplyCart, 
             happyHourTicks: p.happyHourTicks,
             upgrades: p.upgrades
         });
@@ -605,4 +529,3 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`🍻 Pub Knights Server running on http://localhost:${PORT}`);
 });
-

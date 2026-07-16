@@ -111,10 +111,6 @@ else if (item && item.slot === "consumable") {
         let pCost = getBackpackUpgradeCost();
         html = `<h3>🎒 Expand Backpack</h3>Adds <b>+1 slot</b> to your personal combat inventory.<br>💰 Cost: ${pCost.gold}g, ${pCost.wood} Wood`;
     }
-    else if (type === 'cart_up') {
-        let cCost = getCartUpgradeCost();
-        html = `<h3>📦 Expand Cart Capacity</h3>Increases the maximum storage limit of your town's production cart by <b>+50 units</b>.<br>💰 Cost: ${cCost.gold}g, ${cCost.wood} Wood`;
-    }
     else if (type === 'claim_cart') {
         html = `<h3>🧺 Claim Supplies</h3>Empty the town's production cart and deposit all gathered Timber, Fish, and Hops directly into your vault balance.`;
     }

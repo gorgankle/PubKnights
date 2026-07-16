@@ -4,8 +4,6 @@
 let activeTargetIndex   = -1;
 let previousCombatPhase = 'PHASE_1';
 let pendingLoot = []; 
-let activeCombatActorUid = 'player_0';
-
 function getActiveCombatant() {
     if (!activeCombatActorUid || activeCombatActorUid === 'player_0') {
         return { uid: 'player_0', kind: 'player', name: player.username || 'Knight', x: player.x, y: player.y, stamina: player.stamina, equipment: player.equipment, speed: getPlayerSwiftness() };
