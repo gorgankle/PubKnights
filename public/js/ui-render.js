@@ -453,7 +453,7 @@ if (hopsScreen) hopsScreen.style.display = "none";
             document.querySelectorAll('.nav-bar button').forEach(btn => btn.classList.remove('active-tab'));
 
             // === UPDATED STATE ROUTER ===
-            if (gameState === 'KNIGHT') {
+            if (gameState === 'KNIGHT' || gameState === 'TOWN' || gameState === 'VAULT' || gameState === 'MERCHANT' || gameState === 'ADVENTURES') {
                 if (knightScreen) knightScreen.style.display = "block";
                 document.getElementById('nav-knight').classList.add('active-tab');
             } else if (gameState === 'TOWN') {
@@ -762,50 +762,9 @@ if (hopsScreen) hopsScreen.style.display = "none";
                     </div>
                 `;
             }
-            
-            const gildedBtn = document.getElementById("gilded-tavern-btn");
-            const upgradesPanel = document.querySelector("#upgrades-screen .dashboard-panel:nth-child(2)");
 
-            if (player.gildedTavernUnlocked) {
-                if (gildedBtn) {
-                    gildedBtn.style.background = "#f1c40f";
-                    gildedBtn.style.color = "#000";
-                    gildedBtn.innerText = "✨ Gilded Tavern (Acquired)";
-                    gildedBtn.onclick = null; 
-                }
-                if (upgradesPanel) {
-                    upgradesPanel.style.border = "2px solid #f1c40f";
-                    upgradesPanel.style.boxShadow = "0 0 20px rgba(241, 196, 15, 0.3)";
-                }
-                
-                const townView = document.getElementById("town-vault-view");
-                if (townView) townView.style.setProperty("--active-town-bg", "url('assets/images/gilded-bg.png')");
-            }
-
-            const tradeUpgradeBtn = document.getElementById("btn-upgrade-trade");
             const bulkFishBtn = document.getElementById("btn-sell-fish-bulk");
-            const monumentBtn = document.getElementById("btn-upgrade-monument");
-
-            if (tradeUpgradeBtn) {
-                if (player.tradeRoutesExpanded) {
-                    tradeUpgradeBtn.style.background = "#27ae60";
-                    tradeUpgradeBtn.innerText = "🗺️ Trade Routes (Expanded)";
-                    tradeUpgradeBtn.onclick = null;
-                }
-            }
-            
-            if (bulkFishBtn) {
-                bulkFishBtn.style.display = player.tradeRoutesExpanded ? "block" : "none";
-            }
-
-            if (monumentBtn) {
-                if (player.monumentBuilt) {
-                    monumentBtn.style.background = "#f1c40f";
-                    monumentBtn.style.color = "#000";
-                    monumentBtn.innerText = "🗽 The Golden Monument (Built)";
-                    monumentBtn.onclick = null;
-                }
-            }
+            if (bulkFishBtn) bulkFishBtn.style.display = "block";
 
             if (gameState === 'KNIGHT' || gameState === 'TOWN' || gameState === 'VAULT' || gameState === 'MERCHANT' || gameState === 'ADVENTURES') {
                 if (typeof renderMainScreenSprites === 'function') renderMainScreenSprites();

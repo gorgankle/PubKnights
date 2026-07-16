@@ -37,7 +37,7 @@ function processSecureKill(socketId, serverEnemy, context) {
         return { combatComplete: getEnemyActors(combat).every(e => !e.alive) };
     }
 
-    const multiplier = p.monumentBuilt ? 2 : 1;
+    const multiplier = 1;
     const isGorilla = (combat.zone === 'GORILLA_ARENA');
     const isBaited = (combat.zone === 'WILDERNESS' && p.mapBaited);
 

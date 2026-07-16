@@ -35,9 +35,6 @@ maxInventorySlots: 5, backpackUpgrades: 0,
     activeCombatBuff: null, activeBuffs: [], happyHourTicks: 0, cellarsChummed: false,
     
 // === NEW: PET STATE ===
-    
-    // === NEW: EPIC TAVERN PRESTIGE ===
-    gildedTavernUnlocked: false,
     // supply cart automation retired
 };
 
@@ -227,9 +224,7 @@ function saveGame(manualNotify = false) {
         mapBaited: player.mapBaited,
 		maxInventorySlots: player.maxInventorySlots, backpackUpgrades: player.backpackUpgrades,
         activeCombatBuff: player.activeCombatBuff, activeBuffs: player.activeBuffs, happyHourTicks: player.happyHourTicks, cellarsChummed: player.cellarsChummed,
-        pet: player.pet,
-        gildedTavernUnlocked: player.gildedTavernUnlocked,
-        tradeRoutesExpanded: player.tradeRoutesExpanded, monumentBuilt: player.monumentBuilt
+        pet: player.pet
     };
     
     // Emit the save data directly to the Node server!

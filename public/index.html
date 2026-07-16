@@ -441,8 +441,6 @@
         <!-- MODULE 1: Administration -->
         <div class="dashboard-panel" style="margin-bottom: 0;">
             <h3 style="color: #f1c40f; border-bottom: 1px dashed #f1c40f;">🏛️ Town Hall</h3>
-            <button onclick="setGameState('UPGRADES')" style="background: #f1c40f; color: #000; font-size: 13px; width: 100%; margin-bottom: 8px; padding: 10px;" onmouseenter="showSystemTooltip('tavern_upgrades', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">👑 View Town Upgrades</button>
-            
             <div style="display: grid; grid-template-columns: 1fr; gap: 6px;">
                 <button disabled style="background: #3e3126; border-color: #634e3d; color: #bbaaa0; padding: 10px; margin: 0; cursor: not-allowed; text-decoration: line-through;">📜 Issue Town Decrees (Coming Soon)</button>
                 <button disabled style="background: #3e3126; border-color: #634e3d; color: #bbaaa0; padding: 10px; margin: 0; cursor: not-allowed; text-decoration: line-through;">💰 Collect Daily Taxes (Coming Soon)</button>
@@ -539,29 +537,16 @@
 </div>
 				
 
-<!-- === NEW: DEDICATED UPGRADES SCREEN === -->
+<!-- === RETIRED: TOWN UPGRADES SCREEN === -->
 <div id="upgrades-screen" class="panel" style="display: none; width: 100%; margin-bottom: 0; min-height: 486px; flex-direction: column; gap: 10px;">
-                    <div class="dashboard-panel" style="background: #1a1512; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; margin-bottom: 5px; border: 1px solid #4a3b2c;">
-                        <span style="color: #f1c40f; font-weight: bold; font-size:15px;">👑 Tavern Upgrades</span>
-                        <button onclick="setGameState('TOWN')" style="background: #c0392b; margin:0; padding:6px 14px;">↩ Return to Town</button>
-                    </div>
-                    
-<div class="dashboard-panel" style="border: 2px solid #f1c40f; background: #221a14;">
-                        <h3 style="color: #f1c40f; margin-bottom: 6px;">👑 Epic Tavern Prestige & Upgrades</h3>
-                        <div style="display: flex; flex-direction: column; gap: 6px;">
-                            <button id="gilded-tavern-btn" onclick="purchaseGildedTavern()" style="background: #7f8c8d; border-color: #f1c40f; padding: 10px; font-size: 12px; color: #fff;" onmouseenter="showSystemTooltip('gilded_tavern', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">✨ Gilded Tavern Metamorphosis (10,000g)<br><span style="font-size: 10px; color: #bbaaa0;">Transforms the tavern aesthetic for this alpha branch.</span></button>
-
-                            <!-- NEW TRADE ROUTES BUTTON -->
-                            <button id="btn-upgrade-trade" onclick="buyTradeRoutes()" style="background: #8e44ad; border-color: #732d91; padding: 10px; font-size: 12px; color: #fff;">🗺️ Expand Trade Routes (25,000g)<br><span style="font-size: 10px; color: #d1d8e0;">Unlocks bulk fish exports at the docks.</span></button>
-
-                            <!-- NEW 1 MILLION GOLD MONUMENT BUTTON -->
-                            <button id="btn-upgrade-monument" onclick="purchaseMonument()" style="background: #e67e22; border-color: #d35400; padding: 10px; font-size: 12px; color: #fff;">🗽 Erect the Golden Monument (1,000,000g)<br><span style="font-size: 10px; color: #f4ebd9;">The ultimate flex. Permanently doubles all Combat Gold and XP drops!</span></button>
-                        </div>
-                    </div>
-                    </div>
-					
-					<!-- ========================================== -->
-
+    <div class="dashboard-panel" style="background: #1a1512; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; margin-bottom: 5px; border: 1px solid #4a3b2c;">
+        <span style="color: #f1c40f; font-weight: bold; font-size:15px;">Tavern Upgrades Retired</span>
+        <button onclick="setGameState('TOWN')" style="background: #c0392b; margin:0; padding:6px 14px;">Return to Town</button>
+    </div>
+    <div class="dashboard-panel" style="border: 1px solid #634e3d; background: #221a14; color: #d7c0a8; font-size: 12px; line-height: 1.5;">
+        Town prestige, trade-route, worker, and supply-cart upgrades have been removed for the party-combat alpha branch. Tavern growth now comes from minigames, fish exports, combat rewards, companion progression, and future story quests.
+    </div>
+</div>
 <!-- === DEDICATED MERCHANT SCREEN (GRID REFACTOR) === -->
 <div id="merchant-screen" class="panel" style="display: none; width: 100%; margin-bottom: 0; min-height: 486px; flex-direction: column; gap: 10px;">
     
@@ -582,7 +567,7 @@
             
             <div style="display: grid; grid-template-columns: 1fr; gap: 6px;">
                 <button id="wholesale-btn" onclick="exportFishWholesale()" style="margin: 0; padding: 10px; background: #2980b9; border-color: #3498db;" onmouseenter="showSystemTooltip('fish_wholesale', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🐟 Export Fish (Sell 100 -> 120g)</button>
-                <button id="btn-sell-fish-bulk" onclick="sellFishBulk()" style="display: none; margin: 0; padding: 10px; background: #8e44ad; border-color: #9b59b6;">🚢 Bulk Export (-1000 Fish -> 1200g)</button>
+                <button id="btn-sell-fish-bulk" onclick="sellFishBulk()" style="margin: 0; padding: 10px; background: #8e44ad; border-color: #9b59b6;">🚢 Bulk Export (-1000 Fish -> 1200g)</button>
             </div>
         </div>
 

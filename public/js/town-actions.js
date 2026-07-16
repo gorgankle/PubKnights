@@ -93,25 +93,13 @@ function changeZoneLevel(zone, dir) {
 // === NEW: GRANDMASTER RESERVE CRAFTING ===
 function craftReserveBrew() { socket.emit('townAction', { action: 'craftBrew', brewType: 'RESERVE' }); }
 
-// === GILDED TAVERN AUTOMATION ===
-// Function 1: Purchasing the Gilded Tavern
-function purchaseGildedTavern() {
-    socket.emit('townAction', { action: 'purchaseGildedTavern' });
-}
-
-// === TRADE ROUTES & MONUMENT UPGRADES ===
-
-function buyTradeRoutes() {
-    socket.emit('townAction', { action: 'buyTradeRoutes' });
-}
+// === RETIRED TOWN UPGRADE ACTIONS ===
+function purchaseGildedTavern() { logMessage('Town prestige upgrades have been removed from this alpha branch.'); }
+function buyTradeRoutes() { logMessage('Trade route upgrades have been removed; fish exports are available from the Exchange.'); }
+function purchaseMonument() { logMessage('The Golden Monument upgrade has been retired for this alpha branch.'); }
 
 function sellFishBulk() {
-    if (!player.tradeRoutesExpanded) return; // Basic UI failsafe
     socket.emit('townAction', { action: 'sellFishBulk' });
-}
-
-function purchaseMonument() {
-    socket.emit('townAction', { action: 'purchaseMonument' });
 }
 
 // === QUARTERMASTER EXCHANGE LOGIC ===

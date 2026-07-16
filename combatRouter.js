@@ -20,10 +20,13 @@ const {
     syncCombatViews,
     syncPlayerActor,
     getPlayerActor,
+    getActorByUid,
     getAliveActors,
     getEnemyActors,
+    getHostileActorsFor,
     getPlayerAttackTargets,
     isActorAlive,
+    isPlayerActor,
     isBlockingActor
 } = require('./combatActors.js');
 
@@ -348,7 +351,12 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                     }
 
                     combat.atbPaused = true;
-                    io.to(socketId).emit('ATB_READY');
+                    combat.activeActorUid = readyControlledActor.uid;
+                    io.to(socketId).emit('ATB_READY', {
+                        actorUid: readyControlledActor.uid,
+                        actorName: readyControlledActor.name,
+                        actorKind: readyControlledActor.kind
+                    });
                 } else {
                     const readyActors = getAliveActors(combat)
                         .filter(actor => !isPlayerControlledActor(actor) && actor.atbCharge >= 100);

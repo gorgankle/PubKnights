@@ -342,29 +342,11 @@ if (data.action === 'equip') {
             }
             return;
         }
-
-        // 1. GILDED TAVERN
-        if (data.action === 'purchaseGildedTavern') {
-            if (p.gold >= 10000 && !p.gildedTavernUnlocked) {
-                p.gold -= 10000; p.gildedTavernUnlocked = true;
-                socket.emit('townReceipt', { success: true, action: 'gildedTavern', updatedPlayer: p, message: "👑 ACHIEVEMENT UNLOCKED: Gilded Tavern Metamorphosis!" });
-            } else socket.emit('townReceipt', { success: false, message: "❌ Insufficient funds. Requires 10,000 Gold Pieces." });
+        // 1. RETIRED TOWN PRESTIGE UPGRADES
+        if (['purchaseGildedTavern', 'buyTradeRoutes', 'purchaseMonument'].includes(data.action)) {
+            socket.emit('townReceipt', { success: false, action: data.action, updatedPlayer: p, message: 'Town prestige and trade-route upgrades have been removed from this alpha branch.' });
         }
-        // 2. TRADE ROUTES
-        else if (data.action === 'buyTradeRoutes') {
-            if (p.gold >= 25000 && !p.tradeRoutesExpanded) {
-                p.gold -= 25000; p.tradeRoutesExpanded = true;
-                socket.emit('townReceipt', { success: true, action: 'tradeRoutes', updatedPlayer: p, message: "🗺️ ACHIEVEMENT UNLOCKED: Trade Routes Expanded!" });
-            } else socket.emit('townReceipt', { success: false, message: "❌ Insufficient funds. The crown demands 25,000 Gold Pieces." });
-        }
-        // 3. THE GOLDEN MONUMENT
-        else if (data.action === 'purchaseMonument') {
-            if (p.gold >= 1000000 && !p.monumentBuilt) {
-                p.gold -= 1000000; p.monumentBuilt = true;
-                socket.emit('townReceipt', { success: true, action: 'monument', updatedPlayer: p, message: "🏆 ACHIEVEMENT UNLOCKED: The Golden Monument!" });
-            } else socket.emit('townReceipt', { success: false, message: "❌ Insufficient funds. A million gold pieces are required." });
-        }
-		// 3.5 ADOPT PET SECURELY
+        // 3.5 ADOPT PET SECURELY
         else if (data.action === 'adoptPet') {
             if (p.pet && p.pet.adopted) return socket.emit('townReceipt', { success: false, message: "❌ You already have a companion." });
             
@@ -624,7 +606,6 @@ if (data.action === 'equip') {
         }
         // 18. SELL FISH BULK
         else if (data.action === 'sellFishBulk') {
-            if (!p.tradeRoutesExpanded) return socket.emit('townReceipt', { success: false, message: "❌ Trade routes are not expanded." });
             if (p.fish >= 1000) {
                 p.fish -= 1000; p.gold += 1200;
                 socket.emit('townReceipt', { success: true, action: 'sellFishBulk', updatedPlayer: p, message: "🚢 Exported 1,000 Fish to distant lands for 1,200 Gold." });
