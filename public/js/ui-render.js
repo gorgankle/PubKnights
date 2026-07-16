@@ -453,7 +453,7 @@ if (hopsScreen) hopsScreen.style.display = "none";
             document.querySelectorAll('.nav-bar button').forEach(btn => btn.classList.remove('active-tab'));
 
             // === UPDATED STATE ROUTER ===
-            if (gameState === 'KNIGHT' || gameState === 'TOWN' || gameState === 'VAULT' || gameState === 'MERCHANT' || gameState === 'ADVENTURES') {
+            if (gameState === 'KNIGHT') {
                 if (knightScreen) knightScreen.style.display = "block";
                 document.getElementById('nav-knight').classList.add('active-tab');
             } else if (gameState === 'TOWN') {
