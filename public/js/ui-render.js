@@ -1,4 +1,4 @@
-﻿// --- UI: RENDER & REFRESH MANAGER ---
+// --- UI: RENDER & REFRESH MANAGER ---
 
 // --- UI: RENDER & REFRESH MANAGER ---
 let uiMemory = { gold: -1 }
@@ -253,7 +253,7 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
         if (currentTurn === 'PLAYER') {
             if (combatPhase === 'TARGETING') {
                 if (uiHeader) {
-                    uiHeader.innerHTML = `ðŸŽ¯ TARGETING: Click anywhere in range to execute!`;
+                    uiHeader.innerHTML = `\u{1F3AF} TARGETING: Click anywhere in range to execute!`;
                     uiHeader.style.color = "#e74c3c";
                 }
                 if (document.getElementById("slash-btn")) document.getElementById("slash-btn").disabled = true;
@@ -300,13 +300,13 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
                 
                 if (uiHeader) {
                     if (pendingMove) {
-                        uiHeader.innerHTML = `ðŸƒ CONFIRM MOVE - Click green highlighted tile to jump`;
+                        uiHeader.innerHTML = `\u{1F3C3} CONFIRM MOVE - Click green highlighted tile to jump`;
                         uiHeader.style.color = "#2ecc71";
                     } else if (selectedEnemy && selectedEnemy.alive && combatPhase === 'PHASE_2') {
-                        uiHeader.innerHTML = `ðŸŽ¯ FOCUS: ${selectedEnemy.name} (${selectedEnemy.hp}/${selectedEnemy.maxHp} HP) - [${phaseLabel}]`;
+                        uiHeader.innerHTML = `\u{1F3AF} FOCUS: ${selectedEnemy.name} (${selectedEnemy.hp}/${selectedEnemy.maxHp} HP) - [${phaseLabel}]`;
                         uiHeader.style.color = "#2ecc71";
                     } else {
-                        uiHeader.innerHTML = `âš”ï¸ ${phaseLabel} - ${instructions}`;
+                        uiHeader.innerHTML = `\u2694\uFE0F ${phaseLabel} - ${instructions}`;
                         uiHeader.style.color = "#3498db";
                     }
                 }
@@ -318,12 +318,12 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
 
                 if (slashBtn) {
                     slashBtn.disabled = !(hasTarget && withinRange && losClear && isAttackPhase);
-                    if (weapon && weapon.combat && weapon.combat.standard) slashBtn.innerText = `Attack (${weapon.combat.standard.staminaCost}âš¡)`;
-                    else slashBtn.innerText = `Unarmed Strike (5âš¡)`;
+                    if (weapon && weapon.combat && weapon.combat.standard) slashBtn.innerText = `\u2694\uFE0F Attack (${weapon.combat.standard.staminaCost}\u26A1)`;
+                    else slashBtn.innerText = `\u{1F44A} Unarmed Strike (5\u26A1)`;
                 }
                 if (heavyBtn) {
                     heavyBtn.disabled = !(hasTarget && withinRange && losClear && isAttackPhase);
-                    if (weapon && weapon.combat && weapon.combat.special) heavyBtn.innerText = `${weapon.combat.special.name} (${weapon.combat.special.staminaCost}âš¡)`;
+                    if (weapon && weapon.combat && weapon.combat.special) heavyBtn.innerText = `\u{1F4A5} ${weapon.combat.special.name} (${weapon.combat.special.staminaCost}\u26A1)`;
                     else heavyBtn.innerText = `Weapon Skill`;
                 }
                 if (endBtn) {
@@ -338,7 +338,7 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
             }
         } else {
             if (uiHeader) {
-                uiHeader.innerHTML = "ðŸ¤– MONSTERS EXECUTING TACTICAL ENGINE";
+                uiHeader.innerHTML = "\u{1F916} MONSTERS EXECUTING TACTICAL ENGINE";
                 uiHeader.style.color = "#e74c3c";
             }
             if (document.getElementById("slash-btn")) document.getElementById("slash-btn").disabled = true;
@@ -361,13 +361,13 @@ const combatInvList = document.getElementById("combat-inventory-list");
 
             // ðŸŽ’ Backpack Button
             let bagBtn = document.createElement("button");
-            bagBtn.innerText = `ðŸŽ’ Backpack (${player.inventory.length}/${player.maxInventorySlots || 5})`;
+            bagBtn.innerText = `\u{1F392} Backpack (${player.inventory.length}/${player.maxInventorySlots || 5})`;
             bagBtn.style.padding = "10px";
             bagBtn.style.background = "#8b5a2b";
         
             // ðŸ“– Spellbook Button
             let spellBtn = document.createElement("button");
-            spellBtn.innerText = `ðŸ“– Spellbook`;
+            spellBtn.innerText = `\u{1F4D6} Spellbook`;
             spellBtn.style.padding = "10px";
             spellBtn.style.background = "#8e44ad";
             spellBtn.style.borderColor = "#9b59b6";
@@ -486,12 +486,12 @@ if (hopsScreen) hopsScreen.style.display = "none";
             const knightStats = document.getElementById("knight-town-stats");
             if (knightStats) {
                 knightStats.innerHTML = `
-                    <div style="color: #2ecc71; margin-bottom: 2px; font-weight: bold;">HP: ${player.hp} / ${getPlayerMaxHp()}</div>
-                    <div style="color: #f1c40f; margin-bottom: 4px; font-weight: bold;">Stamina: ${player.stamina} / ${getPlayerMaxStamina()}</div>
+                    <div style="color: #2ecc71; margin-bottom: 2px; font-weight: bold;">\u2764\uFE0F ${player.hp} / ${getPlayerMaxHp()} HP</div>
+                    <div style="color: #f1c40f; margin-bottom: 4px; font-weight: bold;">\u26A1 ${player.stamina} / ${getPlayerMaxStamina()} STAM</div>
                     <div style="color: #bbaaa0; border-top: 1px dashed #3a2f26; padding-top: 4px; line-height: 1.3;">
-                        <b>Offense:</b> Total ${getPlayerTotalPower()}<br>
-                        <b>Defense:</b> Total ${getPlayerDeflectChance()}<br>
-                        <b>Speed:</b> Total ${getPlayerSwiftness()}
+                        \u2694\uFE0F <b>Offense:</b> Total ${getPlayerTotalPower()}<br>
+                        \u{1F6E1}\uFE0F <b>Defense:</b> Total ${getPlayerDeflectChance()}<br>
+                        \u{1F3C3} <b>Speed:</b> Total ${getPlayerSwiftness()}
                     </div>`;
             }
 
@@ -560,7 +560,7 @@ if (hopsScreen) hopsScreen.style.display = "none";
             if (gateBtn) {
                 let activeWildLvl = player.selectedWildernessLevel || player.wildernessLevel;
                 if (activeWildLvl === 20) {
-                    gateBtn.innerText = "Wilds (Lvl 20 BOSS)";
+                    gateBtn.innerText = "\u{1F4A5} Wilds (Lvl 20 BOSS)";
                     gateBtn.style.background = "#b33939";
                 } else {
                     gateBtn.innerText = `Deploy Wilds (Lvl ${activeWildLvl})`;
@@ -615,10 +615,10 @@ if (hopsScreen) hopsScreen.style.display = "none";
                 let activeCellarLvl = player.selectedCellarLevel || player.cellarLevel;
                 if (player.cellarsUnlocked) {
                     cellarGate.disabled = false; cellarGate.style.background = "#7b1fa2";
-                    cellarGate.innerText = `Cellars (Lvl ${activeCellarLvl})`;
+                    cellarGate.innerText = `\u{1F377} Cellars (Lvl ${activeCellarLvl})`;
                 } else { 
                     cellarGate.disabled = true; cellarGate.style.background = "#443a32";
-                    cellarGate.innerText = "Defeat Lvl 20 Wilds";
+                    cellarGate.innerText = "\u{1F512} Defeat Lvl 20 Wilds";
                 }
             }
 
@@ -627,11 +627,11 @@ if (hopsScreen) hopsScreen.style.display = "none";
                 if (player.abyssUnlocked) {
                     abyssBtn.disabled = false;
                     abyssBtn.style.background = "#190a2e"; 
-                    abyssBtn.innerText = `Descend into the Procedural Abyss (Depth ${player.abyssDepth || 1})`;
+                    abyssBtn.innerText = `\u{1F30C} Descend into the Procedural Abyss (Depth ${player.abyssDepth || 1})`;
                 } else {
                     abyssBtn.disabled = true;
                     abyssBtn.style.background = "#443a32"; 
-                    abyssBtn.innerText = "Defeat Lvl 20 Cellars";
+                    abyssBtn.innerText = "\u{1F512} Defeat Lvl 20 Cellars";
                 }
             }
             const roster = player.roster && typeof player.roster === 'object' ? player.roster : { companions: [], activeIds: [] };
@@ -672,7 +672,7 @@ if (hopsScreen) hopsScreen.style.display = "none";
 
            let backpackHeader = document.querySelector("#main-backpack-panel h3");
             if (backpackHeader) {
-                backpackHeader.innerHTML = `Knight's Backpack (<span id="inv-count">${player.inventory.length}</span>/${player.maxInventorySlots || 5} Slots) ` +
+                backpackHeader.innerHTML = `\u{1F392} Knight's Backpack (<span id="inv-count">${player.inventory.length}</span>/${player.maxInventorySlots || 5} Slots) ` +
 `<button onclick="upgradeBackpackCapacity()" style="font-size:8px; padding:2px; margin-left:5px; background:#e67e22;" ${player.gold < packCost.gold ? 'disabled' : ''} onmouseenter="showSystemTooltip('pack_up', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Expand (+1 Slot: ${packCost.gold}g)</button>`;
             }
 
@@ -701,12 +701,12 @@ if (hopsScreen) hopsScreen.style.display = "none";
                 let canReset = player.gold >= 1000 && sp < totalSP;
                 let resetDisabledStr = canReset ? "" : "disabled";
                 
-                let chevron = statsExpanded ? "[-]" : "[+]";
+                let chevron = statsExpanded ? "\u{1F53C}" : "\u{1F53D}";
                 let pulseClass = (sp > 0 && !statsExpanded) ? "pulse-sp-active" : ""; 
                 
                 lvlPanel.innerHTML = `
                     <button class="${pulseClass}" onclick="toggleStatsPanel()" style="width: 100%; background: #2c1e16; border: 1px solid #d35400; padding: 10px; text-align: left; display: flex; justify-content: space-between; align-items: center; border-radius: 4px; margin-bottom: ${statsExpanded ? '0' : '10px'}; cursor: pointer;" onmouseenter="showSystemTooltip('stats_panel', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">
-                        <span style="color: #ff9f43; font-weight: bold; font-family: 'Courier New', monospace; font-size: 13px;">Lvl ${player.level} Knight (${xpString})</span>
+                        <span style="color: #ff9f43; font-weight: bold; font-family: 'Courier New', monospace; font-size: 13px;">\u{1F31F} Lvl ${player.level} Knight (${xpString})</span>
                         <span style="font-size: 11px; color: #f1c40f;"><span id="unspent-sp">${sp}</span> SP Available ${chevron}</span>
                     </button>
                     
@@ -727,7 +727,7 @@ if (hopsScreen) hopsScreen.style.display = "none";
                             <div style="cursor:help;" onmouseenter="showSystemTooltip('stat_swiftness', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"><b>Speed:</b> Lvl ${player.speed}</div> 
                             <button ${btnDisabled} onclick="allocateStat('speed')" style="padding: 2px 10px;" onmouseenter="showSystemTooltip('stat_swiftness', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">+1</button>
                         </div>
-                        <button ${resetDisabledStr} onclick="resetStats()" style="width: 100%; margin-top: 10px; background: #8e44ad; padding: 4px 0; border-color: #9b59b6;" onmouseenter="showSystemTooltip('stat_reset', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Reset Stats (1000g)</button>
+                        <button ${resetDisabledStr} onclick="resetStats()" style="width: 100%; margin-top: 10px; background: #8e44ad; padding: 4px 0; border-color: #9b59b6;" onmouseenter="showSystemTooltip('stat_reset', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">\u{1F504} Reset Stats (1000g)</button>
                     </div>
                 `;
             }
@@ -904,7 +904,7 @@ function renderMainScreenSprites() {
                 editBtn.style.display = "block";
                 if (trainBtn) {
                     trainBtn.style.display = "block";
-                    trainBtn.innerText = `ðŸ¦´ Feed Kibble (Lvl ${player.pet.level || 1})`;
+                    trainBtn.innerText = `\u{1F9B4} Feed Kibble (Lvl ${player.pet.level || 1})`;
                 }
             } else {
                 if (trainBtn) trainBtn.style.display = "none";
@@ -1047,7 +1047,7 @@ function renderCombatModal(filter = 'DRINK') {
     let grid = document.getElementById('combat-modal-grid');
     
     let title = document.getElementById('combat-modal-title');
-    if (title) title.innerText = "ðŸŽ’ Combat Backpack";
+    if (title) title.innerText = "\u{1F392} Combat Backpack";
     
     let filterContainer = document.getElementById('combat-modal-filters');
     if (!filterContainer) {
@@ -1061,8 +1061,8 @@ function renderCombatModal(filter = 'DRINK') {
     filterContainer.innerHTML = ''; 
 
     const filters = [
-        { id: 'DRINK', icon: 'ðŸº', text: 'Drinks' },
-        { id: 'EQUIP', icon: 'ðŸ›¡ï¸', text: 'Gear' }
+        { id: 'DRINK', icon: '\u{1F37A}', text: 'Drinks' },
+        { id: 'EQUIP', icon: '\u{1F6E1}\uFE0F', text: 'Gear' }
     ];
 
     filters.forEach(f => {

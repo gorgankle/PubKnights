@@ -1,4 +1,4 @@
-﻿// --- LOGIC: TOWN ECONOMY & ACTIONS ---
+// --- LOGIC: TOWN ECONOMY & ACTIONS ---
 
 function allocateStat(statKey) { socket.emit('townAction', { action: 'allocateStat', statKey: statKey }); }
 
@@ -93,8 +93,12 @@ function sellFishBulk() { logMessage('Bulk fish exports have been retired in the
 
 // === QUARTERMASTER EXCHANGE LOGIC ===
 function exchangePoints(type, tier) {
-    logMessage('Quartermaster resource exchanges have been retired in the gold economy.');
-    if (typeof playRetroSound === 'function') playRetroSound('error');
+    if (tier !== 'gamble') {
+        logMessage('Only Quartermaster crate trades are available right now.');
+        if (typeof playRetroSound === 'function') playRetroSound('error');
+        return;
+    }
+    socket.emit('townAction', { action: 'exchangePoints', type: type, tier: tier });
 }
 // === ROULETTE UNBOXING SEQUENCE ===
 function triggerUnboxing(inventoryIndex, crateItem) {
@@ -228,8 +232,12 @@ function trainPet() {
 
 // === QUARTERMASTER EXCHANGE LOGIC ===
 function exchangePoints(type, tier) {
-    logMessage('Quartermaster resource exchanges have been retired in the gold economy.');
-    if (typeof playRetroSound === 'function') playRetroSound('error');
+    if (tier !== 'gamble') {
+        logMessage('Only Quartermaster crate trades are available right now.');
+        if (typeof playRetroSound === 'function') playRetroSound('error');
+        return;
+    }
+    socket.emit('townAction', { action: 'exchangePoints', type: type, tier: tier });
 }
 
 // --- RENAISSANCE CORNER BRIDGE ---

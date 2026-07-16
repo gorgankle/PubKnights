@@ -1,4 +1,4 @@
-﻿// --- townRouter.js ---
+// --- townRouter.js ---
 // Handles all non-combat economy, inventory, and tavern management logic.
 
 // 1. Import the specific dictionaries this router needs
@@ -566,7 +566,34 @@ if (data.action === 'equip') {
 // ============================================
         // 22. QUARTERMASTER POINT EXCHANGE
         else if (data.action === 'exchangePoints') {
-            socket.emit('townReceipt', { success: false, action: 'trade', updatedPlayer: p, message: 'Quartermaster resource exchanges have been retired in the gold economy.' });
+            const type = sanitizeToken(data.type, '');
+            const tier = sanitizeToken(data.tier, '');
+            const crateCost = 2500;
+            const crateTrades = {
+                lumber: { pointsKey: 'lumberPoints', crateId: 'timber_crate', label: 'Timber Crate' },
+                fish: { pointsKey: 'fishingPoints', crateId: 'angler_crate', label: 'Angler Crate' },
+                hops: { pointsKey: 'hopsPoints', crateId: 'harvest_crate', label: 'Harvest Crate' }
+            };
+            const trade = crateTrades[type];
+
+            if (tier !== 'gamble' || !trade) {
+                return socket.emit('townReceipt', { success: false, action: 'trade', updatedPlayer: p, message: 'Only Quartermaster crate trades are available right now.' });
+            }
+            if (p.inventory.length >= (p.maxInventorySlots || 5)) {
+                return socket.emit('townReceipt', { success: false, action: 'trade', updatedPlayer: p, message: 'Backpack is full.' });
+            }
+            if ((p[trade.pointsKey] || 0) < crateCost) {
+                return socket.emit('townReceipt', { success: false, action: 'trade', updatedPlayer: p, message: `Need ${crateCost} Quartermaster points for a ${trade.label}.` });
+            }
+
+            const crateItem = cloneItem(trade.crateId);
+            if (!crateItem) {
+                return socket.emit('townReceipt', { success: false, action: 'trade', updatedPlayer: p, message: 'That crate is not available.' });
+            }
+
+            p[trade.pointsKey] = (p[trade.pointsKey] || 0) - crateCost;
+            p.inventory.push(crateItem);
+            socket.emit('townReceipt', { success: true, action: 'trade', updatedPlayer: p, message: `Quartermaster issued a ${trade.label}.` });
         }
 // 23. UNBOX GAMBLE CRATES
         else if (data.action === 'openCrate') {

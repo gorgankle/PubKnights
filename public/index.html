@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -544,8 +544,9 @@
         <!-- MODULE 1: Provisioner Counter -->
         <div class="dashboard-panel" style="margin-bottom: 0;">
             <h3 style="color: #3498db; border-bottom: 1px dashed #2980b9;">🛍️ Provisioner Counter</h3>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px;">
-                <button id="hire-marlow-btn" onclick="hireTavernCompanion()" style="grid-column: span 2; margin: 0; padding: 8px; background: #216b4f; border-color: #2ecc71;">Hire Marlow Shieldhand (250g)</button>
+            <div style="display: grid; grid-template-columns: 1fr auto; gap: 6px; margin-bottom: 6px; align-items: center;">
+                <input id="mercenary-name-input" placeholder="Mercenary name" style="min-width: 0; background:#1a1512; color:#f4ebd9; border:1px solid #634e3d; padding:8px; font-family:monospace;">
+                <button id="hire-mercenary-btn" onclick="hireTavernCompanion()" style="margin: 0; padding: 8px; background: #216b4f; border-color: #2ecc71;">Hire Mercenary (250g)</button>
             </div>
         </div>
 
@@ -562,18 +563,23 @@
                 <button id="reserve-btn" onclick="craftReserveBrew()" style="grid-column: span 2; margin: 0; padding: 10px; background: #8e44ad; border-color: #9b59b6;" onmouseenter="showSystemTooltip('reserve', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🍷 Grandmaster Reserve (1000g)</button>
             </div>
         </div>
-
-
-        <!-- MODULE 4: Blacksmith Placeholder (not built out yet)-->
+        <!-- MODULE 3: Guild Quartermaster -->
         <div class="dashboard-panel" style="margin-bottom: 0;">
-            <h3 style="color: #bdc3c7; border-bottom: 1px dashed #7f8c8d;">🔨 Forge</h3>
-            <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
-                <button disabled style="background: #34495e; border-color: #7f8c8d; color: #95a5a6; padding: 10px; margin: 0; cursor: not-allowed; text-decoration: line-through;">⚔️(Coming Soon)</button>
-                <button disabled style="background: #34495e; border-color: #7f8c8d; color: #95a5a6; padding: 10px; margin: 0; cursor: not-allowed; text-decoration: line-through;">🛡️ (Coming Soon)</button>
-                <button disabled style="background: #34495e; border-color: #7f8c8d; color: #95a5a6; padding: 10px; margin: 0; cursor: not-allowed; text-decoration: line-through;">(Coming Soon)</button>
+            <h3 style="color: #f1c40f; border-bottom: 1px dashed #f39c12;">Guild Quartermaster</h3>
+
+            <div style="background: #1e271e; border: 1px solid #27ae60; padding: 8px; margin-bottom: 8px; border-radius: 4px;">
+                <span style="color: #2ecc71; font-weight: bold; font-size: 11px;">Timber Trial Points: <span id="ui-timber-pts">0</span></span>
+                <button onclick="exchangePoints('lumber', 'gamble')" style="width: 100%; margin: 6px 0 0 0; padding: 8px; background: #d35400;">Timber Crate - 2500 pts</button>
             </div>
-            <div style="font-size: 10px; color: #bdc3c7; text-align: center; margin-top: 15px; font-style: italic;">
-                The furnace is cold. Check back in a future update.
+
+            <div style="background: #1a242f; border: 1px solid #2980b9; padding: 8px; margin-bottom: 8px; border-radius: 4px;">
+                <span style="color: #3498db; font-weight: bold; font-size: 11px;">Fishing Trial Points: <span id="ui-fish-pts">0</span></span>
+                <button onclick="exchangePoints('fish', 'gamble')" style="width: 100%; margin: 6px 0 0 0; padding: 8px; background: #d35400;">Angler Crate - 2500 pts</button>
+            </div>
+
+            <div style="background: #2c1a35; border: 1px solid #8e44ad; padding: 8px; border-radius: 4px;">
+                <span style="color: #9b59b6; font-weight: bold; font-size: 11px;">Hops Trial Points: <span id="ui-hops-pts">0</span></span>
+                <button onclick="exchangePoints('hops', 'gamble')" style="width: 100%; margin: 6px 0 0 0; padding: 8px; background: #d35400;">Harvest Crate - 2500 pts</button>
             </div>
         </div>
 
