@@ -239,3 +239,50 @@ test('a companion staff can resolve single-target and area spells', async t => {
         assert.equal(harness.companion.stamina, 22);
     });
 });
+
+test('pass atomically ends the active companion turn and ignores a spoofed actor uid', () => {
+    const weapon = makeWeapon({ range: 1, staminaCost: 5, multiplier: 1 });
+    const harness = createHarness({ weapon });
+    harness.companion.stamina = 10;
+
+    harness.socket.dispatch('dispatchCombatAction', {
+        actorUid: 'player_0',
+        actionCategory: 'pass'
+    });
+
+    const result = harness.socket.lastPayload('combatResult');
+    assert.equal(result.type, 'pass');
+    assert.equal(result.actorUid, harness.companion.uid);
+    assert.equal(result.recovered, 7);
+    assert.equal(harness.companion.stamina, 17);
+    assert.equal(harness.companion.atbCharge, 0);
+    assert.equal(harness.combat.activeActorUid, null);
+    assert.equal(harness.combat.atbPaused, false);
+    assert.equal(result.updatedCombatState.activeActorUid, null);
+});
+
+test('pass atomically ends the player actor turn', () => {
+    const weapon = makeWeapon({ range: 1, staminaCost: 5, multiplier: 1 });
+    const harness = createHarness({ weapon });
+    const playerActor = harness.combat.actors.find(actor => actor.uid === 'player_0');
+    harness.player.maxStamina = 2;
+    harness.player.stamina = 10;
+    playerActor.atbCharge = 100;
+    harness.combat.player.atbCharge = 100;
+    harness.combat.activeActorUid = playerActor.uid;
+
+    harness.socket.dispatch('dispatchCombatAction', {
+        actorUid: harness.companion.uid,
+        actionCategory: 'pass'
+    });
+
+    const result = harness.socket.lastPayload('combatResult');
+    assert.equal(result.type, 'pass');
+    assert.equal(result.actorUid, playerActor.uid);
+    assert.equal(result.recovered, 7);
+    assert.equal(harness.player.stamina, 17);
+    assert.equal(playerActor.atbCharge, 0);
+    assert.equal(harness.combat.player.atbCharge, 0);
+    assert.equal(harness.combat.activeActorUid, null);
+    assert.equal(harness.combat.atbPaused, false);
+});

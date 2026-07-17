@@ -68,7 +68,12 @@ socket.on('combatResult', (result) => {
 
     if (result.type === 'pass') {
         logMessage(`⌛ Phase passed. Recovered ${result.recovered} stamina.`);
-        advancePhase(); // Safely advances the turn!
+        if (resultCombatState) syncCombatCollectionsFromState(resultCombatState);
+        currentTurn = 'ENEMY';
+        combatPhase = 'WAITING_FOR_ATB';
+        selectedEnemy = null;
+        pendingMove = null;
+        activeCombatActorUid = null;
         refreshSystemUI();
         if (typeof drawGrid === 'function') drawGrid();
         return;

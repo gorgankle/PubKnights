@@ -139,7 +139,7 @@ function executeCombatAction(actionType) {
             
         }
 
-if (actionType !== 'end') combatPhase = 'WAITING_FOR_SERVER';
+        combatPhase = 'WAITING_FOR_SERVER';
 
         // ONE unified payload to rule them all
         socket.emit('dispatchCombatAction', { 

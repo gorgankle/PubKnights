@@ -87,8 +87,12 @@ function bindInventoryDoubleClick(element, handler) {
 }
 
 // === DRAG & DROP REORDERING ACTIONS ===
+const PUBKNIGHTS_ITEM_DRAG_TYPE = "application/x-pubknights-item";
+
 function handleItemDragStart(event, index, listType) {
-    event.dataTransfer.setData("text/plain", JSON.stringify({ index: index, type: listType }));
+    const payload = JSON.stringify({ index: index, type: listType });
+    event.dataTransfer.setData(PUBKNIGHTS_ITEM_DRAG_TYPE, payload);
+    event.dataTransfer.setData("text/plain", payload);
     event.dataTransfer.effectAllowed = "move";
 }
 
@@ -100,7 +104,11 @@ function handleItemDragOver(event) {
 function handleItemDrop(event, toIndex, toType) {
     event.preventDefault();
     try {
-        const dragData = JSON.parse(event.dataTransfer.getData("text/plain"));
+        const rawDragData = event.dataTransfer.getData(PUBKNIGHTS_ITEM_DRAG_TYPE);
+        if (!rawDragData) return;
+
+        const dragData = JSON.parse(rawDragData);
+        if (!dragData || !['backpack', 'vault', 'equipment'].includes(dragData.type)) return;
         const fromIndex = dragData.index;
         const fromType = dragData.type;
 

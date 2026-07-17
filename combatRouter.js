@@ -152,7 +152,8 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             const recover = Math.floor(maxStam * 0.15);
             if (isPlayerActor(activeActor)) p.stamina = Math.min(maxStam, (p.stamina || 0) + recover);
             else activeActor.stamina = Math.min(maxStam, (activeActor.stamina || 0) + recover);
-            socket.emit('combatResult', { type: 'pass', actorUid: activeActor.uid, actorName: activeActor.name, updatedPlayer: p, updatedCombatState: syncCombatViews(combat, p), recovered: recover });
+            finishPlayerControlledTurn(combat, p, activeActor);
+            socket.emit('combatResult', { type: 'pass', actorUid: activeActor.uid, actorName: activeActor.name, updatedPlayer: p, updatedCombatState: combat, recovered: recover });
             return;
         }
 
