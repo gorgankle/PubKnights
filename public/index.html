@@ -6,7 +6,7 @@
 	<!-- NEW: Mobile Viewport Scaling -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Pub Knights - Beta v0.9(Modular Refactor)</title>
-    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="style.css?v=3">
 	
 	<!-- === NEW: MOBILE DRAG & DROP POLYFILL === -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/default.css">
@@ -135,8 +135,9 @@
         
         <div id="action-interface" style="width: 100%; max-width: 960px; background: #221a14; padding: 15px; border-radius: 6px; border: 1px solid #634e3d; box-sizing: border-box;">
             
-            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px dashed #4a3b2c; padding-bottom: 8px; margin-bottom: 12px;">
-                <span id="target-ui-header" style="font-size: 14px; font-weight: bold; color:#ffcc66; text-transform: uppercase;">INITIALIZING MATRIX</span>
+            <div class="combat-turn-header">
+                <span id="combat-active-actor" class="combat-active-actor" aria-live="polite">ATB: CHARGING</span>
+                <span id="target-ui-header" class="combat-phase-instruction">INITIALIZING MATRIX</span>
             </div>
             
             <div id="combat-top-bars" style="margin-bottom: 12px;"></div>
@@ -899,14 +900,14 @@
 	<script src="js/icon-assets.js"></script>
 	<script src="/socket.io/socket.io.js"></script>
 
-    <script src="js/main.js?v=4"></script>
+    <script src="js/main.js?v=5"></script>
     <script src="js/inventory.js?v=4"></script>
 
 <!-- UI, Tooltips & Graphics Output -->
     <script src="js/ui-tooltips.js"></script>
     <script src="js/companion-ui.js"></script>
-    <script src="js/ui-render.js?v=3"></script>
-    <script src="js/renderer.js"></script>       <!-- RENDERS DATA -->
+    <script src="js/ui-render.js?v=4"></script>
+    <script src="js/renderer.js?v=2"></script>       <!-- RENDERS DATA -->
 	<script src="js/fx-engine.js"></script>
 	<script src="js/dialogue.js"></script>
 	<script src="js/quest-scripts.js"></script>
@@ -917,7 +918,7 @@
 <!-- Game Systems & Logic -->
     <script src="js/login.js"></script>
     <script src="js/combat-maps.js"></script>
-    <script src="js/combat-mechanics.js?v=4"></script>
+    <script src="js/combat-mechanics.js?v=5"></script>
     <script src="js/town-actions.js"></script>
 	<script src="js/minigames.js"></script>
 	<script src="js/spellbook.js"></script> 

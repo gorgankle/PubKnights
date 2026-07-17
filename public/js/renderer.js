@@ -137,6 +137,49 @@ function drawCombatAura(target, gridX, gridY, size = 1) {
 }
 
 
+function drawActiveTurnMarker() {
+    if (typeof activeCombatActorUid === "undefined" || !activeCombatActorUid) return;
+    if (typeof getCombatActorByUid !== "function") return;
+
+    const actor = getCombatActorByUid(activeCombatActorUid);
+    if (!actor || actor.alive === false) return;
+
+    const size = actor.size || 1;
+    const visualX = Number.isFinite(actor.visualX) ? actor.visualX : actor.x;
+    const visualY = Number.isFinite(actor.visualY) ? actor.visualY : actor.y;
+    const pulse = (Math.sin(globalAnimClock * 0.12) + 1) / 2;
+    const centerX = (visualX + (size / 2)) * currentTileSize;
+    const footY = Math.min(canvas.height - 4, (visualY + size) * currentTileSize - 4);
+    const ringRadiusX = Math.max(12, (currentTileSize * size * 0.43) + (pulse * 2));
+    const ringRadiusY = Math.max(5, currentTileSize * 0.12);
+
+    ctx.save();
+    ctx.strokeStyle = "#f1c40f";
+    ctx.fillStyle = "#f1c40f";
+    ctx.lineWidth = Math.max(2, currentTileSize * 0.055);
+    ctx.shadowColor = "rgba(0, 0, 0, 0.85)";
+    ctx.shadowBlur = 4;
+    ctx.globalAlpha = 0.78 + (pulse * 0.22);
+    ctx.beginPath();
+    ctx.ellipse(centerX, footY, ringRadiusX, ringRadiusY, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    const arrowHalfWidth = Math.max(5, currentTileSize * 0.11);
+    const arrowTipY = Math.max(10, (visualY * currentTileSize) - 5 + (pulse * 3));
+    const arrowTopY = Math.max(2, arrowTipY - Math.max(9, currentTileSize * 0.22));
+    ctx.beginPath();
+    ctx.moveTo(centerX - arrowHalfWidth, arrowTopY);
+    ctx.lineTo(centerX + arrowHalfWidth, arrowTopY);
+    ctx.lineTo(centerX, arrowTipY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "#3b2a11";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.restore();
+}
+
+
 // === ENGINE HEARTBEAT LOOP ===
 function updateAnimationEngine() {
     requestAnimationFrame(updateAnimationEngine);
@@ -432,27 +475,6 @@ if (SpriteMatrices[e.id]) {
         }
     });
 
-    function drawPetActorSprite(actor, x, y, size) {
-        const cosmetics = actor.petCosmetics || {};
-        const matrix = typeof PetMatrices !== 'undefined' ? PetMatrices[cosmetics.type || 'dog'] : null;
-        if (!matrix) return false;
-        const pixelSize = size / 24;
-        for (let row = 0; row < matrix.length; row++) {
-            for (let col = 0; col < matrix[row].length; col++) {
-                const colorKey = matrix[row][col];
-                let color = 'transparent';
-                if (colorKey === 'f') color = PetFurTones[cosmetics.furColor || 'brown'] || PetFurTones.brown;
-                else if (colorKey === 'c') color = PetCollarTones[cosmetics.collarColor || 'red'] || PetCollarTones.red;
-                else if (colorKey === 'b' || colorKey === 'o') color = '#111111';
-                else if (colorKey === 'w') color = (cosmetics.furColor === 'white') ? '#d1ccc0' : '#f4ebd9';
-                if (color !== 'transparent') {
-                    ctx.fillStyle = color;
-                    ctx.fillRect(x + (col * pixelSize), y + (row * pixelSize), Math.ceil(pixelSize), Math.ceil(pixelSize));
-                }
-            }
-        }
-        return true;
-    }
 
     function drawNonEnemyActor(actor, palette) {
         if (!actor.alive) return;
@@ -479,9 +501,7 @@ if (SpriteMatrices[e.id]) {
         let ay = (actor.visualY * currentTileSize) - hopY + (actor.lungeOffsetY || 0) - (actor.lungeHop || 0);
 
         ctx.save();
-        if (actor.kind === 'pet' && drawPetActorSprite(actor, ax, ay, currentTileSize * sSize)) {
-            // Pet sprite rendered.
-        } else if (SpriteMatrices[actor.id]) {
+        if (SpriteMatrices[actor.id]) {
             drawOptimizedSprite(ctx, actor.id, SpriteMatrices[actor.id], ax, ay, currentTileSize * sSize);
         } else {
             ctx.fillStyle = palette.fill;
@@ -540,6 +560,8 @@ if (SpriteMatrices[e.id]) {
             }
         }
     }
+
+    drawActiveTurnMarker();
 
     // === NEW: VISUAL FX PARTICLE RENDERER ===
     if (typeof activeExplosions !== 'undefined') {

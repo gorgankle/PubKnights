@@ -11,7 +11,8 @@ const {
     getMaxHp,
     getMaxStamina
 } = require('./combatMath.js');
-const { processSecureKill, claimCombatRewards } = require('./combatRewards.js');
+const { claimCombatRewards } = require('./combatRewards.js');
+const { resolveActorDefeat } = require('./combatResolution.js');
 const { createCombatEncounter } = require('./combatEncounters.js');
 const { executeActorTurn } = require('./combatAI.js');
 const { applyPoison, tickPoison } = require('./combatStatus.js');
@@ -22,7 +23,6 @@ const {
     getPlayerActor,
     getActorByUid,
     getAliveActors,
-    getEnemyActors,
     getHostileActorsFor,
     getPlayerAttackTargets,
     isActorAlive,
@@ -103,9 +103,8 @@ function finishPlayerControlledTurn(combat, player, actor) {
 }
 module.exports = function(socket, io, activePlayers, activeCombats) {
     const combatContext = { activePlayers, activeCombats, io };
-
-    function secureKill(serverEnemy) {
-        return processSecureKill(socket.id, serverEnemy, combatContext);
+    function resolveDefeat(target, details = {}) {
+        return resolveActorDefeat(socket.id, target, combatContext, details);
     }
 
     socket.on('dispatchCombatAction', (data) => {
@@ -158,13 +157,13 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         }
 
         if (data.actionCategory === 'weapon') {
-            if (isPlayerActor(activeActor)) handleWeaponAction(socket, p, combat, data, secureKill);
-            else handleActorWeaponAction(socket, p, combat, data, secureKill, activeActor);
+            if (isPlayerActor(activeActor)) handleWeaponAction(socket, p, combat, data, resolveDefeat);
+            else handleActorWeaponAction(socket, p, combat, data, resolveDefeat, activeActor);
             return;
         }
 
         if (data.actionCategory === 'consumable') {
-            if (isPlayerActor(activeActor)) handleConsumableAction(socket, p, combat, data, secureKill);
+            if (isPlayerActor(activeActor)) handleConsumableAction(socket, p, combat, data, resolveDefeat);
             else handleActorConsumableAction(socket, p, combat, data, activeActor);
             return;
         }
@@ -329,6 +328,15 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 if (readyControlledActor) {
                     const poisonTarget = isPlayerActor(readyControlledActor) ? p : readyControlledActor;
                     const poisonTick = tickPoison(poisonTarget);
+                    let poisonResolution = null;
+                    if (poisonTick && poisonTick.killed && !isPlayerActor(readyControlledActor)) {
+                        poisonResolution = resolveActorDefeat(socketId, readyControlledActor, combatContext, {
+                            cause: 'poison',
+                            sourceUid: poisonTick.sourceUid,
+                            sourceName: poisonTick.sourceName,
+                            sourceKind: poisonTick.sourceKind
+                        });
+                    }
                     if (poisonTick) {
                         io.to(socketId).emit('statusEffectReceipt', {
                             events: [{
@@ -341,7 +349,10 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                                 killed: poisonTick.killed
                             }],
                             updatedPlayer: p,
-                            updatedCombatState: syncCombatViews(combat, p)
+                            updatedCombatState: poisonResolution && poisonResolution.combatComplete
+                                ? null
+                                : syncCombatViews(combat, p),
+                            combatComplete: !!(poisonResolution && poisonResolution.combatComplete)
                         });
                     }
 
@@ -357,8 +368,6 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                         continue;
                     }
                     if (!isPlayerActor(readyControlledActor) && readyControlledActor.hp <= 0) {
-                        readyControlledActor.alive = false;
-                        readyControlledActor.retreated = true;
                         continue;
                     }
 
@@ -375,16 +384,15 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
 
                     if (readyActors.length > 0) {
                         const masterEventList = [];
-                        const onActorDefeated = (actor) => {
-                            if (!actor || actor.rewardsEligible === false) {
-                                syncCombatViews(combat, p);
-                                return { combatComplete: false };
-                            }
-                            return processSecureKill(socketId, actor, combatContext);
+                        let combatComplete = false;
+                        const onActorDefeated = (actor, details = {}) => {
+                            const result = resolveActorDefeat(socketId, actor, combatContext, details);
+                            combatComplete = combatComplete || !!(result && result.combatComplete);
+                            return result;
                         };
 
-                        readyActors.forEach(actor => {
-                            if (!activeCombats[socketId]) return;
+                        for (const actor of readyActors) {
+                            if (!activeCombats[socketId] || combatComplete) break;
                             actor.atbCharge = 0;
                             const poisonTick = tickPoison(actor);
                             if (poisonTick) {
@@ -399,28 +407,31 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                                     killed: poisonTick.killed
                                 });
                                 if (poisonTick.killed) {
-                                    actor.alive = false;
-                                    if (actor.deathBehavior === 'retreat') {
-                                        actor.retreated = true;
+                                    const resolution = onActorDefeated(actor, {
+                                        cause: 'poison',
+                                        sourceUid: poisonTick.sourceUid,
+                                        sourceName: poisonTick.sourceName,
+                                        sourceKind: poisonTick.sourceKind
+                                    });
+                                    if (resolution && resolution.retreated) {
                                         masterEventList.push({ type: 'retreat', uid: actor.uid, actorName: actor.name, teamId: actor.teamId });
-                                    } else {
-                                        onActorDefeated(actor);
                                     }
                                 }
-                                if (poisonTick.killed) return;
+                                if (poisonTick.killed) continue;
                             }
                             const events = executeActorTurn(socketId, combat, p, actor, activeCombats, onActorDefeated);
                             if (events && events.length > 0) masterEventList.push(...events);
-                        });
-
+                        }
                         if (masterEventList.length > 0) {
                             const combatDefeated = masterEventList.some(ev => ev && ev.type === 'death');
-                            if (!combatDefeated) combat.playbackLock = true;
+                            const encounterEnded = combatDefeated || combatComplete;
+                            if (!encounterEnded) combat.playbackLock = true;
                             io.to(socketId).emit('enemyTurnReceipt', {
                                 events: masterEventList,
                                 updatedPlayer: p,
-                                updatedCombatState: combatDefeated ? null : syncCombatViews(combat, p),
-                                combatDefeated
+                                updatedCombatState: encounterEnded ? null : syncCombatViews(combat, p),
+                                combatDefeated,
+                                combatComplete
                             });
                         }
                     }
@@ -429,23 +440,6 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         }, 200);
     }
 };
-
-function defeatCombatTarget(combat, p, target, secureKill) {
-    target.hp = 0;
-    target.alive = false;
-
-    if (target.deathBehavior === 'retreat') {
-        target.retreated = true;
-        return { combatComplete: false };
-    }
-
-    if (target.rewardsEligible === false) {
-        syncCombatViews(combat, p);
-        return { combatComplete: getEnemyActors(combat).every(enemy => !enemy.alive) };
-    }
-
-    return secureKill(target) || { combatComplete: false };
-}
 
 function rollSpellDamage(p, spellData, combatRules) {
     const offense = getEffectiveStat(p, "offense");
@@ -483,7 +477,7 @@ function getActorEnemyAtTile(combat, actor, tx, ty) {
     });
 }
 
-function handleWeaponSpellAction(socket, p, combat, data, weapon, combatRules, secureKill) {
+function handleWeaponSpellAction(socket, p, combat, data, weapon, combatRules, resolveDefeat) {
     const spellData = SpellDatabase[combatRules.spellId];
     if (!spellData) {
         return socket.emit('combatResult', { type: 'error', message: 'Server: Staff spell is not configured.', newStamina: p.stamina });
@@ -523,12 +517,13 @@ function handleWeaponSpellAction(socket, p, combat, data, weapon, combatRules, s
         const poisonApplied = applyPoison(enemy, {
             chance: spellData.poisonChance || combatRules.poisonChance || 0,
             turns: spellData.poisonTurns || combatRules.poisonTurns || 3,
-            fallbackDamage: Math.max(2, Math.floor(roll.damage * 0.25))
+            fallbackDamage: Math.max(2, Math.floor(roll.damage * 0.25)),
+            sourceActor: getPlayerActor(combat)
         });
         let killed = false;
         if (enemy.hp <= 0) {
             killed = true;
-            const killResult = defeatCombatTarget(combat, p, enemy, secureKill);
+            const killResult = resolveDefeat(enemy, { sourceActor: getPlayerActor(combat), cause: 'spell' });
             combatComplete = combatComplete || !!(killResult && killResult.combatComplete);
         }
         hitTargets.push({ uid: enemy.uid, damage: roll.damage, isCrit: roll.isCrit, killed: killed, statusApplied: poisonApplied ? 'poison' : null, statusEffects: enemy.statusEffects });
@@ -571,11 +566,11 @@ function handleWeaponSpellAction(socket, p, combat, data, weapon, combatRules, s
             tx: tx, ty: ty
         },
         updatedPlayer: p,
-        updatedCombatState: syncCombatViews(combat, p),
+        updatedCombatState: combatComplete ? null : syncCombatViews(combat, p),
         combatComplete
     });
 }
-function handleActorWeaponAction(socket, p, combat, data, secureKill, actor) {
+function handleActorWeaponAction(socket, p, combat, data, resolveDefeat, actor) {
     const equipment = getActorEquipment(actor, p);
     let weapon = equipment.weapon;
     if (!weapon || !weapon.combat) weapon = buildFallbackWeapon();
@@ -589,7 +584,7 @@ function handleActorWeaponAction(socket, p, combat, data, secureKill, actor) {
     }
 
     if (combatRules.actionType === 'spell') {
-        return handleActorSpellAction(socket, p, combat, data, actor, weapon, combatRules, secureKill);
+        return handleActorSpellAction(socket, p, combat, data, actor, weapon, combatRules, resolveDefeat);
     }
 
     if (data.subType === 'special' && combatRules.targetType === 'aoe') {
@@ -616,7 +611,7 @@ function handleActorWeaponAction(socket, p, combat, data, secureKill, actor) {
                 let killed = false;
                 if (enemy.hp <= 0) {
                     killed = true;
-                    const killResult = defeatCombatTarget(combat, p, enemy, secureKill);
+                    const killResult = resolveDefeat(enemy, { sourceActor: actor, cause: 'weapon' });
                     combatComplete = combatComplete || !!(killResult && killResult.combatComplete);
                 }
                 hitTargets.push({ uid: enemy.uid, damage: variedDmg, isCrit, killed });
@@ -627,7 +622,7 @@ function handleActorWeaponAction(socket, p, combat, data, secureKill, actor) {
             type: 'hit', source: 'weapon', actionName: data.subType, actorUid: actor.uid, actorName: actor.name, targets: hitTargets,
             fx: { tx: data.tx, ty: data.ty, sx: actor.x, sy: actor.y, sourceUid: actor.uid, spriteId: weapon.spriteId, isAoE: true, radius: combatRules.aoeRadius || 1 },
             updatedPlayer: p,
-            updatedCombatState: syncCombatViews(combat, p),
+            updatedCombatState: combatComplete ? null : syncCombatViews(combat, p),
             combatComplete
         });
     }
@@ -669,14 +664,15 @@ function handleActorWeaponAction(socket, p, combat, data, secureKill, actor) {
     const poisonApplied = applyPoison(serverEnemy, {
         chance: combatRules.poisonChance || 0,
         turns: combatRules.poisonTurns || 3,
-        fallbackDamage: Math.max(2, Math.floor(finalDmg * 0.25))
+        fallbackDamage: Math.max(2, Math.floor(finalDmg * 0.25)),
+        sourceActor: actor
     });
 
     let combatComplete = false;
     let killed = false;
     if (serverEnemy.hp <= 0) {
         killed = true;
-        const killResult = defeatCombatTarget(combat, p, serverEnemy, secureKill);
+        const killResult = resolveDefeat(serverEnemy, { sourceActor: actor, cause: 'weapon' });
         combatComplete = !!(killResult && killResult.combatComplete);
     }
 
@@ -688,12 +684,12 @@ function handleActorWeaponAction(socket, p, combat, data, secureKill, actor) {
         newStamina: getActorStaminaValue(actor, p),
         fx: { tx: serverEnemy.x, ty: serverEnemy.y, sx: actor.x, sy: actor.y, sourceUid: actor.uid, spriteId: isRanged ? weapon.projectileSprite : weapon.spriteId, isProjectile: isRanged, isAoE: false },
         updatedPlayer: p,
-        updatedCombatState: syncCombatViews(combat, p),
+        updatedCombatState: combatComplete ? null : syncCombatViews(combat, p),
         combatComplete
     });
 }
 
-function handleActorSpellAction(socket, p, combat, data, actor, weapon, combatRules, secureKill) {
+function handleActorSpellAction(socket, p, combat, data, actor, weapon, combatRules, resolveDefeat) {
     const spellData = SpellDatabase[combatRules.spellId];
     if (!spellData) {
         return socket.emit('combatResult', { type: 'error', message: 'Server: Staff spell is not configured.', newStamina: getActorStaminaValue(actor, p) });
@@ -735,12 +731,13 @@ function handleActorSpellAction(socket, p, combat, data, actor, weapon, combatRu
         const poisonApplied = applyPoison(enemy, {
             chance: spellData.poisonChance || combatRules.poisonChance || 0,
             turns: spellData.poisonTurns || combatRules.poisonTurns || 3,
-            fallbackDamage: Math.max(2, Math.floor(roll.damage * 0.25))
+            fallbackDamage: Math.max(2, Math.floor(roll.damage * 0.25)),
+            sourceActor: actor
         });
         let killed = false;
         if (enemy.hp <= 0) {
             killed = true;
-            const killResult = defeatCombatTarget(combat, p, enemy, secureKill);
+            const killResult = resolveDefeat(enemy, { sourceActor: actor, cause: 'spell' });
             combatComplete = combatComplete || !!(killResult && killResult.combatComplete);
         }
         hitTargets.push({ uid: enemy.uid, damage: roll.damage, isCrit: roll.isCrit, killed, statusApplied: poisonApplied ? 'poison' : null, statusEffects: enemy.statusEffects });
@@ -784,11 +781,11 @@ function handleActorSpellAction(socket, p, combat, data, actor, weapon, combatRu
             tx, ty, sx: actor.x, sy: actor.y, sourceUid: actor.uid
         },
         updatedPlayer: p,
-        updatedCombatState: syncCombatViews(combat, p),
+        updatedCombatState: combatComplete ? null : syncCombatViews(combat, p),
         combatComplete
     });
 }
-function handleWeaponAction(socket, p, combat, data, secureKill) {
+function handleWeaponAction(socket, p, combat, data, resolveDefeat) {
     let weapon = p.equipment.weapon;
 
     if (!weapon || !weapon.combat) {
@@ -810,7 +807,7 @@ function handleWeaponAction(socket, p, combat, data, secureKill) {
     }
 
     if (combatRules.actionType === "spell") {
-        return handleWeaponSpellAction(socket, p, combat, data, weapon, combatRules, secureKill);
+        return handleWeaponSpellAction(socket, p, combat, data, weapon, combatRules, resolveDefeat);
     }
 
 
@@ -848,7 +845,7 @@ function handleWeaponAction(socket, p, combat, data, secureKill) {
                 let killed = false;
                 if (enemy.hp <= 0) {
                     killed = true;
-                    const killResult = defeatCombatTarget(combat, p, enemy, secureKill);
+                    const killResult = resolveDefeat(enemy, { sourceActor: getPlayerActor(combat), cause: 'weapon' });
                     combatComplete = combatComplete || !!(killResult && killResult.combatComplete);
                 }
 
@@ -860,7 +857,7 @@ function handleWeaponAction(socket, p, combat, data, secureKill) {
             type: 'hit', source: 'weapon', actionName: data.subType, targets: hitTargets,
             fx: { tx: data.tx, ty: data.ty, spriteId: weapon.spriteId, isAoE: true, radius: combatRules.aoeRadius || 1 },
             updatedPlayer: p,
-            updatedCombatState: syncCombatViews(combat, p),
+            updatedCombatState: combatComplete ? null : syncCombatViews(combat, p),
             combatComplete
         });
     }
@@ -909,13 +906,15 @@ function handleWeaponAction(socket, p, combat, data, secureKill) {
     const poisonApplied = applyPoison(serverEnemy, {
         chance: combatRules.poisonChance || 0,
         turns: combatRules.poisonTurns || 3,
-        fallbackDamage: Math.max(2, Math.floor(getEffectiveStat(p, 'offense') * 2))
+        fallbackDamage: Math.max(2, Math.floor(getEffectiveStat(p, 'offense') * 2)),
+        sourceActor: getPlayerActor(combat)
     });
     let killed = false;
-    let killResult = { combatComplete: false };
+    let combatComplete = false;
     if (serverEnemy.hp <= 0) {
         killed = true;
-        killResult = defeatCombatTarget(combat, p, serverEnemy, secureKill);
+        const killResult = resolveDefeat(serverEnemy, { sourceActor: getPlayerActor(combat), cause: 'weapon' });
+        combatComplete = !!(killResult && killResult.combatComplete);
     }
 
     const isRanged = !!weapon.projectileSprite;
@@ -925,8 +924,8 @@ function handleWeaponAction(socket, p, combat, data, secureKill) {
         targets: [{ uid: serverEnemy.uid, damage: finalDmg, isCrit: isCrit, killed: killed, statusApplied: poisonApplied ? "poison" : null, statusEffects: serverEnemy.statusEffects }],
         fx: { tx: serverEnemy.x, ty: serverEnemy.y, spriteId: isRanged ? weapon.projectileSprite : weapon.spriteId, isProjectile: isRanged, isAoE: false },
         updatedPlayer: p,
-        updatedCombatState: syncCombatViews(combat, p),
-        combatComplete: !!(killResult && killResult.combatComplete)
+        updatedCombatState: combatComplete ? null : syncCombatViews(combat, p),
+        combatComplete
     });
 }
 
@@ -1019,7 +1018,7 @@ function handleActorConsumableAction(socket, p, combat, data, actor) {
 
     return emitActorItemReceipt(socket, p, combat, actor, { success: false, message: `${actor.name} cannot use that item yet.` });
 }
-function handleConsumableAction(socket, p, combat, data, secureKill) {
+function handleConsumableAction(socket, p, combat, data, resolveDefeat) {
     const invIndex = getArrayIndex(data.invIndex, p.inventory);
     if (invIndex < 0) return socket.emit('combatItemReceipt', { success: false, message: "Invalid inventory slot." });
 
@@ -1116,12 +1115,13 @@ function handleConsumableAction(socket, p, combat, data, secureKill) {
                     const poisonApplied = applyPoison(enemy, {
                         chance: spellData.poisonChance || 0,
                         turns: spellData.poisonTurns || 3,
-                        fallbackDamage: Math.max(2, Math.floor(spellData.damageFlat * 0.25))
+                        fallbackDamage: Math.max(2, Math.floor(spellData.damageFlat * 0.25)),
+                        sourceActor: getPlayerActor(combat)
                     });
                     let killed = false;
                     if (enemy.hp <= 0) {
                         killed = true;
-                        const killResult = defeatCombatTarget(combat, p, enemy, secureKill);
+                        const killResult = resolveDefeat(enemy, { sourceActor: getPlayerActor(combat), cause: 'spell' });
                         combatComplete = combatComplete || !!(killResult && killResult.combatComplete);
                     }
                     hitTargets.push({ uid: enemy.uid, damage: spellData.damageFlat, isCrit: false, killed: killed, statusApplied: poisonApplied ? "poison" : null, statusEffects: enemy.statusEffects });
@@ -1137,7 +1137,7 @@ function handleConsumableAction(socket, p, combat, data, secureKill) {
                 speed: spellData.fx ? spellData.fx.speed : 15, tx: data.tx, ty: data.ty
             },
             updatedPlayer: p,
-            updatedCombatState: syncCombatViews(combat, p),
+            updatedCombatState: combatComplete ? null : syncCombatViews(combat, p),
             combatComplete
         });
     }

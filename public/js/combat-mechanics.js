@@ -158,17 +158,18 @@ function executeCombatAction(actionType) {
     }
 }
 
-function endPlayerTurn() { 
-    currentTurn = 'ENEMY'; 
-    combatPhase = 'WAITING_FOR_ATB'; // <--- THE LOCK
-    selectedEnemy = null; 
-    pendingMove = null; 
-    if (activeCombatActorUid === 'player_0') player.visualAtb = 0;            // <--- RESET VISUAL BAR
-    refreshSystemUI(); 
-    
-    // Pass control securely to the Server AI, and sync our final X/Y position!
+function endPlayerTurn() {
+    const endingActorUid = activeCombatActorUid;
     const activePos = getActiveCombatantPosition();
-    socket.emit('endPlayerTurn', { actorUid: activeCombatActorUid, actorPos: activePos });
+    currentTurn = "ENEMY";
+    combatPhase = "WAITING_FOR_ATB";
+    selectedEnemy = null;
+    pendingMove = null;
+    if (endingActorUid === "player_0") player.visualAtb = 0;
+    activeCombatActorUid = null;
+    refreshSystemUI();
+
+    socket.emit("endPlayerTurn", { actorUid: endingActorUid, actorPos: activePos });
 }
 
 function fleeCombat() {

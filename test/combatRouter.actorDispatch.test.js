@@ -129,7 +129,7 @@ function createHarness({ weapon, inventory = [], enemies = null }) {
     const io = { to: () => ({ emit: () => {} }) };
 
     registerCombatRouter(socket, io, activePlayers, activeCombats);
-    return { socket, player, combat, companion, enemies: combat.actors.filter(actor => actor.teamId === 'ENEMY') };
+    return { socket, player, combat, companion, activeCombats, enemies: combat.actors.filter(actor => actor.teamId === 'ENEMY') };
 }
 
 function pinRandom(t) {
@@ -158,6 +158,29 @@ test('dispatchCombatAction uses the active companion weapon despite a spoofed ac
     assert.equal(harness.companion.stamina, 45);
     assert.equal(harness.player.stamina, 25);
     assert.ok(harness.enemies[0].hp < harness.enemies[0].maxHp);
+});
+
+test('a companion killing blow completes the encounter through the shared resolver', t => {
+    pinRandom(t);
+    const weapon = makeWeapon({ range: 1, staminaCost: 5, multiplier: 1 });
+    const harness = createHarness({ weapon });
+    harness.companion.x = 3;
+    harness.enemies[0].hp = 1;
+    harness.enemies[0].maxHp = 1;
+
+    harness.socket.dispatch('dispatchCombatAction', {
+        actorUid: 'player_0',
+        actionCategory: 'weapon',
+        subType: 'slash',
+        targetEnemy: { uid: harness.enemies[0].uid }
+    });
+
+    const result = harness.socket.lastPayload('combatResult');
+    assert.equal(result.type, 'hit');
+    assert.equal(result.combatComplete, true);
+    assert.equal(result.updatedCombatState, null);
+    assert.equal(harness.activeCombats[harness.socket.id], undefined);
+    assert.equal(harness.enemies[0].defeatedBy.uid, harness.companion.uid);
 });
 
 test('dispatchCombatAction applies a shared-backpack consumable to the active companion', () => {

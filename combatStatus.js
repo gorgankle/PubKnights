@@ -23,6 +23,7 @@ function applyPoison(target, config = {}) {
     const turns = config.turns || 3;
     const damage = config.damage || getPoisonDamage(target, config.fallbackDamage || 3);
     const existing = statusEffects.poison;
+    const sourceActor = config.sourceActor || null;
 
     statusEffects.poison = {
         id: "poison",
@@ -30,7 +31,10 @@ function applyPoison(target, config = {}) {
         turns: existing ? Math.max(existing.turns || 0, turns) : turns,
         damage: existing ? Math.max(existing.damage || 0, damage) : damage,
         auraId: "poison",
-        aura: getAura("poison")
+        aura: getAura("poison"),
+        sourceUid: (sourceActor && sourceActor.uid) || config.sourceUid || (existing && existing.sourceUid) || null,
+        sourceName: (sourceActor && sourceActor.name) || config.sourceName || (existing && existing.sourceName) || null,
+        sourceKind: (sourceActor && sourceActor.kind) || config.sourceKind || (existing && existing.sourceKind) || null
     };
 
     return true;
@@ -49,7 +53,10 @@ function tickPoison(target) {
         status: "poison",
         damage,
         remainingTurns: poison.turns || 0,
-        killed: target.hp <= 0
+        killed: target.hp <= 0,
+        sourceUid: poison.sourceUid || null,
+        sourceName: poison.sourceName || null,
+        sourceKind: poison.sourceKind || null
     };
 }
 

@@ -8,7 +8,6 @@ const {
     addCombatActor,
     createPlayerActor,
     createEnemyActor,
-    createPetActor,
     createCompanionActor,
     createKregActor,
     createCellarDwellerActor,
@@ -144,14 +143,6 @@ function createCombatEncounter(player, data) {
         enemy.uid = `mob_${idx}`;
         enemy.atbCharge = 0;
     });
-
-    if (player.pet && player.pet.adopted) {
-        const petTile = findOpenTileNear(combatState, template.playerStart, [
-            { x: template.playerStart.x, y: template.playerStart.y + 1 },
-            { x: template.playerStart.x, y: template.playerStart.y - 1 }
-        ]);
-        if (petTile) addCombatActor(combatState, createPetActor(player, petTile));
-    }
 
     if (zone === 'WILDERNESS' && runLvl === 20) {
         const kregTile = findOpenTileNear(combatState, template.playerStart, [

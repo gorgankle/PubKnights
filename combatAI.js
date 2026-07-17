@@ -37,31 +37,33 @@ function setActorHp(actor, player, value) {
     return nextHp;
 }
 
-function defeatActor(socketId, combat, player, actor, activeCombats, onActorDefeated, turnEvents) {
+function defeatActor(socketId, combat, player, actor, activeCombats, onActorDefeated, turnEvents, sourceActor) {
     if (isPlayerActor(actor)) {
         actor.hp = 0;
         actor.alive = false;
         applyPlayerCombatDefeat(player);
         delete activeCombats[socketId];
         turnEvents.push({ type: 'death' });
-        return;
+        return { combatDefeated: true };
+    }
+
+    if (typeof onActorDefeated === 'function') {
+        const resolution = onActorDefeated(actor, { sourceActor, cause: 'attack' });
+        if (resolution && resolution.retreated) {
+            turnEvents.push({
+                type: 'retreat',
+                uid: actor.uid,
+                actorName: actor.name,
+                teamId: actor.teamId
+            });
+        }
+        return resolution;
     }
 
     actor.hp = 0;
     actor.alive = false;
-
-    if (actor.deathBehavior === 'retreat') {
-        actor.retreated = true;
-        turnEvents.push({
-            type: 'retreat',
-            uid: actor.uid,
-            actorName: actor.name,
-            teamId: actor.teamId
-        });
-        return;
-    }
-
-    if (typeof onActorDefeated === 'function') onActorDefeated(actor);
+    if (actor.deathBehavior === 'retreat') actor.retreated = true;
+    return { combatComplete: false, resolved: true, retreated: actor.retreated === true };
 }
 
 function buildCollisionMatrix(combat, movingActor) {
@@ -252,7 +254,7 @@ function buildAttackFx(actor) {
 
 function pushDeflectEvent(actor, target, turnEvents, attackFx) {
     if (isPlayerActor(target)) {
-        turnEvents.push({ type: 'deflect', enemyName: actor.name, ...attackFx });
+        turnEvents.push({ type: 'deflect', uid: actor.uid, enemyName: actor.name, ...attackFx });
     } else {
         turnEvents.push({
             type: 'actorDeflect',
@@ -333,7 +335,8 @@ function attackTarget(socketId, combat, player, actor, target, activeCombats, on
     const poisonApplied = applyPoison(poisonTarget, {
         chance: actor.poisonChance || 0,
         turns: actor.poisonTurns || 3,
-        fallbackDamage: Math.max(2, Math.floor((actor.offense || 1) * 2))
+        fallbackDamage: Math.max(2, Math.floor((actor.offense || 1) * 2)),
+        sourceActor: actor
     });
 
     let killed = false;
@@ -342,7 +345,7 @@ function attackTarget(socketId, combat, player, actor, target, activeCombats, on
     }
 
     pushHitEvent(actor, target, player, damage, isCrit, poisonApplied, killed, turnEvents, attackFx);
-    if (killed) defeatActor(socketId, combat, player, target, activeCombats, onActorDefeated, turnEvents);
+    if (killed) defeatActor(socketId, combat, player, target, activeCombats, onActorDefeated, turnEvents, actor);
 }
 
 function executeHealerTurn(socketId, combat, player, actor, activeCombats, onActorDefeated) {

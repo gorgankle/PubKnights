@@ -33,6 +33,37 @@ function getPlayerAttackables() {
     return [...(enemies || []), ...(rogues || [])].filter(actor => actor && actor.alive);
 }
 
+let combatVictoryPresentationStarted = false;
+
+function presentCombatVictory() {
+    if (combatVictoryPresentationStarted || gameState !== "COMBAT") return;
+    combatVictoryPresentationStarted = true;
+    currentTurn = "ENEMY";
+    combatPhase = "VICTORY";
+    activeCombatActorUid = null;
+    selectedEnemy = null;
+    pendingMove = null;
+
+    logMessage("🏆 VICTORY Conditions verified.");
+    if (typeof playRetroSound === "function") playRetroSound("victory");
+
+    const returnButton = document.querySelector("#loot-screen button");
+    if (returnButton) returnButton.style.display = "block";
+    refreshSystemUI();
+    if (typeof drawGrid === "function") drawGrid();
+
+    setTimeout(() => {
+        if (gameState === "COMBAT" && typeof showLootScreen === "function") showLootScreen();
+    }, 1200);
+}
+
+function getCombatEventActorUid(event) {
+    if (!event) return null;
+    if (event.sourceUid) return event.sourceUid;
+    if (["move", "hit", "deflect", "statusTick"].includes(event.type)) return event.uid || null;
+    return null;
+}
+
 // === SERVER-AUTHORITATIVE SYNC ===
 
 socket.on('serverTick', (serverData) => {
@@ -158,14 +189,8 @@ socket.on('combatResult', (result) => {
             if (resultCombatState) syncCombatCollectionsFromState(resultCombatState);
             if (selectedEnemy && !selectedEnemy.alive) selectedEnemy = null;
 
-            if (result.combatComplete || enemies.every(e => !e.alive)) {
-                logMessage("🏆 VICTORY Conditions verified.");
-                if (typeof playRetroSound === 'function') playRetroSound('victory');
-
-
-                let retBtn = document.querySelector("#loot-screen button");
-                if (retBtn) retBtn.style.display = 'block';
-                setTimeout(showLootScreen, 1200);
+            if (result.combatComplete) {
+                presentCombatVictory();
             } else {
                 advancePhase(); // Unlocks the Phase safely!
             }
@@ -386,7 +411,7 @@ if (data.item) {
         player.pendingLoot = player.pendingLoot || [];
         player.pendingLoot.push(data.item);
 
-        if (data.isPet) logMessage(`🐾 ${player.pet.name} joyfully dug up a hidden treasure!`);
+        if (data.isPet) logMessage(`🐾 ${data.petName || (player.pet && player.pet.name) || "Companion"} joyfully dug up a hidden treasure!`);
         else logMessage(`🎁 SECURED LOOT: ${data.item.name} [${data.item.rarity}]`);
     }
 
@@ -464,7 +489,8 @@ socket.on('statusEffectReceipt', (receipt) => {
 });
 
 socket.on('combatDeployed', (serverCombatState) => {
-    activeCombatActorUid = 'player_0';
+    activeCombatActorUid = null;
+    combatVictoryPresentationStarted = false;
     reachableTiles = null;
     hideTooltip();
 
@@ -519,6 +545,8 @@ socket.on('enemyTurnReceipt', (receipt) => {
 
     let events = receipt.events || [];
     const combatDefeated = !!receipt.combatDefeated || events.some(ev => ev && ev.type === 'death');
+    const combatComplete = !!receipt.combatComplete;
+    currentTurn = "ENEMY";
 
     // === NEW: DYNAMIC FAST-FORWARD MATH ===
     // If there are hundreds of events (Gorilla Pit), compress the time!
@@ -549,6 +577,8 @@ socket.on('enemyTurnReceipt', (receipt) => {
     // 2. Play the events sequentially on the screen
     events.forEach(ev => {
         setTimeout(() => {
+            const eventActorUid = getCombatEventActorUid(ev);
+            if (eventActorUid) activeCombatActorUid = eventActorUid;
             if (ev.type === 'move') {
                 let e = ev.uid ? getCombatActorByUid(ev.uid) : [...enemies, ...allies, ...rogues].find(en => en.name === ev.name);
                 if (e) { e.x = ev.finalX; e.y = ev.finalY; }
@@ -665,9 +695,14 @@ socket.on('enemyTurnReceipt', (receipt) => {
     // 3. Finally, hand control back to the player!
     setTimeout(() => {
         if (combatDefeated) return;
+        if (combatComplete) {
+            presentCombatVictory();
+            return;
+        }
 
         // We only overwrite the grid with the server's truth AFTER the movie finishes playing!
         if (receipt.updatedCombatState) syncCombatCollectionsFromState(receipt.updatedCombatState);
+        activeCombatActorUid = null;
 
         if (player.hp > 0) {
             reachableTiles = null;

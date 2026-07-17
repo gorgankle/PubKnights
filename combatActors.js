@@ -78,47 +78,6 @@ function createEnemyActor(enemy) {
     });
 }
 
-function createPetActor(player, tile) {
-    const pet = player.pet || {};
-    const level = Math.max(1, Math.min(50, pet.level || 1));
-    const maxHp = 20 + (level * 5);
-    const maxStamina = Math.max(25, 25 + (Math.floor(level / 5) * 5));
-
-    return {
-        uid: 'ally_pet',
-        id: `pet_${pet.type || 'dog'}`,
-        kind: 'pet',
-        controller: 'ai_pet',
-        teamId: TEAM_PLAYER,
-        disposition: 'party',
-        name: pet.name || 'Companion',
-        x: tile.x,
-        y: tile.y,
-        size: 1,
-        hp: maxHp,
-        maxHp,
-        stamina: maxStamina,
-        maxStamina,
-        offense: Math.max(1, 1 + Math.floor(level / 4)),
-        defense: Math.max(1, 1 + Math.floor(level / 6)),
-        speed: Math.max(3, Math.min(7, 3 + Math.floor(level / 8))),
-        attackRange: 1,
-        icon: pet.type === 'cat' ? 'C' : 'P',
-        alive: true,
-        deathBehavior: 'retreat',
-        targetable: true,
-        targetableByEnemies: true,
-        targetableByPlayer: false,
-        rewardsEligible: false,
-        blocksMovement: true,
-        petCosmetics: {
-            type: pet.type || 'dog',
-            furColor: pet.furColor || 'brown',
-            collarColor: pet.collarColor || 'red'
-        }
-    };
-}
-
 function getCompanionEquipmentStat(companion, statKey, fallback = 1) {
     const stats = companion && companion.stats && typeof companion.stats === 'object' ? companion.stats : {};
     const equipment = companion && companion.equipment && typeof companion.equipment === 'object' ? companion.equipment : {};
@@ -376,7 +335,6 @@ module.exports = {
     addCombatActor,
     createPlayerActor,
     createEnemyActor,
-    createPetActor,
     createCompanionActor,
     createKregActor,
     createCellarDwellerActor,

@@ -255,11 +255,22 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
         combatScreen.style.setProperty('--active-combat-bg', dynamicBg);
 
         const uiHeader = document.getElementById("target-ui-header");
+        const activeActorHeader = document.getElementById("combat-active-actor");
+        const activeUiActor = (typeof activeCombatActorUid !== "undefined" && activeCombatActorUid && typeof getCombatActorByUid === "function")
+            ? getCombatActorByUid(activeCombatActorUid)
+            : null;
+        const activeUiName = activeUiActor && activeUiActor.name ? activeUiActor.name : "Knight";
+
+        if (activeActorHeader) {
+            if (combatPhase === "VICTORY") activeActorHeader.textContent = "COMBAT COMPLETE";
+            else if (activeUiActor) activeActorHeader.textContent = `ACTIVE: ${activeUiName}`;
+            else activeActorHeader.textContent = "ATB: CHARGING";
+        }
         
         if (currentTurn === 'PLAYER') {
             if (combatPhase === 'TARGETING') {
                 if (uiHeader) {
-                    uiHeader.innerHTML = `\u{1F3AF} TARGETING: Click anywhere in range to execute!`;
+                    uiHeader.textContent = `\u{1F3AF} TARGETING: Click anywhere in range to execute!`;
                     uiHeader.style.color = "#e74c3c";
                 }
                 if (document.getElementById("slash-btn")) document.getElementById("slash-btn").disabled = true;
@@ -269,7 +280,6 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
             } else {
                 const activeUiPos = typeof getActiveCombatantPosition === 'function' ? getActiveCombatantPosition() : { x: player.x, y: player.y, size: 1 };
                 const activeUiWeapon = typeof getActiveCombatantWeapon === 'function' ? getActiveCombatantWeapon() : player.equipment.weapon;
-                const activeUiName = typeof getActiveCombatantName === 'function' ? getActiveCombatantName() : 'Knight';
                 let range = (activeUiWeapon && activeUiWeapon.combat && activeUiWeapon.combat.standard.range) || 1;
                 let hasTarget = selectedEnemy && selectedEnemy.alive;
                 let withinRange = false; let losClear = false;
@@ -309,13 +319,13 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
                 
                 if (uiHeader) {
                     if (pendingMove) {
-                        uiHeader.innerHTML = `\u{1F3C3} CONFIRM MOVE - Click green highlighted tile to jump`;
+                        uiHeader.textContent = `\u{1F3C3} CONFIRM MOVE - Click green highlighted tile to jump`;
                         uiHeader.style.color = "#2ecc71";
                     } else if (selectedEnemy && selectedEnemy.alive && combatPhase === 'PHASE_2') {
-                        uiHeader.innerHTML = `\u{1F3AF} ${activeUiName} FOCUS: ${selectedEnemy.name} (${selectedEnemy.hp}/${selectedEnemy.maxHp} HP) - [${phaseLabel}]`;
+                        uiHeader.textContent = `\u{1F3AF} ${activeUiName} FOCUS: ${selectedEnemy.name} (${selectedEnemy.hp}/${selectedEnemy.maxHp} HP) - [${phaseLabel}]`;
                         uiHeader.style.color = "#2ecc71";
                     } else {
-                        uiHeader.innerHTML = `\u2694\uFE0F ${activeUiName}: ${phaseLabel} - ${instructions}`;
+                        uiHeader.textContent = `\u2694\uFE0F ${activeUiName}: ${phaseLabel} - ${instructions}`;
                         uiHeader.style.color = "#3498db";
                     }
                 }
@@ -347,7 +357,7 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
             }
         } else {
             if (uiHeader) {
-                uiHeader.innerHTML = "\u{1F916} MONSTERS EXECUTING TACTICAL ENGINE";
+                uiHeader.textContent = activeUiActor ? `${activeUiName} EXECUTING TURN` : "ATB GAUGES CHARGING";
                 uiHeader.style.color = "#e74c3c";
             }
             if (document.getElementById("slash-btn")) document.getElementById("slash-btn").disabled = true;
