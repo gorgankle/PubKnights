@@ -99,79 +99,83 @@ function refreshCombatSidebar() {
     const bottomStats = document.getElementById("combat-bottom-stats");
     if (!topBars || !bottomStats) return;
 
-    let maxHpCalc = getPlayerMaxHp();
-    let maxStamCalc = getPlayerMaxStamina();
+    const activeActor = typeof getActiveCombatant === 'function' ? getActiveCombatant() : player;
+    const isPlayer = !activeActor || activeActor.uid === 'player_0' || activeActor.kind === 'player';
+    const actorEquipment = (activeActor && activeActor.equipment) || player.equipment || {};
+    const actorHp = Number.isFinite(activeActor && activeActor.hp) ? activeActor.hp : player.hp;
+    const maxHp = isPlayer ? getPlayerMaxHp() : Math.max(1, Number(activeActor.maxHp) || actorHp || 1);
+    const actorStamina = Number.isFinite(activeActor && activeActor.stamina) ? activeActor.stamina : player.stamina;
+    const maxStamina = isPlayer ? getPlayerMaxStamina() : Math.max(1, Number(activeActor.maxStamina) || actorStamina || 1);
+    const hpPct = Math.max(0, Math.min(100, (actorHp / maxHp) * 100));
+    const staminaPct = Math.max(0, Math.min(100, (actorStamina / maxStamina) * 100));
+    const actorOffense = isPlayer ? getPlayerTotalPower() : Math.max(1, Number(activeActor.offense) || 1);
+    const actorDefense = isPlayer ? getPlayerDeflectChance() : Math.max(0, Number(activeActor.defense) || 0);
+    const actorSpeed = isPlayer ? getPlayerSwiftness() : Math.max(1, Number(activeActor.speed) || 1);
+    const actorBuffs = (activeActor && activeActor.activeBuffs) || [];
 
-    let hpPct = Math.max(0, Math.min(100, (player.hp / maxHpCalc) * 100));
-    let stPct = Math.max(0, Math.min(100, (player.stamina / maxStamCalc) * 100));
-    
-    let hImg = getItemSpriteURL(player.equipment.helmet);
-    let aImg = getItemSpriteURL(player.equipment.armor);
-    let wImg = getItemSpriteURL(player.equipment.weapon);
-    let gImg = getItemSpriteURL(player.equipment.gloves);
-    let bImg = getItemSpriteURL(player.equipment.boots);
+    const describeItem = (item, emptyLabel) => {
+        if (!item) return `<span style='color:#55443a;'>${emptyLabel}</span>`;
+        const imageUrl = getItemSpriteURL(item);
+        const image = imageUrl ? `<img src="${imageUrl}" style="width:24px;height:24px;image-rendering:pixelated;vertical-align:middle;margin-right:4px;">` : '';
+        const rarity = item.rarity === 'Gorilla' ? 'GorillaTier' : (item.rarity || 'Common');
+        return `${image} <span class="${rarity}">${item.name}</span>`;
+    };
 
-    let helmDesc = player.equipment.helmet ? `<img src="${hImg}" style="width:24px;height:24px;image-rendering:pixelated;vertical-align:middle;margin-right:4px;"> <span class="${player.equipment.helmet.rarity === 'Gorilla' ? 'GorillaTier' : player.equipment.helmet.rarity}">${player.equipment.helmet.name}</span>` : "<span style='color:#55443a;'>Bare Headed</span>";
-    let armDesc = player.equipment.armor ? `<img src="${aImg}" style="width:24px;height:24px;image-rendering:pixelated;vertical-align:middle;margin-right:4px;"> <span class="${player.equipment.armor.rarity === 'Gorilla' ? 'GorillaTier' : player.equipment.armor.rarity}">${player.equipment.armor.name}</span>` : "<span style='color:#55443a;'>Bare Torso</span>";
-    let weapDesc = player.equipment.weapon ? `<img src="${wImg}" style="width:24px;height:24px;image-rendering:pixelated;vertical-align:middle;margin-right:4px;"> <span class="${player.equipment.weapon.rarity === 'Gorilla' ? 'GorillaTier' : player.equipment.weapon.rarity}">${player.equipment.weapon.name}</span>` : "<span style='color:#55443a;'>Unarmed</span>";
-    let gloveDesc = player.equipment.gloves ? `<img src="${gImg}" style="width:24px;height:24px;image-rendering:pixelated;vertical-align:middle;margin-right:4px;"> <span class="${player.equipment.gloves.rarity === 'Gorilla' ? 'GorillaTier' : player.equipment.gloves.rarity}">${player.equipment.gloves.name}</span>` : "<span style='color:#55443a;'>Bare Hands</span>";
-    let bootDesc = player.equipment.boots ? `<img src="${bImg}" style="width:24px;height:24px;image-rendering:pixelated;vertical-align:middle;margin-right:4px;"> <span class="${player.equipment.boots.rarity === 'Gorilla' ? 'GorillaTier' : player.equipment.boots.rarity}">${player.equipment.boots.name}</span>` : "<span style='color:#55443a;'>Bare Feet</span>";
+    const helmetDesc = describeItem(actorEquipment.helmet, 'Bare Headed');
+    const armorDesc = describeItem(actorEquipment.armor, 'Bare Torso');
+    const weaponDesc = describeItem(actorEquipment.weapon, 'Unarmed');
+    const glovesDesc = describeItem(actorEquipment.gloves, 'Bare Hands');
+    const bootsDesc = describeItem(actorEquipment.boots, 'Bare Feet');
+    const tooltipItem = slot => `onmouseenter="showTooltip(getItemTooltip((getActiveCombatant().equipment || {}).${slot}), event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"`;
 
-    let buffHTML = '';
-    if (player.activeBuffs && player.activeBuffs.length > 0) {
-        buffHTML += `<div style="margin-top: 10px; border-top:1px dashed #443a32; padding-top:8px; display: flex; flex-direction: column; gap: 6px;">`;
-        player.activeBuffs.forEach(buff => {
-            let tooltipDesc = buff === 'IPA' ? "<b>Furious IPA:</b> Amplifies Offense (+10%) for the remainder of this deployment." : "<b>Swift Lager:</b> Expands Speed (+1) for the remainder of this deployment.";
-            buffHTML += `<div style="font-size: 11px; color:#2ecc71; cursor:help; width:max-content;" onmouseenter="showTooltip('${tooltipDesc}', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">ðŸŒ¿ <b>ACTIVE BREW PERK:</b> ${buff}</div>`;
-        });
-        buffHTML += `</div>`;
+    let buffHtml = '';
+    if (actorBuffs.length > 0) {
+        buffHtml = `<div style="margin-top:10px;border-top:1px dashed #443a32;padding-top:8px;display:flex;flex-direction:column;gap:6px;">` +
+            actorBuffs.map(buff => `<div style="font-size:11px;color:#2ecc71;"><b>ACTIVE PERK:</b> ${buff}</div>`).join('') +
+            `</div>`;
     }
 
-    // 1. INJECT THE TOP BARS (HP & Stamina)
     topBars.innerHTML = `
         <div class="combat-grid-2-col">
-            <div style="background: #1a1512; padding: 12px; border-radius: 4px; border: 1px solid #4a3b2c;">
-                <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: bold; margin-bottom: 6px;">
-                    <span style="color: #ffcc66;">VITALITY:</span>
-                    <span style="color: #2ecc71;">${player.hp} / ${maxHpCalc} HP</span>
+            <div style="background:#1a1512;padding:12px;border-radius:4px;border:1px solid #4a3b2c;">
+                <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:bold;margin-bottom:6px;">
+                    <span style="color:#ffcc66;">VITALITY:</span>
+                    <span style="color:#2ecc71;">${Math.floor(actorHp)} / ${Math.floor(maxHp)} HP</span>
                 </div>
-                <div style="width: 100%; background: #110d0a; height: 16px; border-radius: 3px; overflow: hidden; border: 1px solid #55443a;">
-                    <div style="width: ${hpPct}%; background: ${hpPct > 45 ? '#27ae60' : '#c0392b'}; height: 100%; transition: width 0.2s;"></div>
-                </div>
-            </div>
-            <div style="background: #1a1512; padding: 12px; border-radius: 4px; border: 1px solid #4a3b2c;">
-                <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: bold; margin-bottom: 6px;">
-                    <span style="color: #ffcc66;">STAMINA:</span>
-                    <span style="color: #f1c40f;">${Math.floor(player.stamina)} / ${maxStamCalc} STAM</span>
-                </div>
-                <div style="width: 100%; background: #110d0a; height: 16px; border-radius: 3px; overflow: hidden; border: 1px solid #55443a;">
-                    <div style="width: ${stPct}%; background: #e67e22; height: 100%; transition: width 0.2s;"></div>
+                <div style="width:100%;background:#110d0a;height:16px;border-radius:3px;overflow:hidden;border:1px solid #55443a;">
+                    <div style="width:${hpPct}%;background:${hpPct > 45 ? '#27ae60' : '#c0392b'};height:100%;transition:width 0.2s;"></div>
                 </div>
             </div>
-        </div>
-    `;
+            <div style="background:#1a1512;padding:12px;border-radius:4px;border:1px solid #4a3b2c;">
+                <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:bold;margin-bottom:6px;">
+                    <span style="color:#ffcc66;">STAMINA:</span>
+                    <span style="color:#f1c40f;">${Math.floor(actorStamina)} / ${Math.floor(maxStamina)} STAM</span>
+                </div>
+                <div style="width:100%;background:#110d0a;height:16px;border-radius:3px;overflow:hidden;border:1px solid #55443a;">
+                    <div style="width:${staminaPct}%;background:#e67e22;height:100%;transition:width 0.2s;"></div>
+                </div>
+            </div>
+        </div>`;
 
-    // 2. INJECT THE BOTTOM STATS (Loadout & Parameters)
     bottomStats.innerHTML = `
-        <div style="background: #1a1512; padding: 12px; border-radius: 4px; border: 1px solid #4a3b2c;">
-            <h4 style="margin: 0 0 10px 0; font-size: 12px; color: #ffcc66; text-transform: uppercase; border-bottom: 1px dashed #4a3b2c; padding-bottom: 6px;">\u{1F6E1}\uFE0F Active Loadout</h4>
-            <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12px; line-height: 1.4;">
-                <div style="cursor:help; width:max-content;" onmouseenter="showTooltip(getItemTooltip(player.equipment.helmet), event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"><b>Helmet:</b> ${helmDesc}</div>
-                <div style="cursor:help; width:max-content;" onmouseenter="showTooltip(getItemTooltip(player.equipment.armor), event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"><b>Armor:</b> ${armDesc}</div>
-                <div style="cursor:help; width:max-content;" onmouseenter="showTooltip(getItemTooltip(player.equipment.weapon), event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"><b>Weapon:</b> ${weapDesc}</div>
-                <div style="cursor:help; width:max-content;" onmouseenter="showTooltip(getItemTooltip(player.equipment.gloves), event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"><b>Gloves:</b> ${gloveDesc}</div>
-                <div style="cursor:help; width:max-content;" onmouseenter="showTooltip(getItemTooltip(player.equipment.boots), event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"><b>Boots:</b>  ${bootDesc}</div>
+        <div style="background:#1a1512;padding:12px;border-radius:4px;border:1px solid #4a3b2c;">
+            <h4 style="margin:0 0 10px 0;font-size:12px;color:#ffcc66;text-transform:uppercase;border-bottom:1px dashed #4a3b2c;padding-bottom:6px;">Active Loadout</h4>
+            <div style="display:flex;flex-direction:column;gap:8px;font-size:12px;line-height:1.4;">
+                <div style="cursor:help;width:max-content;" ${tooltipItem('helmet')}><b>Helmet:</b> ${helmetDesc}</div>
+                <div style="cursor:help;width:max-content;" ${tooltipItem('armor')}><b>Armor:</b> ${armorDesc}</div>
+                <div style="cursor:help;width:max-content;" ${tooltipItem('weapon')}><b>Weapon:</b> ${weaponDesc}</div>
+                <div style="cursor:help;width:max-content;" ${tooltipItem('gloves')}><b>Gloves:</b> ${glovesDesc}</div>
+                <div style="cursor:help;width:max-content;" ${tooltipItem('boots')}><b>Boots:</b> ${bootsDesc}</div>
             </div>
         </div>
-        <div style="display: flex; flex-direction: column; gap: 10px;">
-            <div style="background: #1a1512; padding: 12px; border-radius: 4px; border: 1px solid #4a3b2c; font-size: 12px; color: #bbaaa0; line-height: 1.6; height: 100%; box-sizing: border-box;">
-                \u{1F4A5} <b>Offense Output:</b> Lvl ${getPlayerTotalPower()} (Max ${getPlayerTotalPower() * 10} DMG)<br>
-                \u{1F6E1}\uFE0F <b>Defense (Absorption):</b> Lvl ${getPlayerDeflectChance()}<br>
-                \u{1F3C3} <b>Speed (Evasion):</b> Lvl ${getPlayerSwiftness()}
+        <div style="display:flex;flex-direction:column;gap:10px;">
+            <div style="background:#1a1512;padding:12px;border-radius:4px;border:1px solid #4a3b2c;font-size:12px;color:#bbaaa0;line-height:1.6;height:100%;box-sizing:border-box;">
+                <b>Offense Output:</b> Lvl ${actorOffense} (Max ${actorOffense * 10} DMG)<br>
+                <b>Defense (Absorption):</b> Lvl ${actorDefense}<br>
+                <b>Speed (Evasion):</b> Lvl ${actorSpeed}
             </div>
-            ${buffHTML}
-        </div>
-    `;
+            ${buffHtml}
+        </div>`;
 }
 
 function refreshSystemUI() {
@@ -209,9 +213,6 @@ function refreshSystemUI() {
         }
         if (wallet) wallet.style.display = 'none';
 
-        if (gameState === 'COMBAT' && currentTurn === 'PLAYER') {
-            if (combatPhase === 'MOVE' || combatPhase === 'ACTION') combatPhase = 'PHASE_1';
-        }
 
 const lumberScreen = document.getElementById("minigame-lumber-screen");
 const fishingScreen = document.getElementById("minigame-fishing-screen");
@@ -263,160 +264,105 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
 
         if (activeActorHeader) {
             if (combatPhase === "VICTORY") activeActorHeader.textContent = "COMBAT COMPLETE";
-            else if (activeUiActor) activeActorHeader.textContent = `ACTIVE: ${activeUiName}`;
+            else if (activeUiActor) activeActorHeader.textContent = `ACTIVE: ${activeUiName} | ACTIONS: ${combatActionsRemaining}/2`;
             else activeActorHeader.textContent = "ATB: CHARGING";
         }
         
+        const canIssueAction = currentTurn === 'PLAYER' && !!activeUiActor && combatActionsRemaining > 0 && !['WAITING_FOR_SERVER', 'WAITING_FOR_ATB', 'VICTORY'].includes(combatPhase);
+        const actionReady = canIssueAction && combatPhase === 'ACTION_READY';
+        const targeting = canIssueAction && combatPhase === 'TARGETING';
+
         if (currentTurn === 'PLAYER') {
-            if (combatPhase === 'TARGETING') {
-                if (uiHeader) {
-                    uiHeader.textContent = `\u{1F3AF} TARGETING: Click anywhere in range to execute!`;
-                    uiHeader.style.color = "#e74c3c";
-                }
-                if (document.getElementById("slash-btn")) document.getElementById("slash-btn").disabled = true;
-                if (document.getElementById("heavy-btn")) document.getElementById("heavy-btn").disabled = true;
-                if (document.getElementById("end-btn")) document.getElementById("end-btn").disabled = true;
-                if (document.getElementById("flee-btn")) document.getElementById("flee-btn").disabled = true;
-            } else {
-                const activeUiPos = typeof getActiveCombatantPosition === 'function' ? getActiveCombatantPosition() : { x: player.x, y: player.y, size: 1 };
-                const activeUiWeapon = typeof getActiveCombatantWeapon === 'function' ? getActiveCombatantWeapon() : player.equipment.weapon;
-                let range = (activeUiWeapon && activeUiWeapon.combat && activeUiWeapon.combat.standard.range) || 1;
-                let hasTarget = selectedEnemy && selectedEnemy.alive;
-                let withinRange = false; let losClear = false;
-                let isAttackPhase = (combatPhase === 'PHASE_2');
-                
-                if (hasTarget) {
-                    let dist = getGridDistance(activeUiPos.x, activeUiPos.y, selectedEnemy.x, selectedEnemy.y, selectedEnemy.size || 1);
-                    withinRange = (dist <= range);
-                    let sSize = selectedEnemy.size || 1;
-                    for (let bx = selectedEnemy.x; bx < selectedEnemy.x + sSize; bx++) {
-                        for (let by = selectedEnemy.y; by < selectedEnemy.y + sSize; by++) if (hasLineOfSight(activeUiPos.x, activeUiPos.y, bx, by)) losClear = true;
+            const activeUiPos = typeof getActiveCombatantPosition === 'function' ? getActiveCombatantPosition() : { x: player.x, y: player.y, size: 1 };
+            const activeUiWeapon = typeof getActiveCombatantWeapon === 'function' ? getActiveCombatantWeapon() : player.equipment.weapon;
+            const range = (activeUiWeapon && activeUiWeapon.combat && activeUiWeapon.combat.standard.range) || 1;
+            let hasTarget = !!(selectedEnemy && selectedEnemy.alive);
+            let withinRange = false;
+            let losClear = false;
+            const validateTarget = target => {
+                if (!target || !target.alive) return false;
+                const dist = getGridDistance(activeUiPos.x, activeUiPos.y, target.x, target.y, target.size || 1);
+                if (dist > range) return false;
+                const targetSize = target.size || 1;
+                for (let bx = target.x; bx < target.x + targetSize; bx++) {
+                    for (let by = target.y; by < target.y + targetSize; by++) {
+                        if (hasLineOfSight(activeUiPos.x, activeUiPos.y, bx, by)) return true;
                     }
                 }
-                
-                if (isAttackPhase && (!hasTarget || !withinRange || !losClear)) {
-                    let autoEnemy = getPlayerAttackables().find(e => {
-                        if (!e.alive) return false;
-                        let d = getGridDistance(activeUiPos.x, activeUiPos.y, e.x, e.y, e.size || 1);
-                        if (d > range) return false;
-                        let lClear = false;
-                        let cSize = e.size || 1;
-                        for (let bx = e.x; bx < e.x + cSize; bx++) {
-                            for (let by = e.y; by < e.y + cSize; by++) if (hasLineOfSight(activeUiPos.x, activeUiPos.y, bx, by)) lClear = true;
-                        }
-                        return lClear;
-                    });
-                    if (autoEnemy) {
-                        selectedEnemy = autoEnemy;
-                        hasTarget = true;
-                        withinRange = true;
-                        losClear = true;
-                    }
-                }
-
-                let phaseLabel = combatPhase.replace('_', ' '); 
-                let instructions = (combatPhase === 'PHASE_2') ? "Select Target" : "Select Tile to Stride";
-                
-                if (uiHeader) {
-                    if (pendingMove) {
-                        uiHeader.textContent = `\u{1F3C3} CONFIRM MOVE - Click green highlighted tile to jump`;
-                        uiHeader.style.color = "#2ecc71";
-                    } else if (selectedEnemy && selectedEnemy.alive && combatPhase === 'PHASE_2') {
-                        uiHeader.textContent = `\u{1F3AF} ${activeUiName} FOCUS: ${selectedEnemy.name} (${selectedEnemy.hp}/${selectedEnemy.maxHp} HP) - [${phaseLabel}]`;
-                        uiHeader.style.color = "#2ecc71";
-                    } else {
-                        uiHeader.textContent = `\u2694\uFE0F ${activeUiName}: ${phaseLabel} - ${instructions}`;
-                        uiHeader.style.color = "#3498db";
-                    }
-                }
-                
-                let slashBtn = document.getElementById("slash-btn");
-                let heavyBtn = document.getElementById("heavy-btn");
-                let endBtn = document.getElementById("end-btn");
-                let weapon = activeUiWeapon;
-
-                if (slashBtn) {
-                    slashBtn.disabled = !(hasTarget && withinRange && losClear && isAttackPhase);
-                    if (weapon && weapon.combat && weapon.combat.standard) slashBtn.innerText = `\u2694\uFE0F Attack (${weapon.combat.standard.staminaCost}\u26A1)`;
-                    else slashBtn.innerText = `\u{1F44A} Unarmed Strike (5\u26A1)`;
-                }
-                if (heavyBtn) {
-                    heavyBtn.disabled = !(hasTarget && withinRange && losClear && isAttackPhase);
-                    if (weapon && weapon.combat && weapon.combat.special) heavyBtn.innerText = `\u{1F4A5} ${weapon.combat.special.name} (${weapon.combat.special.staminaCost}\u26A1)`;
-                    else heavyBtn.innerText = `Weapon Skill`;
-                }
-                if (endBtn) {
-                    endBtn.disabled = false;
-                    endBtn.style.opacity = (hasTarget && withinRange && losClear && isAttackPhase) ? "0.6" : "1.0";
-                }
-                let fleeBtn = document.getElementById("flee-btn");
-                if (fleeBtn) {
-                    fleeBtn.disabled = false;
-                    fleeBtn.style.opacity = "1.0";
-                }
+                return false;
+            };
+            if (hasTarget) {
+                withinRange = getGridDistance(activeUiPos.x, activeUiPos.y, selectedEnemy.x, selectedEnemy.y, selectedEnemy.size || 1) <= range;
+                losClear = validateTarget(selectedEnemy);
             }
-        } else {
+            if (actionReady && (!hasTarget || !withinRange || !losClear)) {
+                const autoEnemy = getPlayerAttackables().find(validateTarget);
+                if (autoEnemy) { selectedEnemy = autoEnemy; hasTarget = true; withinRange = true; losClear = true; }
+            }
             if (uiHeader) {
-                uiHeader.textContent = activeUiActor ? `${activeUiName} EXECUTING TURN` : "ATB GAUGES CHARGING";
-                uiHeader.style.color = "#e74c3c";
+                if (targeting) { uiHeader.textContent = 'TARGETING: Select a highlighted tile'; uiHeader.style.color = '#e74c3c'; }
+                else if (pendingMove) { uiHeader.textContent = 'CONFIRM MOVE: Click the green tile again'; uiHeader.style.color = '#2ecc71'; }
+                else if (selectedEnemy && selectedEnemy.alive) { uiHeader.textContent = `${activeUiName} FOCUS: ${selectedEnemy.name} (${selectedEnemy.hp}/${selectedEnemy.maxHp} HP)`; uiHeader.style.color = '#2ecc71'; }
+                else if (actionReady) { uiHeader.textContent = `${activeUiName}: Choose Move, Attack, Item, or Rest`; uiHeader.style.color = '#3498db'; }
+                else { uiHeader.textContent = 'WAITING FOR SERVER'; uiHeader.style.color = '#bbaaa0'; }
             }
-            if (document.getElementById("slash-btn")) document.getElementById("slash-btn").disabled = true;
-            if (document.getElementById("heavy-btn")) document.getElementById("heavy-btn").disabled = true;
-            if (document.getElementById("end-btn")) { document.getElementById("end-btn").disabled = true; document.getElementById("end-btn").style.opacity = "1.0"; }
-            if (document.getElementById("flee-btn")) { document.getElementById("flee-btn").disabled = true; document.getElementById("flee-btn").style.opacity = "1.0"; }
+            const slashBtn = document.getElementById('slash-btn');
+            const heavyBtn = document.getElementById('heavy-btn');
+            const endBtn = document.getElementById('end-btn');
+            const fleeBtn = document.getElementById('flee-btn');
+            const attackEnabled = actionReady && hasTarget && withinRange && losClear;
+            if (slashBtn) {
+                slashBtn.disabled = !attackEnabled;
+                const cost = activeUiWeapon && activeUiWeapon.combat && activeUiWeapon.combat.standard ? activeUiWeapon.combat.standard.staminaCost : 5;
+                slashBtn.innerText = activeUiWeapon ? `Attack (${cost} STAM)` : `Unarmed Strike (${cost} STAM)`;
+            }
+            if (heavyBtn) {
+                heavyBtn.disabled = !attackEnabled;
+                heavyBtn.innerText = activeUiWeapon && activeUiWeapon.combat && activeUiWeapon.combat.special ? `${activeUiWeapon.combat.special.name} (${activeUiWeapon.combat.special.staminaCost} STAM)` : 'Weapon Skill';
+            }
+            if (endBtn) { endBtn.disabled = !canIssueAction; endBtn.style.opacity = '1.0'; }
+            if (fleeBtn) { fleeBtn.disabled = !actionReady; fleeBtn.style.opacity = '1.0'; }
+        } else {
+            if (uiHeader) { uiHeader.textContent = activeUiActor ? `${activeUiName} EXECUTING TURN` : 'ATB GAUGES CHARGING'; uiHeader.style.color = '#e74c3c'; }
+            ['slash-btn', 'heavy-btn', 'end-btn', 'flee-btn'].forEach(id => {
+                const button = document.getElementById(id);
+                if (button) { button.disabled = true; button.style.opacity = '1.0'; }
+            });
         }
-        
+
         refreshCombatSidebar();
 
 const combatInvList = document.getElementById("combat-inventory-list");
         if (combatInvList) {
-            combatInvList.innerHTML = "";
-            
-            // === REPLACED ===
-            // let btnContainer = document.createElement("div");
-            // btnContainer.style.display = "flex";
-            // ... [removed flex container logic] ...
-            // ================
-
-            // ðŸŽ’ Backpack Button
-            let bagBtn = document.createElement("button");
-            bagBtn.innerText = `\u{1F392} Backpack (${player.inventory.length}/${player.maxInventorySlots || 5})`;
-            bagBtn.style.padding = "10px";
-            bagBtn.style.background = "#8b5a2b";
-        
-            // ðŸ“– Spellbook Button
-            let spellBtn = document.createElement("button");
-            spellBtn.innerText = `\u{1F4D6} Spellbook`;
-            spellBtn.style.padding = "10px";
-            spellBtn.style.background = "#8e44ad";
-            spellBtn.style.borderColor = "#9b59b6";
-        
-          // Phase Locks
-        if (gameState === 'CINEMATIC' || currentTurn !== 'PLAYER' || combatPhase === 'TARGETING') {
-            bagBtn.disabled = true;
-            spellBtn.disabled = true;
+            combatInvList.innerHTML = '';
+            const bagBtn = document.createElement('button');
+            bagBtn.innerText = `Backpack (${player.inventory.length}/${player.maxInventorySlots || 5})`;
+            bagBtn.style.padding = '10px';
+            bagBtn.style.background = '#8b5a2b';
+            bagBtn.disabled = currentTurn !== 'PLAYER' || combatPhase !== 'ACTION_READY' || combatActionsRemaining <= 0;
+            bagBtn.onclick = () => renderCombatModal();
+            const restBtn = document.createElement('button');
+            restBtn.innerText = 'Rest (+15% Stamina)';
+            restBtn.style.padding = '10px';
+            restBtn.style.background = '#287a69';
+            restBtn.style.borderColor = '#35a48c';
+            restBtn.disabled = currentTurn !== 'PLAYER' || combatActionsRemaining <= 0 || ['WAITING_FOR_SERVER', 'WAITING_FOR_ATB', 'VICTORY'].includes(combatPhase);
+            restBtn.onclick = () => executeCombatAction('rest');
+            restBtn.onmouseenter = event => showSystemTooltip('combat_rest', event);
+            restBtn.onmousemove = moveTooltip;
+            restBtn.onmouseleave = hideTooltip;
+            combatInvList.appendChild(bagBtn);
+            combatInvList.appendChild(restBtn);
+            if (combatPhase === 'TARGETING') {
+                const cancelBtn = document.createElement('button');
+                cancelBtn.innerText = 'Cancel Action';
+                cancelBtn.style.background = '#443a32';
+                cancelBtn.style.gridColumn = 'span 2';
+                cancelBtn.style.padding = '10px';
+                cancelBtn.onclick = () => cancelTarget();
+                combatInvList.appendChild(cancelBtn);
+            }
         }
-        
-    
-            // Actions
-        bagBtn.onclick = () => renderCombatModal();
-        spellBtn.onclick = () => renderSpellbookModal();
-    
-        // === NEW: APPEND DIRECTLY TO THE GRID ===
-        combatInvList.appendChild(bagBtn);
-        combatInvList.appendChild(spellBtn);
-
-        // Keep the Cancel button logic intact, but make it span both columns!
-        if (combatPhase === 'TARGETING') {
-            let cancelBtn = document.createElement("button");
-            cancelBtn.innerText = "\u2716\uFE0F Cancel Action";
-            cancelBtn.style.background = "#443a32"; 
-            cancelBtn.style.gridColumn = "span 2"; 
-            cancelBtn.style.padding = "10px";
-            cancelBtn.onclick = () => cancelTarget();
-            combatInvList.appendChild(cancelBtn);
-        }
-    } // Closes the combatInvList check
     } // Closes the gameState === 'COMBAT' check
 } // Closes the exclusive full-screen views check
 

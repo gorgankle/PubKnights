@@ -271,7 +271,7 @@ if (SpriteMatrices[groundSprite]) {
             ctx.lineWidth = 1; ctx.strokeRect(x * currentTileSize, y * currentTileSize, currentTileSize, currentTileSize);
 
             if (currentTurn === 'PLAYER') {
-                if (combatPhase === 'PHASE_1' || combatPhase === 'PHASE_3') {
+                if (combatPhase === 'ACTION_READY') {
 
                     // === THE FIX: DIRECT SMART CACHE HOOK ===
                     // The renderer now instantly asks the combat-mechanics engine if the tile is valid!
@@ -300,7 +300,7 @@ if (SpriteMatrices[groundSprite]) {
                     }
                 }
                // === UNIFIED ACTION RENDERING (MELEE, MAGIC, & BOMBS) ===
-                else if (combatPhase === 'PHASE_2' || combatPhase === 'TARGETING') {
+                else if (combatPhase === 'TARGETING') {
 
                     // 2. Draw the Grid (Using the dynamically calculated currentTargetRange)
                     if (getGridDistance(activeGridPos.x, activeGridPos.y, x, y, activeGridPos.size || 1) <= currentTargetRange) {
@@ -471,7 +471,7 @@ if (SpriteMatrices[e.id]) {
 
             drawCombatAura(e, e.visualX, e.visualY - (enemyHopY / currentTileSize), sSize);
 
-            renderGridHealthBar(e.visualX, e.visualY - (enemyHopY / currentTileSize), e.hp, e.maxHp, sSize, null, null, e.visualAtb);
+            renderGridHealthBar(e.visualX, e.visualY - (enemyHopY / currentTileSize), e.hp, e.maxHp, sSize, e.stamina, e.maxStamina, e.visualAtb);
         }
     });
 
@@ -516,7 +516,7 @@ if (SpriteMatrices[e.id]) {
         ctx.lineWidth = 2;
         ctx.strokeRect(actor.x * currentTileSize + 2, actor.y * currentTileSize + 2, (currentTileSize * sSize) - 4, (currentTileSize * sSize) - 4);
         drawCombatAura(actor, actor.visualX, actor.visualY - (hopY / currentTileSize), sSize);
-        renderGridHealthBar(actor.visualX, actor.visualY - (hopY / currentTileSize), actor.hp, actor.maxHp, sSize, null, null, actor.visualAtb);
+        renderGridHealthBar(actor.visualX, actor.visualY - (hopY / currentTileSize), actor.hp, actor.maxHp, sSize, actor.stamina, actor.maxStamina, actor.visualAtb);
     }
 
     (allies || []).forEach(actor => drawNonEnemyActor(actor, { fill: "#216b4f", stroke: "#2ecc71" }));
@@ -624,6 +624,8 @@ function renderGridHealthBar(gridX, gridY, currentHp, maximumHp, size = 1, curre
 function buildNpcTooltipHtml(mob) {
     const hp = Number.isFinite(mob.hp) ? mob.hp : 0;
     const maxHp = Number.isFinite(mob.maxHp) ? mob.maxHp : hp;
+    const stamina = Number.isFinite(mob.stamina) ? mob.stamina : 0;
+    const maxStamina = Number.isFinite(mob.maxStamina) ? mob.maxStamina : stamina;
     const offense = Number.isFinite(mob.offense) ? mob.offense : 0;
     const defense = Number.isFinite(mob.defense) ? mob.defense : 0;
     const speed = Number.isFinite(mob.speed) ? mob.speed : 0;
@@ -633,6 +635,7 @@ function buildNpcTooltipHtml(mob) {
     return `<h3>${mob.name}</h3>` +
            `<b>Type:</b> ${npcType}<br>` +
            `<b>Vitality:</b> ${hp}/${maxHp} HP<br>` +
+           `<b>Stamina:</b> ${Math.floor(stamina)}/${Math.floor(maxStamina)} STAM<br>` +
            `<b>Offense:</b> ${offense}<br>` +
            `<b>Defense:</b> ${defense}<br>` +
            `<b>Speed:</b> ${speed}<br>` +
@@ -741,21 +744,37 @@ canvas.addEventListener("click", function(e) {
     }
     let clickedMonster = getPlayerAttackables().find(em => { let s = em.size || 1; return em.alive && tx >= em.x && tx < em.x + s && ty >= em.y && ty < em.y + s; });
 
-    if (combatPhase === 'PHASE_1' || combatPhase === 'PHASE_3') {
+    if (combatPhase === 'ACTION_READY') {
         if (clickedMonster) {
-            logMessage("❌ Tactical Error: You can only attack during Phase 2."); playRetroSound('error'); return;
+            const activePosForAttack = typeof getActiveCombatantPosition === 'function' ? getActiveCombatantPosition() : { x: player.x, y: player.y, size: 1 };
+            const activeWeapon = typeof getActiveCombatantWeapon === 'function' ? getActiveCombatantWeapon() : player.equipment.weapon;
+            const weaponRange = (activeWeapon && activeWeapon.combat && activeWeapon.combat.standard.range) || 1;
+            const dist = getGridDistance(activePosForAttack.x, activePosForAttack.y, clickedMonster.x, clickedMonster.y, clickedMonster.size || 1);
+            let hasLos = false;
+            const targetSize = clickedMonster.size || 1;
+            for (let bx = clickedMonster.x; bx < clickedMonster.x + targetSize; bx++) {
+                for (let by = clickedMonster.y; by < clickedMonster.y + targetSize; by++) {
+                    if (hasLineOfSight(activePosForAttack.x, activePosForAttack.y, bx, by)) hasLos = true;
+                }
+            }
+            if (dist <= weaponRange && hasLos) {
+                selectedEnemy = clickedMonster;
+                pendingMove = null;
+                logMessage(`Target Locked: ${clickedMonster.name}.`);
+            } else {
+                logMessage(dist > weaponRange ? "Target outside weapon range." : "No line of sight to target.");
+                if (typeof playRetroSound === 'function') playRetroSound('error');
+            }
+            refreshSystemUI();
+            if (typeof drawGrid === 'function') drawGrid();
+            return;
         }
 
         const activePos = typeof getActiveCombatantPosition === 'function' ? getActiveCombatantPosition() : { x: player.x, y: player.y, size: 1 };
         if (tx === activePos.x && ty === activePos.y) {
-            if (pendingMove && pendingMove.x === tx && pendingMove.y === ty) {
-                logMessage("🏃 Stood ground. Skipping phase.");
-                pendingMove = null;
-                if (typeof advancePhase === 'function') advancePhase();
-            } else {
-                pendingMove = {x: tx, y: ty};
-                logMessage("📍 Stance marked. Click yourself again to confirm holding position (Pass Phase).");
-            }
+            pendingMove = null;
+            logMessage("Use Rest to hold position and recover stamina.");
+            refreshSystemUI();
             return;
         }
 
@@ -779,9 +798,9 @@ if (isValidPlayerMovePath(tx, ty)) {
                 if (typeof playRetroSound === 'function') playRetroSound('step');
 
                 // === NEW: INSTANT SERVER SYNC ===
+                combatPhase = 'WAITING_FOR_SERVER';
+                refreshSystemUI();
                 socket.emit('combatMove', { actorUid: (typeof activeCombatActorUid !== 'undefined' ? activeCombatActorUid : 'player_0'), tx: tx, ty: ty });
-
-                if (typeof advancePhase === 'function') advancePhase();
             } else {
                 pendingMove = {x: tx, y: ty};
                 let activePosForMove = typeof getActiveCombatantPosition === 'function' ? getActiveCombatantPosition() : { x: player.x, y: player.y, size: 1 };
@@ -791,24 +810,6 @@ if (isValidPlayerMovePath(tx, ty)) {
                 logMessage(`📍 Target marked. Click again to confirm movement (Costs ${estCost} Stamina).`);
             }
         } else { logMessage("❌ Outside stride capabilities."); playRetroSound('error'); }
-    }
-    else if (combatPhase === 'PHASE_2') {
-        if (!clickedMonster) {
-            logMessage("❌ Tactical Error: You can only move during Phase 1 or Phase 3."); playRetroSound('error'); return;
-        }
-
-        let activePosForAttack = typeof getActiveCombatantPosition === 'function' ? getActiveCombatantPosition() : { x: player.x, y: player.y, size: 1 };
-        let dist = getGridDistance(activePosForAttack.x, activePosForAttack.y, clickedMonster.x, clickedMonster.y, clickedMonster.size || 1);
-		let activeWeapon = typeof getActiveCombatantWeapon === 'function' ? getActiveCombatantWeapon() : player.equipment.weapon;
-        let weaponRange = (activeWeapon && activeWeapon.combat && activeWeapon.combat.standard.range) || 1;
-        if (dist <= weaponRange) {
-            let hasLos = false; let cSize = clickedMonster.size || 1;
-            for (let bx = clickedMonster.x; bx < clickedMonster.x + cSize; bx++) {
-                for (let by = clickedMonster.y; by < clickedMonster.y + cSize; by++) if (hasLineOfSight(activePosForAttack.x, activePosForAttack.y, bx, by)) hasLos = true;
-            }
-            if (hasLos) { selectedEnemy = clickedMonster; logMessage("🎯 Target Locked: " + clickedMonster.name + "."); }
-            else { logMessage("❌ No line of sight to target."); playRetroSound('error'); }
-        } else { logMessage("❌ Target outside weapon scope range."); playRetroSound('error'); }
     }
 });
 

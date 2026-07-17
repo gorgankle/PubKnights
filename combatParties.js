@@ -1,6 +1,8 @@
 // --- combatParties.js ---
 // Canonical combat party membership and turn ownership helpers.
 
+const { beginActionTurn, clearActionTurn } = require('./combatTurns.js');
+
 const PARTY_PLAYER = 'PLAYER';
 const PARTY_ENEMY = 'ENEMY';
 const PARTY_ROGUE = 'ROGUE';
@@ -86,6 +88,7 @@ function activatePartyActor(combat, actor) {
     if (!partyId || !combat.parties[partyId].memberUids.includes(actor.uid)) return null;
     combat.activeActorUid = actor.uid;
     combat.atbPaused = true;
+    beginActionTurn(combat);
     return actor;
 }
 
@@ -94,6 +97,7 @@ function clearActivePartyActor(combat, expectedUid = null) {
     if (expectedUid && combat.activeActorUid !== expectedUid) return false;
     combat.activeActorUid = null;
     combat.atbPaused = false;
+    clearActionTurn(combat);
     return true;
 }
 

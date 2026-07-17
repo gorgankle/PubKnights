@@ -2,6 +2,7 @@
 // Server-side combat actor helpers. Keeps party/hostile/rogue logic centralized.
 
 const { getMaxHp, getMaxStamina } = require('./combatMath.js');
+const { ensureActorStamina } = require('./combatResources.js');
 
 const {
     PARTY_PLAYER: TEAM_PLAYER,
@@ -41,6 +42,7 @@ function addCombatActor(combat, actor) {
     if (actor.targetable === undefined) actor.targetable = true;
     if (actor.atbCharge === undefined) actor.atbCharge = 0;
     normalizePartyActor(actor);
+    ensureActorStamina(actor);
     combat.actors.push(actor);
     return actor;
 }
@@ -154,6 +156,10 @@ function createKregActor(tile) {
         size: 1,
         hp: 180,
         maxHp: 180,
+        stamina: 25,
+        maxStamina: 25,
+        attackStaminaCost: 5,
+        healStaminaCost: 10,
         offense: 1,
         defense: 8,
         speed: 5,
@@ -185,6 +191,9 @@ function createCellarDwellerActor(tile) {
         size: 1,
         hp: 140,
         maxHp: 140,
+        stamina: 25,
+        maxStamina: 25,
+        attackStaminaCost: 5,
         offense: 18,
         defense: 8,
         speed: 5,
@@ -202,7 +211,10 @@ function createCellarDwellerActor(tile) {
 
 function ensureCombatActors(combat, player) {
     combat.actors = Array.isArray(combat.actors) ? combat.actors : [];
-    combat.actors.forEach(normalizePartyActor);
+    combat.actors.forEach(actor => {
+        normalizePartyActor(actor);
+        ensureActorStamina(actor, isPlayerActor(actor) ? player : null);
+    });
     let playerActor = getPlayerActor(combat);
     if (!playerActor && combat.player) {
         playerActor = createPlayerActor(player || {}, combat.player);

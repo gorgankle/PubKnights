@@ -150,7 +150,7 @@
             <div id="combat-inventory-list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;"></div>
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px;">
-                <button id="end-btn" onclick="executeCombatAction('end')" style="padding: 12px; font-size: 15px; background: #e67e22; border: 2px solid #d35400; font-weight: bold; text-shadow: 1px 1px 2px #000;" onmouseenter="showSystemTooltip('combat_pass', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">⌛ Pass Turn</button>
+                <button id="end-btn" onclick="executeCombatAction('end')" style="padding: 12px; font-size: 15px; background: #e67e22; border: 2px solid #d35400; font-weight: bold; text-shadow: 1px 1px 2px #000;" onmouseenter="showSystemTooltip('combat_end', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">End Turn</button>
                 <button id="flee-btn" onclick="fleeCombat()" style="padding: 12px; font-size: 15px; background: #c0392b; border: 2px solid #e74c3c; font-weight: bold; text-shadow: 1px 1px 2px #000;">🏃 Flee</button>
             </div>
             
@@ -885,7 +885,7 @@
 	<script src="js/spells.js"></script>
 	<script src="js/aura-assets.js"></script>
     <script src="js/items.js"></script>
-	<script src="js/npc-database.js"></script>
+	<script src="js/npc-database.js?v=2"></script>
     <script src="js/lootTables.js"></script>
 
 
@@ -900,14 +900,14 @@
 	<script src="js/icon-assets.js"></script>
 	<script src="/socket.io/socket.io.js"></script>
 
-    <script src="js/main.js?v=6"></script>
+    <script src="js/main.js?v=7"></script>
     <script src="js/inventory.js?v=4"></script>
 
 <!-- UI, Tooltips & Graphics Output -->
-    <script src="js/ui-tooltips.js"></script>
+    <script src="js/ui-tooltips.js?v=2"></script>
     <script src="js/companion-ui.js"></script>
-    <script src="js/ui-render.js?v=4"></script>
-    <script src="js/renderer.js?v=2"></script>       <!-- RENDERS DATA -->
+    <script src="js/ui-render.js?v=5"></script>
+    <script src="js/renderer.js?v=3"></script>       <!-- RENDERS DATA -->
 	<script src="js/fx-engine.js"></script>
 	<script src="js/dialogue.js"></script>
 	<script src="js/quest-scripts.js"></script>
@@ -918,7 +918,7 @@
 <!-- Game Systems & Logic -->
     <script src="js/login.js"></script>
     <script src="js/combat-maps.js"></script>
-    <script src="js/combat-mechanics.js?v=5"></script>
+    <script src="js/combat-mechanics.js?v=6"></script>
     <script src="js/town-actions.js"></script>
 	<script src="js/minigames.js"></script>
 	<script src="js/spellbook.js"></script> 

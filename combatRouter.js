@@ -11,6 +11,14 @@ const {
     getMaxHp,
     getMaxStamina
 } = require('./combatMath.js');
+const {
+    getActorMaxStamina,
+    getActorStamina: getActorStaminaValue,
+    spendActorStamina,
+    recoverActorStamina,
+    getMoveStaminaCost
+} = require('./combatResources.js');
+const { ensureActionTurn, consumeAction } = require('./combatTurns.js');
 const { claimCombatRewards } = require('./combatRewards.js');
 const { resolveActorDefeat } = require('./combatResolution.js');
 const { createCombatEncounter } = require('./combatEncounters.js');
@@ -39,11 +47,12 @@ const {
 
 function getCombatTurnActor(combat, player) {
     syncCombatViews(combat, player);
-    return getActivePartyActor(combat, {
+    const actor = getActivePartyActor(combat, {
         partyId: PARTY_PLAYER,
         controlMode: CONTROL_MANUAL,
         isEligible: isActorAlive
     });
+    return actor && ensureActionTurn(combat, actor.uid) ? actor : null;
 }
 
 function getActorEquipment(actor, player) {
@@ -53,21 +62,6 @@ function getActorEquipment(actor, player) {
 function getActorStatValue(actor, player, statKey) {
     if (isPlayerActor(actor)) return getEffectiveStat(player, statKey);
     return Math.max(1, Math.trunc(Number(actor[statKey]) || 1));
-}
-
-function getActorStaminaValue(actor, player) {
-    return isPlayerActor(actor) ? (player.stamina || 0) : (actor.stamina || 0);
-}
-
-function spendActorStamina(actor, player, amount) {
-    const cost = Math.max(0, Math.trunc(Number(amount) || 0));
-    if (isPlayerActor(actor)) {
-        player.stamina = Math.max(0, (player.stamina || 0) - cost);
-        actor.stamina = player.stamina;
-        return player.stamina;
-    }
-    actor.stamina = Math.max(0, (actor.stamina || 0) - cost);
-    return actor.stamina;
 }
 
 function getActorMaxHpValue(actor, player) {
@@ -104,6 +98,15 @@ function finishPlayerControlledTurn(combat, player, actor) {
     clearActivePartyActor(combat, actor.uid);
     syncCombatViews(combat, player);
 }
+
+function completePlayerControlledAction(combat, player, actor) {
+    const actionResult = consumeAction(combat, actor && actor.uid);
+    if (!actionResult.consumed) return actionResult;
+    if (actionResult.turnComplete) finishPlayerControlledTurn(combat, player, actor);
+    else syncCombatViews(combat, player);
+    return actionResult;
+}
+
 module.exports = function(socket, io, activePlayers, activeCombats) {
     const combatContext = { activePlayers, activeCombats, io };
     function resolveDefeat(target, details = {}) {
@@ -155,31 +158,52 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             });
         }
 
-        if (data.actionCategory === 'pass') {
-            const maxStam = isPlayerActor(activeActor) ? getMaxStamina(p) : (activeActor.maxStamina || 25);
-            const recover = Math.floor(maxStam * 0.15);
-            if (isPlayerActor(activeActor)) p.stamina = Math.min(maxStam, (p.stamina || 0) + recover);
-            else activeActor.stamina = Math.min(maxStam, (activeActor.stamina || 0) + recover);
-            finishPlayerControlledTurn(combat, p, activeActor);
-            socket.emit('combatResult', { type: 'pass', actorUid: activeActor.uid, actorName: activeActor.name, updatedPlayer: p, updatedCombatState: combat, recovered: recover });
+        if (data.actionCategory === 'rest' || data.actionCategory === 'pass') {
+            const recovered = recoverActorStamina(activeActor, p);
+            const actionResult = completePlayerControlledAction(combat, p, activeActor);
+            socket.emit('combatResult', {
+                type: 'rest',
+                actorUid: activeActor.uid,
+                actorName: activeActor.name,
+                updatedPlayer: p,
+                updatedCombatState: combat,
+                recovered,
+                actionsRemaining: actionResult.actionsRemaining,
+                turnComplete: actionResult.turnComplete
+            });
             return;
         }
 
+        if (data.actionCategory === 'endTurn') {
+            finishPlayerControlledTurn(combat, p, activeActor);
+            socket.emit('combatResult', {
+                type: 'endTurn',
+                actorUid: activeActor.uid,
+                actorName: activeActor.name,
+                updatedPlayer: p,
+                updatedCombatState: combat,
+                actionsRemaining: 0,
+                turnComplete: true
+            });
+            return;
+        }
+
+
         if (data.actionCategory === 'weapon') {
-            if (isPlayerActor(activeActor)) handleWeaponAction(socket, p, combat, data, resolveDefeat);
+            if (isPlayerActor(activeActor)) handleWeaponAction(socket, p, combat, data, resolveDefeat, activeActor);
             else handleActorWeaponAction(socket, p, combat, data, resolveDefeat, activeActor);
             return;
         }
 
         if (data.actionCategory === 'consumable') {
-            if (isPlayerActor(activeActor)) handleConsumableAction(socket, p, combat, data, resolveDefeat);
+            if (isPlayerActor(activeActor)) handleConsumableAction(socket, p, combat, data, resolveDefeat, activeActor);
             else handleActorConsumableAction(socket, p, combat, data, activeActor);
             return;
         }
 
         if (data.actionCategory === 'equip') {
             if (!isPlayerActor(activeActor)) return socket.emit('combatItemReceipt', { success: false, message: `${activeActor.name} cannot swap gear mid-combat yet.` });
-            handleCombatEquip(socket, p, data);
+            handleCombatEquip(socket, p, combat, data, activeActor);
         }
     });
 
@@ -261,7 +285,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             return socket.emit('moveReceipt', { success: false, message: 'Server: Entity collision detected.', x: activeActor.x, y: activeActor.y, actorUid: activeActor.uid });
         }
 
-        const moveStaminaCost = Math.floor((dist / speed) * 10);
+        const moveStaminaCost = getMoveStaminaCost(dist, speed);
 
         if (getActorStaminaValue(activeActor, p) >= moveStaminaCost) {
             spendActorStamina(activeActor, p, moveStaminaCost);
@@ -271,7 +295,15 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 combat.player.x = tx;
                 combat.player.y = ty;
             }
-            socket.emit('moveReceipt', { success: true, actorUid: activeActor.uid, updatedPlayer: p, updatedCombatState: syncCombatViews(combat, p) });
+            const actionResult = completePlayerControlledAction(combat, p, activeActor);
+            socket.emit('moveReceipt', {
+                success: true,
+                actorUid: activeActor.uid,
+                updatedPlayer: p,
+                updatedCombatState: combat,
+                actionsRemaining: actionResult.actionsRemaining,
+                turnComplete: actionResult.turnComplete
+            });
         } else {
             socket.emit('moveReceipt', { success: false, message: `Server: Not enough stamina to move (${Math.floor(getActorStaminaValue(activeActor, p))}/${moveStaminaCost}).`, x: activeActor.x, y: activeActor.y, actorUid: activeActor.uid });
         }
@@ -391,7 +423,8 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                     io.to(socketId).emit('ATB_READY', {
                         actorUid: readyControlledActor.uid,
                         actorName: readyControlledActor.name,
-                        actorKind: readyControlledActor.kind
+                        actorKind: readyControlledActor.kind,
+                        actionsRemaining: combat.actionsRemaining
                     });
                 } else {
                     const readyActors = getAliveActors(combat)
@@ -522,6 +555,7 @@ function handleWeaponSpellAction(socket, p, combat, data, weapon, combatRules, r
     }
 
     p.stamina -= combatRules.staminaCost || spellData.cost || 0;
+    completePlayerControlledAction(combat, p, getPlayerActor(combat));
 
     const hitTargets = [];
     let combatComplete = false;
@@ -611,6 +645,7 @@ function handleActorWeaponAction(socket, p, combat, data, resolveDefeat, actor) 
         }
 
         spendActorStamina(actor, p, staminaCost);
+        completePlayerControlledAction(combat, p, actor);
         const finalBaseDmg = Math.floor(getActorStatValue(actor, p, 'offense') * combatRules.multiplier);
         const hitTargets = [];
         let combatComplete = false;
@@ -655,6 +690,7 @@ function handleActorWeaponAction(socket, p, combat, data, resolveDefeat, actor) 
     }
 
     spendActorStamina(actor, p, staminaCost);
+    completePlayerControlledAction(combat, p, actor);
     const attackerOffense = getActorStatValue(actor, p, 'offense') * 10;
     const defenderSpeed = (serverEnemy.speed || 1) * 10;
     const defenderDefense = combatRules.ignoresDefense ? 0 : (serverEnemy.defense || 1) * 10;
@@ -737,6 +773,7 @@ function handleActorSpellAction(socket, p, combat, data, actor, weapon, combatRu
     }
 
     spendActorStamina(actor, p, staminaCost);
+    completePlayerControlledAction(combat, p, actor);
     const hitTargets = [];
     let combatComplete = false;
     const hitEnemy = (enemy) => {
@@ -839,6 +876,7 @@ function handleWeaponAction(socket, p, combat, data, resolveDefeat) {
         }
 
         p.stamina -= staminaCost;
+        completePlayerControlledAction(combat, p, getPlayerActor(combat));
 
         const serverPower = getEffectiveStat(p, 'offense');
         const finalBaseDmg = Math.floor(serverPower * combatRules.multiplier);
@@ -893,6 +931,7 @@ function handleWeaponAction(socket, p, combat, data, resolveDefeat) {
     }
 
     p.stamina -= staminaCost;
+    completePlayerControlledAction(combat, p, getPlayerActor(combat));
 
     const attackerOffense = getEffectiveStat(p, 'offense') * 10;
     const defenderSpeed = (serverEnemy.speed || 1) * 10;
@@ -901,7 +940,7 @@ function handleWeaponAction(socket, p, combat, data, resolveDefeat) {
     const speedMitigation = Math.random() * defenderSpeed;
 
     if ((offenseHitPower - speedMitigation) <= 0) {
-        socket.emit('combatResult', { type: 'miss', hitChance: 0, newStamina: p.stamina });
+        socket.emit('combatResult', { type: 'miss', actorUid: 'player_0', hitChance: 0, newStamina: p.stamina, updatedCombatState: syncCombatViews(combat, p) });
         return;
     }
 
@@ -910,7 +949,7 @@ function handleWeaponAction(socket, p, combat, data, resolveDefeat) {
     const mitigatedDmg = Math.floor(rawDamageRoll - armorAbsorption);
 
     if (mitigatedDmg <= 0) {
-        socket.emit('combatResult', { type: 'miss', hitChance: 100, newStamina: p.stamina });
+        socket.emit('combatResult', { type: 'miss', actorUid: 'player_0', hitChance: 100, newStamina: p.stamina, updatedCombatState: syncCombatViews(combat, p) });
         return;
     }
 
@@ -945,6 +984,25 @@ function handleWeaponAction(socket, p, combat, data, resolveDefeat) {
 }
 
 function emitActorItemReceipt(socket, p, combat, actor, receipt) {
+    if (receipt.success) {
+        completePlayerControlledAction(combat, p, actor);
+        receipt.updatedPlayer = p;
+        receipt.updatedCombatState = combat;
+    }
+    return socket.emit('combatItemReceipt', {
+        actorUid: actor.uid,
+        actorName: actor.name,
+        newStamina: getActorStaminaValue(actor, p),
+        ...receipt
+    });
+}
+
+function emitPlayerItemReceipt(socket, p, combat, actor, receipt) {
+    if (receipt.success) {
+        completePlayerControlledAction(combat, p, actor);
+        receipt.updatedPlayer = p;
+        receipt.updatedCombatState = combat;
+    }
     return socket.emit('combatItemReceipt', {
         actorUid: actor.uid,
         actorName: actor.name,
@@ -1033,7 +1091,7 @@ function handleActorConsumableAction(socket, p, combat, data, actor) {
 
     return emitActorItemReceipt(socket, p, combat, actor, { success: false, message: `${actor.name} cannot use that item yet.` });
 }
-function handleConsumableAction(socket, p, combat, data, resolveDefeat) {
+function handleConsumableAction(socket, p, combat, data, resolveDefeat, actor) {
     const invIndex = getArrayIndex(data.invIndex, p.inventory);
     if (invIndex < 0) return socket.emit('combatItemReceipt', { success: false, message: "Invalid inventory slot." });
 
@@ -1054,14 +1112,14 @@ function handleConsumableAction(socket, p, combat, data, resolveDefeat) {
         p.inventory.splice(invIndex, 1);
         p.stamina -= rules.staminaCost || 0;
         const cleanseText = rules.cleanse ? ' Negative effects cleansed.' : '';
-        return socket.emit('combatItemReceipt', { success: true, updatedPlayer: p, message: `Chugged ${item.name}. Restored ${healAmount} HP.${cleanseText}` });
+        return emitPlayerItemReceipt(socket, p, combat, actor, { success: true, message: `Chugged ${item.name}. Restored ${healAmount} HP.${cleanseText}` });
     }
 
     if (rules.actionType === 'cleanse') {
         p.statusEffects = {};
         p.inventory.splice(invIndex, 1);
         p.stamina -= rules.staminaCost || 0;
-        return socket.emit('combatItemReceipt', { success: true, updatedPlayer: p, message: `${item.name} cleansed negative combat effects.` });
+        return emitPlayerItemReceipt(socket, p, combat, actor, { success: true, message: `${item.name} cleansed negative combat effects.` });
     }
 
     if (rules.actionType === 'staunch') {
@@ -1072,7 +1130,7 @@ function handleConsumableAction(socket, p, combat, data, resolveDefeat) {
         if (rules.cleanse) p.statusEffects = {};
         p.inventory.splice(invIndex, 1);
         p.stamina -= rules.staminaCost || 0;
-        return socket.emit('combatItemReceipt', { success: true, updatedPlayer: p, message: `${item.name} staunched the bleeding. HP set to at least ${floorHp}.${rules.cleanse ? ' Negative effects cleansed.' : ''}` });
+        return emitPlayerItemReceipt(socket, p, combat, actor, { success: true, message: `${item.name} staunched the bleeding. HP set to at least ${floorHp}.${rules.cleanse ? ' Negative effects cleansed.' : ''}` });
     }
 
     if (rules.actionType === 'buff') {
@@ -1089,7 +1147,7 @@ function handleConsumableAction(socket, p, combat, data, resolveDefeat) {
             }
             p.inventory.splice(invIndex, 1);
             p.stamina -= rules.staminaCost || 0;
-            return socket.emit('combatItemReceipt', { success: true, updatedPlayer: p, updatedCombatState: syncCombatViews(combat, p), message: rules.msg });
+            return emitPlayerItemReceipt(socket, p, combat, actor, { success: true, message: rules.msg });
         }
         return socket.emit('combatItemReceipt', { success: false, message: 'Buff already active.' });
     }
@@ -1109,6 +1167,7 @@ function handleConsumableAction(socket, p, combat, data, resolveDefeat) {
         if (castDist > spellData.range) return socket.emit('combatItemReceipt', { success: false, message: 'Server: Target out of spell range.' });
 
         p.stamina -= spellData.cost;
+        completePlayerControlledAction(combat, p, actor);
 
         const hitTargets = [];
         let combatComplete = false;
@@ -1158,7 +1217,7 @@ function handleConsumableAction(socket, p, combat, data, resolveDefeat) {
     }
 }
 
-function handleCombatEquip(socket, p, data) {
+function handleCombatEquip(socket, p, combat, data, actor) {
     const invIndex = getArrayIndex(data.invIndex, p.inventory);
     if (invIndex < 0) return socket.emit('combatItemReceipt', { success: false, message: "Invalid inventory slot." });
 
@@ -1177,5 +1236,5 @@ function handleCombatEquip(socket, p, data) {
     if (worn) p.inventory[invIndex] = worn;
     else p.inventory.splice(invIndex, 1);
 
-    return socket.emit('combatItemReceipt', { success: true, updatedPlayer: p, message: "Swapped gear mid-combat." });
+    return emitPlayerItemReceipt(socket, p, combat, actor, { success: true, message: "Swapped gear mid-combat." });
 }

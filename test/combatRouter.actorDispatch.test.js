@@ -263,27 +263,34 @@ test('a companion staff can resolve single-target and area spells', async t => {
     });
 });
 
-test('pass atomically ends the active companion turn and ignores a spoofed actor uid', () => {
+test('rest spends one companion action and ignores a spoofed actor uid', () => {
     const weapon = makeWeapon({ range: 1, staminaCost: 5, multiplier: 1 });
     const harness = createHarness({ weapon });
     harness.companion.stamina = 10;
 
     harness.socket.dispatch('dispatchCombatAction', {
         actorUid: 'player_0',
-        actionCategory: 'pass'
+        actionCategory: 'rest'
     });
 
-    const result = harness.socket.lastPayload('combatResult');
-    assert.equal(result.type, 'pass');
-    assert.equal(harness.companion.uid.length, 34);
-    assert.deepEqual(result.updatedCombatState.parties.PLAYER.memberUids, ['player_0', harness.companion.uid]);
-    assert.equal(result.actorUid, harness.companion.uid);
-    assert.equal(result.recovered, 7);
+    const firstRest = harness.socket.lastPayload('combatResult');
+    assert.equal(firstRest.type, 'rest');
+    assert.equal(firstRest.actorUid, harness.companion.uid);
+    assert.equal(firstRest.recovered, 7);
+    assert.equal(firstRest.actionsRemaining, 1);
     assert.equal(harness.companion.stamina, 17);
+    assert.equal(harness.companion.atbCharge, 100);
+    assert.equal(harness.combat.activeActorUid, harness.companion.uid);
+    assert.equal(harness.combat.atbPaused, true);
+
+    harness.socket.dispatch('dispatchCombatAction', { actionCategory: 'rest' });
+    const secondRest = harness.socket.lastPayload('combatResult');
+    assert.equal(secondRest.type, 'rest');
+    assert.equal(secondRest.actionsRemaining, 0);
+    assert.equal(harness.companion.stamina, 24);
     assert.equal(harness.companion.atbCharge, 0);
     assert.equal(harness.combat.activeActorUid, null);
     assert.equal(harness.combat.atbPaused, false);
-    assert.equal(result.updatedCombatState.activeActorUid, null);
 });
 
 test('a stale active party token is cleared instead of locking combat', () => {
@@ -304,7 +311,7 @@ test('a stale active party token is cleared instead of locking combat', () => {
     assert.equal(result.updatedCombatState.activeActorUid, null);
 });
 
-test('pass atomically ends the player actor turn', () => {
+test('rest spends one player action before ending on the second action', () => {
     const weapon = makeWeapon({ range: 1, staminaCost: 5, multiplier: 1 });
     const harness = createHarness({ weapon });
     const playerActor = harness.combat.actors.find(actor => actor.uid === 'player_0');
@@ -314,18 +321,39 @@ test('pass atomically ends the player actor turn', () => {
     harness.combat.player.atbCharge = 100;
     harness.combat.activeActorUid = playerActor.uid;
 
-    harness.socket.dispatch('dispatchCombatAction', {
-        actorUid: harness.companion.uid,
-        actionCategory: 'pass'
-    });
-
-    const result = harness.socket.lastPayload('combatResult');
-    assert.equal(result.type, 'pass');
-    assert.equal(result.actorUid, playerActor.uid);
-    assert.equal(result.recovered, 7);
+    harness.socket.dispatch('dispatchCombatAction', { actorUid: harness.companion.uid, actionCategory: 'rest' });
+    const firstRest = harness.socket.lastPayload('combatResult');
+    assert.equal(firstRest.type, 'rest');
+    assert.equal(firstRest.actorUid, playerActor.uid);
+    assert.equal(firstRest.recovered, 7);
+    assert.equal(firstRest.actionsRemaining, 1);
     assert.equal(harness.player.stamina, 17);
+    assert.equal(playerActor.atbCharge, 100);
+    assert.equal(harness.combat.activeActorUid, playerActor.uid);
+    assert.equal(harness.combat.atbPaused, true);
+
+    harness.socket.dispatch('dispatchCombatAction', { actionCategory: 'rest' });
+    const secondRest = harness.socket.lastPayload('combatResult');
+    assert.equal(secondRest.actionsRemaining, 0);
+    assert.equal(harness.player.stamina, 24);
     assert.equal(playerActor.atbCharge, 0);
     assert.equal(harness.combat.player.atbCharge, 0);
+    assert.equal(harness.combat.activeActorUid, null);
+    assert.equal(harness.combat.atbPaused, false);
+});
+
+test('end turn discards a companion remaining action immediately', () => {
+    const weapon = makeWeapon({ range: 1, staminaCost: 5, multiplier: 1 });
+    const harness = createHarness({ weapon });
+
+    harness.socket.dispatch('dispatchCombatAction', { actionCategory: 'rest' });
+    assert.equal(harness.combat.actionsRemaining, 1);
+
+    harness.socket.dispatch('dispatchCombatAction', { actionCategory: 'endTurn' });
+    const result = harness.socket.lastPayload('combatResult');
+    assert.equal(result.type, 'endTurn');
+    assert.equal(result.actionsRemaining, 0);
+    assert.equal(harness.companion.atbCharge, 0);
     assert.equal(harness.combat.activeActorUid, null);
     assert.equal(harness.combat.atbPaused, false);
 });

@@ -2,6 +2,18 @@
 // Server-side actor movement, targeting, support, and attack resolution.
 
 const { getGridDistance, getEffectiveStat, getMaxHp } = require('./combatMath.js');
+const { ACTIONS_PER_TURN } = require('./combatTurns.js');
+const {
+    ensureActorStamina,
+    getActorMaxStamina,
+    getActorStamina,
+    canSpendActorStamina,
+    spendActorStamina,
+    recoverActorStamina,
+    getMoveStaminaCost,
+    getActorAttackStaminaCost,
+    getActorHealStaminaCost
+} = require('./combatResources.js');
 const { applyPoison } = require('./combatStatus.js');
 const { applyPlayerCombatDefeat } = require('./combatDefeat.js');
 const {
@@ -194,8 +206,9 @@ function getPathStepToward(combat, actor, target) {
     return step;
 }
 
-function moveTowardTarget(combat, actor, target, turnEvents) {
-    let steps = Math.max(1, actor.speed || 1);
+function moveTowardTarget(combat, actor, target, turnEvents, maxSteps = actor.speed || 1) {
+    let steps = Math.max(0, Math.min(actor.speed || 1, maxSteps));
+    let movedSteps = 0;
     while (steps > 0) {
         const dist = getActorDistance(actor, target);
         if (dist <= (actor.attackRange || 1) && actorHasLineOfSight(combat, actor, target)) break;
@@ -205,14 +218,17 @@ function moveTowardTarget(combat, actor, target, turnEvents) {
         actor.x = nextStep.x;
         actor.y = nextStep.y;
         turnEvents.push({ type: 'move', uid: actor.uid, actorId: actor.id, name: actor.name, finalX: actor.x, finalY: actor.y });
+        movedSteps++;
         steps--;
     }
+    return movedSteps;
 }
 
-function moveAwayFromTarget(combat, actor, threat, turnEvents) {
+function moveAwayFromTarget(combat, actor, threat, turnEvents, maxSteps = actor.speed || 1) {
     const cols = combat.gridSize.cols || 16;
     const rows = combat.gridSize.rows || 10;
-    let steps = Math.max(1, actor.speed || 1);
+    let steps = Math.max(0, Math.min(actor.speed || 1, maxSteps));
+    let movedSteps = 0;
 
     while (steps > 0) {
         const collisionMatrix = buildCollisionMatrix(combat, actor);
@@ -236,9 +252,53 @@ function moveAwayFromTarget(combat, actor, threat, turnEvents) {
         actor.x = best.x;
         actor.y = best.y;
         turnEvents.push({ type: 'move', uid: actor.uid, actorId: actor.id, name: actor.name, finalX: actor.x, finalY: actor.y });
+        movedSteps++;
         steps--;
     }
+    return movedSteps;
 }
+
+function getAffordableMoveSteps(actor, player) {
+    const speed = Math.max(1, Math.trunc(Number(actor.speed) || 1));
+    for (let steps = speed; steps > 0; steps--) {
+        if (canSpendActorStamina(actor, player, getMoveStaminaCost(steps, speed))) return steps;
+    }
+    return 0;
+}
+
+function performMoveAction(combat, actor, target, player, turnEvents, moveAway = false) {
+    const maxSteps = getAffordableMoveSteps(actor, player);
+    if (maxSteps <= 0) return false;
+
+    const eventStart = turnEvents.length;
+    const movedSteps = moveAway
+        ? moveAwayFromTarget(combat, actor, target, turnEvents, maxSteps)
+        : moveTowardTarget(combat, actor, target, turnEvents, maxSteps);
+    if (movedSteps <= 0) return false;
+
+    const staminaCost = getMoveStaminaCost(movedSteps, actor.speed || 1);
+    spendActorStamina(actor, player, staminaCost);
+    for (let index = eventStart; index < turnEvents.length; index++) {
+        turnEvents[index].stamina = getActorStamina(actor, player);
+        turnEvents[index].maxStamina = getActorMaxStamina(actor, player);
+    }
+    return true;
+}
+
+function restActor(actor, player, turnEvents) {
+    const recovered = recoverActorStamina(actor, player);
+    turnEvents.push({
+        type: 'rest',
+        uid: actor.uid,
+        actorId: actor.id,
+        name: actor.name,
+        recovered,
+        stamina: getActorStamina(actor, player),
+        maxStamina: getActorMaxStamina(actor, player)
+    });
+    return true;
+}
+
 
 function buildAttackFx(actor) {
     const isRangedAttack = actor.type === 'RANGED' || !!actor.projectileSprite || !!actor.spellFx;
@@ -305,9 +365,15 @@ function pushHitEvent(actor, target, player, damage, isCrit, poisonApplied, kill
 
 function attackTarget(socketId, combat, player, actor, target, activeCombats, onActorDefeated, turnEvents) {
     const dist = getActorDistance(actor, target);
-    if (dist > (actor.attackRange || 1) || !actorHasLineOfSight(combat, actor, target)) return;
+    if (dist > (actor.attackRange || 1) || !actorHasLineOfSight(combat, actor, target)) return false;
 
-    const attackFx = buildAttackFx(actor);
+    const staminaCost = getActorAttackStaminaCost(actor);
+    if (!spendActorStamina(actor, player, staminaCost)) return false;
+    const attackFx = {
+        ...buildAttackFx(actor),
+        stamina: getActorStamina(actor, player),
+        maxStamina: getActorMaxStamina(actor, player)
+    };
     const offense = Math.max(1, getActorStat(actor, player, 'offense')) * 10;
     const defenderSpeed = Math.max(1, getActorStat(target, player, 'speed')) * 10;
     const defenderDefense = Math.max(0, getActorStat(target, player, 'defense')) * 10;
@@ -316,7 +382,7 @@ function attackTarget(socketId, combat, player, actor, target, activeCombats, on
 
     if ((hitPower - speedMitigation) <= 0) {
         pushDeflectEvent(actor, target, turnEvents, attackFx);
-        return;
+        return true;
     }
 
     const rawDamageRoll = Math.sqrt(Math.random()) * offense;
@@ -325,7 +391,7 @@ function attackTarget(socketId, combat, player, actor, target, activeCombats, on
 
     if (damage <= 0) {
         pushDeflectEvent(actor, target, turnEvents, attackFx);
-        return;
+        return true;
     }
 
     const isCrit = damage >= Math.floor(offense * 0.90);
@@ -346,50 +412,67 @@ function attackTarget(socketId, combat, player, actor, target, activeCombats, on
 
     pushHitEvent(actor, target, player, damage, isCrit, poisonApplied, killed, turnEvents, attackFx);
     if (killed) defeatActor(socketId, combat, player, target, activeCombats, onActorDefeated, turnEvents, actor);
+    return true;
 }
 
 function executeHealerTurn(socketId, combat, player, actor, activeCombats, onActorDefeated) {
     const turnEvents = [];
-    actor.healCooldown = Math.max(0, actor.healCooldown || 0);
-
     const playerTarget = (combat.actors || []).find(candidate => candidate.kind === 'player');
     const playerMaxHp = getMaxHp(player);
-    const playerNeedsHealing = player.hp > 0 && player.hp < Math.floor(playerMaxHp * 0.70);
     const healRange = actor.healRange || 6;
+    actor.healCooldown = Math.max(0, (actor.healCooldown || 0) - 1);
 
-    if (playerTarget && playerNeedsHealing && actor.healCooldown <= 0) {
-        const dist = getActorDistance(actor, playerTarget);
-        if (dist <= healRange && actorHasLineOfSight(combat, actor, playerTarget)) {
-            const amount = Math.max(20, Math.floor(playerMaxHp * 0.22));
-            const before = player.hp;
-            setActorHp(playerTarget, player, player.hp + amount);
-            actor.healCooldown = 2;
-            turnEvents.push({
-                type: 'heal',
-                sourceUid: actor.uid,
-                sourceName: actor.name,
-                targetType: 'player',
-                amount: player.hp - before,
-                hp: player.hp,
-                maxHp: playerMaxHp,
-                sx: actor.x,
-                sy: actor.y,
-                tx: playerTarget.x,
-                ty: playerTarget.y
-            });
-            return turnEvents;
+    for (let actionIndex = 0; actionIndex < ACTIONS_PER_TURN; actionIndex++) {
+        if (!activeCombats[socketId] || !isActorAlive(actor) || player.hp <= 0) break;
+        let acted = false;
+        const playerNeedsHealing = player.hp < Math.floor(playerMaxHp * 0.70);
+
+        if (playerTarget && playerNeedsHealing && actor.healCooldown <= 0) {
+            const dist = getActorDistance(actor, playerTarget);
+            if (dist <= healRange && actorHasLineOfSight(combat, actor, playerTarget)) {
+                const healCost = getActorHealStaminaCost(actor);
+                if (!spendActorStamina(actor, player, healCost)) {
+                    restActor(actor, player, turnEvents);
+                    continue;
+                }
+
+                const amount = Math.max(20, Math.floor(playerMaxHp * 0.22));
+                const before = player.hp;
+                setActorHp(playerTarget, player, player.hp + amount);
+                actor.healCooldown = 2;
+                turnEvents.push({
+                    type: 'heal',
+                    sourceUid: actor.uid,
+                    sourceName: actor.name,
+                    targetType: 'player',
+                    amount: player.hp - before,
+                    hp: player.hp,
+                    maxHp: playerMaxHp,
+                    stamina: getActorStamina(actor, player),
+                    maxStamina: getActorMaxStamina(actor, player),
+                    sx: actor.x,
+                    sy: actor.y,
+                    tx: playerTarget.x,
+                    ty: playerTarget.y
+                });
+                acted = true;
+            } else {
+                acted = performMoveAction(combat, actor, playerTarget, player, turnEvents);
+                if (!acted) restActor(actor, player, turnEvents);
+                continue;
+            }
         }
 
-        moveTowardTarget(combat, actor, playerTarget, turnEvents);
-        return turnEvents;
-    }
+        if (!acted) {
+            const threat = selectAttackTarget(combat, actor, player);
+            if (threat && getActorDistance(actor, threat) <= 4) {
+                acted = performMoveAction(combat, actor, threat, player, turnEvents, true);
+            } else if (playerTarget && getActorDistance(actor, playerTarget) > healRange) {
+                acted = performMoveAction(combat, actor, playerTarget, player, turnEvents);
+            }
+        }
 
-    actor.healCooldown = Math.max(0, actor.healCooldown - 1);
-    const threat = selectAttackTarget(combat, actor, player);
-    if (threat && getActorDistance(actor, threat) <= 4) {
-        moveAwayFromTarget(combat, actor, threat, turnEvents);
-    } else if (playerTarget && getActorDistance(actor, playerTarget) > healRange) {
-        moveTowardTarget(combat, actor, playerTarget, turnEvents);
+        if (!acted) restActor(actor, player, turnEvents);
     }
 
     return turnEvents;
@@ -397,22 +480,29 @@ function executeHealerTurn(socketId, combat, player, actor, activeCombats, onAct
 
 function executeActorTurn(socketId, combat, player, actor, activeCombats, onActorDefeated) {
     if (!isActorAlive(actor) || player.hp <= 0) return [];
+    ensureActorStamina(actor, isPlayerActor(actor) ? player : null);
 
     if (actor.controller === 'ai_healer') {
         return executeHealerTurn(socketId, combat, player, actor, activeCombats, onActorDefeated);
     }
 
     const turnEvents = [];
-    const target = selectAttackTarget(combat, actor, player);
-    if (!target) return turnEvents;
+    for (let actionIndex = 0; actionIndex < ACTIONS_PER_TURN; actionIndex++) {
+        if (!activeCombats[socketId] || !isActorAlive(actor) || player.hp <= 0) break;
+        const target = selectAttackTarget(combat, actor, player);
+        if (!target) break;
 
-    const dist = getActorDistance(actor, target);
-    if (dist > (actor.attackRange || 1) || !actorHasLineOfSight(combat, actor, target)) {
-        moveTowardTarget(combat, actor, target, turnEvents);
-    }
+        const inRange = getActorDistance(actor, target) <= (actor.attackRange || 1)
+            && actorHasLineOfSight(combat, actor, target);
+        let acted = false;
 
-    if (isActorAlive(actor) && isActorAlive(target)) {
-        attackTarget(socketId, combat, player, actor, target, activeCombats, onActorDefeated, turnEvents);
+        if (inRange && canSpendActorStamina(actor, player, getActorAttackStaminaCost(actor))) {
+            acted = attackTarget(socketId, combat, player, actor, target, activeCombats, onActorDefeated, turnEvents);
+        } else if (!inRange) {
+            acted = performMoveAction(combat, actor, target, player, turnEvents);
+        }
+
+        if (!acted) restActor(actor, player, turnEvents);
     }
 
     return turnEvents;

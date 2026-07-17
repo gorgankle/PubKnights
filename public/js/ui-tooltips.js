@@ -115,8 +115,11 @@ else if (item && item.slot === "consumable") {
     else if (type === 'combat_brew') {
         html = `<h3>🍺 Chug Brew</h3>Quickly down a Combat Stout to mend wounds during battle.<br>❤️ Restores: <b>10% Max HP</b>`;
     }
-    else if (type === 'combat_pass') {
-        html = `<h3>💨 Pass Turn</h3>Hold your ground and catch your breath to recover energy.<br>⚡ Restores: <b>15% Max Stamina</b>`;
+    else if (type === 'combat_rest') {
+        html = `<h3>Rest</h3>Recover 15% of this actor's maximum stamina and spend one action.`;
+    }
+    else if (type === 'combat_end') {
+        html = `<h3>End Turn</h3>Discard this actor's remaining actions and return control to the ATB queue.`;
     }
     
     showTooltip(html, event);

@@ -2,7 +2,7 @@
 
 // Make sure these three lines only appear ONCE at the top of the file!
 let activeTargetIndex   = -1;
-let previousCombatPhase = 'PHASE_1';
+let previousCombatPhase = 'ACTION_READY';
 let pendingLoot = []; 
 function getActiveCombatant() {
     const activeUid = activeCombatActorUid || 'player_0';
@@ -66,17 +66,19 @@ function getWeaponSpecialDesc(item) {
 
 // The Unified Client Dispatcher
 function executeCombatAction(actionType) {
-    if (gameState !== 'COMBAT' || currentTurn !== 'PLAYER' || combatPhase === 'TARGETING') return;
+    if (gameState !== 'COMBAT' || currentTurn !== 'PLAYER') return;
+    if (combatPhase === 'WAITING_FOR_SERVER' || combatPhase === 'WAITING_FOR_ATB' || combatPhase === 'VICTORY') return;
+    if (combatPhase === 'TARGETING') {
+        if (actionType !== 'rest' && actionType !== 'end') return;
+        activeTargetIndex = -1;
+        pendingMove = null;
+    }
+    if (actionType !== 'end' && (combatActionsRemaining || 0) <= 0) return;
 
-    if (actionType === 'end' || actionType === 'slash' || actionType === 'special') {
+    if (actionType === 'end' || actionType === 'rest' || actionType === 'slash' || actionType === 'special') {
         
         // Client-side UX validation (Server will verify this again)
         if (actionType === 'slash' || actionType === 'special') {
-            if (combatPhase !== 'PHASE_2') {
-                logMessage("❌ Tactical Error: Attacks can only be performed in Phase 2."); 
-                if (typeof playRetroSound === 'function') playRetroSound('error'); 
-                return;
-            }
            if (!selectedEnemy || !selectedEnemy.alive) return;
             
             let weapon = getActiveCombatantWeapon();
@@ -144,7 +146,7 @@ function executeCombatAction(actionType) {
         // ONE unified payload to rule them all
         socket.emit('dispatchCombatAction', { 
             actorUid: activeCombatActorUid,
-            actionCategory: actionType === 'end' ? 'pass' : 'weapon',
+            actionCategory: actionType === 'end' ? 'endTurn' : (actionType === 'rest' ? 'rest' : 'weapon'),
             subType: actionType, 
             targetEnemy: selectedEnemy ? { 
                 id: selectedEnemy.id, 
@@ -159,21 +161,11 @@ function executeCombatAction(actionType) {
 }
 
 function endPlayerTurn() {
-    const endingActorUid = activeCombatActorUid;
-    const activePos = getActiveCombatantPosition();
-    currentTurn = "ENEMY";
-    combatPhase = "WAITING_FOR_ATB";
-    selectedEnemy = null;
-    pendingMove = null;
-    if (endingActorUid === "player_0") player.visualAtb = 0;
-    activeCombatActorUid = null;
-    refreshSystemUI();
-
-    socket.emit("endPlayerTurn", { actorUid: endingActorUid, actorPos: activePos });
+    executeCombatAction('end');
 }
 
 function fleeCombat() {
-    if (gameState !== 'COMBAT' || currentTurn !== 'PLAYER' || combatPhase === 'TARGETING') return;
+    if (gameState !== 'COMBAT' || currentTurn !== 'PLAYER' || combatPhase !== 'ACTION_READY') return;
     
     let confirmFlee = confirm("Are you sure you want to run away? You will forfeit all pending loot and return to town.");
     if (!confirmFlee) return;
@@ -186,11 +178,14 @@ function fleeCombat() {
 }
 
 function handleCombatEquip(idx) {
+    if (gameState !== 'COMBAT' || currentTurn !== 'PLAYER' || combatPhase !== 'ACTION_READY' || combatActionsRemaining <= 0) return;
+    combatPhase = 'WAITING_FOR_SERVER';
+    refreshSystemUI();
     socket.emit('dispatchCombatAction', { actorUid: activeCombatActorUid, actionCategory: 'equip', invIndex: idx });
 }
 
 function consumeBrew(invIndex) {
-    if (gameState !== 'COMBAT' || currentTurn !== 'PLAYER' || combatPhase === 'TARGETING') return;
+    if (gameState !== 'COMBAT' || currentTurn !== 'PLAYER' || combatPhase !== 'ACTION_READY' || combatActionsRemaining <= 0) return;
     
     // === THE FIX: ENFORCE PHASE LOCK ON CONSUMABLES ===
     combatPhase = 'WAITING_FOR_SERVER'; 
@@ -204,7 +199,7 @@ window.prepTargetAction = function(idx) {
     if (gameState !== 'COMBAT') return;
     
     // === THE FIX: Enforce Phase 2 for ALL throws and spells! ===
-    if (combatPhase !== 'PHASE_2') {
+    if (currentTurn !== 'PLAYER' || combatPhase !== 'ACTION_READY' || combatActionsRemaining <= 0) {
         logMessage("❌ Tactical Error: Targeted actions can only be aimed during Phase 2.");
         if (typeof playRetroSound === 'function') playRetroSound('error');
         return;
@@ -234,7 +229,7 @@ window.executeTargetAction = function(tx, ty) {
 
 window.cancelTarget = function() {
     activeTargetIndex = -1;
-    combatPhase = 'PHASE_2'; 
+    combatPhase = 'ACTION_READY';
     refreshSystemUI();
     if (typeof drawGrid === 'function') drawGrid(); 
 };
@@ -458,25 +453,6 @@ function isValidPlayerMovePath(targetX, targetY) {
     
     return moveCache.tiles.has(`${targetX},${targetY}`);
 }
-// === THE PHASE CONTROLLER ===
-function advancePhase() {
-    if (combatPhase === 'PHASE_1' || combatPhase === 'MOVE') {
-        combatPhase = 'PHASE_2';
-    } else if (combatPhase === 'PHASE_2' || combatPhase === 'ACTION' || combatPhase === 'WAITING_FOR_SERVER') {
-        // === THE FIX: Advance from the Server Lock into Phase 3 ===
-        combatPhase = 'PHASE_3';
-    } else if (combatPhase === 'PHASE_3' || combatPhase === 'MOVE_2') {
-        endPlayerTurn();
-    }
-    
-    refreshSystemUI(); // Updates the HTML buttons & health bars
-    
-    // === NEW: THE MASTER CANVAS REDRAW ===
-    if (typeof drawGrid === 'function') {
-        drawGrid();
-    }
-}
-
 // === RESTORED TRANSITION FUNCTION ===
 window.transitionToTown = function() {
     if (typeof setGameState === 'function') {

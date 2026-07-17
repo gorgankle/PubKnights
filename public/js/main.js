@@ -22,6 +22,28 @@ function syncCombatCollectionsFromState(serverCombatState) {
     if (Object.prototype.hasOwnProperty.call(serverCombatState, "activeActorUid")) {
         activeCombatActorUid = serverCombatState.activeActorUid || null;
     }
+    if (Number.isInteger(serverCombatState.actionsRemaining)) {
+        combatActionsRemaining = serverCombatState.actionsRemaining;
+    }
+}
+
+function settleCombatActionState(serverCombatState = null) {
+    if (serverCombatState) syncCombatCollectionsFromState(serverCombatState);
+    selectedEnemy = selectedEnemy && selectedEnemy.alive ? selectedEnemy : null;
+    pendingMove = null;
+
+    if (activeCombatActorUid && combatActionsRemaining > 0) {
+        currentTurn = 'PLAYER';
+        combatPhase = 'ACTION_READY';
+    } else {
+        currentTurn = 'ENEMY';
+        combatPhase = 'WAITING_FOR_ATB';
+        activeCombatActorUid = null;
+        combatActionsRemaining = 0;
+    }
+
+    refreshSystemUI();
+    if (typeof drawGrid === 'function') drawGrid();
 }
 
 function getCombatActorByUid(uid) {
@@ -47,6 +69,7 @@ function presentCombatVictory() {
     currentTurn = "ENEMY";
     combatPhase = "VICTORY";
     activeCombatActorUid = null;
+    combatActionsRemaining = 0;
     selectedEnemy = null;
     pendingMove = null;
 
@@ -66,7 +89,7 @@ function presentCombatVictory() {
 function getCombatEventActorUid(event) {
     if (!event) return null;
     if (event.sourceUid) return event.sourceUid;
-    if (["move", "hit", "deflect", "statusTick"].includes(event.type)) return event.uid || null;
+    if (["move", "hit", "deflect", "rest", "statusTick"].includes(event.type)) return event.uid || null;
     return null;
 }
 
@@ -94,32 +117,19 @@ socket.on('combatResult', (result) => {
     if (result.type === 'error') {
         logMessage(result.message);
         if (typeof playRetroSound === 'function') playRetroSound('error');
-        if (resultCombatState) syncCombatCollectionsFromState(resultCombatState);
-
-        if (!activeCombatActorUid) {
-            currentTurn = 'ENEMY';
-            combatPhase = 'WAITING_FOR_ATB';
-            selectedEnemy = null;
-            pendingMove = null;
-        } else if (combatPhase === 'WAITING_FOR_SERVER') {
-            combatPhase = 'PHASE_2';
-        }
-
-        refreshSystemUI();
-        if (typeof drawGrid === 'function') drawGrid();
+        settleCombatActionState(resultCombatState);
         return;
     }
 
-    if (result.type === 'pass') {
-        logMessage(`⌛ Phase passed. Recovered ${result.recovered} stamina.`);
-        if (resultCombatState) syncCombatCollectionsFromState(resultCombatState);
-        currentTurn = 'ENEMY';
-        combatPhase = 'WAITING_FOR_ATB';
-        selectedEnemy = null;
-        pendingMove = null;
-        activeCombatActorUid = null;
-        refreshSystemUI();
-        if (typeof drawGrid === 'function') drawGrid();
+    if (result.type === 'rest') {
+        logMessage(`${result.actorName || 'Party member'} rested and recovered ${result.recovered} stamina.`);
+        settleCombatActionState(resultCombatState);
+        return;
+    }
+
+    if (result.type === 'endTurn') {
+        logMessage(`${result.actorName || 'Party member'} ended their turn.`);
+        settleCombatActionState(resultCombatState);
         return;
     }
 
@@ -142,8 +152,7 @@ socket.on('combatResult', (result) => {
         if (typeof playRetroSound === 'function') playRetroSound('error');
         if (selectedEnemy) FXEngine.spawnText(selectedEnemy.x, selectedEnemy.y, "MISS", { color: "#3498db" });
 
-        advancePhase(); // Unlocks the Phase!
-        refreshSystemUI();
+        settleCombatActionState(resultCombatState);
         return;
     }
 
@@ -205,7 +214,7 @@ socket.on('combatResult', (result) => {
             if (result.combatComplete) {
                 presentCombatVictory();
             } else {
-                advancePhase(); // Unlocks the Phase safely!
+                settleCombatActionState(resultCombatState);
             }
 
             refreshSystemUI();
@@ -244,7 +253,7 @@ socket.on('combatResult', (result) => {
 
             // === THE FIX: UNARMED ANIMATION FALLBACK ===
             // Inject a mock weapon profile so the client doesn't crash when bare-handed!
-            let weapon = player.equipment.weapon;
+            let weapon = sourceActor && sourceActor.equipment ? sourceActor.equipment.weapon : player.equipment.weapon;
             if (!weapon || !weapon.combat) {
                 weapon = {
                     combat: {
@@ -274,9 +283,7 @@ socket.on('combatItemReceipt', (receipt) => {
         logMessage(receipt.message);
         if (typeof playRetroSound === 'function') playRetroSound('error');
 
-        // === THE FIX: Unlock the phase if the server rejects the drink! ===
-        if (combatPhase === 'WAITING_FOR_SERVER') combatPhase = 'PHASE_2';
-        refreshSystemUI();
+        settleCombatActionState(receipt.updatedCombatState || null);
 
         return;
     }
@@ -293,7 +300,7 @@ socket.on('combatItemReceipt', (receipt) => {
 
     if (typeof saveGame === 'function') saveGame();
 
-    advancePhase(); // Updates HTML buttons & phases securely
+    settleCombatActionState(receipt.updatedCombatState || null);
 
     // === THE MISSING CANVAS REPAINT ===
     // Forces the physical game board to instantly redraw the new movement/range tiles!
@@ -305,34 +312,25 @@ socket.on('combatItemReceipt', (receipt) => {
 
 // === SERVER-AUTHORITATIVE MOVEMENT RECEIPT ===
 socket.on('moveReceipt', (receipt) => {
+    if (receipt.updatedPlayer) Object.assign(player, receipt.updatedPlayer);
     if (!receipt.success) {
         logMessage(receipt.message);
         if (receipt.updatedCombatState) syncCombatCollectionsFromState(receipt.updatedCombatState);
-        if (!activeCombatActorUid) {
-            currentTurn = 'ENEMY';
-            combatPhase = 'WAITING_FOR_ATB';
-        }
         const failedMoveActor = receipt.actorUid && typeof getCombatActorByUid === 'function' ? getCombatActorByUid(receipt.actorUid) : player;
         if (failedMoveActor && Number.isFinite(receipt.x) && Number.isFinite(receipt.y)) {
             failedMoveActor.x = receipt.x;
             failedMoveActor.y = receipt.y;
         }
         if (typeof playRetroSound === 'function') playRetroSound('error');
-        refreshSystemUI();
-    } else {
-        // Successfully moved! Keep client stamina perfectly in sync with the server
-        if (receipt.updatedPlayer) {
-            player.stamina = receipt.updatedPlayer.stamina;
-            refreshSystemUI();
-        }
-        if (receipt.updatedCombatState) syncCombatCollectionsFromState(receipt.updatedCombatState);
     }
+    settleCombatActionState(receipt.updatedCombatState || null);
 });
 
 socket.on('ATB_READY', (payload = {}) => {
     if (gameState !== 'COMBAT') return;
     activeCombatActorUid = payload.actorUid || 'player_0';
-    combatPhase = 'PHASE_1'; // The exact start of your tactical phase!
+    combatActionsRemaining = Number.isInteger(payload.actionsRemaining) ? payload.actionsRemaining : 2;
+    combatPhase = 'ACTION_READY';
     currentTurn = 'PLAYER';
     logMessage(`⚡ ${payload.actorName || 'Party'} is ready! Tactical turn begins.`);
     if (typeof playRetroSound === 'function') playRetroSound('equip');
@@ -508,6 +506,7 @@ socket.on('statusEffectReceipt', (receipt) => {
 
 socket.on('combatDeployed', (serverCombatState) => {
     activeCombatActorUid = null;
+    combatActionsRemaining = 0;
     combatVictoryPresentationStarted = false;
     reachableTiles = null;
     hideTooltip();
@@ -597,9 +596,17 @@ socket.on('enemyTurnReceipt', (receipt) => {
         setTimeout(() => {
             const eventActorUid = getCombatEventActorUid(ev);
             if (eventActorUid) activeCombatActorUid = eventActorUid;
+            const eventActor = eventActorUid ? getCombatActorByUid(eventActorUid) : null;
+            if (eventActor && Number.isFinite(ev.stamina)) {
+                eventActor.stamina = ev.stamina;
+                if (Number.isFinite(ev.maxStamina)) eventActor.maxStamina = ev.maxStamina;
+            }
             if (ev.type === 'move') {
                 let e = ev.uid ? getCombatActorByUid(ev.uid) : [...enemies, ...allies, ...rogues].find(en => en.name === ev.name);
                 if (e) { e.x = ev.finalX; e.y = ev.finalY; }
+            }
+            else if (ev.type === 'rest') {
+                logMessage(`${ev.name || 'Combatant'} rests and recovers ${ev.recovered || 0} stamina.`);
             }
             else if (ev.type === 'crush') {
                 if (typeof playRetroSound === 'function') playRetroSound('heavyAttack');
@@ -721,6 +728,7 @@ socket.on('enemyTurnReceipt', (receipt) => {
         // We only overwrite the grid with the server's truth AFTER the movie finishes playing!
         if (receipt.updatedCombatState) syncCombatCollectionsFromState(receipt.updatedCombatState);
         activeCombatActorUid = null;
+        combatActionsRemaining = 0;
 
         if (player.hp > 0) {
             reachableTiles = null;
@@ -742,7 +750,8 @@ let currentGridSize = 8;
 let currentTileSize = 60;
 let gameState = 'KNIGHT';
 let currentTurn = 'PLAYER';
-let combatPhase = 'MOVE';
+let combatPhase = 'WAITING_FOR_ATB';
+let combatActionsRemaining = 0;
 let activeCombatZone = 'WILDERNESS';
 let activeCombatFloorSpriteId = 'ground_wilderness';
 let activeCombatFloorTiles = [];

@@ -41,6 +41,9 @@ function createEnemy(id, x, y, customPrefix = "", statMult = 1.0) {
         type: template.type,
         hp: Math.floor(template.hp * statMult),
         maxHp: Math.floor(template.maxHp * statMult),
+        maxStamina: template.maxStamina || 25,
+        stamina: template.maxStamina || 25,
+        attackStaminaCost: template.attackStaminaCost || 5,
         attackRange: template.attackRange,
         offense: Math.floor(template.offense * statMult),
         // Defense remains unscaled linearly to prevent unkillable abyssal tanks
