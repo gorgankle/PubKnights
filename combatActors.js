@@ -3,9 +3,15 @@
 
 const { getMaxHp, getMaxStamina } = require('./combatMath.js');
 
-const TEAM_PLAYER = 'PLAYER';
-const TEAM_ENEMY = 'ENEMY';
-const TEAM_ROGUE = 'ROGUE';
+const {
+    PARTY_PLAYER: TEAM_PLAYER,
+    PARTY_ENEMY: TEAM_ENEMY,
+    PARTY_ROGUE: TEAM_ROGUE,
+    normalizePartyActor,
+    syncCombatParties,
+    getActorPartyId,
+    getPartyActors
+} = require('./combatParties.js');
 
 function isActorAlive(actor) {
     return !!actor && actor.alive !== false && actor.hp !== 0 && actor.retreated !== true;
@@ -34,6 +40,7 @@ function addCombatActor(combat, actor) {
     if (actor.blocksMovement === undefined) actor.blocksMovement = true;
     if (actor.targetable === undefined) actor.targetable = true;
     if (actor.atbCharge === undefined) actor.atbCharge = 0;
+    normalizePartyActor(actor);
     combat.actors.push(actor);
     return actor;
 }
@@ -195,6 +202,7 @@ function createCellarDwellerActor(tile) {
 
 function ensureCombatActors(combat, player) {
     combat.actors = Array.isArray(combat.actors) ? combat.actors : [];
+    combat.actors.forEach(normalizePartyActor);
     let playerActor = getPlayerActor(combat);
     if (!playerActor && combat.player) {
         playerActor = createPlayerActor(player || {}, combat.player);
@@ -239,9 +247,10 @@ function syncCombatViews(combat, player) {
         };
     }
 
-    combat.enemies = combat.actors.filter(actor => actor.teamId === TEAM_ENEMY);
-    combat.allies = combat.actors.filter(actor => actor.teamId === TEAM_PLAYER && !isPlayerActor(actor));
-    combat.rogues = combat.actors.filter(actor => actor.teamId === TEAM_ROGUE);
+    syncCombatParties(combat);
+    combat.enemies = combat.actors.filter(actor => getActorPartyId(actor) === TEAM_ENEMY);
+    combat.allies = combat.actors.filter(actor => getActorPartyId(actor) === TEAM_PLAYER && !isPlayerActor(actor));
+    combat.rogues = combat.actors.filter(actor => getActorPartyId(actor) === TEAM_ROGUE);
     return combat;
 }
 
@@ -255,25 +264,26 @@ function getAliveActors(combat) {
 }
 
 function getEnemyActors(combat) {
-    return (combat && Array.isArray(combat.actors) ? combat.actors : []).filter(actor => actor.teamId === TEAM_ENEMY);
+    return getPartyActors(combat, TEAM_ENEMY);
 }
 
 function getAliveRogueActors(combat) {
-    return (combat && Array.isArray(combat.actors) ? combat.actors : []).filter(actor => actor.teamId === TEAM_ROGUE && isActorAlive(actor));
+    return getPartyActors(combat, TEAM_ROGUE).filter(isActorAlive);
 }
 
 function isHostileTo(source, target) {
     if (!source || !target || source.uid === target.uid) return false;
-    return source.teamId !== target.teamId;
+    return getActorPartyId(source) !== getActorPartyId(target);
 }
 
 function canActorTarget(source, target) {
     if (!isActorAlive(source) || !isActorAlive(target)) return false;
     if (!isHostileTo(source, target)) return false;
     if (target.targetable === false) return false;
-    if (source.teamId === TEAM_PLAYER && target.targetableByPlayer === false) return false;
-    if (source.teamId === TEAM_ENEMY && target.targetableByEnemies === false) return false;
-    if (source.teamId === TEAM_ROGUE && target.targetableByRogues === false) return false;
+    const sourcePartyId = getActorPartyId(source);
+    if (sourcePartyId === TEAM_PLAYER && target.targetableByPlayer === false) return false;
+    if (sourcePartyId === TEAM_ENEMY && target.targetableByEnemies === false) return false;
+    if (sourcePartyId === TEAM_ROGUE && target.targetableByRogues === false) return false;
     return true;
 }
 
@@ -332,6 +342,9 @@ module.exports = {
     TEAM_PLAYER,
     TEAM_ENEMY,
     TEAM_ROGUE,
+    syncCombatParties,
+    getActorPartyId,
+    getPartyActors,
     addCombatActor,
     createPlayerActor,
     createEnemyActor,

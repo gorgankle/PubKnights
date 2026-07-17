@@ -21,7 +21,6 @@ const {
     syncCombatViews,
     syncPlayerActor,
     getPlayerActor,
-    getActorByUid,
     getAliveActors,
     getHostileActorsFor,
     getPlayerAttackTargets,
@@ -29,17 +28,22 @@ const {
     isPlayerActor,
     isBlockingActor
 } = require('./combatActors.js');
-
-function isPlayerControlledActor(actor) {
-    return !!actor && (actor.kind === 'player' || actor.controller === 'player_companion');
-}
+const {
+    PARTY_PLAYER,
+    CONTROL_MANUAL,
+    isManualPartyActor,
+    getActivePartyActor,
+    activatePartyActor,
+    clearActivePartyActor
+} = require('./combatParties.js');
 
 function getCombatTurnActor(combat, player) {
     syncCombatViews(combat, player);
-    const activeUid = sanitizeToken(combat.activeActorUid || '', '');
-    const actor = activeUid ? getActorByUid(combat, activeUid) : null;
-    if (!actor || !isPlayerControlledActor(actor) || !isActorAlive(actor)) return null;
-    return actor;
+    return getActivePartyActor(combat, {
+        partyId: PARTY_PLAYER,
+        controlMode: CONTROL_MANUAL,
+        isEligible: isActorAlive
+    });
 }
 
 function getActorEquipment(actor, player) {
@@ -97,8 +101,7 @@ function finishPlayerControlledTurn(combat, player, actor) {
     if (!actor) return;
     actor.atbCharge = 0;
     if (isPlayerActor(actor) && combat.player) combat.player.atbCharge = 0;
-    combat.activeActorUid = null;
-    combat.atbPaused = false;
+    clearActivePartyActor(combat, actor.uid);
     syncCombatViews(combat, player);
 }
 module.exports = function(socket, io, activePlayers, activeCombats) {
@@ -143,7 +146,13 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
 
         const activeActor = getCombatTurnActor(combat, p);
         if (!activeActor) {
-            return socket.emit('combatResult', { type: 'error', message: 'Tactical Error: No active party member is ready.', newStamina: p.stamina, updatedCombatState: syncCombatViews(combat, p) });
+            clearActivePartyActor(combat, combat.activeActorUid || null);
+            return socket.emit('combatResult', {
+                type: 'error',
+                message: 'Tactical turn resynchronized. Waiting for the next party member.',
+                newStamina: p.stamina,
+                updatedCombatState: syncCombatViews(combat, p)
+            });
         }
 
         if (data.actionCategory === 'pass') {
@@ -221,7 +230,14 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
 
         const activeActor = getCombatTurnActor(combat, p);
         if (!activeActor) {
-            return socket.emit('moveReceipt', { success: false, message: 'Tactical Error: No active party member is ready.', x: combat.player.x, y: combat.player.y });
+            clearActivePartyActor(combat, combat.activeActorUid || null);
+            return socket.emit('moveReceipt', {
+                success: false,
+                message: 'Tactical turn resynchronized. Waiting for the next party member.',
+                x: combat.player.x,
+                y: combat.player.y,
+                updatedCombatState: syncCombatViews(combat, p)
+            });
         }
         let speed = getActorStatValue(activeActor, p, 'speed');
         speed = Math.max(1, Math.min(12, speed));
@@ -311,7 +327,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 const playerActor = getPlayerActor(combat);
                 if (!playerActor) continue;
 
-                const controlledActors = getAliveActors(combat).filter(isPlayerControlledActor);
+                const controlledActors = getAliveActors(combat).filter(actor => isManualPartyActor(actor, PARTY_PLAYER));
                 controlledActors.forEach(actor => {
                     const actorSpeed = ((getActorStatValue(actor, p, 'speed') * 3) + 5);
                     actor.atbCharge = Math.min(100, (actor.atbCharge || 0) + actorSpeed);
@@ -319,7 +335,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 });
 
                 getAliveActors(combat).forEach(actor => {
-                    if (isPlayerControlledActor(actor)) return;
+                    if (isManualPartyActor(actor, PARTY_PLAYER)) return;
                     const actorSpeed = (((actor.speed || 1) * 3) + 5);
                     actor.atbCharge = Math.min(100, (actor.atbCharge || 0) + actorSpeed);
                 });
@@ -371,8 +387,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                         continue;
                     }
 
-                    combat.atbPaused = true;
-                    combat.activeActorUid = readyControlledActor.uid;
+                    if (!activatePartyActor(combat, readyControlledActor)) continue;
                     io.to(socketId).emit('ATB_READY', {
                         actorUid: readyControlledActor.uid,
                         actorName: readyControlledActor.name,
@@ -380,7 +395,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                     });
                 } else {
                     const readyActors = getAliveActors(combat)
-                        .filter(actor => !isPlayerControlledActor(actor) && actor.atbCharge >= 100);
+                        .filter(actor => !isManualPartyActor(actor, PARTY_PLAYER) && actor.atbCharge >= 100);
 
                     if (readyActors.length > 0) {
                         const masterEventList = [];

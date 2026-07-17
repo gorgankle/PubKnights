@@ -75,7 +75,7 @@ function createHarness({ weapon, inventory = [], enemies = null }) {
         atbCharge: 0
     };
     const companion = {
-        uid: 'ally_mercenary_1',
+        uid: 'ally_merc_0123456789abcdef01234567',
         kind: 'companion',
         controller: 'player_companion',
         teamId: 'PLAYER',
@@ -275,10 +275,30 @@ test('pass atomically ends the active companion turn and ignores a spoofed actor
 
     const result = harness.socket.lastPayload('combatResult');
     assert.equal(result.type, 'pass');
+    assert.equal(harness.companion.uid.length, 34);
+    assert.deepEqual(result.updatedCombatState.parties.PLAYER.memberUids, ['player_0', harness.companion.uid]);
     assert.equal(result.actorUid, harness.companion.uid);
     assert.equal(result.recovered, 7);
     assert.equal(harness.companion.stamina, 17);
     assert.equal(harness.companion.atbCharge, 0);
+    assert.equal(harness.combat.activeActorUid, null);
+    assert.equal(harness.combat.atbPaused, false);
+    assert.equal(result.updatedCombatState.activeActorUid, null);
+});
+
+test('a stale active party token is cleared instead of locking combat', () => {
+    const weapon = makeWeapon({ range: 1, staminaCost: 5, multiplier: 1 });
+    const harness = createHarness({ weapon });
+    harness.combat.activeActorUid = 'missing_party_actor';
+    harness.combat.atbPaused = true;
+
+    harness.socket.dispatch('dispatchCombatAction', {
+        actionCategory: 'pass'
+    });
+
+    const result = harness.socket.lastPayload('combatResult');
+    assert.equal(result.type, 'error');
+    assert.match(result.message, /resynchronized/i);
     assert.equal(harness.combat.activeActorUid, null);
     assert.equal(harness.combat.atbPaused, false);
     assert.equal(result.updatedCombatState.activeActorUid, null);

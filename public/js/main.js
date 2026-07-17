@@ -16,6 +16,12 @@ function syncCombatCollectionsFromState(serverCombatState) {
     allies = serverCombatState.allies || [];
     rogues = serverCombatState.rogues || [];
     mapObstacles = serverCombatState.obstacles || mapObstacles || [];
+    if (serverCombatState.parties && typeof serverCombatState.parties === "object") {
+        combatParties = serverCombatState.parties;
+    }
+    if (Object.prototype.hasOwnProperty.call(serverCombatState, "activeActorUid")) {
+        activeCombatActorUid = serverCombatState.activeActorUid || null;
+    }
 }
 
 function getCombatActorByUid(uid) {
@@ -88,9 +94,16 @@ socket.on('combatResult', (result) => {
     if (result.type === 'error') {
         logMessage(result.message);
         if (typeof playRetroSound === 'function') playRetroSound('error');
+        if (resultCombatState) syncCombatCollectionsFromState(resultCombatState);
 
-        // Failsafe: If the server rejected a throw, unlock the client back to Phase 2!
-        if (combatPhase === 'WAITING_FOR_SERVER') combatPhase = 'PHASE_2';
+        if (!activeCombatActorUid) {
+            currentTurn = 'ENEMY';
+            combatPhase = 'WAITING_FOR_ATB';
+            selectedEnemy = null;
+            pendingMove = null;
+        } else if (combatPhase === 'WAITING_FOR_SERVER') {
+            combatPhase = 'PHASE_2';
+        }
 
         refreshSystemUI();
         if (typeof drawGrid === 'function') drawGrid();
@@ -294,6 +307,11 @@ socket.on('combatItemReceipt', (receipt) => {
 socket.on('moveReceipt', (receipt) => {
     if (!receipt.success) {
         logMessage(receipt.message);
+        if (receipt.updatedCombatState) syncCombatCollectionsFromState(receipt.updatedCombatState);
+        if (!activeCombatActorUid) {
+            currentTurn = 'ENEMY';
+            combatPhase = 'WAITING_FOR_ATB';
+        }
         const failedMoveActor = receipt.actorUid && typeof getCombatActorByUid === 'function' ? getCombatActorByUid(receipt.actorUid) : player;
         if (failedMoveActor && Number.isFinite(receipt.x) && Number.isFinite(receipt.y)) {
             failedMoveActor.x = receipt.x;
@@ -730,6 +748,7 @@ let activeCombatFloorSpriteId = 'ground_wilderness';
 let activeCombatFloorTiles = [];
 let allies = [];
 let rogues = [];
+let combatParties = {};
 
 
 // Target Tracking
