@@ -11,6 +11,12 @@ const {
     clampInt,
     getArrayIndex
 } = require('./serverSecurity.js');
+const {
+    COMPANION_EQUIPMENT_SLOTS,
+    createCompanionInstanceId,
+    normalizeRosterState,
+    findCompanionByInstanceId
+} = require('./companionRoster.js');
 
 // 2. Bring over the secure unboxing math from server.js
 function rollSecureCrateLoot(crateId) {
@@ -38,12 +44,13 @@ function cloneItem(itemId) {
 
 function createStarterCompanion(name = 'Hired Mercenary') {
     return {
-        id: STARTER_COMPANION_ID,
+        instanceId: createCompanionInstanceId(),
+        templateId: STARTER_COMPANION_ID,
         name,
         role: 'Frontliner',
         level: 1,
         hired: true,
-        active: true,
+        active: false,
         icon: 'M',
         spriteId: 'companion_marlow',
         stats: { vitality: 3, offense: 2, defense: 2, speed: 3 },
@@ -51,31 +58,13 @@ function createStarterCompanion(name = 'Hired Mercenary') {
             weapon: cloneItem('rusty_mace'),
             helmet: cloneItem('rusty_coif'),
             armor: cloneItem('leather_tunic'),
-            accessory: null
+            gloves: null,
+            boots: null
         }
     };
 }
 
-function normalizeRosterState(player) {
-    const roster = player.roster && typeof player.roster === 'object' ? player.roster : {};
-    const companions = Array.isArray(roster.companions) ? roster.companions : [];
-    const seen = new Set();
-    player.roster = {
-        companions: companions.filter(companion => {
-            if (!companion || !companion.id || seen.has(companion.id)) return false;
-            seen.add(companion.id);
-            companion.hired = companion.hired !== false;
-            companion.equipment = companion.equipment && typeof companion.equipment === 'object' ? companion.equipment : {};
-            ['weapon', 'helmet', 'armor', 'accessory'].forEach(slot => {
-                if (!Object.prototype.hasOwnProperty.call(companion.equipment, slot)) companion.equipment[slot] = null;
-            });
-            companion.stats = companion.stats && typeof companion.stats === 'object' ? companion.stats : { vitality: 3, offense: 2, defense: 2, speed: 3 };
-            return true;
-        }),
-        activeIds: Array.isArray(roster.activeIds) ? roster.activeIds.filter(id => seen.has(id)).slice(0, 1) : []
-    };
-    player.roster.companions.forEach(companion => { companion.active = player.roster.activeIds.includes(companion.id); });
-}
+
 
 function ensurePlayerContainers(player) {
     player.inventory = Array.isArray(player.inventory) ? player.inventory : [];
@@ -209,7 +198,45 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         if (!data || typeof data !== 'object') return;
         ensurePlayerContainers(p);
 
-if (data.action === 'equip') {
+if (data.action === 'equipCompanion' || data.action === 'unequipCompanion') {
+            if (activeCombats && activeCombats[socket.id]) {
+                return socket.emit('inventoryReceipt', { success: false, message: 'Mercenary gear can only be changed outside combat.' });
+            }
+
+            const companion = findCompanionByInstanceId(p, data.instanceId);
+            if (!companion) return socket.emit('inventoryReceipt', { success: false, message: 'That mercenary is not on your roster.' });
+
+            if (data.action === 'equipCompanion') {
+                const idx = getArrayIndex(data.index, p.inventory);
+                if (idx < 0) return socket.emit('inventoryReceipt', { success: false, message: 'Invalid backpack slot.' });
+                const toEquip = p.inventory[idx];
+                if (!toEquip || !COMPANION_EQUIPMENT_SLOTS.includes(toEquip.slot)) {
+                    return socket.emit('inventoryReceipt', { success: false, message: 'That item cannot be equipped by a mercenary.' });
+                }
+
+                const slotKey = toEquip.slot;
+                const worn = companion.equipment[slotKey];
+                companion.equipment[slotKey] = toEquip;
+                if (worn) p.inventory[idx] = worn;
+                else p.inventory.splice(idx, 1);
+                return socket.emit('inventoryReceipt', { success: true, action: 'equipCompanion', updatedPlayer: p, message: `${companion.name} equipped ${toEquip.name}.` });
+            }
+
+            const slotKey = sanitizeToken(data.slotKey, '');
+            if (!COMPANION_EQUIPMENT_SLOTS.includes(slotKey)) {
+                return socket.emit('inventoryReceipt', { success: false, message: 'Invalid mercenary equipment slot.' });
+            }
+            const worn = companion.equipment[slotKey];
+            if (!worn) return socket.emit('inventoryReceipt', { success: false, message: `${companion.name} has nothing equipped there.` });
+            p.maxInventorySlots = p.maxInventorySlots || 5;
+            if (p.inventory.length >= p.maxInventorySlots) {
+                return socket.emit('inventoryReceipt', { success: false, message: 'Backpack is full. Make space first.' });
+            }
+            p.inventory.push(worn);
+            companion.equipment[slotKey] = null;
+            return socket.emit('inventoryReceipt', { success: true, action: 'unequipCompanion', updatedPlayer: p, message: `${companion.name} unequipped ${worn.name}.` });
+        }
+        else if (data.action === 'equip') {
             let idx = getArrayIndex(data.index, p.inventory);
             if (idx < 0) return;
             let toEquip = p.inventory[idx];
@@ -361,11 +388,8 @@ if (data.action === 'equip') {
             }
         }
         else if (data.action === 'hireCompanion') {
-            const companionId = sanitizeToken(data.companionId, STARTER_COMPANION_ID);
-            if (![STARTER_COMPANION_ID, 'marlow_shieldhand'].includes(companionId)) return socket.emit('townReceipt', { success: false, message: 'That companion is not available yet.' });
-            if (p.roster.companions.some(companion => companion.id === STARTER_COMPANION_ID || companion.id === 'marlow_shieldhand')) {
-                return socket.emit('townReceipt', { success: false, action: 'hireCompanion', updatedPlayer: p, message: 'A mercenary is already on your roster.' });
-            }
+            const templateId = sanitizeToken(data.templateId || data.companionId, STARTER_COMPANION_ID);
+            if (![STARTER_COMPANION_ID, 'marlow_shieldhand'].includes(templateId)) return socket.emit('townReceipt', { success: false, message: 'That companion is not available yet.' });
             if (p.gold < STARTER_COMPANION_COST) {
                 return socket.emit('townReceipt', { success: false, message: 'A mercenary asks for ' + STARTER_COMPANION_COST + 'g up front.' });
             }
@@ -374,23 +398,23 @@ if (data.action === 'equip') {
             const requestedName = String(data.companionName || '').replace(/[^a-zA-Z0-9 '\\-]/g, '').trim().slice(0, 24);
             const companion = createStarterCompanion(requestedName || 'Hired Mercenary');
             p.roster.companions.push(companion);
-            p.roster.activeIds = [companion.id];
+            if (p.roster.activeIds.length === 0) p.roster.activeIds = [companion.instanceId];
             normalizeRosterState(p);
-            socket.emit('townReceipt', { success: true, action: 'hireCompanion', updatedPlayer: p, message: companion.name + ' joins your party. Manage active companions from the Knight screen.' });
+            socket.emit('townReceipt', { success: true, action: 'hireCompanion', updatedPlayer: p, message: companion.name + ' joins your roster. Manage party gear from the Knight screen.' });
         }
         else if (data.action === 'setActiveCompanion') {
-            const companionId = sanitizeToken(data.companionId, '');
+            const instanceId = sanitizeToken(data.instanceId || data.companionId, '');
             normalizeRosterState(p);
-            const companion = p.roster.companions.find(entry => entry.id === companionId);
+            const companion = findCompanionByInstanceId(p, instanceId);
             if (!companion) return socket.emit('townReceipt', { success: false, message: 'That companion is not on your roster.' });
-            p.roster.activeIds = [companion.id];
+            p.roster.activeIds = [companion.instanceId];
             normalizeRosterState(p);
             socket.emit('townReceipt', { success: true, action: 'setActiveCompanion', updatedPlayer: p, message: `${companion.name} is now active.` });
         }
         else if (data.action === 'benchCompanion') {
-            const companionId = sanitizeToken(data.companionId, '');
+            const instanceId = sanitizeToken(data.instanceId || data.companionId, '');
             normalizeRosterState(p);
-            p.roster.activeIds = p.roster.activeIds.filter(id => id !== companionId);
+            p.roster.activeIds = p.roster.activeIds.filter(id => id !== instanceId);
             normalizeRosterState(p);
             socket.emit('townReceipt', { success: true, action: 'benchCompanion', updatedPlayer: p, message: 'Companion moved to inactive roster.' });
         }

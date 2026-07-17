@@ -472,3 +472,160 @@ button:hover:not(:disabled) { background: #a06d3b; }
 .paper-doll-grid .slot-title {
     display: none; 
 }
+/* --- COMPANION ROSTER & EQUIPMENT --- */
+.companion-empty-state {
+    color: #8f9698;
+    font-size: 11px;
+    text-align: center;
+    padding: 12px 6px;
+}
+.companion-roster-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+    background: #1a1512;
+    border: 1px solid #3a2f26;
+    border-radius: 4px;
+    padding: 8px;
+}
+.companion-roster-row.is-active { border-color: #2ecc71; }
+.companion-roster-row.is-selected { box-shadow: inset 3px 0 0 #3498db; }
+.companion-roster-summary { min-width: 0; }
+.companion-roster-name {
+    color: #ffcc66;
+    font-weight: bold;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.companion-roster-row.is-active .companion-roster-name { color: #2ecc71; }
+.companion-roster-stats { color: #bbaaa0; font-size: 10px; margin-top: 3px; }
+.companion-roster-controls { display: flex; gap: 4px; }
+.companion-roster-controls button { margin: 0; padding: 6px 8px; font-size: 10px; }
+.companion-gear-button { background: #245b78; border-color: #3498db; }
+.companion-activate-button { background: #216b4f; border-color: #2ecc71; }
+.companion-bench-button { background: #7f3f1d; border-color: #d35400; }
+
+#companion-equipment-panel {
+    border-top: 1px dashed #4a3b2c;
+    margin-top: 10px;
+    padding-top: 10px;
+}
+.companion-equipment-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    color: #f4ebd9;
+    font-size: 12px;
+}
+.companion-equipment-header span { color: #9ba7aa; font-size: 10px; }
+.companion-equipment-stats {
+    color: #bbaaa0;
+    font-size: 10px;
+    margin: 4px 0 8px;
+}
+.companion-equipment-slots {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(70px, 1fr));
+    gap: 6px;
+}
+.companion-equipment-slot {
+    min-width: 0;
+    min-height: 126px;
+    display: grid;
+    grid-template-rows: auto 38px minmax(26px, auto) auto;
+    align-items: center;
+    gap: 4px;
+    padding: 6px;
+    background: #130e0a;
+    border: 1px solid #4a3b2c;
+    border-radius: 4px;
+    text-align: center;
+}
+.companion-equipment-slot-label {
+    color: #9ba7aa;
+    font-size: 9px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+.companion-equipment-slot-media {
+    width: 38px;
+    height: 38px;
+    margin: 0 auto;
+    display: grid;
+    place-items: center;
+    color: #66594f;
+}
+.companion-equipment-slot-media img {
+    width: 36px;
+    height: 36px;
+    image-rendering: pixelated;
+}
+.companion-equipment-item-name {
+    color: #e4d8c8;
+    font-size: 9px;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+}
+.companion-equipment-slot button {
+    width: 100%;
+    margin: 0;
+    padding: 4px;
+    font-size: 9px;
+}
+.companion-unequip-button { background: #6e342b; border-color: #b34b3d; }
+.companion-backpack-header {
+    color: #3498db;
+    border-bottom: 1px dashed #245b78;
+    margin: 10px 0 6px;
+    padding-bottom: 3px;
+    font-size: 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+.companion-backpack-gear {
+    display: grid;
+    gap: 5px;
+    max-height: 190px;
+    overflow-y: auto;
+}
+.companion-backpack-item {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    gap: 7px;
+    align-items: center;
+    min-height: 42px;
+    padding: 5px 6px;
+    background: #182027;
+    border: 1px solid #30485a;
+    border-radius: 4px;
+}
+.companion-backpack-item img {
+    width: 32px;
+    height: 32px;
+    image-rendering: pixelated;
+}
+.companion-backpack-item-details { min-width: 0; display: grid; gap: 2px; }
+.companion-backpack-item-details strong {
+    color: #e4edf2;
+    font-size: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.companion-backpack-item-details span { color: #8fa6b3; font-size: 9px; }
+.companion-equip-button {
+    margin: 0;
+    padding: 5px 8px;
+    background: #216b4f;
+    border-color: #2ecc71;
+    font-size: 9px;
+}
+@media (max-width: 720px) {
+    .companion-equipment-slots { grid-template-columns: repeat(auto-fit, minmax(78px, 1fr)); }
+    .companion-roster-row { grid-template-columns: 1fr; }
+    .companion-roster-controls { justify-content: stretch; }
+    .companion-roster-controls button { flex: 1; }
+}

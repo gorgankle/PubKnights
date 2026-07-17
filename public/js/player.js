@@ -42,18 +42,42 @@ function normalizeClientPlayerContainers() {
     player.stash = Array.isArray(player.stash) ? player.stash : [];
     player.equipment = player.equipment && typeof player.equipment === 'object' ? player.equipment : {};
 
-    ['helmet', 'armor', 'weapon', 'gloves', 'boots'].forEach(slot => {
+    const equipmentSlots = ['helmet', 'armor', 'weapon', 'gloves', 'boots'];
+    equipmentSlots.forEach(slot => {
         if (!Object.prototype.hasOwnProperty.call(player.equipment, slot)) player.equipment[slot] = null;
     });
 
     const roster = player.roster && typeof player.roster === 'object' ? player.roster : {};
-    const companions = Array.isArray(roster.companions) ? roster.companions : [];
-    const validIds = new Set(companions.filter(companion => companion && companion.id).map(companion => companion.id));
-    player.roster = {
-        companions,
-        activeIds: Array.isArray(roster.activeIds) ? roster.activeIds.filter(id => validIds.has(id)).slice(0, 1) : []
-    };
-    player.roster.companions.forEach(companion => { companion.active = player.roster.activeIds.includes(companion.id); });
+    const sourceCompanions = Array.isArray(roster.companions) ? roster.companions : [];
+    const legacyIdMap = new Map();
+    const companions = sourceCompanions.map(companion => {
+        if (!companion || typeof companion !== 'object') return null;
+        const instanceId = companion.instanceId || companion.id;
+        const templateId = companion.templateId || companion.id || 'companion';
+        if (!instanceId) return null;
+
+        legacyIdMap.set(instanceId, instanceId);
+        if (companion.id && !legacyIdMap.has(companion.id)) legacyIdMap.set(companion.id, instanceId);
+
+        const sourceEquipment = companion.equipment && typeof companion.equipment === 'object' ? companion.equipment : {};
+        const equipment = {};
+        equipmentSlots.forEach(slot => { equipment[slot] = sourceEquipment[slot] || null; });
+
+        const normalized = Object.assign({}, companion, { instanceId, templateId, equipment });
+        delete normalized.id;
+        return normalized;
+    }).filter(Boolean);
+
+    const validIds = new Set(companions.map(companion => companion.instanceId));
+    const activeIds = [];
+    const requestedActiveIds = Array.isArray(roster.activeIds) ? roster.activeIds : [];
+    requestedActiveIds.forEach(requestedId => {
+        const instanceId = validIds.has(requestedId) ? requestedId : legacyIdMap.get(requestedId);
+        if (instanceId && !activeIds.includes(instanceId) && activeIds.length < 1) activeIds.push(instanceId);
+    });
+
+    player.roster = { companions, activeIds };
+    companions.forEach(companion => { companion.active = activeIds.includes(companion.instanceId); });
 }
 
 function normalizePlayerLevel(level) {

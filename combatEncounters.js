@@ -24,7 +24,7 @@ function getActiveCompanions(player) {
     const companions = Array.isArray(roster.companions) ? roster.companions : [];
     const activeIds = new Set(Array.isArray(roster.activeIds) ? roster.activeIds : []);
     return companions
-        .filter(companion => companion && companion.hired !== false && activeIds.has(companion.id))
+        .filter(companion => companion && companion.hired !== false && activeIds.has(companion.instanceId))
         .slice(0, 1);
 }
 function addEnemyFromSlot(combatState, slot, prefix = "", statMult = 1) {

@@ -37,18 +37,35 @@ function hireBrewmasterServices() { socket.emit('townAction', { action: 'craftBr
 
 function craftSpecialtyBrew(brewType) { socket.emit('townAction', { action: 'craftBrew', brewType: brewType }); }
 
+window.selectedCompanionInstanceId = window.selectedCompanionInstanceId || null;
+
 function hireTavernCompanion() {
     const nameInput = document.getElementById('mercenary-name-input');
     const companionName = nameInput ? nameInput.value.trim() : '';
-    socket.emit('townAction', { action: 'hireCompanion', companionId: 'starter_mercenary', companionName: companionName });
+    socket.emit('townAction', { action: 'hireCompanion', templateId: 'starter_mercenary', companionName: companionName });
 }
 
-function setActiveCompanion(companionId) {
-    socket.emit('townAction', { action: 'setActiveCompanion', companionId: companionId });
+function setActiveCompanion(instanceId) {
+    socket.emit('townAction', { action: 'setActiveCompanion', instanceId: instanceId });
 }
 
-function benchCompanion(companionId) {
-    socket.emit('townAction', { action: 'benchCompanion', companionId: companionId });
+function benchCompanion(instanceId) {
+    socket.emit('townAction', { action: 'benchCompanion', instanceId: instanceId });
+}
+
+function selectCompanionEquipment(instanceId) {
+    window.selectedCompanionInstanceId = instanceId;
+    if (typeof refreshSystemUI === 'function') refreshSystemUI();
+}
+
+function equipCompanionItem(instanceId, inventoryIndex) {
+    hideTooltip();
+    socket.emit('inventoryAction', { action: 'equipCompanion', instanceId: instanceId, index: inventoryIndex });
+}
+
+function unequipCompanionItem(instanceId, slotKey) {
+    hideTooltip();
+    socket.emit('inventoryAction', { action: 'unequipCompanion', instanceId: instanceId, slotKey: slotKey });
 }
 function hostHappyHour() {
     logMessage('Happy Hour has been retired from this alpha branch.');

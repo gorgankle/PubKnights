@@ -21,6 +21,7 @@ const {
     getTotalXpForNextLevel
 } = require('./xpMath.js');
 const { applyLifetimeXpLevelUps } = require('./playerProgression.js');
+const { normalizeRosterState } = require('./companionRoster.js');
 const {
     DEFAULT_APPEARANCE,
     normalizeUsername,
@@ -200,52 +201,7 @@ function createDefaultSaveData(username) {
 
 
 function normalizeSavedRoster(pd) {
-    const roster = pd.roster && typeof pd.roster === 'object' ? pd.roster : {};
-    const companions = Array.isArray(roster.companions) ? roster.companions : [];
-    const seen = new Set();
-
-    const normalizedCompanions = companions
-        .filter(companion => companion && typeof companion === 'object' && companion.id)
-        .map(companion => {
-            const id = sanitizeToken(companion.id, '');
-            if (!id || seen.has(id)) return null;
-            seen.add(id);
-
-            const equipment = companion.equipment && typeof companion.equipment === 'object' ? companion.equipment : {};
-            const normalizedEquipment = {
-                weapon: sanitizeItemSchema(equipment.weapon) || null,
-                helmet: sanitizeItemSchema(equipment.helmet) || null,
-                armor: sanitizeItemSchema(equipment.armor) || null,
-                accessory: sanitizeItemSchema(equipment.accessory) || null
-            };
-
-            return {
-                id,
-                name: String(companion.name || 'Companion').slice(0, 32),
-                role: String(companion.role || 'Companion').slice(0, 32),
-                level: Math.max(1, Math.min(50, Math.trunc(Number(companion.level) || 1))),
-                hired: companion.hired !== false,
-                active: companion.active === true,
-                icon: String(companion.icon || 'M').slice(0, 2),
-                spriteId: sanitizeToken(companion.spriteId, ''),
-                stats: {
-                    vitality: Math.max(1, Math.trunc(Number(companion.stats && companion.stats.vitality) || 3)),
-                    offense: Math.max(1, Math.trunc(Number(companion.stats && companion.stats.offense) || 2)),
-                    defense: Math.max(1, Math.trunc(Number(companion.stats && companion.stats.defense) || 2)),
-                    speed: Math.max(1, Math.trunc(Number(companion.stats && companion.stats.speed) || 3))
-                },
-                equipment: normalizedEquipment
-            };
-        })
-        .filter(Boolean);
-
-    const activeIds = Array.isArray(roster.activeIds) ? roster.activeIds.map(id => sanitizeToken(id, '')).filter(Boolean) : [];
-    const validIds = new Set(normalizedCompanions.map(companion => companion.id));
-    pd.roster = {
-        companions: normalizedCompanions,
-        activeIds: activeIds.filter((id, index) => validIds.has(id) && activeIds.indexOf(id) === index).slice(0, 1)
-    };
-    pd.roster.companions.forEach(companion => { companion.active = pd.roster.activeIds.includes(companion.id); });
+    normalizeRosterState(pd, { sanitizeItem: sanitizeItemSchema });
 }
 
 function hydratePlayerData(playerDoc) {
@@ -481,7 +437,16 @@ if (data.saveData) {
                     await playerDoc.save();
                 }
 
+                const savedRoster = playerDoc.saveData && playerDoc.saveData.roster;
+                const hadSavedCompanions = !!(savedRoster && Array.isArray(savedRoster.companions) && savedRoster.companions.length > 0);
+                const savedRosterJson = hadSavedCompanions ? JSON.stringify(savedRoster) : '';
                 const pd = rememberSocketLogin(socket, playerDoc);
+                if (hadSavedCompanions && JSON.stringify(pd.roster) !== savedRosterJson) {
+                    await Player.updateOne(
+                        { _id: playerDoc._id },
+                        { $set: { 'saveData.roster': pd.roster, 'saveData.inventory': pd.inventory } }
+                    );
+                }
                 socket.emit('loginSuccess', pd);
             } catch (err) {
                 console.error(err);
@@ -532,4 +497,3 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`ðŸ» Pub Knights Server running on http://localhost:${PORT}`);
 });
-

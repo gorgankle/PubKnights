@@ -141,7 +141,7 @@ function createCompanionActor(companion, tile) {
     const maxStamina = getCompanionEquipmentStat(companion, 'maxStamina', 2) * 25;
 
     return {
-        uid: `ally_${(companion && companion.id) || 'companion'}`,
+        uid: `ally_${(companion && companion.instanceId) || 'companion'}`,
         id: (companion && companion.spriteId) || 'companion_marlow',
         kind: 'companion',
         controller: 'player_companion',
@@ -169,7 +169,8 @@ function createCompanionActor(companion, tile) {
         targetableByPlayer: false,
         rewardsEligible: false,
         blocksMovement: true,
-        companionId: companion && companion.id,
+        companionInstanceId: companion && companion.instanceId,
+        companionTemplateId: companion && companion.templateId,
         equipment
     };
 }

@@ -456,8 +456,26 @@ function rollSpellDamage(p, spellData, combatRules) {
     return { damage, isCrit: damage >= Math.floor(base * 0.95) };
 }
 
+function rollActorSpellDamage(actor, p, spellData, combatRules) {
+    const offense = getActorStatValue(actor, p, 'offense');
+    const scale = spellData.powerScale !== undefined ? spellData.powerScale : 0;
+    const multiplier = combatRules.multiplier || 1;
+    const base = Math.max(1, Math.floor(((spellData.damageFlat || 0) + (offense * scale)) * multiplier));
+    const minDmg = Math.max(1, Math.ceil(base * 0.85));
+    const damage = Math.floor(Math.random() * (base - minDmg + 1)) + minDmg;
+    return { damage, isCrit: damage >= Math.floor(base * 0.95) };
+}
+
 function getEnemyAtTile(combat, tx, ty) {
     return getPlayerAttackTargets(combat).find(enemy => {
+        if (!isActorAlive(enemy)) return false;
+        const s = enemy.size || 1;
+        return tx >= enemy.x && tx < enemy.x + s && ty >= enemy.y && ty < enemy.y + s;
+    });
+}
+
+function getActorEnemyAtTile(combat, actor, tx, ty) {
+    return getActorAttackTargets(combat, actor).find(enemy => {
         if (!isActorAlive(enemy)) return false;
         const s = enemy.size || 1;
         return tx >= enemy.x && tx < enemy.x + s && ty >= enemy.y && ty < enemy.y + s;
@@ -676,36 +694,47 @@ function handleActorWeaponAction(socket, p, combat, data, secureKill, actor) {
 
 function handleActorSpellAction(socket, p, combat, data, actor, weapon, combatRules, secureKill) {
     const spellData = SpellDatabase[combatRules.spellId];
-    if (!spellData) return socket.emit('combatResult', { type: 'error', message: 'Server: Invalid spell logic.' });
-    if (data.tx === undefined || data.ty === undefined) return;
-    if (getActorStaminaValue(actor, p) < spellData.cost) return socket.emit('combatResult', { type: 'error', message: 'Server: Insufficient stamina to cast.' });
-    const castDist = getGridDistance(actor.x, actor.y, data.tx, data.ty, actor.size || 1);
-    if (castDist > spellData.range) return socket.emit('combatResult', { type: 'error', message: 'Server: Target out of spell range.' });
+    if (!spellData) {
+        return socket.emit('combatResult', { type: 'error', message: 'Server: Staff spell is not configured.', newStamina: getActorStaminaValue(actor, p) });
+    }
 
-    spendActorStamina(actor, p, spellData.cost);
+    let serverEnemy = null;
+    if (combat && data.targetEnemy) {
+        serverEnemy = getActorAttackTargets(combat, actor).find(enemy => enemy.uid === data.targetEnemy.uid && isActorAlive(enemy));
+    }
+
+    const hasTileTarget = data.tx !== undefined && data.ty !== undefined;
+    const tx = hasTileTarget ? data.tx : (serverEnemy ? serverEnemy.x : undefined);
+    const ty = hasTileTarget ? data.ty : (serverEnemy ? serverEnemy.y : undefined);
+    if (tx === undefined || ty === undefined) {
+        return socket.emit('combatResult', { type: 'error', message: 'Server: Spell target lost.', newStamina: getActorStaminaValue(actor, p) });
+    }
+
+    const spellRange = combatRules.range || spellData.range || weapon.attackRange || 1;
+    const castDist = getGridDistance(actor.x, actor.y, tx, ty, actor.size || 1);
+    if (castDist > spellRange) {
+        return socket.emit('combatResult', { type: 'error', message: 'Server: Target out of spell range.', newStamina: getActorStaminaValue(actor, p) });
+    }
+    if (!spellData.ignoresLoS && !combatRules.ignoresLoS && !checkLineOfSight(actor.x, actor.y, tx, ty, combat)) {
+        return socket.emit('combatResult', { type: 'error', message: 'Server: No line of sight for staff spell.', newStamina: getActorStaminaValue(actor, p) });
+    }
+
+    const staminaCost = combatRules.staminaCost || spellData.cost || 0;
+    if (getActorStaminaValue(actor, p) < staminaCost) {
+        return socket.emit('combatResult', { type: 'error', message: `Server: ${actor.name} lacks stamina.`, newStamina: getActorStaminaValue(actor, p) });
+    }
+
+    spendActorStamina(actor, p, staminaCost);
     const hitTargets = [];
     let combatComplete = false;
-    const blastPath = spellData.type === 'line'
-        ? getLineOfEffectPath(actor.x, actor.y, data.tx, data.ty, spellData.range, !spellData.ignoresLoS, combat)
-        : [];
-
-    getActorAttackTargets(combat, actor).forEach(enemy => {
-        if (!isActorAlive(enemy)) return;
-        let isHit = false;
-        if (spellData.type === 'line') {
-            const s = enemy.size || 1;
-            for (let bx = enemy.x; bx < enemy.x + s; bx++) {
-                for (let by = enemy.y; by < enemy.y + s; by++) {
-                    if (blastPath.some(tile => tile.x === bx && tile.y === by)) isHit = true;
-                }
-            }
-        }
-        if (!isHit) return;
-        enemy.hp -= spellData.damageFlat;
+    const hitEnemy = (enemy) => {
+        if (!enemy || !isActorAlive(enemy)) return;
+        const roll = rollActorSpellDamage(actor, p, spellData, combatRules);
+        enemy.hp -= roll.damage;
         const poisonApplied = applyPoison(enemy, {
-            chance: spellData.poisonChance || 0,
-            turns: spellData.poisonTurns || 3,
-            fallbackDamage: Math.max(2, Math.floor(spellData.damageFlat * 0.25))
+            chance: spellData.poisonChance || combatRules.poisonChance || 0,
+            turns: spellData.poisonTurns || combatRules.poisonTurns || 3,
+            fallbackDamage: Math.max(2, Math.floor(roll.damage * 0.25))
         });
         let killed = false;
         if (enemy.hp <= 0) {
@@ -713,12 +742,46 @@ function handleActorSpellAction(socket, p, combat, data, actor, weapon, combatRu
             const killResult = defeatCombatTarget(combat, p, enemy, secureKill);
             combatComplete = combatComplete || !!(killResult && killResult.combatComplete);
         }
-        hitTargets.push({ uid: enemy.uid, damage: spellData.damageFlat, isCrit: false, killed, statusApplied: poisonApplied ? 'poison' : null, statusEffects: enemy.statusEffects });
-    });
+        hitTargets.push({ uid: enemy.uid, damage: roll.damage, isCrit: roll.isCrit, killed, statusApplied: poisonApplied ? 'poison' : null, statusEffects: enemy.statusEffects });
+    };
+
+    if (spellData.type === 'single') {
+        hitEnemy(serverEnemy || getActorEnemyAtTile(combat, actor, tx, ty));
+    } else if (spellData.type === 'line') {
+        const blastPath = getLineOfEffectPath(actor.x, actor.y, tx, ty, spellRange, !spellData.ignoresLoS, combat);
+        getActorAttackTargets(combat, actor).forEach(enemy => {
+            if (!isActorAlive(enemy)) return;
+            let isHit = false;
+            const s = enemy.size || 1;
+            for (let bx = enemy.x; bx < enemy.x + s; bx++) {
+                for (let by = enemy.y; by < enemy.y + s; by++) {
+                    if (blastPath.some(tile => tile.x === bx && tile.y === by)) isHit = true;
+                }
+            }
+            if (isHit) hitEnemy(enemy);
+        });
+    } else if (spellData.type === 'aoe') {
+        const radius = spellData.aoeRadius || combatRules.aoeRadius || 1;
+        getActorAttackTargets(combat, actor).forEach(enemy => {
+            if (!isActorAlive(enemy)) return;
+            const eDist = getGridDistance(tx, ty, enemy.x, enemy.y, enemy.size || 1);
+            if (eDist <= radius) hitEnemy(enemy);
+        });
+    }
 
     return socket.emit('combatResult', {
         type: 'hit', source: 'spell', actionName: spellData.name, actorUid: actor.uid, actorName: actor.name, targets: hitTargets,
-        fx: { type: spellData.fx ? spellData.fx.type : 'beam', style: spellData.fx ? spellData.fx.style : 'fire', density: spellData.fx ? spellData.fx.density : 12, spread: spellData.fx ? spellData.fx.spread : 15, speed: spellData.fx ? spellData.fx.speed : 15, tx: data.tx, ty: data.ty, sx: actor.x, sy: actor.y, sourceUid: actor.uid },
+        newStamina: getActorStaminaValue(actor, p),
+        fx: {
+            type: spellData.fx ? spellData.fx.type : 'beam',
+            style: spellData.fx ? spellData.fx.style : 'arcane',
+            density: spellData.fx ? spellData.fx.density : 12,
+            spread: spellData.fx ? spellData.fx.spread : 12,
+            speed: spellData.fx ? spellData.fx.speed : 10,
+            radius: spellData.fx ? spellData.fx.radius : spellData.aoeRadius,
+            frames: spellData.fx ? spellData.fx.frames : 22,
+            tx, ty, sx: actor.x, sy: actor.y, sourceUid: actor.uid
+        },
         updatedPlayer: p,
         updatedCombatState: syncCombatViews(combat, p),
         combatComplete
@@ -866,15 +929,24 @@ function handleWeaponAction(socket, p, combat, data, secureKill) {
     });
 }
 
+function emitActorItemReceipt(socket, p, combat, actor, receipt) {
+    return socket.emit('combatItemReceipt', {
+        actorUid: actor.uid,
+        actorName: actor.name,
+        newStamina: getActorStaminaValue(actor, p),
+        ...receipt
+    });
+}
+
 function handleActorConsumableAction(socket, p, combat, data, actor) {
     const invIndex = getArrayIndex(data.invIndex, p.inventory);
-    if (invIndex < 0) return socket.emit('combatItemReceipt', { success: false, message: 'Invalid inventory slot.' });
+    if (invIndex < 0) return emitActorItemReceipt(socket, p, combat, actor, { success: false, message: 'Invalid inventory slot.' });
     const item = p.inventory[invIndex];
-    if (!item || !item.combat) return socket.emit('combatItemReceipt', { success: false, message: 'Invalid item data.' });
+    if (!item || !item.combat) return emitActorItemReceipt(socket, p, combat, actor, { success: false, message: 'Invalid item data.' });
 
     const rules = item.combat;
     if (rules.staminaCost > 0 && getActorStaminaValue(actor, p) < rules.staminaCost) {
-        return socket.emit('combatItemReceipt', { success: false, message: `${actor.name} lacks stamina.` });
+        return emitActorItemReceipt(socket, p, combat, actor, { success: false, message: `${actor.name} lacks stamina.` });
     }
 
     if (rules.actionType === 'heal') {
@@ -884,14 +956,24 @@ function handleActorConsumableAction(socket, p, combat, data, actor) {
         if (rules.cleanse) actor.statusEffects = {};
         p.inventory.splice(invIndex, 1);
         spendActorStamina(actor, p, rules.staminaCost || 0);
-        return socket.emit('combatItemReceipt', { success: true, updatedPlayer: p, updatedCombatState: syncCombatViews(combat, p), message: `${actor.name} used ${item.name}. Restored ${healAmount} HP.${rules.cleanse ? ' Negative effects cleansed.' : ''}` });
+        return emitActorItemReceipt(socket, p, combat, actor, {
+            success: true,
+            updatedPlayer: p,
+            updatedCombatState: syncCombatViews(combat, p),
+            message: `${actor.name} used ${item.name}. Restored ${healAmount} HP.${rules.cleanse ? ' Negative effects cleansed.' : ''}`
+        });
     }
 
     if (rules.actionType === 'cleanse') {
         actor.statusEffects = {};
         p.inventory.splice(invIndex, 1);
         spendActorStamina(actor, p, rules.staminaCost || 0);
-        return socket.emit('combatItemReceipt', { success: true, updatedPlayer: p, updatedCombatState: syncCombatViews(combat, p), message: `${actor.name} used ${item.name}. Negative effects cleansed.` });
+        return emitActorItemReceipt(socket, p, combat, actor, {
+            success: true,
+            updatedPlayer: p,
+            updatedCombatState: syncCombatViews(combat, p),
+            message: `${actor.name} used ${item.name}. Negative effects cleansed.`
+        });
     }
 
     if (rules.actionType === 'staunch') {
@@ -901,13 +983,20 @@ function handleActorConsumableAction(socket, p, combat, data, actor) {
         if (rules.cleanse) actor.statusEffects = {};
         p.inventory.splice(invIndex, 1);
         spendActorStamina(actor, p, rules.staminaCost || 0);
-        return socket.emit('combatItemReceipt', { success: true, updatedPlayer: p, updatedCombatState: syncCombatViews(combat, p), message: `${actor.name} used ${item.name}. HP set to at least ${floorHp}.${rules.cleanse ? ' Negative effects cleansed.' : ''}` });
+        return emitActorItemReceipt(socket, p, combat, actor, {
+            success: true,
+            updatedPlayer: p,
+            updatedCombatState: syncCombatViews(combat, p),
+            message: `${actor.name} used ${item.name}. HP set to at least ${floorHp}.${rules.cleanse ? ' Negative effects cleansed.' : ''}`
+        });
     }
 
     if (rules.actionType === 'buff') {
         actor.activeBuffs = actor.activeBuffs || [];
         const buffName = rules.buffType;
-        if (actor.activeBuffs.includes(buffName)) return socket.emit('combatItemReceipt', { success: false, message: `${actor.name} already has that buff.` });
+        if (actor.activeBuffs.includes(buffName)) {
+            return emitActorItemReceipt(socket, p, combat, actor, { success: false, message: `${actor.name} already has that buff.` });
+        }
         actor.activeBuffs.push(buffName);
         if (rules.effectCategory === 'offense' && rules.effectType === 'multiplier') actor.offense = Math.max(1, Math.floor((actor.offense || 1) * rules.effectValue));
         if (rules.effectCategory === 'defense' && rules.effectType === 'multiplier') actor.defense = Math.max(1, Math.floor((actor.defense || 1) * rules.effectValue));
@@ -915,10 +1004,19 @@ function handleActorConsumableAction(socket, p, combat, data, actor) {
         if (rules.atbBoost) actor.atbCharge = Math.min(100, (actor.atbCharge || 0) + Math.max(0, Math.min(100, Number(rules.atbBoost) || 0)));
         p.inventory.splice(invIndex, 1);
         spendActorStamina(actor, p, rules.staminaCost || 0);
-        return socket.emit('combatItemReceipt', { success: true, updatedPlayer: p, updatedCombatState: syncCombatViews(combat, p), message: `${actor.name} used ${item.name}. ${rules.msg || 'Buff applied.'}` });
+        return emitActorItemReceipt(socket, p, combat, actor, {
+            success: true,
+            updatedPlayer: p,
+            updatedCombatState: syncCombatViews(combat, p),
+            message: `${actor.name} used ${item.name}. ${rules.msg || 'Buff applied.'}`
+        });
     }
 
-    return socket.emit('combatItemReceipt', { success: false, message: `${actor.name} cannot use that item yet.` });
+    if (rules.actionType === 'throwable') {
+        return emitActorItemReceipt(socket, p, combat, actor, { success: false, message: 'Throwables have been retired. Use ranged or AOE weapons instead.' });
+    }
+
+    return emitActorItemReceipt(socket, p, combat, actor, { success: false, message: `${actor.name} cannot use that item yet.` });
 }
 function handleConsumableAction(socket, p, combat, data, secureKill) {
     const invIndex = getArrayIndex(data.invIndex, p.inventory);

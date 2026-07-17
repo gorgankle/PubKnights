@@ -646,33 +646,12 @@ if (hopsScreen) hopsScreen.style.display = "none";
             const roster = player.roster && typeof player.roster === 'object' ? player.roster : { companions: [], activeIds: [] };
             const companions = Array.isArray(roster.companions) ? roster.companions : [];
             const activeIds = Array.isArray(roster.activeIds) ? roster.activeIds : [];
-            const partyList = document.getElementById("party-roster-list");
-            if (partyList) {
-                if (companions.length === 0) {
-                    partyList.innerHTML = `<div style="color:#7f8c8d; font-size: 12px; text-align:center; padding: 14px 6px;">No party members hired yet.</div>`;
-                } else {
-                    partyList.innerHTML = companions.map(companion => {
-                        const isActive = activeIds.includes(companion.id);
-                        const stats = companion.stats || {};
-                        const action = isActive
-                            ? `<button onclick="benchCompanion('${companion.id}')" style="margin:0; padding:6px 8px; background:#7f3f1d; border-color:#d35400; font-size:11px;">Bench</button>`
-                            : `<button onclick="setActiveCompanion('${companion.id}')" style="margin:0; padding:6px 8px; background:#216b4f; border-color:#2ecc71; font-size:11px;">Activate</button>`;
-                        return `<div style="display:grid; grid-template-columns: 1fr auto; gap: 8px; align-items:center; background:#1a1512; border:1px solid ${isActive ? '#2ecc71' : '#3a2f26'}; border-radius:4px; padding:8px;">
-                            <div style="min-width:0;">
-                                <div style="color:${isActive ? '#2ecc71' : '#ffcc66'}; font-weight:bold; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${companion.name || 'Companion'} ${isActive ? '(Active)' : '(Inactive)'}</div>
-                                <div style="color:#bbaaa0; font-size:10px; margin-top:3px;">${companion.role || 'Companion'} | HP ${Math.max(1, stats.vitality || 3) * 25} | ATK ${stats.offense || 2} | DEF ${stats.defense || 2}</div>
-                            </div>
-                            ${action}
-                        </div>`;
-                    }).join('');
-                }
-            }
+            if (typeof renderCompanionRosterUI === 'function') renderCompanionRosterUI(companions, activeIds);
 
             const hireMercenaryBtn = document.getElementById("hire-mercenary-btn");
             if (hireMercenaryBtn) {
-                const hasStarterMercenary = companions.some(companion => companion.id === 'starter_mercenary' || companion.id === 'marlow_shieldhand');
-                hireMercenaryBtn.disabled = hasStarterMercenary || player.gold < 250;
-                hireMercenaryBtn.innerText = hasStarterMercenary ? 'Mercenary hired - manage on Knight screen' : 'Hire Mercenary (250g)';
+                hireMercenaryBtn.disabled = player.gold < 250;
+                hireMercenaryBtn.innerText = companions.length > 0 ? 'Hire Another Mercenary (250g)' : 'Hire Mercenary (250g)';
             }
 
             let invC = document.getElementById("inv-count");
@@ -1141,6 +1120,5 @@ window.closeCombatModal = function() {
     document.getElementById('combat-backpack-modal').style.display = 'none';
     hideTooltip();
 }
-
 
 
