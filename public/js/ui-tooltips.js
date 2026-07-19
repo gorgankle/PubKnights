@@ -6,7 +6,7 @@ function showSystemTooltip(type, event) {
     let item = typeof type === 'object' ? type : null;
 
     if (type === 'tavern_enter') {
-        html = `<h3>🍻 The Tavern</h3>Step inside to visit the Provisioner and Brewmaster. Brew combat drinks, trade on the Black Market, and prepare for expeditions.`;
+        html = `<h3>🍻 The Exchange</h3>Visit the Brewmaster and Guild Quartermaster for battle supplies. Mercenaries are now hired directly from Town.`;
     }
 	else if (type === 'trade_routes') {
         html = `<h3>🗺️ Expand Trade Routes</h3>Fund a massive infrastructure project to clear roads and build merchant cargo ships. <br><br>🔓 <b>Unlocks:</b> Bulk Fish Exports (Sell 1,000 Fish at once).<br>💰 Cost: 25,000 Gold`;
@@ -119,7 +119,7 @@ else if (item && item.slot === "consumable") {
         html = `<h3>Rest</h3>Recover 15% of this actor's maximum stamina and spend one action.`;
     }
     else if (type === 'combat_end') {
-        html = `<h3>End Turn</h3>Discard this actor's remaining actions and return control to the ATB queue.`;
+        html = `<h3>Pass Turn</h3>End this actor's turn and recover <b>15% maximum Stamina</b> for each unused action (up to 30%).`;
     }
     
     showTooltip(html, event);

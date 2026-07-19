@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 
 global.atbEngineStarted = true;
 const registerCombatRouter = require('../combatRouter.js');
+const { checkLineOfSight } = require('../combatMath.js');
 
 class FakeSocket {
     constructor(id) {
@@ -158,6 +159,78 @@ test('dispatchCombatAction uses the active companion weapon despite a spoofed ac
     assert.equal(harness.companion.stamina, 45);
     assert.equal(harness.player.stamina, 25);
     assert.ok(harness.enemies[0].hp < harness.enemies[0].maxHp);
+});
+
+test('normal weapon attacks accept line of sight to any tile in a large target footprint', async t => {
+    pinRandom(t);
+    const weapon = makeWeapon({ range: 4, staminaCost: 5, multiplier: 1 });
+    const makeLargeEnemy = () => ({
+        uid: 'enemy_large',
+        kind: 'monster',
+        controller: 'ai_enemy',
+        teamId: 'ENEMY',
+        name: 'Large Target',
+        x: 5,
+        y: 2,
+        size: 2,
+        hp: 10000,
+        maxHp: 10000,
+        offense: 1,
+        defense: 1,
+        speed: 1,
+        alive: true,
+        targetable: true,
+        targetableByPlayer: true,
+        targetableByEnemies: false,
+        rewardsEligible: true
+    });
+
+    await t.test('companion attack', () => {
+        const harness = createHarness({ weapon, enemies: [makeLargeEnemy()] });
+        harness.companion.x = 1;
+        harness.companion.y = 3;
+        harness.combat.obstacles = [{ x: 4, y: 2 }];
+
+        assert.equal(checkLineOfSight(1, 3, 5, 2, harness.combat), false);
+        assert.equal(checkLineOfSight(1, 3, 5, 3, harness.combat), true);
+
+        harness.socket.dispatch('dispatchCombatAction', {
+            actionCategory: 'weapon',
+            subType: 'slash',
+            targetEnemy: { uid: harness.enemies[0].uid }
+        });
+
+        const result = harness.socket.lastPayload('combatResult');
+        assert.equal(result.type, 'hit');
+        assert.equal(result.actorUid, harness.companion.uid);
+        assert.ok(harness.enemies[0].hp < harness.enemies[0].maxHp);
+    });
+
+    await t.test('player attack', () => {
+        const harness = createHarness({ weapon, enemies: [makeLargeEnemy()] });
+        const playerActor = harness.combat.actors.find(actor => actor.uid === 'player_0');
+        harness.player.equipment.weapon = weapon;
+        harness.companion.atbCharge = 0;
+        playerActor.x = 1;
+        playerActor.y = 3;
+        playerActor.atbCharge = 100;
+        harness.combat.player.x = 1;
+        harness.combat.player.y = 3;
+        harness.combat.player.atbCharge = 100;
+        harness.combat.activeActorUid = playerActor.uid;
+        harness.combat.obstacles = [{ x: 4, y: 2 }];
+
+        harness.socket.dispatch('dispatchCombatAction', {
+            actionCategory: 'weapon',
+            subType: 'slash',
+            targetEnemy: { uid: harness.enemies[0].uid }
+        });
+
+        const result = harness.socket.lastPayload('combatResult');
+        assert.equal(result.type, 'hit');
+        assert.equal(harness.player.stamina, 20);
+        assert.ok(harness.enemies[0].hp < harness.enemies[0].maxHp);
+    });
 });
 
 test('a companion killing blow completes the encounter through the shared resolver', t => {
@@ -356,4 +429,42 @@ test('end turn discards a companion remaining action immediately', () => {
     assert.equal(harness.companion.atbCharge, 0);
     assert.equal(harness.combat.activeActorUid, null);
     assert.equal(harness.combat.atbPaused, false);
+});
+
+test('the active mercenary consumes its own pocket item for one action', () => {
+    const pocketStout = {
+        id: 'pocket_stout',
+        name: 'Pocket Stout',
+        slot: 'consumable',
+        combat: { actionType: 'heal', healPercent: 0.4, staminaCost: 0 }
+    };
+    const backpackStout = {
+        id: 'backpack_stout',
+        name: 'Backpack Stout',
+        slot: 'consumable',
+        combat: { actionType: 'heal', healPercent: 0.4, staminaCost: 0 }
+    };
+    const weapon = makeWeapon({ range: 1, staminaCost: 5, multiplier: 1 });
+    const harness = createHarness({ weapon, inventory: [backpackStout] });
+    const instanceId = 'merc_pocket_owner';
+    harness.companion.companionInstanceId = instanceId;
+    harness.companion.hp = 20;
+    harness.player.roster = {
+        companions: [{ instanceId, name: 'Mira', hired: true, pockets: [pocketStout, null] }],
+        activeIds: [instanceId]
+    };
+
+    harness.socket.dispatch('dispatchCombatAction', {
+        actorUid: 'spoofed_actor',
+        actionCategory: 'consumable',
+        pocketIndex: 0
+    });
+
+    const receipt = harness.socket.lastPayload('combatItemReceipt');
+    assert.equal(receipt.success, true);
+    assert.equal(receipt.itemSource, 'pocket');
+    assert.equal(harness.companion.hp, 60);
+    assert.equal(harness.player.roster.companions[0].pockets[0], null);
+    assert.deepEqual(harness.player.inventory.map(item => item.id), ['backpack_stout']);
+    assert.equal(harness.combat.actionsRemaining, 1);
 });

@@ -1,5 +1,5 @@
 // --- js/map-assets.js ---
-// Procedural Matrix definitions for Environment and Map Tiles (Upgraded to 24x24)
+// Legacy 24x24 coded sources; buildSprite exposes 32x32 runtime matrices.
 
 
 

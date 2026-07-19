@@ -53,6 +53,24 @@ function benchCompanion(instanceId) {
     socket.emit('townAction', { action: 'benchCompanion', instanceId: instanceId });
 }
 
+function benchAllCompanions() {
+    socket.emit('townAction', { action: 'benchAllCompanions' });
+}
+
+function fillActiveCompanions() {
+    socket.emit('townAction', { action: 'fillActiveCompanions' });
+}
+
+function dismissCompanion(instanceId, companionName) {
+    const name = companionName || 'This mercenary';
+    if (!window.confirm(`${name} will leave permanently. Equipped and pocket items must all fit in the shared backpack. Continue?`)) return;
+    socket.emit('townAction', { action: 'dismissCompanion', instanceId: instanceId });
+}
+
+function trainMercenary(instanceId) {
+    socket.emit('townAction', { action: 'trainMercenary', instanceId: instanceId });
+}
+
 function selectCompanionEquipment(instanceId) {
     window.selectedCompanionInstanceId = instanceId;
     if (typeof refreshSystemUI === 'function') refreshSystemUI();
@@ -66,6 +84,16 @@ function equipCompanionItem(instanceId, inventoryIndex) {
 function unequipCompanionItem(instanceId, slotKey) {
     hideTooltip();
     socket.emit('inventoryAction', { action: 'unequipCompanion', instanceId: instanceId, slotKey: slotKey });
+}
+
+function storeCompanionPocketItem(instanceId, inventoryIndex, pocketIndex) {
+    hideTooltip();
+    socket.emit('inventoryAction', { action: 'storeCompanionPocket', instanceId, index: inventoryIndex, pocketIndex });
+}
+
+function removeCompanionPocketItem(instanceId, pocketIndex) {
+    hideTooltip();
+    socket.emit('inventoryAction', { action: 'removeCompanionPocket', instanceId, pocketIndex });
 }
 function hostHappyHour() {
     logMessage('Happy Hour has been retired from this alpha branch.');

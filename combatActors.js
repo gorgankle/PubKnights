@@ -87,10 +87,15 @@ function createEnemyActor(enemy) {
     });
 }
 
+const COMPANION_LEVEL_GROWTH = Object.freeze({ vitality: 0.5, offense: 0.5, defense: 0.4, speed: 0.2 });
+
 function getCompanionEquipmentStat(companion, statKey, fallback = 1) {
     const stats = companion && companion.stats && typeof companion.stats === 'object' ? companion.stats : {};
     const equipment = companion && companion.equipment && typeof companion.equipment === 'object' ? companion.equipment : {};
+    const level = Math.max(1, Math.min(50, Math.trunc(Number(companion && companion.level) || 1)));
+    const growthRate = Number(COMPANION_LEVEL_GROWTH[statKey]) || 0;
     let value = Math.max(0, Math.trunc(Number(stats[statKey]) || fallback));
+    value += Math.floor((level - 1) * growthRate);
 
     Object.values(equipment).forEach(item => {
         if (!item) return;
@@ -116,6 +121,7 @@ function createCompanionActor(companion, tile) {
         teamId: TEAM_PLAYER,
         disposition: 'party',
         name: (companion && companion.name) || 'Companion',
+        level: Math.max(1, Math.min(50, Math.trunc(Number(companion && companion.level) || 1))),
         x: tile.x,
         y: tile.y,
         size: 1,
@@ -351,6 +357,8 @@ function findOpenTileNear(combat, origin, preferredTiles = []) {
 }
 
 module.exports = {
+    COMPANION_LEVEL_GROWTH,
+    getCompanionEquipmentStat,
     TEAM_PLAYER,
     TEAM_ENEMY,
     TEAM_ROGUE,

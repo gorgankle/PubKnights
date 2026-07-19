@@ -3,8 +3,140 @@
 let hoverTile = {x: -1, y: -1};
 let globalAnimClock = 0; // Global engine clock tick count for procedural breathing waves
 
+// Overlay priority: movement -> attack range -> AoE preview -> selected target.
+const COMBAT_OVERLAY_STYLE = Object.freeze({
+    movementFill: "rgba(32, 178, 170, 0.22)",
+    movementPendingFill: "rgba(45, 212, 191, 0.46)",
+    movementPendingStroke: "#2dd4bf",
+    attackStroke: "#ef4444",
+    attackBlockedStroke: "rgba(239, 68, 68, 0.42)",
+    aoeFill: "rgba(239, 68, 68, 0.38)",
+    aoeStroke: "#ff4d4d",
+    invalidFill: "rgba(110, 30, 30, 0.22)",
+    invalidStroke: "rgba(220, 90, 90, 0.58)",
+    selectedOuter: "#050505",
+    selectedInner: "#ff2525"
+});
+
+function getCombatTargetProfile() {
+    const activeWeapon = typeof getActiveCombatantWeapon === 'function'
+        ? getActiveCombatantWeapon()
+        : player.equipment.weapon;
+    let actionItem = activeWeapon;
+    let rules = activeWeapon && activeWeapon.combat ? activeWeapon.combat.standard : null;
+
+    if (combatPhase === 'TARGETING' && typeof activeTargetIndex !== 'undefined' && activeTargetIndex !== -1) {
+        actionItem = typeof getActiveCombatantItem === 'function'
+            ? getActiveCombatantItem(activeTargetIndex)
+            : (activeTargetIndex === 'weapon' ? activeWeapon : player.inventory[activeTargetIndex]);
+        rules = activeTargetIndex === 'weapon'
+            ? (actionItem && actionItem.combat && actionItem.combat.special)
+            : (actionItem && actionItem.combat);
+    }
+
+    rules = rules || { range: 1 };
+    const spellData = rules.actionType === 'spell' && typeof SpellDatabase !== 'undefined'
+        ? SpellDatabase[rules.spellId]
+        : null;
+    return {
+        range: Math.max(0, Number(spellData && spellData.range) || Number(rules.range) || 1),
+        ignoresLoS: Boolean(rules.ignoresLoS || (spellData && spellData.ignoresLoS)),
+        shape: (spellData && spellData.type) || rules.aoeShape || rules.targetType || 'single',
+        radius: Math.max(0, Number(rules.aoeRadius ?? (spellData && spellData.aoeRadius)) || 0)
+    };
+}
+
+function getCombatTileTargetValidity(origin, tileX, tileY, profile = getCombatTargetProfile()) {
+    const inRange = getGridDistance(origin.x, origin.y, tileX, tileY, origin.size || 1) <= profile.range;
+    const lineClear = profile.ignoresLoS || hasLineOfSight(origin.x, origin.y, tileX, tileY);
+    return { inRange, lineClear, valid: inRange && lineClear };
+}
+
+function getCombatActorTargetValidity(actor, origin, profile = getCombatTargetProfile()) {
+    if (!actor || actor.alive === false) return { inRange: false, lineClear: false, valid: false };
+    const size = actor.size || 1;
+    const inRange = getGridDistance(origin.x, origin.y, actor.x, actor.y, size) <= profile.range;
+    let lineClear = profile.ignoresLoS;
+    if (!lineClear) {
+        for (let x = actor.x; x < actor.x + size && !lineClear; x++) {
+            for (let y = actor.y; y < actor.y + size; y++) {
+                if (hasLineOfSight(origin.x, origin.y, x, y)) { lineClear = true; break; }
+            }
+        }
+    }
+    return { inRange, lineClear, valid: inRange && lineClear };
+}
+
+function drawMovementOverlayTile(tileX, tileY, isPending) {
+    const px = tileX * currentTileSize;
+    const py = tileY * currentTileSize;
+    ctx.fillStyle = isPending ? COMBAT_OVERLAY_STYLE.movementPendingFill : COMBAT_OVERLAY_STYLE.movementFill;
+    ctx.fillRect(px, py, currentTileSize, currentTileSize);
+    if (isPending) {
+        ctx.save();
+        ctx.strokeStyle = COMBAT_OVERLAY_STYLE.movementPendingStroke;
+        ctx.lineWidth = 3;
+        ctx.strokeRect(px + 2, py + 2, currentTileSize - 4, currentTileSize - 4);
+        ctx.restore();
+    }
+}
+
+function drawAttackRangeOverlayTile(tileX, tileY, isValid) {
+    ctx.save();
+    ctx.strokeStyle = isValid ? COMBAT_OVERLAY_STYLE.attackStroke : COMBAT_OVERLAY_STYLE.attackBlockedStroke;
+    ctx.lineWidth = isValid ? 2 : 1.5;
+    ctx.setLineDash(isValid ? [] : [5, 5]);
+    ctx.strokeRect(tileX * currentTileSize + 3, tileY * currentTileSize + 3, currentTileSize - 6, currentTileSize - 6);
+    ctx.restore();
+}
+
+function drawAreaOverlayTile(tileX, tileY, isValid) {
+    const px = tileX * currentTileSize;
+    const py = tileY * currentTileSize;
+    ctx.save();
+    ctx.fillStyle = isValid ? COMBAT_OVERLAY_STYLE.aoeFill : COMBAT_OVERLAY_STYLE.invalidFill;
+    ctx.fillRect(px, py, currentTileSize, currentTileSize);
+    ctx.strokeStyle = isValid ? COMBAT_OVERLAY_STYLE.aoeStroke : COMBAT_OVERLAY_STYLE.invalidStroke;
+    ctx.lineWidth = 2;
+    ctx.setLineDash(isValid ? [] : [7, 5]);
+    ctx.strokeRect(px + 3, py + 3, currentTileSize - 6, currentTileSize - 6);
+    ctx.restore();
+}
+
+function drawSelectedTargetOverlay(target, isValid) {
+    if (!target || target.alive === false) return;
+    const size = target.size || 1;
+    const px = target.x * currentTileSize;
+    const py = target.y * currentTileSize;
+    const width = currentTileSize * size;
+    const height = currentTileSize * size;
+    const corner = Math.max(8, Math.floor(currentTileSize * 0.22));
+    ctx.save();
+    ctx.strokeStyle = COMBAT_OVERLAY_STYLE.selectedOuter;
+    ctx.lineWidth = 7;
+    ctx.strokeRect(px + 3.5, py + 3.5, width - 7, height - 7);
+    ctx.strokeStyle = isValid ? COMBAT_OVERLAY_STYLE.selectedInner : COMBAT_OVERLAY_STYLE.invalidStroke;
+    ctx.lineWidth = 3;
+    ctx.setLineDash(isValid ? [] : [8, 6]);
+    ctx.strokeRect(px + 8, py + 8, width - 16, height - 16);
+    ctx.setLineDash([]);
+    ctx.lineWidth = 4;
+    [[px+2,py+2,1,1],[px+width-2,py+2,-1,1],[px+2,py+height-2,1,-1],[px+width-2,py+height-2,-1,-1]]
+        .forEach(([x, y, dx, dy]) => {
+            ctx.beginPath();
+            ctx.moveTo(x + dx * corner, y);
+            ctx.lineTo(x, y);
+            ctx.lineTo(x, y + dy * corner);
+            ctx.stroke();
+        });
+    ctx.restore();
+}
+
 // === NEW: HARDWARE-ACCELERATED RASTER CACHE ===
 const SpriteRasterCache = {};
+const PROCEDURAL_RASTER_SIZE = typeof PROCEDURAL_SPRITE_GRID_SIZE === 'number'
+    ? PROCEDURAL_SPRITE_GRID_SIZE
+    : 32;
 
 // === NEW: PLAYER COMPOSITE BUFFER ===
 // Used to safely apply clipping masks without punching through the map floor
@@ -18,19 +150,23 @@ function drawOptimizedSprite(ctx, spriteKey, matrix, x, y, size) {
     if (!SpriteRasterCache[spriteKey]) {
         // Create an invisible canvas in the browser's memory
         const offscreen = document.createElement('canvas');
-        offscreen.width = size;
-        offscreen.height = size;
+        offscreen.width = PROCEDURAL_RASTER_SIZE;
+        offscreen.height = PROCEDURAL_RASTER_SIZE;
         const offCtx = offscreen.getContext('2d', { alpha: true });
+        offCtx.imageSmoothingEnabled = false;
 
-        // Draw the heavy 576-rectangle math ONCE
-        drawProceduralSprite(offCtx, matrix, 0, 0, size);
+        // Bake the canonical 32x32 pixel pass once, then scale the cached raster.
+        drawProceduralSprite(offCtx, matrix, 0, 0, PROCEDURAL_RASTER_SIZE);
 
         // Save the finished image to the cache
         SpriteRasterCache[spriteKey] = offscreen;
     }
 
     // 2. GPU-Stamp the baked image to the main canvas instantly
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
     ctx.drawImage(SpriteRasterCache[spriteKey], x, y, size, size);
+    ctx.restore();
 }
 
 // Optional: A helper to clear the cache if the player changes clothes!
@@ -198,28 +334,7 @@ function drawGrid() {
     if (gameState !== 'COMBAT') return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const activeGridPos = typeof getActiveCombatantPosition === 'function' ? getActiveCombatantPosition() : { x: player.x, y: player.y, size: 1 };
-    const activeWeaponForGrid = typeof getActiveCombatantWeapon === 'function' ? getActiveCombatantWeapon() : player.equipment.weapon;
-    // === DYNAMIC TARGETING ENGINE ===
-    let currentTargetRange = (activeWeaponForGrid && activeWeaponForGrid.combat && activeWeaponForGrid.combat.standard.range) || 1;
-    let currentIgnoresLoS = false;
-
-    // THE FIX: If we are actively targeting with an item, override the melee weapon's range!
-    if (combatPhase === 'TARGETING' && typeof activeTargetIndex !== 'undefined' && activeTargetIndex !== -1) {
-        let activeItem = typeof getActiveCombatantItem === 'function' ? getActiveCombatantItem(activeTargetIndex) : (activeTargetIndex === 'weapon' ? player.equipment.weapon : player.inventory[activeTargetIndex]);
-        if (activeItem && activeItem.combat) {
-            if (activeItem.combat.actionType === 'spell') {
-                let spellData = typeof SpellDatabase !== 'undefined' ? SpellDatabase[activeItem.combat.spellId] : null;
-                if (spellData) {
-                    currentTargetRange = spellData.range || 4;
-                    currentIgnoresLoS = spellData.ignoresLoS || false;
-                }
-            } else {
-                currentTargetRange = activeItem.combat.range || 4;
-                currentIgnoresLoS = activeItem.combat.ignoresLoS || false;
-            }
-        }
-
-    }
+    const targetProfile = getCombatTargetProfile();
 
 
     // --- INTERPOLATION ENGINE: PLAYER ---
@@ -270,50 +385,21 @@ if (SpriteMatrices[groundSprite]) {
             ctx.strokeStyle = activeCombatZone==='GORILLA_ARENA' ? "#443425" : "#3a2f26";
             ctx.lineWidth = 1; ctx.strokeRect(x * currentTileSize, y * currentTileSize, currentTileSize, currentTileSize);
 
-            if (currentTurn === 'PLAYER') {
-                if (combatPhase === 'ACTION_READY') {
-
-                    // === THE FIX: DIRECT SMART CACHE HOOK ===
-                    // The renderer now instantly asks the combat-mechanics engine if the tile is valid!
-                    if (isValidPlayerMovePath(x, y)) {
-                        ctx.fillStyle = "rgba(52, 152, 219, 0.20)";
-                        ctx.fillRect(x * currentTileSize, y * currentTileSize, currentTileSize, currentTileSize);
-                    }
-
-                    if (pendingMove && pendingMove.x === x && pendingMove.y === y) {
-                        ctx.fillStyle = "rgba(46, 204, 113, 0.4)";
-                        ctx.fillRect(x * currentTileSize, y * currentTileSize, currentTileSize, currentTileSize);
-                        ctx.strokeStyle = "#2ecc71"; ctx.lineWidth = 2;
-                        ctx.strokeRect(x * currentTileSize, y * currentTileSize, currentTileSize, currentTileSize);
-
-                        let dist = getGridDistance(activeGridPos.x, activeGridPos.y, x, y, activeGridPos.size || 1);
-                        let swiftness = typeof getActiveCombatantMoveRange === 'function' ? getActiveCombatantMoveRange() : getPlayerSwiftness();
-                        let estCost = Math.floor((dist / swiftness) * 10);
-
-                        let fontSize = currentGridSize > 10 ? 10 : 14;
-                        ctx.font = `bold ${fontSize}px Courier New`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-                        ctx.fillStyle = "#f1c40f"; ctx.shadowColor = "#000"; ctx.shadowBlur = 4; ctx.shadowOffsetX = 1; ctx.shadowOffsetY = 1;
-                        ctx.fillText(`-${estCost}⚡`, x * currentTileSize + (currentTileSize / 2), y * currentTileSize + (currentTileSize / 2));
-
-                        ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
-                        ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
-                    }
+            if (currentTurn === 'PLAYER' && combatPhase === 'ACTION_READY') {
+                if (isValidPlayerMovePath(x, y)) {
+                    drawMovementOverlayTile(x, y, Boolean(pendingMove && pendingMove.x === x && pendingMove.y === y));
                 }
-               // === UNIFIED ACTION RENDERING (MELEE, MAGIC, & BOMBS) ===
-                else if (combatPhase === 'TARGETING') {
 
-                    // 2. Draw the Grid (Using the dynamically calculated currentTargetRange)
-                    if (getGridDistance(activeGridPos.x, activeGridPos.y, x, y, activeGridPos.size || 1) <= currentTargetRange) {
-
-                        // THE FIX: If it ignores LoS, it's always Yellow!
-                        if (currentIgnoresLoS || hasLineOfSight(activeGridPos.x, activeGridPos.y, x, y)) {
-                            ctx.fillStyle = "rgba(241, 196, 15, 0.15)"; // Valid Yellow
-                        } else {
-                            ctx.fillStyle = "rgba(200, 0, 0, 0.15)"; // Blocked Red
-                        }
-
-                        ctx.fillRect(x * currentTileSize, y * currentTileSize, currentTileSize, currentTileSize);
-                    }
+                if (pendingMove && pendingMove.x === x && pendingMove.y === y) {
+                    let dist = getGridDistance(activeGridPos.x, activeGridPos.y, x, y, activeGridPos.size || 1);
+                    let swiftness = typeof getActiveCombatantMoveRange === 'function' ? getActiveCombatantMoveRange() : getPlayerSwiftness();
+                    let estCost = Math.floor((dist / swiftness) * 10);
+                    let fontSize = currentGridSize > 10 ? 10 : 14;
+                    ctx.font = `bold ${fontSize}px Courier New`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                    ctx.fillStyle = "#f1c40f"; ctx.shadowColor = "#000"; ctx.shadowBlur = 4; ctx.shadowOffsetX = 1; ctx.shadowOffsetY = 1;
+                    ctx.fillText(`-${estCost}⚡`, x * currentTileSize + (currentTileSize / 2), y * currentTileSize + (currentTileSize / 2));
+                    ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+                    ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
                 }
             }
         }
@@ -329,15 +415,25 @@ mapObstacles.forEach(o => {
         }
     });
 
+    // Range recomputes from active actor/action/current position every frame.
+    if (currentTurn === 'PLAYER' && (combatPhase === 'ACTION_READY' || combatPhase === 'TARGETING')) {
+        for (let x = 0; x < cols; x++) {
+            for (let y = 0; y < rows; y++) {
+                const validity = getCombatTileTargetValidity(activeGridPos, x, y, targetProfile);
+                if (validity.inRange) drawAttackRangeOverlayTile(x, y, validity.valid);
+            }
+        }
+    }
+
 // --- RENDERING PIPELINE: DYNAMIC TRANSFORMS KNIGHT ---
+    // === NEW: DYNAMIC LUNGE OFFSETS ===
+    const pX = (player.visualX * currentTileSize) + (player.lungeOffsetX || 0);
+    const pY = (player.visualY * currentTileSize) - playerHopY + (player.lungeOffsetY || 0) - (player.lungeHop || 0);
+
     ctx.save();
 
     let pScaleY = 1.0 + Math.sin(globalAnimClock * 0.08) * 0.02;
     let pScaleX = 1.0 - Math.sin(globalAnimClock * 0.08) * 0.01;
-
-    // === NEW: DYNAMIC LUNGE OFFSETS ===
-    const pX = (player.visualX * currentTileSize) + (player.lungeOffsetX || 0);
-    const pY = (player.visualY * currentTileSize) - playerHopY + (player.lungeOffsetY || 0) - (player.lungeHop || 0);
 
     // Notice we removed 'let' here so it simply updates your existing variables
     pPivotX = pX + currentTileSize / 2;
@@ -410,11 +506,6 @@ drawCombatAura(player, player.visualX, player.visualY - (playerHopY / currentTil
 
 renderGridHealthBar(player.visualX, player.visualY - (playerHopY / currentTileSize), player.hp, getPlayerMaxHp(), 1, player.stamina, getPlayerMaxStamina(), player.visualAtb);
 
-    if (selectedEnemy && selectedEnemy.alive) {
-        let sSize = selectedEnemy.size || 1;
-        ctx.strokeStyle = "#ff2222"; ctx.lineWidth = 3;
-        ctx.strokeRect(selectedEnemy.x * currentTileSize, selectedEnemy.y * currentTileSize, currentTileSize * sSize, currentTileSize * sSize);
-    }
 
     // --- INTERPOLATION ENGINE: ENEMIES ---
     enemies.forEach(e => {
@@ -522,43 +613,35 @@ if (SpriteMatrices[e.id]) {
     (allies || []).forEach(actor => drawNonEnemyActor(actor, { fill: "#216b4f", stroke: "#2ecc71" }));
     (rogues || []).forEach(actor => drawNonEnemyActor(actor, { fill: "#5c2f18", stroke: "#e67e22" }));
 
-  // === REPLACED: Dynamic Area of Effect Rendering ===
+    // AoE preview draws over movement/range, while selected target draws last.
     if (combatPhase === 'TARGETING' && hoverTile && hoverTile.x >= 0) {
-        ctx.fillStyle = "rgba(231, 76, 60, 0.4)";
+        const validity = getCombatTileTargetValidity(activeGridPos, hoverTile.x, hoverTile.y, targetProfile);
+        let previewTiles = [];
 
-        let activeItem = typeof getActiveCombatantItem === 'function' ? getActiveCombatantItem(activeTargetIndex) : (activeTargetIndex === 'weapon' ? player.equipment.weapon : player.inventory[activeTargetIndex]);
-        let isLineSpell = false;
-        let spellRange = 5;
-        let ignoresLoS = false;
-
-        // Check if the item we are holding is a line spell
-        if (activeItem && activeItem.combat && activeItem.combat.actionType === 'spell') {
-            let spellData = typeof SpellDatabase !== 'undefined' ? SpellDatabase[activeItem.combat.spellId] : null;
-            if (spellData && spellData.type === 'line') {
-                isLineSpell = true;
-                spellRange = spellData.range || 5;
-                ignoresLoS = spellData.ignoresLoS || false;
-            }
-        }
-
-      if (isLineSpell) {
-            // === DRAW THE BRESENHAM BEAM ===
-            const activeBlastPos = typeof getActiveCombatantPosition === 'function' ? getActiveCombatantPosition() : { x: player.x, y: player.y, size: 1 };
-            let blastPath = getLineOfEffectPath(activeBlastPos.x, activeBlastPos.y, hoverTile.x, hoverTile.y, spellRange, !ignoresLoS);
-            blastPath.forEach(tile => {
-                ctx.fillRect(tile.x * currentTileSize, tile.y * currentTileSize, currentTileSize, currentTileSize);
-            });
+        if (targetProfile.shape === 'line') {
+            previewTiles = getLineOfEffectPath(
+                activeGridPos.x,
+                activeGridPos.y,
+                hoverTile.x,
+                hoverTile.y,
+                targetProfile.range,
+                !targetProfile.ignoresLoS
+            );
         } else {
-            // === STANDARD BOMB 3x3 SQUARE ===
-            let startX = hoverTile.x - 1; let startY = hoverTile.y - 1;
-            for(let bx = startX; bx <= startX + 2; bx++) {
-                for(let by = startY; by <= startY + 2; by++) {
-                    if (bx >= 0 && bx < cols && by >= 0 && by < rows) {
-                        ctx.fillRect(bx * currentTileSize, by * currentTileSize, currentTileSize, currentTileSize);
-                    }
+            const previewRadius = targetProfile.shape === 'single' ? 0 : targetProfile.radius;
+            for (let bx = hoverTile.x - previewRadius; bx <= hoverTile.x + previewRadius; bx++) {
+                for (let by = hoverTile.y - previewRadius; by <= hoverTile.y + previewRadius; by++) {
+                    if (bx >= 0 && bx < cols && by >= 0 && by < rows) previewTiles.push({ x: bx, y: by });
                 }
             }
         }
+
+        previewTiles.forEach(tile => drawAreaOverlayTile(tile.x, tile.y, validity.valid));
+    }
+
+    if (typeof selectedEnemy !== 'undefined' && selectedEnemy && selectedEnemy.alive !== false) {
+        const selectedValidity = getCombatActorTargetValidity(selectedEnemy, activeGridPos, targetProfile);
+        drawSelectedTargetOverlay(selectedEnemy, selectedValidity.valid);
     }
 
     drawActiveTurnMarker();
@@ -642,7 +725,10 @@ function buildNpcTooltipHtml(mob) {
            `<b>Attack Range:</b> ${attackRange} Tile(s)`;
 }
 
-canvas.addEventListener("mouseleave", hideTooltip);
+canvas.addEventListener("mouseleave", function() {
+    hoverTile = {x: -1, y: -1};
+    hideTooltip();
+});
 canvas.addEventListener("mousemove", function(e) {
     if (gameState !== 'COMBAT') return;
     const r = canvas.getBoundingClientRect();
@@ -657,34 +743,15 @@ canvas.addEventListener("mousemove", function(e) {
 
    let cols = currentGridSize.cols || currentGridSize || 8;
     let rows = currentGridSize.rows || currentGridSize || 8;
-    if (tx < 0 || tx >= cols || ty < 0 || ty >= rows) return;
+    if (tx < 0 || tx >= cols || ty < 0 || ty >= rows) {
+        hoverTile = {x: -1, y: -1};
+        hideTooltip();
+        return;
+    }
 
-    // === REPLACED: Enforce targeting bounds on hover ===
+    // Keep invalid destinations visible so dashed feedback explains the rejection.
     if (combatPhase === 'TARGETING') {
-        let activeItem = typeof getActiveCombatantItem === 'function' ? getActiveCombatantItem(activeTargetIndex) : (activeTargetIndex === 'weapon' ? player.equipment.weapon : player.inventory[activeTargetIndex]);
-        let maxRange = 4;
-        let ignoresLoS = false;
-
-        if (activeItem && activeItem.combat) {
-            if (activeItem.combat.actionType === 'spell') {
-                let spellData = typeof SpellDatabase !== 'undefined' ? SpellDatabase[activeItem.combat.spellId] : null;
-                if (spellData) { maxRange = spellData.range || 4; ignoresLoS = spellData.ignoresLoS || false; }
-            } else {
-                maxRange = activeItem.combat.range || 4;
-                ignoresLoS = activeItem.combat.ignoresLoS || false;
-            }
-        }
-
-        // === THE FIX: Calculate the distance before checking it! ===
-        let activePosForMove = typeof getActiveCombatantPosition === 'function' ? getActiveCombatantPosition() : { x: player.x, y: player.y, size: 1 };
-                let dist = getGridDistance(activePosForMove.x, activePosForMove.y, tx, ty, activePosForMove.size || 1);
-
-        // Only show the red targeting box if it's a valid, legal throw
-        if (dist <= maxRange && (ignoresLoS || hasLineOfSight(activePosForMove.x, activePosForMove.y, tx, ty))) {
-            hoverTile = {x: tx, y: ty};
-        } else {
-            hoverTile = {x: -1, y: -1};
-        }
+        hoverTile = {x: tx, y: ty};
     }
 
     let mob = [...(enemies || []), ...(rogues || []), ...(allies || [])].find(em => { let s = em.size || 1; return em.alive && tx >= em.x && tx < em.x + s && ty >= em.y && ty < em.y + s; });
@@ -712,30 +779,15 @@ canvas.addEventListener("click", function(e) {
     let rows = currentGridSize.rows || currentGridSize || 8;
     if (tx < 0 || tx >= cols || ty < 0 || ty >= rows) return;
 
-    // === REPLACED: Client-side throw validation ===
+    // Use the same range/LoS profile used by the renderer.
     if (combatPhase === 'TARGETING') {
-        let activeItem = typeof getActiveCombatantItem === 'function' ? getActiveCombatantItem(activeTargetIndex) : (activeTargetIndex === 'weapon' ? player.equipment.weapon : player.inventory[activeTargetIndex]);
-        let maxRange = 4;
-        let ignoresLoS = false;
+        const activePosForTarget = typeof getActiveCombatantPosition === 'function' ? getActiveCombatantPosition() : { x: player.x, y: player.y, size: 1 };
+        const validity = getCombatTileTargetValidity(activePosForTarget, tx, ty, getCombatTargetProfile());
 
-        if (activeItem && activeItem.combat) {
-            if (activeItem.combat.actionType === 'spell') {
-                let spellData = typeof SpellDatabase !== 'undefined' ? SpellDatabase[activeItem.combat.spellId] : null;
-                if (spellData) { maxRange = spellData.range || 4; ignoresLoS = spellData.ignoresLoS || false; }
-            } else {
-                maxRange = activeItem.combat.range || 4;
-                ignoresLoS = activeItem.combat.ignoresLoS || false;
-            }
-        }
-
-        // === THE FIX: Calculate the distance before checking it! ===
-        let activePosForMove = typeof getActiveCombatantPosition === 'function' ? getActiveCombatantPosition() : { x: player.x, y: player.y, size: 1 };
-                let dist = getGridDistance(activePosForMove.x, activePosForMove.y, tx, ty, activePosForMove.size || 1);
-
-        if (dist <= maxRange && (ignoresLoS || hasLineOfSight(activePosForMove.x, activePosForMove.y, tx, ty))) {
+        if (validity.valid) {
             if (typeof executeTargetAction === 'function') executeTargetAction(tx, ty);
         } else {
-            logMessage("❌ Target outside of throw range or blocked by obstacles.");
+            logMessage(validity.inRange ? "Target blocked by obstacles." : "Target outside action range.");
             if (typeof playRetroSound === 'function') playRetroSound('error');
         }
 
@@ -747,22 +799,13 @@ canvas.addEventListener("click", function(e) {
     if (combatPhase === 'ACTION_READY') {
         if (clickedMonster) {
             const activePosForAttack = typeof getActiveCombatantPosition === 'function' ? getActiveCombatantPosition() : { x: player.x, y: player.y, size: 1 };
-            const activeWeapon = typeof getActiveCombatantWeapon === 'function' ? getActiveCombatantWeapon() : player.equipment.weapon;
-            const weaponRange = (activeWeapon && activeWeapon.combat && activeWeapon.combat.standard.range) || 1;
-            const dist = getGridDistance(activePosForAttack.x, activePosForAttack.y, clickedMonster.x, clickedMonster.y, clickedMonster.size || 1);
-            let hasLos = false;
-            const targetSize = clickedMonster.size || 1;
-            for (let bx = clickedMonster.x; bx < clickedMonster.x + targetSize; bx++) {
-                for (let by = clickedMonster.y; by < clickedMonster.y + targetSize; by++) {
-                    if (hasLineOfSight(activePosForAttack.x, activePosForAttack.y, bx, by)) hasLos = true;
-                }
-            }
-            if (dist <= weaponRange && hasLos) {
+            const validity = getCombatActorTargetValidity(clickedMonster, activePosForAttack, getCombatTargetProfile());
+            if (validity.valid) {
                 selectedEnemy = clickedMonster;
                 pendingMove = null;
                 logMessage(`Target Locked: ${clickedMonster.name}.`);
             } else {
-                logMessage(dist > weaponRange ? "Target outside weapon range." : "No line of sight to target.");
+                logMessage(validity.inRange ? "No line of sight to target." : "Target outside weapon range.");
                 if (typeof playRetroSound === 'function') playRetroSound('error');
             }
             refreshSystemUI();

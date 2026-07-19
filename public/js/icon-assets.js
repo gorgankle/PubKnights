@@ -3,7 +3,7 @@
 
 Object.assign(SpriteMatrices, {
 	
-	// === MINIGAME SPRITES (24x24) ===
+	// === LEGACY 24x24 SOURCES (NORMALIZED TO 32x32) ===
 	
 	"sprite_minigame_axe": buildSprite([
         "........................",

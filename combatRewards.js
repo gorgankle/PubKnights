@@ -7,6 +7,7 @@ const { getMaxHp, getMaxStamina } = require('./combatMath.js');
 const { getAliveRogueActors, syncCombatViews } = require('./combatActors.js');
 const { sanitizeLifetimeXp } = require('./xpMath.js');
 const { applyLifetimeXpLevelUps } = require('./playerProgression.js');
+const { awardMercenaryEncounterXp } = require('./mercenaryProgression.js');
 
 const ROGUE_STEAL_RARITIES = new Set(['Epic', 'Unique', 'Relic', 'Gorilla']);
 
@@ -123,6 +124,18 @@ function finalizeCombatVictory(socketId, context) {
         });
     }
 
+
+    const rosterCompanions = player.roster && Array.isArray(player.roster.companions)
+        ? player.roster.companions
+        : [];
+    player.pendingMercenaryXpContext = {
+        eligibleInstanceIds: rosterCompanions
+            .filter(companion => companion && companion.hired !== false && companion.instanceId)
+            .map(companion => companion.instanceId),
+        activeInstanceIds: (combat.actors || [])
+            .filter(actor => actor && actor.kind === 'companion' && actor.companionInstanceId)
+            .map(actor => actor.companionInstanceId)
+    };
     syncCombatViews(combat, player);
     delete activeCombats[socketId];
     return { combatComplete: true, petItem, zoneGoldReward };
@@ -131,11 +144,14 @@ function finalizeCombatVictory(socketId, context) {
 function claimCombatRewards(player) {
     player.gold = player.gold || 0;
     player.xp = sanitizeLifetimeXp(player.xp);
+    const encounterXp = sanitizeLifetimeXp(player.pendingXp);
 
     if (player.pendingGold > 0) player.gold += player.pendingGold;
-    if (player.pendingXp > 0) player.xp += sanitizeLifetimeXp(player.pendingXp);
+    if (encounterXp > 0) player.xp += encounterXp;
 
     applyLifetimeXpLevelUps(player);
+    awardMercenaryEncounterXp(player, encounterXp, player.pendingMercenaryXpContext || {});
+    delete player.pendingMercenaryXpContext;
 
     player.hp = getMaxHp(player);
     player.stamina = getMaxStamina(player);

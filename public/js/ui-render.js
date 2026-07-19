@@ -82,13 +82,16 @@ function getItemSpriteURL(item) {
     
     if (!targetSprite || !SpriteMatrices[targetSprite]) return "";
 
+    const spriteGridSize = typeof PROCEDURAL_SPRITE_GRID_SIZE === 'number'
+        ? PROCEDURAL_SPRITE_GRID_SIZE
+        : 32;
     const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = 24;
-    tempCanvas.height = 24;
+    tempCanvas.width = spriteGridSize;
+    tempCanvas.height = spriteGridSize;
     const ctx = tempCanvas.getContext('2d');
 
     if (typeof drawProceduralSprite === 'function') {
-        drawProceduralSprite(ctx, SpriteMatrices[targetSprite], 0, 0, 24);
+        drawProceduralSprite(ctx, SpriteMatrices[targetSprite], 0, 0, spriteGridSize);
     }
 
     return tempCanvas.toDataURL();
@@ -303,7 +306,7 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
                 if (targeting) { uiHeader.textContent = 'TARGETING: Select a highlighted tile'; uiHeader.style.color = '#e74c3c'; }
                 else if (pendingMove) { uiHeader.textContent = 'CONFIRM MOVE: Click the green tile again'; uiHeader.style.color = '#2ecc71'; }
                 else if (selectedEnemy && selectedEnemy.alive) { uiHeader.textContent = `${activeUiName} FOCUS: ${selectedEnemy.name} (${selectedEnemy.hp}/${selectedEnemy.maxHp} HP)`; uiHeader.style.color = '#2ecc71'; }
-                else if (actionReady) { uiHeader.textContent = `${activeUiName}: Choose Move, Attack, Item, or Rest`; uiHeader.style.color = '#3498db'; }
+                else if (actionReady) { uiHeader.textContent = `${activeUiName}: Choose Move, Attack, Item, Rest, or Pass`; uiHeader.style.color = '#3498db'; }
                 else { uiHeader.textContent = 'WAITING FOR SERVER'; uiHeader.style.color = '#bbaaa0'; }
             }
             const slashBtn = document.getElementById('slash-btn');
@@ -320,7 +323,12 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
                 heavyBtn.disabled = !attackEnabled;
                 heavyBtn.innerText = activeUiWeapon && activeUiWeapon.combat && activeUiWeapon.combat.special ? `${activeUiWeapon.combat.special.name} (${activeUiWeapon.combat.special.staminaCost} STAM)` : 'Weapon Skill';
             }
-            if (endBtn) { endBtn.disabled = !canIssueAction; endBtn.style.opacity = '1.0'; }
+            if (endBtn) {
+                const passRecovery = Math.max(0, Math.min(2, combatActionsRemaining || 0)) * 15;
+                endBtn.disabled = !canIssueAction;
+                endBtn.innerText = passRecovery > 0 ? `Pass Turn (+${passRecovery}% Stamina)` : 'Pass Turn';
+                endBtn.style.opacity = '1.0';
+            }
             if (fleeBtn) { fleeBtn.disabled = !actionReady; fleeBtn.style.opacity = '1.0'; }
         } else {
             if (uiHeader) { uiHeader.textContent = activeUiActor ? `${activeUiName} EXECUTING TURN` : 'ATB GAUGES CHARGING'; uiHeader.style.color = '#e74c3c'; }
@@ -494,7 +502,7 @@ if (hopsScreen) hopsScreen.style.display = "none";
                             let rc = item.rarity === "Gorilla" ? "slot-jackpot" : (item.rarity ? `slot-${item.rarity.toLowerCase()}` : 'slot-common');
                             el.className = `equip-slot ${rc}`;
 
-                            // Extract and render the 24x24 procedural sprite
+                            // Extract and render the canonical 32x32 procedural sprite
                             let imgUrl = getItemSpriteURL(item);
                             let imgHtml = imgUrl ? `<img src="${imgUrl}" style="width:32px;height:32px;image-rendering:pixelated;pointer-events:none;">` : ``;
                             
@@ -723,7 +731,7 @@ function renderBackpackList(domContainer, showVaultOption) {
             slotDiv.onmouseleave = hideTooltip;
             bindInventoryDoubleClick(slotDiv, (e) => handleBackpackDoubleClick(e, idx, item, showVaultOption));
 
-            // Render the 24x24 Sprite Matrix!
+            // Render the canonical 32x32 sprite matrix.
             let imgUrl = getItemSpriteURL(item);
             if (imgUrl) {
                 // pointer-events: none ensures the drag/drop fires on the slot, not the image!
@@ -770,7 +778,7 @@ function renderVaultStorageList() {
             slotDiv.onmouseleave = hideTooltip;
             bindInventoryDoubleClick(slotDiv, (e) => handleVaultItemDoubleClick(e, idx));
 
-            // Render the 24x24 Sprite Matrix!
+            // Render the canonical 32x32 sprite matrix.
             let imgUrl = getItemSpriteURL(item);
             if (imgUrl) {
                 slotDiv.innerHTML = `<img src="${imgUrl}" style="width:36px;height:36px;image-rendering:pixelated;pointer-events:none;">`;
@@ -986,13 +994,23 @@ function updateTownUI(data) {
 }
 
 
-function renderCombatModal(filter = 'DRINK') { 
+function renderCombatModal(filter = 'DRINK') {
     const modal = document.getElementById('combat-backpack-modal');
-    let grid = document.getElementById('combat-modal-grid');
-    
-    let title = document.getElementById('combat-modal-title');
-    if (title) title.innerText = "\u{1F392} Combat Backpack";
-    
+    const grid = document.getElementById('combat-modal-grid');
+    if (!modal || !grid) return;
+
+    const actor = typeof getActiveCombatant === 'function' ? getActiveCombatant() : null;
+    const isCompanion = Boolean(actor && actor.kind === 'companion');
+    const companion = isCompanion && typeof getActiveCompanionRosterEntry === 'function'
+        ? getActiveCompanionRosterEntry()
+        : null;
+    if (isCompanion && filter === 'EQUIP') filter = 'DRINK';
+
+    const title = document.getElementById('combat-modal-title');
+    if (title) title.innerText = isCompanion
+        ? `${actor.name}'s Pockets + Shared Backpack`
+        : 'Combat Backpack';
+
     let filterContainer = document.getElementById('combat-modal-filters');
     if (!filterContainer) {
         filterContainer = document.createElement('div');
@@ -1000,74 +1018,88 @@ function renderCombatModal(filter = 'DRINK') {
         filterContainer.style.display = 'flex';
         filterContainer.style.gap = '4px';
         filterContainer.style.marginBottom = '10px';
-        grid.parentNode.insertBefore(filterContainer, grid); 
+        grid.parentNode.insertBefore(filterContainer, grid);
     }
-    filterContainer.innerHTML = ''; 
+    filterContainer.innerHTML = '';
 
-    const filters = [
-        { id: 'DRINK', icon: '\u{1F37A}', text: 'Drinks' },
-        { id: 'EQUIP', icon: '\u{1F6E1}\uFE0F', text: 'Gear' }
-    ];
-
-    filters.forEach(f => {
-        let btn = document.createElement('button');
-        btn.innerText = `${f.icon} ${f.text}`;
-        btn.style.flex = "1";
-        btn.style.padding = "6px 2px";
-        btn.style.fontSize = "11px";
-        btn.style.fontWeight = "bold";
-        btn.style.background = filter === f.id ? "#27ae60" : "#443a32"; 
-        btn.style.border = "1px solid #111";
-        btn.style.color = "#fff";
-        btn.onclick = () => renderCombatModal(f.id); 
-
-        filterContainer.appendChild(btn);
+    const filters = [{ id: 'DRINK', icon: '\u{1F37A}', text: isCompanion ? 'Pocket & Backpack Drinks' : 'Drinks' }];
+    if (!isCompanion) filters.push({ id: 'EQUIP', icon: '\u{1F6E1}\uFE0F', text: 'Gear' });
+    filters.forEach(entry => {
+        const button = document.createElement('button');
+        button.innerText = `${entry.icon} ${entry.text}`;
+        button.style.flex = '1';
+        button.style.padding = '6px 2px';
+        button.style.fontSize = '11px';
+        button.style.fontWeight = 'bold';
+        button.style.background = filter === entry.id ? '#27ae60' : '#443a32';
+        button.style.border = '1px solid #111';
+        button.style.color = '#fff';
+        button.onclick = () => renderCombatModal(entry.id);
+        filterContainer.appendChild(button);
     });
 
-    grid.innerHTML = ''; 
-    let maxSlots = player.maxInventorySlots || 5;
-    let foundAny = false; 
+    const isUsableDrink = item => Boolean(item && item.slot === 'consumable' && item.combat
+        && ['heal', 'buff', 'cleanse', 'staunch'].includes(item.combat.actionType));
+    const entries = [];
+    if (isCompanion && companion && filter === 'DRINK') {
+        (companion.pockets || []).forEach((item, pocketIndex) => {
+            if (isUsableDrink(item)) entries.push({ item, reference: { source: 'pocket', pocketIndex }, sourceLabel: `Pocket ${pocketIndex + 1}` });
+        });
+    }
+    (player.inventory || []).forEach((item, index) => {
+        const showItem = filter === 'DRINK'
+            ? isUsableDrink(item)
+            : Boolean(item && item.slot !== 'consumable' && item.type !== 'crate');
+        if (showItem) entries.push({ item, reference: { source: 'backpack', index }, sourceLabel: 'Backpack' });
+    });
 
-    for (let idx = 0; idx < maxSlots; idx++) {
-        let item = player.inventory[idx];
-        if (!item) continue; 
-        
-        let showItem = false;
-        if (filter === 'DRINK' && item.slot === 'consumable' && item.combat && ['heal', 'buff', 'cleanse', 'staunch'].includes(item.combat.actionType)) showItem = true;
-        else if (filter === 'EQUIP' && item.slot !== 'consumable' && item.type !== 'crate') showItem = true;
-
-        if (!showItem) continue; 
-
-        foundAny = true; 
-       let slotDiv = document.createElement('div');
-       let rc = item.rarity === "Gorilla" ? "slot-jackpot" : (item.rarity ? `slot-${item.rarity.toLowerCase()}` : 'slot-common');
-        slotDiv.className = `item-slot ${rc}`;
-  
-        // === THE FIX: ALLOW ITEMS TO BE CLICKED ===
+    grid.innerHTML = '';
+    entries.forEach(entry => {
+        const slotDiv = document.createElement('div');
+        const rarityClass = entry.item.rarity === 'Gorilla'
+            ? 'slot-jackpot'
+            : (entry.item.rarity ? `slot-${entry.item.rarity.toLowerCase()}` : 'slot-common');
+        slotDiv.className = `item-slot ${rarityClass}`;
+        slotDiv.style.position = 'relative';
         slotDiv.onclick = () => {
             closeCombatModal();
-            if (typeof selectCombatItem === 'function') {
-                selectCombatItem(idx); // Standard UI targeting hook
-            }
+            if (typeof selectCombatItem === 'function') selectCombatItem(entry.reference);
         };
-        // ==========================================
-
-        slotDiv.onmouseenter = (e) => { if (typeof showItemTooltip === 'function') showItemTooltip(e, item, idx, 'combat'); };
-        slotDiv.onmouseleave = typeof hideTooltip === 'function' ? hideTooltip : null;
-
-        let imgUrl = typeof getItemSpriteURL === 'function' ? getItemSpriteURL(item) : "";
-        if (imgUrl) {
-            slotDiv.innerHTML = `<img src="${imgUrl}" style="width:36px;height:36px;image-rendering:pixelated;pointer-events:none;">`;
-        } else {
-            slotDiv.innerHTML = `<span style="font-size:20px;pointer-events:none;">${item.type === 'crate' ? '\u{1F4E6}' : '\u{1F6E1}\uFE0F'}</span>`;
+        if (typeof showTooltip === 'function' && typeof getItemTooltip === 'function') {
+            slotDiv.onmouseenter = event => showTooltip(getItemTooltip(entry.item), event);
+            slotDiv.onmousemove = typeof moveTooltip === 'function' ? moveTooltip : null;
+            slotDiv.onmouseleave = typeof hideTooltip === 'function' ? hideTooltip : null;
         }
+
+        const imageUrl = typeof getItemSpriteURL === 'function' ? getItemSpriteURL(entry.item) : '';
+        if (imageUrl) {
+            const image = document.createElement('img');
+            image.src = imageUrl;
+            image.alt = '';
+            image.style.cssText = 'width:36px;height:36px;image-rendering:pixelated;pointer-events:none;';
+            slotDiv.appendChild(image);
+        } else {
+            const fallback = document.createElement('span');
+            fallback.style.cssText = 'font-size:20px;pointer-events:none;';
+            fallback.textContent = filter === 'DRINK' ? '\u{1F37A}' : '\u{1F6E1}\uFE0F';
+            slotDiv.appendChild(fallback);
+        }
+        const badge = document.createElement('span');
+        badge.textContent = entry.sourceLabel;
+        badge.style.cssText = 'position:absolute;left:2px;right:2px;bottom:1px;font-size:7px;background:rgba(0,0,0,.8);color:#fff;pointer-events:none;';
+        slotDiv.appendChild(badge);
         grid.appendChild(slotDiv);
+    });
+
+    if (entries.length === 0) {
+        const empty = document.createElement('div');
+        empty.style.cssText = 'color:#bbaaa0;text-align:center;padding:25px 15px;font-size:12px;font-style:italic;width:100%;';
+        empty.textContent = isCompanion && filter === 'DRINK'
+            ? 'No usable drinks in this mercenary\'s pockets or the shared backpack.'
+            : 'No items of this type in the backpack.';
+        grid.appendChild(empty);
     }
-    
-    if (!foundAny) {
-        grid.innerHTML = `<div style="color: #bbaaa0; text-align: center; padding: 25px 15px; font-size: 12px; font-style: italic; width: 100%;">No items of this type in your bag.</div>`;
-    }
-    
+
     if (modal.style.display !== 'block' && typeof playRetroSound === 'function') playRetroSound('menu');
     modal.style.display = 'block';
 }

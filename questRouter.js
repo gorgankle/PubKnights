@@ -7,6 +7,7 @@ const { sanitizeToken } = require('./serverSecurity.js');
 const { getQuestDefinition } = require('./questDefinitions.js');
 const { sanitizeLifetimeXp } = require('./xpMath.js');
 const { applyLifetimeXpLevelUps } = require('./playerProgression.js');
+const { normalizeRosterState } = require('./companionRoster.js');
 
 function ensureQuestState(player) {
     if (!player.quests || typeof player.quests !== 'object') {
@@ -21,6 +22,19 @@ function meetsRequirements(player, questDef) {
     const requirements = questDef.requirements || {};
     if (requirements.minLevel && (player.level || 1) < requirements.minLevel) return false;
     return true;
+}
+
+function sanitizeRequiredCompanionIds(values) {
+    if (!Array.isArray(values)) return null;
+
+    const companionIds = [];
+    values.forEach(value => {
+        const companionId = sanitizeToken(value, '');
+        if (companionId && !companionIds.includes(companionId)) {
+            companionIds.push(companionId);
+        }
+    });
+    return companionIds;
 }
 
 function applyQuestRewards(player, rewards) {
@@ -108,11 +122,15 @@ module.exports = function injectQuestRouter(socket, io, activePlayers) {
         }
 
         const completionToken = crypto.randomUUID();
+        const requiredCompanionIds = sanitizeRequiredCompanionIds(questDef.requiredCompanionIds);
+        const hasRequiredCompanions = Array.isArray(requiredCompanionIds) && requiredCompanionIds.length > 0;
         player.activeQuestSession = {
             questId,
             completionToken,
-            startedAt: Date.now()
+            startedAt: Date.now(),
+            ...(hasRequiredCompanions ? { requiredCompanionIds } : {})
         };
+        normalizeRosterState(player);
 
         socket.emit('questStartReceipt', {
             success: true,
@@ -122,7 +140,8 @@ module.exports = function injectQuestRouter(socket, io, activePlayers) {
             type: questDef.type,
             completionToken,
             persistCompletion: !!questDef.persistCompletion,
-            hasRewards: !!questDef.rewards
+            hasRewards: !!questDef.rewards,
+            ...(hasRequiredCompanions ? { requiredCompanionIds } : {})
         });
     });
 

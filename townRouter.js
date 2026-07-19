@@ -13,10 +13,19 @@ const {
 } = require('./serverSecurity.js');
 const {
     COMPANION_EQUIPMENT_SLOTS,
+    COMPANION_POCKET_COUNT,
     createCompanionInstanceId,
     normalizeRosterState,
-    findCompanionByInstanceId
+    findCompanionByInstanceId,
+    canHireCompanion,
+    canActivateCompanion,
+    canBenchCompanion,
+    canDismissCompanion
 } = require('./companionRoster.js');
+const {
+    getMercenaryTrainingQuote,
+    trainMercenaryOneLevel
+} = require('./mercenaryProgression.js');
 
 // 2. Bring over the secure unboxing math from server.js
 function rollSecureCrateLoot(crateId) {
@@ -41,6 +50,21 @@ const STARTER_COMPANION_COST = 250;
 function cloneItem(itemId) {
     return ItemDatabase[itemId] ? JSON.parse(JSON.stringify(ItemDatabase[itemId])) : null;
 }
+function isCompanionPocketItem(item) {
+    if (!item || typeof item !== 'object') return false;
+    if (COMPANION_EQUIPMENT_SLOTS.includes(item.slot)) return true;
+    return item.slot === 'consumable' && item.combat && typeof item.combat === 'object';
+}
+
+function getCompanionStoredItems(companion) {
+    if (!companion) return [];
+    const equipmentItems = COMPANION_EQUIPMENT_SLOTS
+        .map(slotKey => companion.equipment && companion.equipment[slotKey])
+        .filter(Boolean);
+    const pocketItems = Array.isArray(companion.pockets) ? companion.pockets.filter(Boolean) : [];
+    return [...equipmentItems, ...pocketItems];
+}
+
 
 function createStarterCompanion(name = 'Hired Mercenary') {
     return {
@@ -49,6 +73,8 @@ function createStarterCompanion(name = 'Hired Mercenary') {
         name,
         role: 'Frontliner',
         level: 1,
+        xp: 0,
+        pockets: [null, null],
         hired: true,
         active: false,
         icon: 'M',
@@ -198,9 +224,9 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         if (!data || typeof data !== 'object') return;
         ensurePlayerContainers(p);
 
-if (data.action === 'equipCompanion' || data.action === 'unequipCompanion') {
+        if (['equipCompanion', 'unequipCompanion', 'storeCompanionPocket', 'removeCompanionPocket'].includes(data.action)) {
             if (activeCombats && activeCombats[socket.id]) {
-                return socket.emit('inventoryReceipt', { success: false, message: 'Mercenary gear can only be changed outside combat.' });
+                return socket.emit('inventoryReceipt', { success: false, message: 'Mercenary gear and pockets can only be changed outside combat.' });
             }
 
             const companion = findCompanionByInstanceId(p, data.instanceId);
@@ -222,19 +248,50 @@ if (data.action === 'equipCompanion' || data.action === 'unequipCompanion') {
                 return socket.emit('inventoryReceipt', { success: true, action: 'equipCompanion', updatedPlayer: p, message: `${companion.name} equipped ${toEquip.name}.` });
             }
 
-            const slotKey = sanitizeToken(data.slotKey, '');
-            if (!COMPANION_EQUIPMENT_SLOTS.includes(slotKey)) {
-                return socket.emit('inventoryReceipt', { success: false, message: 'Invalid mercenary equipment slot.' });
+            if (data.action === 'unequipCompanion') {
+                const slotKey = sanitizeToken(data.slotKey, '');
+                if (!COMPANION_EQUIPMENT_SLOTS.includes(slotKey)) {
+                    return socket.emit('inventoryReceipt', { success: false, message: 'Invalid mercenary equipment slot.' });
+                }
+                const worn = companion.equipment[slotKey];
+                if (!worn) return socket.emit('inventoryReceipt', { success: false, message: `${companion.name} has nothing equipped there.` });
+                p.maxInventorySlots = p.maxInventorySlots || 5;
+                if (p.inventory.length >= p.maxInventorySlots) {
+                    return socket.emit('inventoryReceipt', { success: false, message: 'Backpack is full. Make space first.' });
+                }
+                p.inventory.push(worn);
+                companion.equipment[slotKey] = null;
+                return socket.emit('inventoryReceipt', { success: true, action: 'unequipCompanion', updatedPlayer: p, message: `${companion.name} unequipped ${worn.name}.` });
             }
-            const worn = companion.equipment[slotKey];
-            if (!worn) return socket.emit('inventoryReceipt', { success: false, message: `${companion.name} has nothing equipped there.` });
+
+            const pocketIndex = getArrayIndex(data.pocketIndex, companion.pockets);
+            if (pocketIndex < 0 || pocketIndex >= COMPANION_POCKET_COUNT) {
+                return socket.emit('inventoryReceipt', { success: false, message: 'Invalid mercenary pocket.' });
+            }
+
+            if (data.action === 'storeCompanionPocket') {
+                const idx = getArrayIndex(data.index, p.inventory);
+                if (idx < 0) return socket.emit('inventoryReceipt', { success: false, message: 'Invalid backpack slot.' });
+                const toStore = p.inventory[idx];
+                if (!isCompanionPocketItem(toStore)) {
+                    return socket.emit('inventoryReceipt', { success: false, message: 'Pockets can only hold equipment or combat consumables.' });
+                }
+                const stored = companion.pockets[pocketIndex];
+                companion.pockets[pocketIndex] = toStore;
+                if (stored) p.inventory[idx] = stored;
+                else p.inventory.splice(idx, 1);
+                return socket.emit('inventoryReceipt', { success: true, action: 'storeCompanionPocket', updatedPlayer: p, message: `${companion.name} stored ${toStore.name} in pocket ${pocketIndex + 1}.` });
+            }
+
+            const stored = companion.pockets[pocketIndex];
+            if (!stored) return socket.emit('inventoryReceipt', { success: false, message: `${companion.name}'s pocket is empty.` });
             p.maxInventorySlots = p.maxInventorySlots || 5;
             if (p.inventory.length >= p.maxInventorySlots) {
                 return socket.emit('inventoryReceipt', { success: false, message: 'Backpack is full. Make space first.' });
             }
-            p.inventory.push(worn);
-            companion.equipment[slotKey] = null;
-            return socket.emit('inventoryReceipt', { success: true, action: 'unequipCompanion', updatedPlayer: p, message: `${companion.name} unequipped ${worn.name}.` });
+            p.inventory.push(stored);
+            companion.pockets[pocketIndex] = null;
+            return socket.emit('inventoryReceipt', { success: true, action: 'removeCompanionPocket', updatedPlayer: p, message: `${stored.name} returned to the shared backpack.` });
         }
         else if (data.action === 'equip') {
             let idx = getArrayIndex(data.index, p.inventory);
@@ -388,38 +445,116 @@ if (data.action === 'equipCompanion' || data.action === 'unequipCompanion') {
             }
         }
         else if (data.action === 'hireCompanion') {
+            if (activeCombats && activeCombats[socket.id]) {
+                return socket.emit('townReceipt', { success: false, action: 'hireCompanion', message: 'Mercenary rosters can only be changed outside combat.' });
+            }
             const templateId = sanitizeToken(data.templateId || data.companionId, STARTER_COMPANION_ID);
             if (![STARTER_COMPANION_ID, 'marlow_shieldhand'].includes(templateId)) return socket.emit('townReceipt', { success: false, message: 'That companion is not available yet.' });
+            const hirePolicy = canHireCompanion(p);
+            if (!hirePolicy.allowed) {
+                return socket.emit('townReceipt', { success: false, action: 'hireCompanion', message: hirePolicy.message });
+            }
             if (p.gold < STARTER_COMPANION_COST) {
                 return socket.emit('townReceipt', { success: false, message: 'A mercenary asks for ' + STARTER_COMPANION_COST + 'g up front.' });
             }
 
             p.gold -= STARTER_COMPANION_COST;
-            const requestedName = String(data.companionName || '').replace(/[^a-zA-Z0-9 '\\-]/g, '').trim().slice(0, 24);
+            const requestedName = String(data.companionName || '').replace(/[^a-zA-Z0-9 '\-]/g, '').trim().slice(0, 24);
             const companion = createStarterCompanion(requestedName || 'Hired Mercenary');
             p.roster.companions.push(companion);
-            if (p.roster.activeIds.length === 0) p.roster.activeIds = [companion.instanceId];
+            if (p.roster.companions.length === 1) p.roster.activeIds = [companion.instanceId];
             normalizeRosterState(p);
             socket.emit('townReceipt', { success: true, action: 'hireCompanion', updatedPlayer: p, message: companion.name + ' joins your roster. Manage party gear from the Knight screen.' });
         }
         else if (data.action === 'setActiveCompanion') {
+            if (activeCombats && activeCombats[socket.id]) {
+                return socket.emit('townReceipt', { success: false, action: 'setActiveCompanion', message: 'Mercenary rosters can only be changed outside combat.' });
+            }
             const instanceId = sanitizeToken(data.instanceId || data.companionId, '');
             normalizeRosterState(p);
             const companion = findCompanionByInstanceId(p, instanceId);
-            if (!companion) return socket.emit('townReceipt', { success: false, message: 'That companion is not on your roster.' });
-            p.roster.activeIds = [companion.instanceId];
+            const activationPolicy = canActivateCompanion(p, instanceId);
+            if (!activationPolicy.allowed) {
+                return socket.emit('townReceipt', { success: false, action: 'setActiveCompanion', message: activationPolicy.message });
+            }
+            p.roster.activeIds.push(companion.instanceId);
             normalizeRosterState(p);
-            socket.emit('townReceipt', { success: true, action: 'setActiveCompanion', updatedPlayer: p, message: `${companion.name} is now active.` });
+            socket.emit('townReceipt', { success: true, action: 'setActiveCompanion', updatedPlayer: p, message: `${companion.name} joined the active party.` });
         }
         else if (data.action === 'benchCompanion') {
+            if (activeCombats && activeCombats[socket.id]) {
+                return socket.emit('townReceipt', { success: false, action: 'benchCompanion', message: 'Mercenary rosters can only be changed outside combat.' });
+            }
             const instanceId = sanitizeToken(data.instanceId || data.companionId, '');
             normalizeRosterState(p);
+            const benchPolicy = canBenchCompanion(p, instanceId);
+            if (!benchPolicy.allowed) {
+                return socket.emit('townReceipt', { success: false, action: 'benchCompanion', message: benchPolicy.message });
+            }
             p.roster.activeIds = p.roster.activeIds.filter(id => id !== instanceId);
             normalizeRosterState(p);
-            socket.emit('townReceipt', { success: true, action: 'benchCompanion', updatedPlayer: p, message: 'Companion moved to inactive roster.' });
+            socket.emit('townReceipt', { success: true, action: 'benchCompanion', updatedPlayer: p, message: 'Mercenary moved to the bench.' });
         }
+        else if (data.action === 'benchAllCompanions') {
+            if (activeCombats && activeCombats[socket.id]) {
+                return socket.emit('townReceipt', { success: false, action: 'benchAllCompanions', message: 'Mercenary rosters can only be changed outside combat.' });
+            }
+            p.roster.activeIds = [];
+            normalizeRosterState(p);
+            socket.emit('townReceipt', { success: true, action: 'benchAllCompanions', updatedPlayer: p, message: 'All optional mercenaries moved to the bench. Quest-required allies will still join their encounters.' });
+        }
+        else if (data.action === 'fillActiveCompanions') {
+            if (activeCombats && activeCombats[socket.id]) {
+                return socket.emit('townReceipt', { success: false, action: 'fillActiveCompanions', message: 'Mercenary rosters can only be changed outside combat.' });
+            }
+            normalizeRosterState(p);
+            p.roster.companions.forEach(companion => {
+                const policy = canActivateCompanion(p, companion.instanceId);
+                if (!policy.allowed) return;
+                p.roster.activeIds.push(companion.instanceId);
+                normalizeRosterState(p);
+            });
+            socket.emit('townReceipt', { success: true, action: 'fillActiveCompanions', updatedPlayer: p, message: `Active mercenary party filled (${p.roster.activeIds.length}/3).` });
+        }
+        else if (data.action === 'dismissCompanion') {
+            if (activeCombats && activeCombats[socket.id]) {
+                return socket.emit('townReceipt', { success: false, action: 'dismissCompanion', message: 'Mercenaries can only be dismissed outside combat.' });
+            }
+            const instanceId = sanitizeToken(data.instanceId || data.companionId, '');
+            normalizeRosterState(p);
+            const companion = findCompanionByInstanceId(p, instanceId);
+            const dismissalPolicy = canDismissCompanion(p, instanceId);
+            if (!dismissalPolicy.allowed) {
+                return socket.emit('townReceipt', { success: false, action: 'dismissCompanion', message: dismissalPolicy.message });
+            }
 
-		
+            const storedItems = getCompanionStoredItems(companion);
+            p.maxInventorySlots = p.maxInventorySlots || 5;
+            const freeSlots = Math.max(0, p.maxInventorySlots - p.inventory.length);
+            if (storedItems.length > freeSlots) {
+                const needed = storedItems.length - freeSlots;
+                return socket.emit('townReceipt', { success: false, action: 'dismissCompanion', message: `${companion.name} has ${storedItems.length} stored items. Free ${needed} more backpack slot${needed === 1 ? '' : 's'} before dismissal.` });
+            }
+
+            p.inventory.push(...storedItems);
+            p.roster.activeIds = p.roster.activeIds.filter(id => id !== companion.instanceId);
+            p.roster.companions = p.roster.companions.filter(entry => entry.instanceId !== companion.instanceId);
+            normalizeRosterState(p);
+            socket.emit('townReceipt', { success: true, action: 'dismissCompanion', updatedPlayer: p, message: `${companion.name} left the roster. ${storedItems.length} item${storedItems.length === 1 ? '' : 's'} returned to the backpack.` });
+        }
+        else if (data.action === 'trainMercenary') {
+            const instanceId = sanitizeToken(data.instanceId || data.companionId, '');
+            const result = trainMercenaryOneLevel(p, instanceId, {
+                inCombat: Boolean(activeCombats && activeCombats[socket.id])
+            });
+            socket.emit('townReceipt', {
+                success: result.success,
+                action: 'trainMercenary',
+                updatedPlayer: p,
+                training: result,
+                message: result.message
+            });
+        }
         // 4. PET TRAINING
         else if (data.action === 'trainPet') {
             p.pet = p.pet || { adopted: false, level: 1 };

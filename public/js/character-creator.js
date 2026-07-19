@@ -1,5 +1,5 @@
 // --- js/character-creator.js ---
-// Procedural Matrix Sprite Engine (Upgraded 24x24 Anatomy)
+// Procedural Matrix Sprite Engine (32x32 runtime contract)
 
 // THE UNIFIED MASTER PALETTE (Single Source of Truth)
 const PALETTE = {
@@ -157,10 +157,61 @@ const appearanceOptions = {
     bootsColor: ['leather', 'black', 'grey', 'suede', 'iron', 'burgundy', 'olive']
 };
 
-function buildSprite(stringArray) {
-    let paddedArray = [...stringArray];
-    while(paddedArray.length < 24) { paddedArray.push("........................"); }
-    return paddedArray.map(row => row.split(''));
+// Existing coded art is authored on the legacy 24x24 grid. Keep those source
+// strings readable while exposing one 32x32 matrix contract everywhere else.
+// Native 32x32 art passes through unchanged; legacy art is nearest-neighbour
+// resampled so paperdoll and equipment layers retain the same alignment.
+const LEGACY_PROCEDURAL_SPRITE_SIZE = 24;
+const PROCEDURAL_SPRITE_GRID_SIZE = 32;
+
+function getAuthoredSpriteSize(stringArray) {
+    const rows = Array.isArray(stringArray) ? stringArray : [];
+    const widestRow = rows.reduce((width, row) => {
+        const rowWidth = Array.isArray(row) ? row.length : String(row || '').length;
+        return Math.max(width, rowWidth);
+    }, 0);
+
+    return rows.length === PROCEDURAL_SPRITE_GRID_SIZE || widestRow === PROCEDURAL_SPRITE_GRID_SIZE
+        ? PROCEDURAL_SPRITE_GRID_SIZE
+        : LEGACY_PROCEDURAL_SPRITE_SIZE;
+}
+
+function normalizeSpriteMatrix(stringArray, options = {}) {
+    const rows = Array.isArray(stringArray) ? stringArray : [];
+    const sourceSize = options.sourceSize === PROCEDURAL_SPRITE_GRID_SIZE
+        ? PROCEDURAL_SPRITE_GRID_SIZE
+        : options.sourceSize === LEGACY_PROCEDURAL_SPRITE_SIZE
+            ? LEGACY_PROCEDURAL_SPRITE_SIZE
+            : getAuthoredSpriteSize(rows);
+    const verticalAnchor = options.verticalAnchor === 'bottom' ? 'bottom' : 'top';
+    const sourceMatrix = Array.from(
+        { length: sourceSize },
+        () => Array(sourceSize).fill('.')
+    );
+    const rowOffset = verticalAnchor === 'bottom'
+        ? Math.max(0, sourceSize - Math.min(rows.length, sourceSize))
+        : 0;
+
+    rows.slice(0, sourceSize).forEach((row, rowIndex) => {
+        const sourceRow = Array.isArray(row) ? row : String(row || '').split('');
+        sourceRow.slice(0, sourceSize).forEach((value, columnIndex) => {
+            sourceMatrix[rowOffset + rowIndex][columnIndex] = value || '.';
+        });
+    });
+
+    if (sourceSize === PROCEDURAL_SPRITE_GRID_SIZE) return sourceMatrix;
+
+    return Array.from({ length: PROCEDURAL_SPRITE_GRID_SIZE }, (_, row) => {
+        const sourceRow = Math.floor(row * sourceSize / PROCEDURAL_SPRITE_GRID_SIZE);
+        return Array.from({ length: PROCEDURAL_SPRITE_GRID_SIZE }, (_, column) => {
+            const sourceColumn = Math.floor(column * sourceSize / PROCEDURAL_SPRITE_GRID_SIZE);
+            return sourceMatrix[sourceRow][sourceColumn];
+        });
+    });
+}
+
+function buildSprite(stringArray, options) {
+    return normalizeSpriteMatrix(stringArray, options);
 }
 
 const eyeMatrix = buildSprite([
@@ -173,7 +224,7 @@ const eyeMatrix = buildSprite([
 ]);
 
 const SpriteMatrices = {
-    // --- 24x24 MALE ANATOMY ---
+    // --- LEGACY 24x24 SOURCE: MALE ANATOMY (NORMALIZED TO 32x32) ---
     body_male: buildSprite([
         "........................",
         "........................",
@@ -201,7 +252,7 @@ const SpriteMatrices = {
         "....DDDD..DDDD.........."
     ]),
     
-    // --- 24x24 FEMALE ANATOMY ---
+    // --- LEGACY 24x24 SOURCE: FEMALE ANATOMY (NORMALIZED TO 32x32) ---
     body_female: buildSprite([
         "........................",
         "........................",
@@ -229,7 +280,7 @@ const SpriteMatrices = {
         "....DDDD..DDDD.........."
     ]),
 
-    // --- 24x24 HAIRSTYLES ---
+    // --- LEGACY 24x24 SOURCE: HAIRSTYLES (NORMALIZED TO 32x32) ---
     hair_messy: buildSprite([
         "........................",
         "........................",
@@ -357,7 +408,7 @@ const SpriteMatrices = {
     ]),
     hair_bald: buildSprite([]),
 
-    // --- 24x24 EYES (DYNAMIC) ---
+    // --- LEGACY 24x24 SOURCE: DYNAMIC EYES (NORMALIZED TO 32x32) ---
     eyes_blue: eyeMatrix,
     eyes_green: eyeMatrix,
     eyes_brown: eyeMatrix,
@@ -371,13 +422,13 @@ const SpriteMatrices = {
 function drawProceduralSprite(context, matrix, startX, startY, size) {
     if (!matrix) return;
     
-    const gridCount = 24; 
+    const gridCount = PROCEDURAL_SPRITE_GRID_SIZE;
     const pixelSize = size / gridCount;
 
     for (let row = 0; row < matrix.length; row++) {
-        if (row >= 24) break; 
+        if (row >= gridCount) break;
         for (let col = 0; col < matrix[row].length; col++) {
-            if (col >= 24) break; 
+            if (col >= gridCount) break;
             
             const colorKey = matrix[row][col];
             let color = PALETTE[colorKey];
@@ -478,6 +529,19 @@ function renderPaperDoll(isNaked = false) {
     }
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-    setTimeout(() => { renderPaperDoll(true); }, 100);
-});
+if (typeof window !== 'undefined') {
+    window.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => { renderPaperDoll(true); }, 100);
+    });
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        LEGACY_PROCEDURAL_SPRITE_SIZE,
+        PROCEDURAL_SPRITE_GRID_SIZE,
+        getAuthoredSpriteSize,
+        normalizeSpriteMatrix,
+        buildSprite,
+        drawProceduralSprite
+    };
+}

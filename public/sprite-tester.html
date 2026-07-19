@@ -79,7 +79,7 @@
     <div style="text-align: center; margin-bottom: 20px;">
         <div id="char-creation-screen" style="display:none;"></div>
         <canvas id="menuCharacterCanvas" style="display:none;"></canvas>
-        <canvas id="tester-canvas" width="24" height="24"></canvas>
+        <canvas id="tester-canvas" width="32" height="32"></canvas>
     </div>
 
     <div class="panel" style="max-width: 900px; margin: 0 auto 20px auto;">
@@ -146,14 +146,21 @@
         };
     </script>
 
-    <script src="js/character-creator.js"></script>
+    <script src="js/character-creator.js?v=2"></script>
     <script src="js/items.js"></script>
-    <script src="js/item-assets.js"></script>
-    <script src="js/icon-assets.js"></script>
-    <script src="js/npc-assets.js"></script>
-    <script src="js/map-assets.js"></script>
+    <script src="js/item-assets.js?v=2"></script>
+    <script src="js/icon-assets.js?v=2"></script>
+    <script src="js/npc-assets.js?v=2"></script>
+    <script src="js/map-assets.js?v=2"></script>
 
    <script>
+        const TESTER_GRID_SIZE = typeof PROCEDURAL_SPRITE_GRID_SIZE === 'number'
+            ? PROCEDURAL_SPRITE_GRID_SIZE
+            : 32;
+        const testerCanvas = document.getElementById('tester-canvas');
+        testerCanvas.width = TESTER_GRID_SIZE;
+        testerCanvas.height = TESTER_GRID_SIZE;
+
         // === 1. POPULATE BOX 1 (EQUIPMENT) ===
         function initializeInventoryUI() {
             const gearSlots = ['helmet', 'armor', 'weapon', 'gloves', 'boots'];
@@ -229,6 +236,7 @@
             let selected = document.getElementById(activeSelectorId).value;
             const canvas = document.getElementById('tester-canvas');
             const ctx = canvas.getContext('2d');
+            const spriteSize = canvas.width;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             let originalB = PALETTE['b'];
@@ -239,7 +247,7 @@
             }
 
             if (selected && SpriteMatrices[selected]) {
-                drawProceduralSprite(ctx, SpriteMatrices[selected], 0, 0, 24);
+                drawProceduralSprite(ctx, SpriteMatrices[selected], 0, 0, spriteSize);
             } else {
                 renderPreview(); 
             }
@@ -267,6 +275,7 @@
         function renderPreview() {
             const canvas = document.getElementById('tester-canvas');
             const ctx = canvas.getContext('2d');
+            const spriteSize = canvas.width;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             let originalB = PALETTE['b'];
@@ -280,12 +289,12 @@
             const bufferCtx = bufferCanvas.getContext('2d', { alpha: true });
 
             let bodySprite = player.appearance.gender === 'female' ? 'body_female' : 'body_male';
-            if (SpriteMatrices[bodySprite]) drawProceduralSprite(bufferCtx, SpriteMatrices[bodySprite], 0, 0, 24);
-            if (SpriteMatrices[player.appearance.eyes]) drawProceduralSprite(bufferCtx, SpriteMatrices[player.appearance.eyes], 0, 0, 24);
+            if (SpriteMatrices[bodySprite]) drawProceduralSprite(bufferCtx, SpriteMatrices[bodySprite], 0, 0, spriteSize);
+            if (SpriteMatrices[player.appearance.eyes]) drawProceduralSprite(bufferCtx, SpriteMatrices[player.appearance.eyes], 0, 0, spriteSize);
             
             const hidesHair = player.equipment.helmet && player.equipment.helmet.hidesHair;
             if (!hidesHair && SpriteMatrices[player.appearance.hair]) {
-                drawProceduralSprite(bufferCtx, SpriteMatrices[player.appearance.hair], 0, 0, 24);
+                drawProceduralSprite(bufferCtx, SpriteMatrices[player.appearance.hair], 0, 0, spriteSize);
             }
 
             const eq = player.equipment;
@@ -293,15 +302,15 @@
             
             if (eq.armor && eq.armor.spriteId) {
                 let sId = eq.armor.spriteId + gSuffix;
-                if (SpriteMatrices[sId]) drawProceduralSprite(bufferCtx, SpriteMatrices[sId], 0, 0, 24);
-                else if (SpriteMatrices[eq.armor.spriteId]) drawProceduralSprite(bufferCtx, SpriteMatrices[eq.armor.spriteId], 0, 0, 24);
+                if (SpriteMatrices[sId]) drawProceduralSprite(bufferCtx, SpriteMatrices[sId], 0, 0, spriteSize);
+                else if (SpriteMatrices[eq.armor.spriteId]) drawProceduralSprite(bufferCtx, SpriteMatrices[eq.armor.spriteId], 0, 0, spriteSize);
             }
             
-            if (eq.boots && eq.boots.spriteId) drawProceduralSprite(bufferCtx, SpriteMatrices[eq.boots.spriteId], 0, 0, 24);
-            if (eq.gloves && eq.gloves.spriteId) drawProceduralSprite(bufferCtx, SpriteMatrices[eq.gloves.spriteId], 0, 0, 24);
+            if (eq.boots && eq.boots.spriteId) drawProceduralSprite(bufferCtx, SpriteMatrices[eq.boots.spriteId], 0, 0, spriteSize);
+            if (eq.gloves && eq.gloves.spriteId) drawProceduralSprite(bufferCtx, SpriteMatrices[eq.gloves.spriteId], 0, 0, spriteSize);
             
             // The helmet is drawn last onto the buffer, applying any `_` masking pixels to the hair layer beneath it
-            if (eq.helmet && eq.helmet.spriteId) drawProceduralSprite(bufferCtx, SpriteMatrices[eq.helmet.spriteId], 0, 0, 24);
+            if (eq.helmet && eq.helmet.spriteId) drawProceduralSprite(bufferCtx, SpriteMatrices[eq.helmet.spriteId], 0, 0, spriteSize);
             
             // STAMP THE FULLY COMPOSITED CHARACTER ONTO THE MAIN CANVAS
             ctx.drawImage(bufferCanvas, 0, 0);
@@ -309,13 +318,13 @@
             // The weapon is drawn onto the main canvas AFTER the buffer so it retains its own independent scaling and rotation
             if (eq.weapon && eq.weapon.spriteId) {
                 ctx.save();
-                let wPivotX = 24 * 0.58;
-                let wPivotY = 24 * 0.5; 
+                let wPivotX = spriteSize * 0.58;
+                let wPivotY = spriteSize * 0.5;
                 ctx.translate(wPivotX, wPivotY);
                 let scaleMult = eq.weapon.oversizeScale || 1.0;
                 ctx.scale(scaleMult, scaleMult);
                 ctx.translate(-wPivotX, -wPivotY);
-                drawProceduralSprite(ctx, SpriteMatrices[eq.weapon.spriteId], 0, 0, 24);
+                drawProceduralSprite(ctx, SpriteMatrices[eq.weapon.spriteId], 0, 0, spriteSize);
                 ctx.restore();
             }
 

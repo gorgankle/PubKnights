@@ -3,7 +3,15 @@ const assert = require('node:assert/strict');
 
 const {
     COMPANION_EQUIPMENT_SLOTS,
-    normalizeRosterState
+    COMPANION_POCKET_COUNT,
+    MAX_ROSTER_COMPANIONS,
+    MAX_SELECTED_COMPANIONS,
+    normalizeRosterState,
+    getRequiredCompanionIds,
+    canHireCompanion,
+    canActivateCompanion,
+    canBenchCompanion,
+    canDismissCompanion
 } = require('../companionRoster.js');
 const { createCompanionActor } = require('../combatActors.js');
 const registerTownRouter = require('../townRouter.js');
@@ -47,6 +55,8 @@ function makeCompanion(instanceId = 'merc_test_1') {
         role: 'Frontliner',
         hired: true,
         stats: { vitality: 3, offense: 2, defense: 2, speed: 3 },
+        xp: 0,
+        pockets: [null, null],
         equipment: {
             weapon: gear('old_mace', 'weapon'),
             helmet: null,
@@ -80,6 +90,12 @@ function createTownHarness(player = makePlayer(), activeCombat = null) {
     return { socket, player, activeCombats };
 }
 
+test('party limits expose six roster slots, three selections, and two pockets', () => {
+    assert.equal(MAX_ROSTER_COMPANIONS, 6);
+    assert.equal(MAX_SELECTED_COMPANIONS, 3);
+    assert.equal(COMPANION_POCKET_COUNT, 2);
+});
+
 test('legacy companion ids migrate without losing active state or gear', () => {
     const player = makePlayer();
     player.roster = {
@@ -91,9 +107,10 @@ test('legacy companion ids migrate without losing active state or gear', () => {
             stats: { vitality: 3, offense: 2, defense: 2, speed: 3 },
             equipment: {
                 weapon: gear('old_mace', 'weapon'),
+                accessory: gear('legacy_charm', 'accessory'),
+                boots: null,
                 helmet: gear('old_helmet', 'helmet'),
                 armor: null,
-                accessory: gear('legacy_charm', 'accessory')
             }
         }],
         activeIds: ['starter_mercenary']
@@ -108,9 +125,116 @@ test('legacy companion ids migrate without losing active state or gear', () => {
     assert.deepEqual(Object.keys(companion.equipment), COMPANION_EQUIPMENT_SLOTS);
     assert.equal(companion.equipment.weapon.id, 'old_mace');
     assert.equal(companion.equipment.gloves, null);
+    assert.equal(companion.xp, 0);
+    assert.deepEqual(companion.pockets, [null, null]);
     assert.deepEqual(player.roster.activeIds, [companion.instanceId]);
     assert.equal(companion.active, true);
     assert.equal(player.inventory[0].id, 'legacy_charm');
+});
+
+test('normalization preserves an explicitly empty bench and caps selected mercenaries at three', () => {
+    const player = makePlayer();
+    player.roster = {
+        companions: Array.from({ length: 4 }, (_, index) => ({
+            ...makeCompanion(`merc_${index}`),
+            active: true
+        })),
+        activeIds: []
+    };
+
+    normalizeRosterState(player);
+    assert.deepEqual(player.roster.activeIds, []);
+    assert.equal(player.roster.companions.every(companion => companion.active === false), true);
+
+    delete player.roster.activeIds;
+    player.roster.companions.forEach(companion => { companion.active = true; });
+    normalizeRosterState(player);
+    assert.deepEqual(player.roster.activeIds, ['merc_0', 'merc_1', 'merc_2']);
+});
+
+test('quest-required allies are removed before applying the three selected-slot cap', () => {
+    const player = makePlayer();
+    player.roster = {
+        companions: [
+            makeCompanion('merc_required'),
+            makeCompanion('merc_1'),
+            makeCompanion('merc_2'),
+            makeCompanion('merc_3')
+        ],
+        activeIds: ['merc_required', 'merc_1', 'merc_2', 'merc_3']
+    };
+    player.activeQuestSession = { requiredCompanionIds: ['merc_required'] };
+
+    normalizeRosterState(player);
+
+    assert.deepEqual(player.roster.activeIds, ['merc_1', 'merc_2', 'merc_3']);
+    assert.equal(player.roster.companions[0].active, false);
+    assert.deepEqual(player.inventory, []);
+});
+
+test('activation policy counts only optional selected mercenaries in stale roster data', () => {
+    const player = makePlayer();
+    player.roster = {
+        companions: [
+            makeCompanion('merc_required'),
+            makeCompanion('merc_1'),
+            makeCompanion('merc_2'),
+            makeCompanion('merc_3'),
+            makeCompanion('merc_4')
+        ],
+        activeIds: ['merc_required', 'merc_1', 'merc_2']
+    };
+    player.activeQuestSession = { requiredCompanionIds: ['merc_required'] };
+
+    assert.equal(canActivateCompanion(player, 'merc_3').allowed, true);
+    player.roster.activeIds.push('merc_3');
+    assert.equal(canActivateCompanion(player, 'merc_4').allowed, false);
+});
+
+test('companion xp and exactly two pockets survive normalization without losing overflow items', () => {
+    const player = makePlayer();
+    player.roster.companions = [{
+        ...makeCompanion('merc_pockets'),
+        xp: 275.9,
+        pockets: [gear('potion', 'consumable'), null, gear('spare_boots', 'boots')]
+    }];
+
+    normalizeRosterState(player);
+
+    const companion = player.roster.companions[0];
+    assert.equal(companion.xp, 275);
+    assert.equal(companion.pockets.length, 2);
+    assert.equal(companion.pockets[0].id, 'potion');
+    assert.equal(companion.pockets[1], null);
+    assert.deepEqual(player.inventory.map(item => item.id), ['spare_boots']);
+});
+
+test('roster policies enforce capacity, combat locks, and quest-required locks', () => {
+    const player = makePlayer();
+    player.roster.companions = Array.from({ length: MAX_ROSTER_COMPANIONS }, (_, index) => (
+        makeCompanion(`merc_${index}`)
+    ));
+    player.roster.activeIds = ['merc_0', 'merc_1', 'merc_2'];
+    player.activeQuestSession = {
+        requiredCompanionIds: ['merc_3', 'merc_3', 'not valid!']
+    };
+    normalizeRosterState(player);
+
+    assert.deepEqual(getRequiredCompanionIds(player), ['merc_3']);
+    assert.equal(canHireCompanion(player).allowed, false);
+    assert.match(canHireCompanion(player).message, /full/i);
+    assert.equal(canHireCompanion(makePlayer(), { inCombat: true }).allowed, false);
+    assert.match(canHireCompanion(makePlayer(), { inCombat: true }).message, /outside combat/i);
+
+    assert.equal(canActivateCompanion(player, 'merc_4').allowed, false);
+    assert.match(canActivateCompanion(player, 'merc_4').message, /active party is full/i);
+    assert.equal(canActivateCompanion(player, 'merc_3').allowed, false);
+    assert.match(canActivateCompanion(player, 'merc_3').message, /active quest/i);
+    assert.equal(canBenchCompanion(player, 'merc_3').allowed, false);
+    assert.match(canBenchCompanion(player, 'merc_3').message, /cannot be benched/i);
+    assert.equal(canDismissCompanion(player, 'merc_3').allowed, false);
+    assert.match(canDismissCompanion(player, 'merc_3').message, /cannot be dismissed/i);
+    assert.equal(canDismissCompanion(player, 'merc_4', { activeCombat: true }).allowed, false);
 });
 
 test('multiple companions from one template receive distinct combat identities', () => {

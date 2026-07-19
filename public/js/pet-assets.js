@@ -1,5 +1,5 @@
 // --- js/pet-assets.js ---
-// Procedural Matrix definitions specifically for customizable Tavern Pets (Classic 24x24 RPG Style)
+// Procedural Matrix definitions for customizable Tavern Pets (32x32 runtime contract)
 
 const PetFurTones = {
     'gray': '#7f8c8d',   
@@ -26,14 +26,10 @@ const petAppearanceOptions = {
     collarColor: ['red', 'blue', 'green', 'yellow', 'purple', 'pink'] // <-- Added this!
 };
 
-// Pads the sprites to 24x24 and pushes them to the floor
+// Pet source art stays floor-anchored before sharing the same deterministic
+// legacy 24x24 -> runtime 32x32 normalization as characters and equipment.
 function buildPetSprite(stringArray) {
-    let paddedArray = [...stringArray];
-    let emptyRow = "........................"; // 24 empty dots
-    while(paddedArray.length < 24) {
-        paddedArray.unshift(emptyRow);
-    }
-    return paddedArray.map(row => row.split(''));
+    return normalizeSpriteMatrix(stringArray, { verticalAnchor: 'bottom' });
 }
 
 const PetMatrices = {
@@ -75,7 +71,7 @@ function renderPetCanvas(canvasEl) {
     let matrix = PetMatrices[player.pet.type];
     if (!matrix) return;
 
-    const gridCount = 24; 
+    const gridCount = PROCEDURAL_SPRITE_GRID_SIZE;
     const pixelSize = Math.floor(canvasEl.width / gridCount);
 
     for (let row = 0; row < matrix.length; row++) {

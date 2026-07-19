@@ -452,7 +452,7 @@ button:hover:not(:disabled) { background: #a06d3b; }
 .slot-epic { border-color: #9b59b6; }
 .slot-jackpot { border-color: #f1c40f; box-shadow: 0 0 8px #f1c40f; }
 
-/* Mini canvas for 24x24 sprites */
+/* Mini canvas for canonical 32x32 sprites */
 .item-slot canvas {
     max-width: 40px;
     max-height: 40px;
@@ -669,4 +669,142 @@ button:hover:not(:disabled) { background: #a06d3b; }
     .companion-roster-row { grid-template-columns: 1fr; }
     .companion-roster-controls { justify-content: stretch; }
     .companion-roster-controls button { flex: 1; }
+}
+/* --- PARTY MANAGEMENT POLISH --- */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Swap the pet and backpack cards while keeping a predictable responsive order. */
+#main-knight-panel { order: 1; }
+#main-backpack-panel { order: 2; }
+#party-roster-panel { order: 3; }
+#main-pet-panel { order: 4; }
+
+.hire-mercenary-panel {
+    border: 1px solid #285c45;
+    background: #19271f;
+}
+.hire-mercenary-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: stretch;
+}
+.hire-mercenary-controls input {
+    min-width: 0;
+    box-sizing: border-box;
+    background: #1a1512;
+    color: #f4ebd9;
+    border: 1px solid #634e3d;
+    border-radius: 3px;
+    padding: 8px;
+    font-family: inherit;
+}
+.hire-mercenary-controls button {
+    margin: 0;
+    padding: 8px 10px;
+    background: #216b4f;
+    border-color: #2ecc71;
+}
+.hire-mercenary-note {
+    margin: 7px 0 0;
+    color: #93aa9d;
+    font-size: 9px;
+    line-height: 1.4;
+}
+
+.companion-roster-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 5px;
+    align-items: center;
+    padding: 5px 0 2px;
+}
+.companion-roster-toolbar span {
+    color: #a9bbb0;
+    font-size: 10px;
+    font-weight: bold;
+}
+.companion-roster-toolbar button {
+    margin: 0;
+    padding: 6px 8px;
+    font-size: 9px;
+}
+.companion-danger-button {
+    background: #6e2929;
+    border-color: #c0392b;
+}
+.companion-roster-toolbar button:disabled,
+.companion-roster-controls button:disabled,
+.companion-training-row button:disabled,
+.companion-pocket-slot button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    filter: saturate(0.4);
+}
+
+.companion-training-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: end;
+    margin: 6px 0 9px;
+    padding: 7px;
+    color: #c5b9a8;
+    font-size: 9px;
+    background: #17120e;
+    border: 1px solid #3a2f26;
+    border-radius: 4px;
+}
+.companion-training-row button { margin: 0; padding: 7px 9px; font-size: 9px; }
+.companion-progress { width: 100%; height: 10px; accent-color: #2ecc71; }
+
+.companion-pocket-slots {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+}
+.companion-pocket-slot {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 7px;
+    align-items: center;
+    min-height: 34px;
+    padding: 6px;
+    background: #161c21;
+    border: 1px solid #30485a;
+    border-radius: 4px;
+}
+.companion-pocket-slot strong { color: #3498db; font-size: 9px; }
+.companion-pocket-slot span { overflow: hidden; color: #dce6eb; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.companion-pocket-slot button { margin: 0; padding: 5px 7px; font-size: 8px; }
+.companion-pocket-items { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+.companion-pocket-items button { margin: 0; padding: 5px 7px; font-size: 8px; }
+.companion-backpack-item { display: flex; }
+.companion-backpack-item-details { flex: 1; }
+
+@media (max-width: 720px) {
+    .hire-mercenary-controls { grid-template-columns: 1fr; }
+    .hire-mercenary-controls button { width: 100%; }
+    .companion-roster-toolbar span { grid-column: 1 / -1; }
+    .companion-training-row { grid-template-columns: 1fr; }
+    .companion-training-row button { width: 100%; }
+    .companion-backpack-item { align-items: flex-start; flex-wrap: wrap; }
+    .companion-pocket-items { width: 100%; justify-content: stretch; }
+    .companion-pocket-items button { flex: 1; }
+}
+
+@media (max-width: 440px) {
+    .companion-pocket-slots { grid-template-columns: 1fr; }
+    .companion-pocket-slot { grid-template-columns: auto minmax(0, 1fr); }
+    .companion-pocket-slot button { grid-column: 1 / -1; width: 100%; }
 }

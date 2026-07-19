@@ -37,12 +37,32 @@ maxInventorySlots: 5, backpackUpgrades: 0,
     // supply cart automation retired
 };
 
+function getClientRequiredCompanionIds(targetPlayer = player) {
+    const requiredIds = [];
+    const sources = [
+        targetPlayer && targetPlayer.activeQuestSession,
+        targetPlayer && targetPlayer.quests && targetPlayer.quests.active
+    ];
+
+    sources.forEach(source => {
+        if (!source || !Array.isArray(source.requiredCompanionIds)) return;
+        source.requiredCompanionIds.forEach(value => {
+            const instanceId = typeof value === 'string' ? value.trim() : '';
+            if (instanceId && !requiredIds.includes(instanceId)) requiredIds.push(instanceId);
+        });
+    });
+
+    return requiredIds;
+}
+
 function normalizeClientPlayerContainers() {
     player.inventory = Array.isArray(player.inventory) ? player.inventory : [];
     player.stash = Array.isArray(player.stash) ? player.stash : [];
     player.equipment = player.equipment && typeof player.equipment === 'object' ? player.equipment : {};
 
     const equipmentSlots = ['helmet', 'armor', 'weapon', 'gloves', 'boots'];
+    const pocketCount = 2;
+    const maxSelectedCompanions = 3;
     equipmentSlots.forEach(slot => {
         if (!Object.prototype.hasOwnProperty.call(player.equipment, slot)) player.equipment[slot] = null;
     });
@@ -50,6 +70,7 @@ function normalizeClientPlayerContainers() {
     const roster = player.roster && typeof player.roster === 'object' ? player.roster : {};
     const sourceCompanions = Array.isArray(roster.companions) ? roster.companions : [];
     const legacyIdMap = new Map();
+    const hasCanonicalActiveIds = Object.prototype.hasOwnProperty.call(roster, 'activeIds');
     const companions = sourceCompanions.map(companion => {
         if (!companion || typeof companion !== 'object') return null;
         const instanceId = companion.instanceId || companion.id;
@@ -63,17 +84,40 @@ function normalizeClientPlayerContainers() {
         const equipment = {};
         equipmentSlots.forEach(slot => { equipment[slot] = sourceEquipment[slot] || null; });
 
-        const normalized = Object.assign({}, companion, { instanceId, templateId, equipment });
+        if (sourceEquipment.accessory) player.inventory.push(sourceEquipment.accessory);
+
+        const sourcePockets = Array.isArray(companion.pockets) ? companion.pockets : [];
+        const pockets = Array.from({ length: pocketCount }, (_, index) => sourcePockets[index] || null);
+        sourcePockets.slice(pocketCount).forEach(item => {
+            if (item) player.inventory.push(item);
+        });
+
+        const normalized = Object.assign({}, companion, {
+            instanceId,
+            templateId,
+            level: Math.max(1, Math.min(MAX_PLAYER_LEVEL, Math.trunc(Number(companion.level) || 1))),
+            xp: Math.max(0, Math.trunc(Number(companion.xp) || 0)),
+            equipment,
+            pockets
+        });
         delete normalized.id;
         return normalized;
     }).filter(Boolean);
 
     const validIds = new Set(companions.map(companion => companion.instanceId));
+    const requiredIds = new Set(getClientRequiredCompanionIds(player).map(requiredId => (
+        validIds.has(requiredId) ? requiredId : legacyIdMap.get(requiredId)
+    )).filter(Boolean));
     const activeIds = [];
-    const requestedActiveIds = Array.isArray(roster.activeIds) ? roster.activeIds : [];
+    const requestedActiveIds = hasCanonicalActiveIds
+        ? (Array.isArray(roster.activeIds) ? roster.activeIds : [])
+        : companions.filter(companion => companion.active === true).map(companion => companion.instanceId);
     requestedActiveIds.forEach(requestedId => {
         const instanceId = validIds.has(requestedId) ? requestedId : legacyIdMap.get(requestedId);
-        if (instanceId && !activeIds.includes(instanceId) && activeIds.length < 1) activeIds.push(instanceId);
+        if (instanceId
+            && !requiredIds.has(instanceId)
+            && !activeIds.includes(instanceId)
+            && activeIds.length < maxSelectedCompanions) activeIds.push(instanceId);
     });
 
     player.roster = { companions, activeIds };

@@ -38,9 +38,62 @@ function getActiveCombatantName() {
     return actor && actor.name ? actor.name : 'Knight';
 }
 
+function getActiveCompanionRosterEntry() {
+    const actor = getActiveCombatant();
+    if (!actor || actor.uid === 'player_0' || actor.kind === 'player') return null;
+    const instanceId = actor.companionInstanceId;
+    const companions = player && player.roster && Array.isArray(player.roster.companions)
+        ? player.roster.companions
+        : [];
+    return companions.find(companion => companion.instanceId === instanceId) || null;
+}
+
+function normalizeCombatItemReference(reference) {
+    if (reference && typeof reference === 'object') {
+        if (reference.source === 'pocket') return { source: 'pocket', pocketIndex: Math.trunc(Number(reference.pocketIndex)) };
+        return { source: 'backpack', index: Math.trunc(Number(reference.index)) };
+    }
+    return { source: 'backpack', index: Math.trunc(Number(reference)) };
+}
+
 function getActiveCombatantItem(activeIndex) {
     if (activeIndex === 'weapon') return getActiveCombatantWeapon();
-    return player.inventory[activeIndex];
+    const reference = normalizeCombatItemReference(activeIndex);
+    if (reference.source === 'pocket') {
+        const companion = getActiveCompanionRosterEntry();
+        return companion && Array.isArray(companion.pockets) ? companion.pockets[reference.pocketIndex] : null;
+    }
+    return player.inventory[reference.index];
+}
+
+function getCombatItemDispatchPayload(reference) {
+    const normalized = normalizeCombatItemReference(reference);
+    return normalized.source === 'pocket'
+        ? { pocketIndex: normalized.pocketIndex }
+        : { invIndex: normalized.index };
+}
+
+function selectCombatItem(reference) {
+    const item = getActiveCombatantItem(reference);
+    if (!item) return;
+    if (!item.combat) {
+        const normalized = normalizeCombatItemReference(reference);
+        const actor = getActiveCombatant();
+        if (normalized.source === 'backpack' && actor && (actor.uid === 'player_0' || actor.kind === 'player')) {
+            handleCombatEquip(normalized.index);
+        } else {
+            logMessage('Mercenary equipment can only be changed from the Knight paperdoll outside combat.');
+            if (typeof playRetroSound === 'function') playRetroSound('error');
+        }
+        return;
+    }
+
+    const targetType = item.combat.targetType || 'self';
+    if (['single', 'enemy', 'tile', 'aoe'].includes(targetType)) {
+        window.prepTargetAction(reference);
+        return;
+    }
+    consumeCombatItem(reference);
 }
 
 function applyActiveCombatantLocalMove(tx, ty, staminaCost) {
@@ -57,7 +110,6 @@ function applyActiveCombatantLocalMove(tx, ty, staminaCost) {
 }
 
 
-
 // Data-Driven Special Descriptions
 function getWeaponSpecialDesc(item) {
     if (!item || item.slot !== "weapon" || !item.combat || !item.combat.special) return "";
@@ -71,6 +123,7 @@ function executeCombatAction(actionType) {
     if (combatPhase === 'TARGETING') {
         if (actionType !== 'rest' && actionType !== 'end') return;
         activeTargetIndex = -1;
+        hoverTile = {x: -1, y: -1};
         pendingMove = null;
     }
     if (actionType !== 'end' && (combatActionsRemaining || 0) <= 0) return;
@@ -98,6 +151,8 @@ function executeCombatAction(actionType) {
 // === NEW: TACTICAL WEAPON SPECIAL INTERCEPT ===
         // If it's an AoE weapon skill, stop the normal attack and switch to TARGETING!
         if (actionType === 'special' && weapon.combat.special && weapon.combat.special.targetType === 'aoe') {
+            selectedEnemy = null;
+            hoverTile = {x: -1, y: -1};
             activeTargetIndex = 'weapon'; // Flag it as the weapon special
             combatPhase = 'TARGETING';
             logMessage("📍 Targeting AoE Special... Select the epicenter.");
@@ -184,14 +239,17 @@ function handleCombatEquip(idx) {
     socket.emit('dispatchCombatAction', { actorUid: activeCombatActorUid, actionCategory: 'equip', invIndex: idx });
 }
 
-function consumeBrew(invIndex) {
+function consumeCombatItem(reference) {
     if (gameState !== 'COMBAT' || currentTurn !== 'PLAYER' || combatPhase !== 'ACTION_READY' || combatActionsRemaining <= 0) return;
-    
-    // === THE FIX: ENFORCE PHASE LOCK ON CONSUMABLES ===
-    combatPhase = 'WAITING_FOR_SERVER'; 
-    
-    socket.emit('dispatchCombatAction', { actorUid: activeCombatActorUid, actionCategory: 'consumable', invIndex: invIndex });
+    combatPhase = 'WAITING_FOR_SERVER';
+    socket.emit('dispatchCombatAction', {
+        actorUid: activeCombatActorUid,
+        actionCategory: 'consumable',
+        ...getCombatItemDispatchPayload(reference)
+    });
 }
+
+function consumeBrew(invIndex) { consumeCombatItem(invIndex); }
 
 
 // === TARGETING STATE CONTROLLERS ===
@@ -205,6 +263,8 @@ window.prepTargetAction = function(idx) {
         return;
     }
 
+    selectedEnemy = null;
+    hoverTile = {x: -1, y: -1};
     activeTargetIndex = idx;         
     combatPhase = 'TARGETING';       
     refreshSystemUI(); 
@@ -212,6 +272,7 @@ window.prepTargetAction = function(idx) {
 };
 window.executeTargetAction = function(tx, ty) {
     if (activeTargetIndex === -1) return;
+    hoverTile = {x: -1, y: -1};
     
     combatPhase = 'WAITING_FOR_SERVER'; 
     
@@ -219,7 +280,7 @@ window.executeTargetAction = function(tx, ty) {
     if (activeTargetIndex === 'weapon') {
         socket.emit('dispatchCombatAction', { actorUid: activeCombatActorUid, actionCategory: 'weapon', subType: 'special', tx: tx, ty: ty });
     } else {
-        socket.emit('dispatchCombatAction', { actorUid: activeCombatActorUid, actionCategory: 'consumable', invIndex: activeTargetIndex, tx: tx, ty: ty });
+        socket.emit('dispatchCombatAction', { actorUid: activeCombatActorUid, actionCategory: 'consumable', ...getCombatItemDispatchPayload(activeTargetIndex), tx: tx, ty: ty });
     }
     
     activeTargetIndex = -1;
@@ -228,7 +289,9 @@ window.executeTargetAction = function(tx, ty) {
 };
 
 window.cancelTarget = function() {
+    hoverTile = {x: -1, y: -1};
     activeTargetIndex = -1;
+    pendingMove = null;
     combatPhase = 'ACTION_READY';
     refreshSystemUI();
     if (typeof drawGrid === 'function') drawGrid(); 
@@ -456,7 +519,7 @@ function isValidPlayerMovePath(targetX, targetY) {
 // === RESTORED TRANSITION FUNCTION ===
 window.transitionToTown = function() {
     if (typeof setGameState === 'function') {
-        setGameState('TOWN');
+        setGameState('KNIGHT');
     }
     
     // Failsafe cleanup of combat states
@@ -469,6 +532,6 @@ window.transitionToTown = function() {
     const mainGameContainer = document.getElementById('main-game-container');
     if (mainGameContainer) mainGameContainer.style.display = 'flex';
     
-    logMessage("🏕️ Returned safely to Town.");
+    logMessage("Returned safely to the Knight screen.");
     if (typeof playRetroSound === 'function') playRetroSound('door');
 }

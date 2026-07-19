@@ -1,5 +1,5 @@
 // --- Cs/item-assets.Cs ---
-// Procedural Matrix definitions for all Equipment & Items (24x24 Resolution)
+// Legacy 24x24 coded sources; buildSprite exposes 32x32 runtime matrices.
 
 Object.assign(SpriteMatrices, {
 	

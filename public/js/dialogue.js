@@ -98,7 +98,7 @@ function renderDialoguePortrait(portraitId) {
     
     if (portraitId === 'player') {
         // --- THE FIX: BETTER ZOOM & CENTERING ---
-        const zoomSize = 180; // 6x scale of a 24x24 sprite (gives breathing room!)
+        const zoomSize = 180; // Enlarged crop of the canonical 32x32 sprite.
         const ox = -30;       // Perfect horizontal center
         const oy = -20;       // Crops just the legs out, keeping shoulders and head
         

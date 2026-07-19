@@ -61,6 +61,17 @@ const QuestCinematics = (() => {
             hasRewards: !!receipt.hasRewards
         };
 
+        if (typeof player !== "undefined") {
+            const requiredCompanionIds = Array.isArray(receipt.requiredCompanionIds)
+                ? [...new Set(receipt.requiredCompanionIds.filter(companionId => typeof companionId === "string" && companionId))]
+                : [];
+            player.activeQuestSession = {
+                questId: receipt.questId,
+                ...(requiredCompanionIds.length ? { requiredCompanionIds } : {})
+            };
+            if (typeof normalizeClientPlayerContainers === "function") normalizeClientPlayerContainers();
+        }
+
         tileSize = script.tileSize || DEFAULT_TILE_SIZE;
         grid = script.grid || DEFAULT_GRID;
         actors = script.actors || DEFAULT_ACTORS;
@@ -263,9 +274,11 @@ const QuestCinematics = (() => {
     function endQuest() {
         currentScript = null;
         currentSession = null;
-        if (typeof gameState !== "undefined") gameState = previousGameState || "KNIGHT";
-        if (typeof setGameState === "function") setGameState("TOWN");
-        else if (typeof refreshSystemUI === "function") refreshSystemUI();
+        if (typeof setGameState === "function") setGameState("KNIGHT");
+        else {
+            if (typeof gameState !== "undefined") gameState = "KNIGHT";
+            if (typeof refreshSystemUI === "function") refreshSystemUI();
+        }
     }
 
     function applySceneUI() {
@@ -895,6 +908,11 @@ const QuestCinematics = (() => {
             return;
         }
         if (receipt.updatedPlayer && typeof player !== "undefined") Object.assign(player, receipt.updatedPlayer);
+        if (typeof player !== "undefined") {
+            delete player.activeQuestSession;
+            if (typeof normalizeClientPlayerContainers === "function") normalizeClientPlayerContainers();
+        }
+        if (typeof refreshSystemUI === "function") refreshSystemUI();
         if (receipt.message && typeof logMessage === "function") logMessage(receipt.message);
 
         const action = receipt.completionAction;

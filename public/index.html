@@ -6,7 +6,7 @@
 	<!-- NEW: Mobile Viewport Scaling -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Pub Knights - Beta v0.9(Modular Refactor)</title>
-    <link rel="stylesheet" href="style.css?v=3">
+    <link rel="stylesheet" href="style.css?v=4">
 	
 	<!-- === NEW: MOBILE DRAG & DROP POLYFILL === -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/default.css">
@@ -150,7 +150,7 @@
             <div id="combat-inventory-list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;"></div>
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px;">
-                <button id="end-btn" onclick="executeCombatAction('end')" style="padding: 12px; font-size: 15px; background: #e67e22; border: 2px solid #d35400; font-weight: bold; text-shadow: 1px 1px 2px #000;" onmouseenter="showSystemTooltip('combat_end', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">End Turn</button>
+                <button id="end-btn" onclick="executeCombatAction('end')" style="padding: 12px; font-size: 15px; background: #e67e22; border: 2px solid #d35400; font-weight: bold; text-shadow: 1px 1px 2px #000;" onmouseenter="showSystemTooltip('combat_end', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Pass Turn</button>
                 <button id="flee-btn" onclick="fleeCombat()" style="padding: 12px; font-size: 15px; background: #c0392b; border: 2px solid #e74c3c; font-weight: bold; text-shadow: 1px 1px 2px #000;">🏃 Flee</button>
             </div>
             
@@ -338,7 +338,7 @@
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px; align-items: start;">
 
         <!-- MODULE 1: The Knight -->
-        <div class="dashboard-panel" style="margin-bottom: 0; display: flex; flex-direction: column; align-items: center;">
+        <div class="dashboard-panel" id="main-knight-panel" style="margin-bottom: 0; display: flex; flex-direction: column; align-items: center;">
             <h4 id="knight-header-name" style="margin: 0 0 10px 0; font-size: 15px; color: #ffcc66; border-bottom: 1px dashed #3a2f26; padding-bottom: 4px; text-transform: uppercase; width: 100%; text-align: center;">Your Knight</h4>
             
             <div style="display: flex; justify-content: center; align-items: center; gap: 15px; width: 100%;">
@@ -384,7 +384,7 @@
         </div>
 
         <!-- MODULE 2: The Companion (Pet) -->
-        <div class="dashboard-panel" style="margin-bottom: 0; display: flex; flex-direction: column; align-items: center;">
+        <div class="dashboard-panel" id="main-pet-panel" style="margin-bottom: 0; display: flex; flex-direction: column; align-items: center;">
             <h4 id="pet-header-name" style="margin: 0 0 10px 0; font-size: 15px; color: #bbaaa0; border-bottom: 1px dashed #3a2f26; padding-bottom: 4px; text-transform: uppercase; width: 100%; text-align: center;">Companion</h4>
             
             <canvas id="main-pet-canvas" width="96" height="96" style="display: none; background: #221a14; border: 1px solid #4a3b2c; border-radius: 4px; image-rendering: pixelated; width: 144px; height: 144px; margin-top: 5px; box-shadow: inset 0 0 10px rgba(0,0,0,0.8);"></canvas>
@@ -408,7 +408,7 @@
         </div>
 
         <!-- MODULE 3: Party Roster -->
-        <div class="dashboard-panel" style="margin-bottom: 0; display: flex; flex-direction: column;">
+        <div class="dashboard-panel" id="party-roster-panel" style="margin-bottom: 0; display: flex; flex-direction: column;">
             <h3 style="color: #2ecc71; border-bottom: 1px dashed #27ae60;">Party Roster</h3>
             <div id="party-roster-list" style="background: #110d0a; padding: 10px; border-radius: 4px; border: 1px solid #3a2f26; min-height: 96px; display: grid; gap: 8px;"></div>
             <div id="companion-equipment-panel" hidden></div>
@@ -443,7 +443,18 @@
 
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px; align-items: start;">
 
-        <!-- MODULE 1: Administration -->
+        <!-- MODULE 1: Hire Mercenary -->
+        <div class="dashboard-panel hire-mercenary-panel" style="margin-bottom: 0;">
+            <h3 style="color: #2ecc71; border-bottom: 1px dashed #27ae60;">🛡️ Hire Mercenary</h3>
+            <div class="hire-mercenary-controls">
+                <label class="sr-only" for="mercenary-name-input">Mercenary name</label>
+                <input id="mercenary-name-input" placeholder="Mercenary name" maxlength="24" autocomplete="off">
+                <button id="hire-mercenary-btn" onclick="hireTavernCompanion()">Hire Mercenary (250g)</button>
+            </div>
+            <p class="hire-mercenary-note">Roster limit: 6 mercenaries. Up to 3 can deploy with your Knight.</p>
+        </div>
+
+        <!-- MODULE 2: Administration -->
         <div class="dashboard-panel" style="margin-bottom: 0;">
             <h3 style="color: #f1c40f; border-bottom: 1px dashed #f1c40f;">🏛️ Town Hall</h3>
             <div style="display: grid; grid-template-columns: 1fr; gap: 6px;">
@@ -453,7 +464,7 @@
         </div>
 
 
-        <!-- MODULE 4: The Renaissance Corner -->
+        <!-- MODULE 3: The Renaissance Corner -->
         <div class="dashboard-panel" style="margin-bottom: 0; text-align: center;">
             <h3 style="color: #9b59b6; border-bottom: 1px dashed #9b59b6;">🎨 The Renaissance Corner 🎵</h3>
             <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
@@ -543,16 +554,7 @@
 
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px; align-items: start;">
 
-        <!-- MODULE 1: Provisioner Counter -->
-        <div class="dashboard-panel" style="margin-bottom: 0;">
-            <h3 style="color: #3498db; border-bottom: 1px dashed #2980b9;">🛍️ Provisioner Counter</h3>
-            <div style="display: grid; grid-template-columns: 1fr auto; gap: 6px; margin-bottom: 6px; align-items: center;">
-                <input id="mercenary-name-input" placeholder="Mercenary name" style="min-width: 0; background:#1a1512; color:#f4ebd9; border:1px solid #634e3d; padding:8px; font-family:monospace;">
-                <button id="hire-mercenary-btn" onclick="hireTavernCompanion()" style="margin: 0; padding: 8px; background: #216b4f; border-color: #2ecc71;">Hire Mercenary (250g)</button>
-            </div>
-        </div>
-
-        <!-- MODULE 2: Brewmaster -->
+        <!-- MODULE 1: Brewmaster -->
         <div class="dashboard-panel" style="margin-bottom: 0;">
             <h3 style="color: #f39c12; border-bottom: 1px dashed #e67e22;">🍺 Brewmaster Services</h3>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
@@ -565,7 +567,7 @@
                 <button id="reserve-btn" onclick="craftReserveBrew()" style="grid-column: span 2; margin: 0; padding: 10px; background: #8e44ad; border-color: #9b59b6;" onmouseenter="showSystemTooltip('reserve', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🍷 Grandmaster Reserve (1000g)</button>
             </div>
         </div>
-        <!-- MODULE 3: Guild Quartermaster -->
+        <!-- MODULE 2: Guild Quartermaster -->
         <div class="dashboard-panel" style="margin-bottom: 0;">
             <h3 style="color: #f1c40f; border-bottom: 1px dashed #f39c12;">Guild Quartermaster</h3>
 
@@ -891,35 +893,35 @@
 
 
 <!-- Core State & Player Data -->
-    <script src="js/player.js?v=3"></script>
-    <script src="js/character-creator.js"></script> <!-- ESTABLISHES ARRAYS -->
-	<script src="js/item-assets.js"></script>       <!-- NEW: EQUIPMENT ARRAYS -->
-	<script src="js/pet-assets.js"></script>
-    <script src="js/npc-assets.js"></script>      <!-- MODIFIES ARRAYS WITH NPC DATA -->
-	<script src="js/map-assets.js"></script>
-	<script src="js/icon-assets.js"></script>
+    <script src="js/player.js?v=4"></script>
+    <script src="js/character-creator.js?v=2"></script> <!-- ESTABLISHES ARRAYS -->
+	<script src="js/item-assets.js?v=2"></script>       <!-- NEW: EQUIPMENT ARRAYS -->
+	<script src="js/pet-assets.js?v=2"></script>
+    <script src="js/npc-assets.js?v=2"></script>      <!-- MODIFIES ARRAYS WITH NPC DATA -->
+	<script src="js/map-assets.js?v=2"></script>
+	<script src="js/icon-assets.js?v=2"></script>
 	<script src="/socket.io/socket.io.js"></script>
 
-    <script src="js/main.js?v=7"></script>
+    <script src="js/main.js?v=8"></script>
     <script src="js/inventory.js?v=4"></script>
 
 <!-- UI, Tooltips & Graphics Output -->
-    <script src="js/ui-tooltips.js?v=2"></script>
-    <script src="js/companion-ui.js"></script>
-    <script src="js/ui-render.js?v=5"></script>
-    <script src="js/renderer.js?v=3"></script>       <!-- RENDERS DATA -->
+    <script src="js/ui-tooltips.js?v=3"></script>
+    <script src="js/companion-ui.js?v=2"></script>
+    <script src="js/ui-render.js?v=6"></script>
+    <script src="js/renderer.js?v=4"></script>       <!-- RENDERS DATA -->
 	<script src="js/fx-engine.js"></script>
-	<script src="js/dialogue.js"></script>
+	<script src="js/dialogue.js?v=2"></script>
 	<script src="js/quest-scripts.js"></script>
-	<script src="js/quest-cinematics.js"></script>
+	<script src="js/quest-cinematics.js?v=2"></script>
 	<script src="js/social.js"></script>
 
 
 <!-- Game Systems & Logic -->
     <script src="js/login.js"></script>
     <script src="js/combat-maps.js"></script>
-    <script src="js/combat-mechanics.js?v=6"></script>
-    <script src="js/town-actions.js"></script>
+    <script src="js/combat-mechanics.js?v=7"></script>
+    <script src="js/town-actions.js?v=2"></script>
 	<script src="js/minigames.js"></script>
 	<script src="js/spellbook.js"></script> 
 	

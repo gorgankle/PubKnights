@@ -8,6 +8,7 @@ const ctx = canvas.getContext("2d");
 
 function syncCombatCollectionsFromState(serverCombatState) {
     if (!serverCombatState) return;
+    const selectedEnemyUid = selectedEnemy && selectedEnemy.uid ? selectedEnemy.uid : null;
     if (serverCombatState.player) {
         player.x = serverCombatState.player.x;
         player.y = serverCombatState.player.y;
@@ -15,6 +16,9 @@ function syncCombatCollectionsFromState(serverCombatState) {
     enemies = serverCombatState.enemies || [];
     allies = serverCombatState.allies || [];
     rogues = serverCombatState.rogues || [];
+    selectedEnemy = selectedEnemyUid
+        ? [...enemies, ...rogues].find(actor => actor && actor.uid === selectedEnemyUid && actor.alive !== false) || null
+        : null;
     mapObstacles = serverCombatState.obstacles || mapObstacles || [];
     if (serverCombatState.parties && typeof serverCombatState.parties === "object") {
         combatParties = serverCombatState.parties;

@@ -193,6 +193,7 @@ function createDefaultSaveData(username) {
             weapon: JSON.parse(JSON.stringify(ItemDatabase["rusty_mace"])),
         },
         inventory: [], stash: [],
+        roster: { companions: [], activeIds: [] },
         maxInventorySlots: 5, backpackUpgrades: 0,
         pet: { adopted: false, level: 1 },
         quests: { completed: {} }

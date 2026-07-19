@@ -19,6 +19,8 @@ const {
     getMoveStaminaCost
 } = require('./combatResources.js');
 const { ensureActionTurn, consumeAction } = require('./combatTurns.js');
+const { recoverUnusedActionStamina } = require('./combatTurnRecovery.js');
+const { findCompanionByInstanceId } = require('./companionRoster.js');
 const { claimCombatRewards } = require('./combatRewards.js');
 const { resolveActorDefeat } = require('./combatResolution.js');
 const { createCombatEncounter } = require('./combatEncounters.js');
@@ -79,6 +81,17 @@ function getActorStatusContainer(actor, player) {
 
 function getActorAttackTargets(combat, actor) {
     return getHostileActorsFor(actor, combat).filter(target => target.targetableByPlayer !== false);
+}
+
+function hasLineOfSightToActorFootprint(originX, originY, target, combat) {
+    if (!target) return false;
+    const targetSize = Math.max(1, Math.trunc(Number(target.size) || 1));
+    for (let x = target.x; x < target.x + targetSize; x++) {
+        for (let y = target.y; y < target.y + targetSize; y++) {
+            if (checkLineOfSight(originX, originY, x, y, combat)) return true;
+        }
+    }
+    return false;
 }
 
 function buildFallbackWeapon() {
@@ -143,6 +156,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             p.activeCombatBuff = null;
             p.hp = getMaxHp(p);
             p.stamina = getMaxStamina(p);
+            delete p.pendingMercenaryXpContext;
             delete activeCombats[socket.id];
             return socket.emit('combatResult', { type: 'flee', updatedPlayer: p });
         }
@@ -158,7 +172,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             });
         }
 
-        if (data.actionCategory === 'rest' || data.actionCategory === 'pass') {
+        if (data.actionCategory === 'rest') {
             const recovered = recoverActorStamina(activeActor, p);
             const actionResult = completePlayerControlledAction(combat, p, activeActor);
             socket.emit('combatResult', {
@@ -174,7 +188,8 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             return;
         }
 
-        if (data.actionCategory === 'endTurn') {
+        if (data.actionCategory === 'endTurn' || data.actionCategory === 'pass') {
+            const recovery = recoverUnusedActionStamina(combat, activeActor, p);
             finishPlayerControlledTurn(combat, p, activeActor);
             socket.emit('combatResult', {
                 type: 'endTurn',
@@ -182,6 +197,8 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 actorName: activeActor.name,
                 updatedPlayer: p,
                 updatedCombatState: combat,
+                recovered: recovery.recovered,
+                unusedActionCredits: recovery.unusedActionCredits,
                 actionsRemaining: 0,
                 turnComplete: true
             });
@@ -214,6 +231,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
 
         p.idleJob = 'NONE';
         p.pendingXp = 0;
+        delete p.pendingMercenaryXpContext;
         p.statusEffects = {};
         p.activeBuffs = [];
         p.activeCombatBuff = null;
@@ -233,6 +251,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         syncPlayerActor(combat, p);
         const activeActor = getCombatTurnActor(combat, p);
         if (!activeActor) return;
+        recoverUnusedActionStamina(combat, activeActor, p);
         finishPlayerControlledTurn(combat, p, activeActor);
     });
 
@@ -339,10 +358,13 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
     socket.on('claimCombatRewards', () => {
         const p = activePlayers[socket.id];
         if (!p) return;
+        if (activeCombats[socket.id]) {
+            return socket.emit('combatRewardsReceipt', { success: false, message: 'Combat rewards can only be claimed after victory.' });
+        }
 
         claimCombatRewards(p);
         p.statusEffects = {};
-        socket.emit('combatRewardsReceipt', { updatedPlayer: p });
+        socket.emit('combatRewardsReceipt', { success: true, updatedPlayer: p });
     });
 
     if (!global.atbEngineStarted) {
@@ -685,7 +707,7 @@ function handleActorWeaponAction(socket, p, combat, data, resolveDefeat, actor) 
 
     const dist = getGridDistance(actor.x, actor.y, serverEnemy.x, serverEnemy.y, serverEnemy.size || 1);
     if (dist > combatRules.range) return socket.emit('combatResult', { type: 'error', message: 'Server: Target out of confirmed range.', newStamina: getActorStaminaValue(actor, p) });
-    if (!combatRules.ignoresLoS && !checkLineOfSight(actor.x, actor.y, serverEnemy.x, serverEnemy.y, combat)) {
+    if (!combatRules.ignoresLoS && !hasLineOfSightToActorFootprint(actor.x, actor.y, serverEnemy, combat)) {
         return socket.emit('combatResult', { type: 'error', message: 'Server: Target is obscured by an obstacle.', newStamina: getActorStaminaValue(actor, p) });
     }
 
@@ -926,8 +948,7 @@ function handleWeaponAction(socket, p, combat, data, resolveDefeat) {
     if (dist > combatRules.range) return socket.emit('combatResult', { type: 'error', message: 'Server: Target out of confirmed range.', newStamina: p.stamina });
 
     if (!combatRules.ignoresLoS) {
-        const hasLOS = checkLineOfSight(combat.player.x, combat.player.y, serverEnemy.x, serverEnemy.y, combat);
-        if (!hasLOS) return socket.emit('combatResult', { type: 'error', message: 'Server: Target is obscured by an obstacle.', newStamina: p.stamina });
+        if (!hasLineOfSightToActorFootprint(combat.player.x, combat.player.y, serverEnemy, combat)) return socket.emit('combatResult', { type: 'error', message: 'Server: Target is obscured by an obstacle.', newStamina: p.stamina });
     }
 
     p.stamina -= staminaCost;
@@ -1011,10 +1032,40 @@ function emitPlayerItemReceipt(socket, p, combat, actor, receipt) {
     });
 }
 
+function getActorConsumableSource(player, actor, data) {
+    if (data.pocketIndex !== undefined && data.pocketIndex !== null) {
+        const companion = findCompanionByInstanceId(player, actor && actor.companionInstanceId);
+        if (!companion || companion.instanceId !== actor.companionInstanceId) {
+            return { error: 'That mercenary pocket is unavailable.' };
+        }
+        const pocketIndex = getArrayIndex(data.pocketIndex, companion.pockets);
+        if (pocketIndex < 0) return { error: 'Invalid mercenary pocket.' };
+        const item = companion.pockets[pocketIndex];
+        if (!item) return { error: `${actor.name}'s pocket is empty.` };
+        return {
+            item,
+            itemSource: 'pocket',
+            pocketIndex,
+            consume: () => { companion.pockets[pocketIndex] = null; }
+        };
+    }
+
+    const invIndex = getArrayIndex(data.invIndex, player.inventory);
+    if (invIndex < 0) return { error: 'Invalid inventory slot.' };
+    const item = player.inventory[invIndex];
+    if (!item) return { error: 'Invalid item data.' };
+    return {
+        item,
+        itemSource: 'backpack',
+        invIndex,
+        consume: () => { player.inventory.splice(invIndex, 1); }
+    };
+}
+
 function handleActorConsumableAction(socket, p, combat, data, actor) {
-    const invIndex = getArrayIndex(data.invIndex, p.inventory);
-    if (invIndex < 0) return emitActorItemReceipt(socket, p, combat, actor, { success: false, message: 'Invalid inventory slot.' });
-    const item = p.inventory[invIndex];
+    const source = getActorConsumableSource(p, actor, data);
+    if (source.error) return emitActorItemReceipt(socket, p, combat, actor, { success: false, message: source.error });
+    const item = source.item;
     if (!item || !item.combat) return emitActorItemReceipt(socket, p, combat, actor, { success: false, message: 'Invalid item data.' });
 
     const rules = item.combat;
@@ -1022,15 +1073,17 @@ function handleActorConsumableAction(socket, p, combat, data, actor) {
         return emitActorItemReceipt(socket, p, combat, actor, { success: false, message: `${actor.name} lacks stamina.` });
     }
 
+    const sourceReceipt = { itemSource: source.itemSource, pocketIndex: source.pocketIndex };
     if (rules.actionType === 'heal') {
         const maxHp = getActorMaxHpValue(actor, p);
         const healAmount = Math.floor(maxHp * rules.healPercent);
         actor.hp = Math.min(maxHp, (actor.hp || 0) + healAmount);
         if (rules.cleanse) actor.statusEffects = {};
-        p.inventory.splice(invIndex, 1);
+        source.consume();
         spendActorStamina(actor, p, rules.staminaCost || 0);
         return emitActorItemReceipt(socket, p, combat, actor, {
             success: true,
+            ...sourceReceipt,
             updatedPlayer: p,
             updatedCombatState: syncCombatViews(combat, p),
             message: `${actor.name} used ${item.name}. Restored ${healAmount} HP.${rules.cleanse ? ' Negative effects cleansed.' : ''}`
@@ -1039,10 +1092,11 @@ function handleActorConsumableAction(socket, p, combat, data, actor) {
 
     if (rules.actionType === 'cleanse') {
         actor.statusEffects = {};
-        p.inventory.splice(invIndex, 1);
+        source.consume();
         spendActorStamina(actor, p, rules.staminaCost || 0);
         return emitActorItemReceipt(socket, p, combat, actor, {
             success: true,
+            ...sourceReceipt,
             updatedPlayer: p,
             updatedCombatState: syncCombatViews(combat, p),
             message: `${actor.name} used ${item.name}. Negative effects cleansed.`
@@ -1054,10 +1108,11 @@ function handleActorConsumableAction(socket, p, combat, data, actor) {
         const floorHp = Math.floor(maxHp * (rules.healFloorPercent || 0.3));
         actor.hp = Math.min(maxHp, Math.max(actor.hp || 0, floorHp));
         if (rules.cleanse) actor.statusEffects = {};
-        p.inventory.splice(invIndex, 1);
+        source.consume();
         spendActorStamina(actor, p, rules.staminaCost || 0);
         return emitActorItemReceipt(socket, p, combat, actor, {
             success: true,
+            ...sourceReceipt,
             updatedPlayer: p,
             updatedCombatState: syncCombatViews(combat, p),
             message: `${actor.name} used ${item.name}. HP set to at least ${floorHp}.${rules.cleanse ? ' Negative effects cleansed.' : ''}`
@@ -1075,10 +1130,11 @@ function handleActorConsumableAction(socket, p, combat, data, actor) {
         if (rules.effectCategory === 'defense' && rules.effectType === 'multiplier') actor.defense = Math.max(1, Math.floor((actor.defense || 1) * rules.effectValue));
         if (rules.effectCategory === 'speed' && rules.effectType === 'flat') actor.speed = Math.max(1, (actor.speed || 1) + rules.effectValue);
         if (rules.atbBoost) actor.atbCharge = Math.min(100, (actor.atbCharge || 0) + Math.max(0, Math.min(100, Number(rules.atbBoost) || 0)));
-        p.inventory.splice(invIndex, 1);
+        source.consume();
         spendActorStamina(actor, p, rules.staminaCost || 0);
         return emitActorItemReceipt(socket, p, combat, actor, {
             success: true,
+            ...sourceReceipt,
             updatedPlayer: p,
             updatedCombatState: syncCombatViews(combat, p),
             message: `${actor.name} used ${item.name}. ${rules.msg || 'Buff applied.'}`
