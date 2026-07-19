@@ -118,6 +118,7 @@ test('roster UI counts only optional selections and locks a stale required activ
     assert.equal(toolbar.children[1].disabled, false);
     assert.equal(toolbar.children[2].disabled, false);
     const requiredControls = partyList.children[1].children[1];
+    assert.equal(requiredControls.children[0].textContent, 'Equipment');
     assert.equal(requiredControls.children[1].textContent, 'Quest Locked');
     assert.equal(requiredControls.children[1].disabled, true);
 });

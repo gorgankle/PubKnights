@@ -89,11 +89,26 @@ function bindInventoryDoubleClick(element, handler) {
 // === DRAG & DROP REORDERING ACTIONS ===
 const PUBKNIGHTS_ITEM_DRAG_TYPE = "application/x-pubknights-item";
 
-function handleItemDragStart(event, index, listType) {
-    const payload = JSON.stringify({ index: index, type: listType });
+function handleItemDragStart(event, index, listType, metadata) {
+    const extraData = metadata && typeof metadata === 'object' ? metadata : {};
+    const payload = JSON.stringify(Object.assign({}, extraData, { index: index, type: listType }));
     event.dataTransfer.setData(PUBKNIGHTS_ITEM_DRAG_TYPE, payload);
     event.dataTransfer.setData("text/plain", payload);
     event.dataTransfer.effectAllowed = "move";
+}
+
+function readPubKnightsItemDrag(event) {
+    if (!event || !event.dataTransfer) return null;
+    const rawDragData = event.dataTransfer.getData(PUBKNIGHTS_ITEM_DRAG_TYPE);
+    if (!rawDragData) return null;
+
+    try {
+        const dragData = JSON.parse(rawDragData);
+        const allowedTypes = ['backpack', 'vault', 'equipment', 'companion-equipment', 'companion-pocket'];
+        return dragData && allowedTypes.includes(dragData.type) ? dragData : null;
+    } catch (err) {
+        return null;
+    }
 }
 
 function handleItemDragOver(event) {
@@ -104,11 +119,9 @@ function handleItemDragOver(event) {
 function handleItemDrop(event, toIndex, toType) {
     event.preventDefault();
     try {
-        const rawDragData = event.dataTransfer.getData(PUBKNIGHTS_ITEM_DRAG_TYPE);
-        if (!rawDragData) return;
+        const dragData = readPubKnightsItemDrag(event);
+        if (!dragData) return;
 
-        const dragData = JSON.parse(rawDragData);
-        if (!dragData || !['backpack', 'vault', 'equipment'].includes(dragData.type)) return;
         const fromIndex = dragData.index;
         const fromType = dragData.type;
 
@@ -130,14 +143,30 @@ function handleItemDrop(event, toIndex, toType) {
         else if (fromType === 'vault' && toType === 'backpack') {
             withdrawFromVault(fromIndex);
         }
-        // 5. === NEW: Backpack -> Equipment (Equip Shortcut) ===
+        // 5. Backpack -> Knight equipment
         else if (fromType === 'backpack' && toType === 'equipment') {
             equipItem(fromIndex);
         }
-        // 6. === NEW: Equipment -> Backpack (Unequip Shortcut) ===
+        // 6. Knight equipment -> Backpack or Vault
         else if (fromType === 'equipment' && (toType === 'backpack' || toType === 'vault')) {
-            // Note: fromIndex holds the slotKey (e.g., 'weapon') when dragged from the Knight
-            unequipItem(fromIndex); 
+            // fromIndex holds the slotKey (e.g., 'weapon') when dragged from the Knight.
+            unequipItem(fromIndex);
+        }
+        // 7. Mercenary equipment -> Knight backpack
+        else if (fromType === 'companion-equipment' && toType === 'backpack') {
+            if (typeof unequipCompanionItem !== 'function'
+                || !dragData.instanceId
+                || !EQUIPPABLE_ITEM_SLOTS.includes(dragData.slotKey)) return;
+            unequipCompanionItem(dragData.instanceId, dragData.slotKey);
+        }
+        // 8. Mercenary pocket -> Knight backpack
+        else if (fromType === 'companion-pocket' && toType === 'backpack') {
+            if (typeof removeCompanionPocketItem !== 'function'
+                || !dragData.instanceId
+                || !Number.isInteger(dragData.pocketIndex)
+                || dragData.pocketIndex < 0
+                || dragData.pocketIndex > 1) return;
+            removeCompanionPocketItem(dragData.instanceId, dragData.pocketIndex);
         }
     } catch (err) {
         console.error("Data transfer stream failure:", err);

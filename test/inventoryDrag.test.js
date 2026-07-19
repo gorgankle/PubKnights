@@ -7,16 +7,19 @@ const vm = require('node:vm');
 function loadInventoryScript() {
     const emitted = [];
     const errors = [];
+    const companionActions = [];
     const context = {
         window: { PointerEvent: true },
         socket: { emit: (eventName, payload) => emitted.push({ eventName, payload }) },
         console: { error: (...args) => errors.push(args) },
         hideTooltip: () => {},
-        openCrate: () => {}
+        openCrate: () => {},
+        unequipCompanionItem: (instanceId, slotKey) => companionActions.push({ action: 'unequip', instanceId, slotKey }),
+        removeCompanionPocketItem: (instanceId, pocketIndex) => companionActions.push({ action: 'removePocket', instanceId, pocketIndex })
     };
     const source = fs.readFileSync(path.join(__dirname, '../public/js/inventory.js'), 'utf8');
     vm.runInNewContext(source, context);
-    return { context, emitted, errors };
+    return { context, emitted, errors, companionActions };
 }
 
 function createDataTransfer(initialData = {}) {
@@ -64,4 +67,46 @@ test('inventory drop accepts a valid private item payload', () => {
     assert.equal(emitted[0].payload.fromIndex, 1);
     assert.equal(emitted[0].payload.toIndex, 3);
     assert.deepEqual(errors, []);
+});
+
+test('companion equipment drag keeps its owner metadata and returns gear to the backpack', () => {
+    const { context, companionActions, emitted } = loadInventoryScript();
+    const dataTransfer = createDataTransfer();
+
+    context.handleItemDragStart(
+        { dataTransfer },
+        'weapon',
+        'companion-equipment',
+        { instanceId: 'merc_1', slotKey: 'weapon' }
+    );
+
+    assert.deepEqual(
+        JSON.parse(dataTransfer.getData('application/x-pubknights-item')),
+        { instanceId: 'merc_1', slotKey: 'weapon', index: 'weapon', type: 'companion-equipment' }
+    );
+
+    context.handleItemDrop({ preventDefault: () => {}, dataTransfer }, 0, 'backpack');
+
+    assert.deepEqual(companionActions, [
+        { action: 'unequip', instanceId: 'merc_1', slotKey: 'weapon' }
+    ]);
+    assert.deepEqual(emitted, []);
+});
+
+test('companion pocket drag returns the selected pocket item to the backpack', () => {
+    const { context, companionActions, emitted } = loadInventoryScript();
+    const dataTransfer = createDataTransfer();
+
+    context.handleItemDragStart(
+        { dataTransfer },
+        1,
+        'companion-pocket',
+        { instanceId: 'merc_1', pocketIndex: 1 }
+    );
+    context.handleItemDrop({ preventDefault: () => {}, dataTransfer }, 0, 'backpack');
+
+    assert.deepEqual(companionActions, [
+        { action: 'removePocket', instanceId: 'merc_1', pocketIndex: 1 }
+    ]);
+    assert.deepEqual(emitted, []);
 });

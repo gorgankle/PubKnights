@@ -123,7 +123,7 @@ function renderCompanionRosterUI(companions, activeIds) {
 
         const controls = document.createElement('div');
         controls.className = 'companion-roster-controls';
-        controls.appendChild(makeCompanionButton('Paperdoll', 'companion-gear-button', () => selectCompanionEquipment(companion.instanceId)));
+        controls.appendChild(makeCompanionButton('Equipment', 'companion-gear-button', () => selectCompanionEquipment(companion.instanceId)));
         if (isActive) {
             controls.appendChild(makeCompanionButton('Bench', 'companion-bench-button', () => benchCompanion(companion.instanceId)));
         } else {
@@ -142,43 +142,147 @@ function renderCompanionRosterUI(companions, activeIds) {
     renderCompanionEquipmentPanel(companions, activeIds);
 }
 
+function readCompanionBackpackDrop(event) {
+    if (event && typeof event.preventDefault === 'function') event.preventDefault();
+    if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+    if (typeof readPubKnightsItemDrag !== 'function') return null;
+
+    const dragData = readPubKnightsItemDrag(event);
+    if (!dragData || dragData.type !== 'backpack' || !Number.isInteger(dragData.index)) return null;
+
+    const inventory = player && Array.isArray(player.inventory) ? player.inventory : [];
+    const item = inventory[dragData.index];
+    return item ? { item, index: dragData.index } : null;
+}
+
+function reportCompanionDropError(message) {
+    if (typeof logMessage === 'function') logMessage(message);
+    if (typeof playRetroSound === 'function') playRetroSound('error');
+}
+
+function handleCompanionEquipmentDrop(event, instanceId, slotKey) {
+    const dropped = readCompanionBackpackDrop(event);
+    if (!dropped) return;
+    if (!COMPANION_UI_EQUIPMENT_SLOTS.includes(slotKey) || dropped.item.slot !== slotKey) {
+        reportCompanionDropError('Drop ' + (COMPANION_UI_SLOT_LABELS[slotKey] || 'matching gear') + ' into this slot.');
+        return;
+    }
+    equipCompanionItem(instanceId, dropped.index);
+}
+
+function handleCompanionPocketDrop(event, instanceId, pocketIndex) {
+    const dropped = readCompanionBackpackDrop(event);
+    if (!dropped) return;
+    if (!isCompanionPocketEligible(dropped.item)) {
+        reportCompanionDropError('Pockets hold equipment or combat consumables.');
+        return;
+    }
+    storeCompanionPocketItem(instanceId, dropped.index, pocketIndex);
+}
+
+function createCompanionPaperdollEmptyCell() {
+    const slot = document.createElement('div');
+    slot.className = 'equip-slot empty-cell';
+    slot.setAttribute('aria-hidden', 'true');
+    return slot;
+}
+
+function bindCompanionStoredItemSlot(slot, item, dragIndex, dragType, dragMetadata, removeItem) {
+    if (!item) return;
+
+    slot.draggable = true;
+    if (typeof handleItemDragStart === 'function') {
+        slot.ondragstart = event => handleItemDragStart(event, dragIndex, dragType, dragMetadata);
+    }
+
+    const remove = event => {
+        if (event && typeof event.preventDefault === 'function') event.preventDefault();
+        if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+        removeItem();
+    };
+
+    if (typeof bindInventoryDoubleClick === 'function') bindInventoryDoubleClick(slot, remove);
+    else slot.ondblclick = remove;
+
+    slot.tabIndex = 0;
+    slot.onkeydown = event => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        remove(event);
+    };
+}
+
 function createCompanionPaperdollSlot(selected, slotKey) {
     const item = selected.equipment && selected.equipment[slotKey];
+    const label = COMPANION_UI_SLOT_LABELS[slotKey];
     const slot = document.createElement('div');
-    slot.className = 'companion-equipment-slot ' + getCompanionRarityClass(item);
-    const label = document.createElement('div');
-    label.className = 'companion-equipment-slot-label';
-    label.textContent = COMPANION_UI_SLOT_LABELS[slotKey];
-    const media = document.createElement('div');
-    media.className = 'companion-equipment-slot-media';
+    slot.className = ['equip-slot', 'companion-equipment-slot', getCompanionRarityClass(item)].filter(Boolean).join(' ');
+    slot.dataset.companionSlot = slotKey;
+    slot.ondragover = typeof handleItemDragOver === 'function'
+        ? handleItemDragOver
+        : event => event.preventDefault();
+    slot.ondrop = event => handleCompanionEquipmentDrop(event, selected.instanceId, slotKey);
+    slot.setAttribute('role', 'button');
+    slot.setAttribute('aria-label', item
+        ? label + ': ' + item.name + '. Double-click or drag to the Knight\'s backpack to remove.'
+        : label + ': empty. Drag matching gear here from the Knight\'s backpack.');
+    slot.title = slot.getAttribute('aria-label');
+
     const imageUrl = item && typeof getItemSpriteURL === 'function' ? getItemSpriteURL(item) : '';
     if (imageUrl) {
         const image = document.createElement('img');
         image.src = imageUrl;
         image.alt = '';
-        media.appendChild(image);
-    } else media.textContent = item ? '?' : '-';
-    const itemName = document.createElement('div');
-    itemName.className = 'companion-equipment-item-name';
-    itemName.textContent = item ? item.name : 'Empty';
-    const unequip = makeCompanionButton('Unequip', 'companion-unequip-button', () => unequipCompanionItem(selected.instanceId, slotKey));
-    unequip.disabled = !item;
-    slot.append(label, media, itemName, unequip);
+        slot.appendChild(image);
+    } else {
+        slot.textContent = item ? '?' : label.charAt(0);
+    }
+
+    bindCompanionStoredItemSlot(
+        slot,
+        item,
+        slotKey,
+        'companion-equipment',
+        { instanceId: selected.instanceId, slotKey },
+        () => unequipCompanionItem(selected.instanceId, slotKey)
+    );
     addCompanionItemTooltip(slot, item);
     return slot;
 }
 
 function createCompanionPocketSlot(selected, pocketIndex) {
     const item = selected.pockets && selected.pockets[pocketIndex];
+    const pocketNumber = pocketIndex + 1;
     const slot = document.createElement('div');
-    slot.className = 'companion-pocket-slot ' + getCompanionRarityClass(item);
-    const label = document.createElement('strong');
-    label.textContent = `Pocket ${pocketIndex + 1}`;
-    const itemName = document.createElement('span');
-    itemName.textContent = item ? item.name : 'Empty';
-    const remove = makeCompanionButton('To Backpack', 'companion-unequip-button', () => removeCompanionPocketItem(selected.instanceId, pocketIndex));
-    remove.disabled = !item;
-    slot.append(label, itemName, remove);
+    slot.className = ['equip-slot', 'companion-pocket-slot', getCompanionRarityClass(item)].filter(Boolean).join(' ');
+    slot.dataset.companionPocketIndex = String(pocketIndex);
+    slot.ondragover = typeof handleItemDragOver === 'function'
+        ? handleItemDragOver
+        : event => event.preventDefault();
+    slot.ondrop = event => handleCompanionPocketDrop(event, selected.instanceId, pocketIndex);
+    slot.setAttribute('role', 'button');
+    slot.setAttribute('aria-label', item
+        ? 'Pocket ' + pocketNumber + ': ' + item.name + '. Double-click or drag to the Knight\'s backpack to remove.'
+        : 'Pocket ' + pocketNumber + ': empty. Drag equipment or a combat consumable here.');
+    slot.title = slot.getAttribute('aria-label');
+
+    const imageUrl = item && typeof getItemSpriteURL === 'function' ? getItemSpriteURL(item) : '';
+    if (imageUrl) {
+        const image = document.createElement('img');
+        image.src = imageUrl;
+        image.alt = '';
+        slot.appendChild(image);
+    } else {
+        slot.textContent = item ? '?' : 'P' + pocketNumber;
+    }
+
+    bindCompanionStoredItemSlot(
+        slot,
+        item,
+        pocketIndex,
+        'companion-pocket',
+        { instanceId: selected.instanceId, pocketIndex },
+        () => removeCompanionPocketItem(selected.instanceId, pocketIndex)
+    );
     addCompanionItemTooltip(slot, item);
     return slot;
 }
@@ -237,62 +341,26 @@ function renderCompanionEquipmentPanel(companions, activeIds) {
     training.append(progressWrap, train);
 
     const slots = document.createElement('div');
-    slots.className = 'companion-equipment-slots';
-    COMPANION_UI_EQUIPMENT_SLOTS.forEach(slotKey => slots.appendChild(createCompanionPaperdollSlot(selected, slotKey)));
+    slots.className = 'paper-doll-grid companion-paper-doll-grid';
+    slots.append(
+        createCompanionPaperdollEmptyCell(),
+        createCompanionPaperdollSlot(selected, 'helmet'),
+        createCompanionPaperdollEmptyCell(),
+        createCompanionPaperdollSlot(selected, 'gloves'),
+        createCompanionPaperdollSlot(selected, 'armor'),
+        createCompanionPaperdollSlot(selected, 'weapon'),
+        createCompanionPocketSlot(selected, 0),
+        createCompanionPaperdollSlot(selected, 'boots'),
+        createCompanionPocketSlot(selected, 1)
+    );
 
-    const pocketHeader = document.createElement('div');
-    pocketHeader.className = 'companion-backpack-header';
-    pocketHeader.textContent = 'Pockets • Real storage • Combat use costs 1 action';
-    const pocketSlots = document.createElement('div');
-    pocketSlots.className = 'companion-pocket-slots';
-    for (let index = 0; index < 2; index++) pocketSlots.appendChild(createCompanionPocketSlot(selected, index));
+    const equipmentHelp = document.createElement('p');
+    equipmentHelp.className = 'companion-equipment-help';
+    equipmentHelp.textContent = 'Drag matching gear or pocket items from the Knight\'s backpack. Double-click or drag equipped items back to remove them.';
 
-    const backpackHeader = document.createElement('div');
-    backpackHeader.className = 'companion-backpack-header';
-    backpackHeader.textContent = 'Shared Backpack Gear & Consumables';
-    const backpackGear = document.createElement('div');
-    backpackGear.className = 'companion-backpack-gear';
-    const compatibleItems = player.inventory
-        .map((item, index) => ({ item, index }))
-        .filter(entry => isCompanionPocketEligible(entry.item));
+    const equipmentLayout = document.createElement('div');
+    equipmentLayout.className = 'companion-equipment-layout';
+    equipmentLayout.append(slots, equipmentHelp);
 
-    if (compatibleItems.length === 0) {
-        const empty = document.createElement('div');
-        empty.className = 'companion-empty-state';
-        empty.textContent = 'No equipment or combat consumables in the backpack.';
-        backpackGear.appendChild(empty);
-    } else {
-        compatibleItems.forEach(entry => {
-            const row = document.createElement('div');
-            row.className = 'companion-backpack-item';
-            const imageUrl = typeof getItemSpriteURL === 'function' ? getItemSpriteURL(entry.item) : '';
-            if (imageUrl) {
-                const image = document.createElement('img');
-                image.src = imageUrl;
-                image.alt = '';
-                row.appendChild(image);
-            }
-            const details = document.createElement('div');
-            details.className = 'companion-backpack-item-details';
-            const itemName = document.createElement('strong');
-            itemName.textContent = entry.item.name;
-            const itemSlot = document.createElement('span');
-            itemSlot.textContent = COMPANION_UI_SLOT_LABELS[entry.item.slot] || 'Combat Consumable';
-            details.append(itemName, itemSlot);
-            const controls = document.createElement('div');
-            controls.className = 'companion-pocket-items';
-            if (COMPANION_UI_EQUIPMENT_SLOTS.includes(entry.item.slot)) {
-                controls.appendChild(makeCompanionButton('Equip', 'companion-equip-button', () => equipCompanionItem(selected.instanceId, entry.index)));
-            }
-            for (let pocketIndex = 0; pocketIndex < 2; pocketIndex++) {
-                const occupied = selected.pockets && selected.pockets[pocketIndex];
-                controls.appendChild(makeCompanionButton(occupied ? `Swap P${pocketIndex + 1}` : `Pocket ${pocketIndex + 1}`, 'companion-gear-button', () => storeCompanionPocketItem(selected.instanceId, entry.index, pocketIndex)));
-            }
-            row.append(details, controls);
-            addCompanionItemTooltip(row, entry.item);
-            backpackGear.appendChild(row);
-        });
-    }
-
-    panel.append(header, statLine, training, slots, pocketHeader, pocketSlots, backpackHeader, backpackGear);
+    panel.append(header, statLine, training, equipmentLayout);
 }
