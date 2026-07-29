@@ -89,25 +89,6 @@ test('Bench All leaves an explicit empty party and Fill Party selects at most th
     assert.deepEqual(harness.player.roster.activeIds, ['merc_1', 'merc_2', 'merc_3']);
 });
 
-test('quest-required mercenaries refuse both bench and dismissal requests with no roster mutation', () => {
-    const required = mercenary(1);
-    const knight = player([required], []);
-    knight.activeQuestSession = { requiredCompanionIds: [required.instanceId] };
-    const harness = createHarness(knight);
-
-    harness.socket.dispatch('townAction', { action: 'benchCompanion', instanceId: required.instanceId });
-    const benchReceipt = harness.socket.lastPayload('townReceipt');
-    assert.equal(benchReceipt.success, false);
-    assert.match(benchReceipt.message, /quest/i);
-
-    harness.socket.dispatch('townAction', { action: 'dismissCompanion', instanceId: required.instanceId });
-    const dismissReceipt = harness.socket.lastPayload('townReceipt');
-    assert.equal(dismissReceipt.success, false);
-    assert.match(dismissReceipt.message, /quest/i);
-    assert.deepEqual(harness.player.roster.activeIds, []);
-    assert.equal(harness.player.roster.companions.length, 1);
-});
-
 test('dismissal refuses insufficient backpack space, then returns every paperdoll and pocket item atomically', () => {
     const storedWeapon = item('stored_sword', 'weapon');
     const storedPotion = item('stored_potion', 'consumable', { actionType: 'heal', healPercent: 0.4 });
@@ -139,7 +120,7 @@ test('dismissal refuses insufficient backpack space, then returns every paperdol
 test('two true pockets store equipment or combat consumables and return them to the shared backpack', () => {
     const companion = mercenary(1);
     const potion = item('healing_draught', 'consumable', { actionType: 'heal', healPercent: 0.4 });
-    const junk = item('quest_token', 'quest');
+    const junk = item('keepsake_token', 'misc');
     const knight = player([companion], []);
     knight.inventory = [potion, junk];
     const harness = createHarness(knight);
@@ -152,7 +133,7 @@ test('two true pockets store equipment or combat consumables and return them to 
     });
     assert.equal(harness.socket.lastPayload('inventoryReceipt').success, true);
     assert.equal(harness.player.roster.companions[0].pockets[0].id, 'healing_draught');
-    assert.deepEqual(harness.player.inventory.map(entry => entry.id), ['quest_token']);
+    assert.deepEqual(harness.player.inventory.map(entry => entry.id), ['keepsake_token']);
 
     harness.socket.dispatch('inventoryAction', {
         action: 'storeCompanionPocket',
@@ -170,7 +151,7 @@ test('two true pockets store equipment or combat consumables and return them to 
     });
     assert.equal(harness.socket.lastPayload('inventoryReceipt').success, true);
     assert.equal(harness.player.roster.companions[0].pockets[0], null);
-    assert.deepEqual(harness.player.inventory.map(entry => entry.id), ['quest_token', 'healing_draught']);
+    assert.deepEqual(harness.player.inventory.map(entry => entry.id), ['keepsake_token', 'healing_draught']);
 });
 
 test('training through the town router advances one level, charges the quote, and refuses combat training', () => {

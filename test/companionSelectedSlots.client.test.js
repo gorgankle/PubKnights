@@ -28,8 +28,7 @@ function loadPlayerApi() {
     vm.runInContext(`${playerSource}\n;globalThis.__playerTestApi = {
         setPlayer(value) { player = value; },
         getPlayer() { return player; },
-        normalizeClientPlayerContainers,
-        getClientRequiredCompanionIds
+        normalizeClientPlayerContainers
     };`, context);
     return context.__playerTestApi;
 }
@@ -64,36 +63,36 @@ class FakeElement {
     addEventListener() {}
 }
 
-test('client normalization keeps quest allies out of all three selected slots', () => {
+test('client normalization preserves the first three valid selected mercenaries', () => {
     const api = loadPlayerApi();
     api.setPlayer({
         equipment: {},
         stash: [],
         roster: {
             companions: [
-                companion('merc_required'),
+                companion('merc_0'),
                 companion('merc_1'),
                 companion('merc_2'),
                 companion('merc_3')
             ],
-            activeIds: ['merc_required', 'merc_1', 'merc_2', 'merc_3']
-        },
-        quests: { active: { requiredCompanionIds: ['merc_required'] } }
+            activeIds: ['merc_0', 'merc_1', 'merc_2', 'merc_3']
+        }
     });
 
     api.normalizeClientPlayerContainers();
     const normalized = JSON.parse(JSON.stringify(api.getPlayer()));
 
-    assert.deepEqual(normalized.roster.activeIds, ['merc_1', 'merc_2', 'merc_3']);
-    assert.equal(normalized.roster.companions[0].active, false);
+    assert.deepEqual(normalized.roster.activeIds, ['merc_0', 'merc_1', 'merc_2']);
+    assert.equal(normalized.roster.companions[0].active, true);
+    assert.equal(normalized.roster.companions[3].active, false);
     assert.deepEqual(normalized.inventory, []);
 });
 
-test('roster UI counts only optional selections and locks a stale required active ID', () => {
+test('roster UI reports selected slots and disables activation when the party is full', () => {
     const partyList = new FakeElement('div');
     const context = vm.createContext({
         console,
-        player: { activeQuestSession: { requiredCompanionIds: ['merc_required'] } },
+        player: {},
         window: { selectedCompanionInstanceId: null },
         document: {
             createElement: tagName => new FakeElement(tagName),
@@ -109,16 +108,16 @@ test('roster UI counts only optional selections and locks a stale required activ
     vm.runInContext(`${companionUiSource}\n;globalThis.__renderCompanionRosterUI = renderCompanionRosterUI;`, context);
 
     context.__renderCompanionRosterUI(
-        [companion('merc_required'), companion('merc_1'), companion('merc_2'), companion('merc_3')],
-        ['merc_required', 'merc_1', 'merc_2']
+        [companion('merc_0'), companion('merc_1'), companion('merc_2'), companion('merc_3')],
+        ['merc_0', 'merc_1', 'merc_2']
     );
 
     const toolbar = partyList.children[0];
-    assert.match(toolbar.children[0].textContent, /Active 2\/3/);
-    assert.equal(toolbar.children[1].disabled, false);
+    assert.match(toolbar.children[0].textContent, /Active 3\/3/);
+    assert.equal(toolbar.children[1].disabled, true);
     assert.equal(toolbar.children[2].disabled, false);
-    const requiredControls = partyList.children[1].children[1];
-    assert.equal(requiredControls.children[0].textContent, 'Equipment');
-    assert.equal(requiredControls.children[1].textContent, 'Quest Locked');
-    assert.equal(requiredControls.children[1].disabled, true);
+    const benchedControls = partyList.children[4].children[1];
+    assert.equal(benchedControls.children[0].textContent, 'Equipment');
+    assert.equal(benchedControls.children[1].textContent, 'Activate');
+    assert.equal(benchedControls.children[1].disabled, true);
 });

@@ -535,7 +535,7 @@
         <button onclick="setGameState('TOWN')" style="background: #c0392b; margin:0; padding:6px 14px;">Return to Town</button>
     </div>
     <div class="dashboard-panel" style="border: 1px solid #634e3d; background: #221a14; color: #d7c0a8; font-size: 12px; line-height: 1.5;">
-        Town prestige, trade-route, worker, and supply-cart upgrades have been removed for the party-combat alpha branch. Tavern growth now comes from minigames, combat rewards, companion progression, and future story quests.
+        Town prestige, trade-route, worker, and supply-cart upgrades have been removed for the party-combat alpha branch. Tavern growth now comes from minigames, combat rewards, and companion progression.
     </div>
 </div>
 <!-- === DEDICATED MERCHANT SCREEN (GRID REFACTOR) === -->
@@ -712,119 +712,6 @@
 
 <div id="game-tooltip"></div>
 	
-<!-- === QUEST CINEMATIC PLAYER (MOCK ONLY) === -->
-<div id="quest-cinematic-overlay" style="display:none; opacity:0; transition:opacity 260ms ease; position:fixed; inset:0; z-index:100004; background:rgba(8, 6, 5, 0.72); background-image:linear-gradient(rgba(0,0,0,0.24), rgba(0,0,0,0.24)), url('assets/images/wilds-bg.png'); background-size:cover; background-position:center center; image-rendering:pixelated; align-items:flex-start; justify-content:center; padding:18px; box-sizing:border-box; overflow-y:auto;">
-    <style>
-        #quest-cinematic-overlay button.quest-required-action {
-            border-color: #f1c40f !important;
-            box-shadow: 0 0 0 2px rgba(241, 196, 15, 0.24), 0 0 18px rgba(241, 196, 15, 0.34);
-            transform: translateY(-1px);
-        }
-        #quest-cinematic-overlay button.quest-locked-action {
-            opacity: 0.52;
-            cursor: not-allowed;
-        }
-        #quest-cinematic-overlay button:disabled {
-            filter: grayscale(0.35);
-        }
-        #quest-cinematic-overlay .combat-grid-2-col {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-        }
-        #quest-cinematic-overlay .quest-action-interface {
-            width: 100%;
-            max-width: 960px;
-            background: #221a14;
-            padding: 15px;
-            border-radius: 6px;
-            border: 1px solid #634e3d;
-            box-sizing: border-box;
-            margin-top: 8px;
-            text-align: left;
-        }
-        #quest-cinematic-overlay .quest-combat-button-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-bottom: 8px;
-        }
-        #quest-cinematic-overlay .quest-combat-button-row button {
-            padding: 12px;
-            font-size: 15px;
-            margin: 0;
-        }
-        #quest-cinematic-overlay .quest-backpack-tab {
-            flex: 1;
-            padding: 6px 2px;
-            font-size: 11px;
-            font-weight: bold;
-            border: 1px solid #111;
-            color: #fff;
-        }
-        #quest-cinematic-overlay .quest-prop-card {
-            background: #1a1512;
-            border: 1px solid #f1c40f;
-            border-radius: 4px;
-            color: #f4ebd9;
-            font-size: 11px;
-            line-height: 1.45;
-            padding: 10px;
-            width: 100%;
-        }
-        #quest-cinematic-overlay .quest-prop-card h4 {
-            border: 0;
-            color: #bbaaa0;
-            font-size: 13px;
-            margin: 0 0 4px 0;
-            padding: 0;
-            text-transform: none;
-        }
-    </style>
-    <div id="quest-cinematic-shell" style="width:min(100%, 1000px); background:rgba(62,49,38,0.9); border:2px solid #634e3d; border-radius:5px; box-shadow:0 15px 45px rgba(0,0,0,0.95); padding:15px; box-sizing:border-box; margin-bottom:20px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px;">
-            <div>
-                <div id="quest-cinematic-title" style="color:#ffcc66; font-weight:bold; font-size:15px; text-transform:uppercase;">Training</div>
-                <div id="quest-cinematic-subtitle" style="color:#bbaaa0; font-size:11px; margin-top:3px;">Mock quest scene</div>
-            </div>
-            <button id="quest-cinematic-skip-btn" onclick="QuestCinematics.skipCurrent()" style="background:#443a32; border-color:#634e3d; padding:7px 12px; margin:0;">Skip</button>
-        </div>
-        <div style="display:flex; flex-direction:column; gap:15px; align-items:center; width:100%;">
-            <canvas id="quest-cinematic-canvas" width="864" height="540" onclick="QuestCinematics.canvasClick(event)" style="display:block; width:100%; max-width:864px; height:auto; background:#0a0806; image-rendering:pixelated; cursor:crosshair;"></canvas>
-            <div id="quest-action-interface" class="quest-action-interface">
-                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px dashed #4a3b2c; padding-bottom:8px; margin-bottom:12px;">
-                    <span id="quest-target-ui-header" style="font-size:14px; font-weight:bold; color:#ffcc66; text-transform:uppercase;">INITIALIZING MATRIX</span>
-                </div>
-                <div id="quest-combat-top-bars" style="margin-bottom:12px;"></div>
-                <div class="quest-combat-button-row">
-                    <button id="quest-mock-attack-btn" onclick="QuestCinematics.performAction('attack')">Attack (5⚡)</button>
-                    <button id="quest-mock-brace-btn" onclick="QuestCinematics.performAction('brace')">Flurry (15⚡)</button>
-                </div>
-                <div id="quest-combat-inventory-list" class="quest-combat-button-row">
-                    <button id="quest-mock-backpack-btn" onclick="QuestCinematics.openBackpack()" style="background:#8b5a2b;">🎒 Backpack (7/7)</button>
-                    <button id="quest-mock-spellbook-btn" disabled style="background:#8e44ad; border-color:#9b59b6;">📖 Spellbook</button>
-                    <button id="quest-mock-cancel-target-btn" onclick="QuestCinematics.cancelTargeting()" style="display:none; grid-column:span 2; background:#443a32;">✖ Cancel Action</button>
-                </div>
-                <div class="quest-combat-button-row" style="margin-bottom:15px;">
-                    <button id="quest-mock-pass-btn" onclick="QuestCinematics.performAction('pass')" style="background:#e67e22; border:2px solid #d35400; font-weight:bold; text-shadow:1px 1px 2px #000;">⌛ Pass Turn</button>
-                    <button id="quest-mock-flee-btn" disabled style="background:#c0392b; border:2px solid #e74c3c; font-weight:bold; text-shadow:1px 1px 2px #000;">🏃 Flee</button>
-                </div>
-                <div id="quest-combat-bottom-stats" style="border-top:1px dashed #4a3b2c; padding-top:15px; display:grid; grid-template-columns:1fr 1fr; gap:15px;"></div>
-            </div>
-        </div>
-
-        <div id="quest-combat-backpack-modal" class="panel" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:380px; z-index:100006; box-shadow:0 0 0 9999px rgba(0,0,0,0.75); margin:0;">
-            <div style="display:flex; justify-content:space-between; border-bottom:1px dashed #634e3d; padding-bottom:10px; margin-bottom:15px;">
-                <h2 style="color:#ffcc66; font-size:16px; margin:0;">🎒 Combat Backpack</h2>
-                <span onclick="QuestCinematics.closeBackpack()" style="color:#e74c3c; cursor:pointer; font-weight:bold;">[✖ Close]</span>
-            </div>
-            <div id="quest-combat-modal-filters" style="display:flex; gap:4px; margin-bottom:10px;"></div>
-            <div id="quest-combat-modal-grid" class="inventory-grid" style="justify-content:center;"></div>
-        </div>
-    </div>
-</div>
-	
-	
 <!-- === NEW: DIALOGUE ENGINE OVERLAY === -->
 <div id="dialogue-overlay" style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 700px; z-index: 100005; background: rgba(26, 21, 18, 0.98); border: 3px solid #bbaaa0; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.9); padding: 15px; flex-direction: row; gap: 15px; align-items: flex-start; cursor: pointer;" onclick="advanceDialogue()">
     
@@ -888,12 +775,16 @@
 
 <!-- Core State & Player Data -->
     <script src="js/player.js?v=4"></script>
-    <script src="js/character-creator.js?v=2"></script> <!-- ESTABLISHES ARRAYS -->
+    <script src="js/character-creator.js?v=5"></script> <!-- ESTABLISHES ARRAYS -->
 	<script src="js/item-assets.js?v=2"></script>       <!-- NEW: EQUIPMENT ARRAYS -->
 	<script src="js/pet-assets.js?v=2"></script>
     <script src="js/npc-assets.js?v=2"></script>      <!-- MODIFIES ARRAYS WITH NPC DATA -->
 	<script src="js/map-assets.js?v=2"></script>
 	<script src="js/icon-assets.js?v=2"></script>
+<script src="js/sprite-overhaul.js?v=17"></script>
+<script src="js/sprite-overhaul-equipment.js?v=10"></script>
+    <script src="js/sprite-overhaul-world.js?v=1"></script>
+    <script src="js/sprite-overhaul-icons.js?v=1"></script>
 	<script src="/socket.io/socket.io.js"></script>
 
     <script src="js/main.js?v=8"></script>
@@ -903,12 +794,10 @@
     <script src="js/ui-tooltips.js?v=3"></script>
     <script src="js/companion-ui.js?v=3"></script>
     <script src="js/ui-render.js?v=6"></script>
-    <script src="js/renderer.js?v=4"></script>       <!-- RENDERS DATA -->
+    <script src="js/renderer.js?v=5"></script>       <!-- RENDERS DATA -->
 	<script src="js/fx-engine.js"></script>
 	<script src="js/dialogue.js?v=2"></script>
-	<script src="js/quest-scripts.js"></script>
-	<script src="js/quest-cinematics.js?v=2"></script>
-	<script src="js/social.js"></script>
+	<script src="js/social.js?v=2"></script>
 
 
 <!-- Game Systems & Logic -->

@@ -37,24 +37,6 @@ maxInventorySlots: 5, backpackUpgrades: 0,
     // supply cart automation retired
 };
 
-function getClientRequiredCompanionIds(targetPlayer = player) {
-    const requiredIds = [];
-    const sources = [
-        targetPlayer && targetPlayer.activeQuestSession,
-        targetPlayer && targetPlayer.quests && targetPlayer.quests.active
-    ];
-
-    sources.forEach(source => {
-        if (!source || !Array.isArray(source.requiredCompanionIds)) return;
-        source.requiredCompanionIds.forEach(value => {
-            const instanceId = typeof value === 'string' ? value.trim() : '';
-            if (instanceId && !requiredIds.includes(instanceId)) requiredIds.push(instanceId);
-        });
-    });
-
-    return requiredIds;
-}
-
 function normalizeClientPlayerContainers() {
     player.inventory = Array.isArray(player.inventory) ? player.inventory : [];
     player.stash = Array.isArray(player.stash) ? player.stash : [];
@@ -105,9 +87,6 @@ function normalizeClientPlayerContainers() {
     }).filter(Boolean);
 
     const validIds = new Set(companions.map(companion => companion.instanceId));
-    const requiredIds = new Set(getClientRequiredCompanionIds(player).map(requiredId => (
-        validIds.has(requiredId) ? requiredId : legacyIdMap.get(requiredId)
-    )).filter(Boolean));
     const activeIds = [];
     const requestedActiveIds = hasCanonicalActiveIds
         ? (Array.isArray(roster.activeIds) ? roster.activeIds : [])
@@ -115,7 +94,6 @@ function normalizeClientPlayerContainers() {
     requestedActiveIds.forEach(requestedId => {
         const instanceId = validIds.has(requestedId) ? requestedId : legacyIdMap.get(requestedId);
         if (instanceId
-            && !requiredIds.has(instanceId)
             && !activeIds.includes(instanceId)
             && activeIds.length < maxSelectedCompanions) activeIds.push(instanceId);
     });

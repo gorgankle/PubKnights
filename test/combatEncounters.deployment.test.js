@@ -5,9 +5,7 @@ const {
     createCombatEncounter,
     getDeployedCompanions,
     getCompanionFormationTiles,
-    MAX_STANDARD_PLAYER_ACTORS,
-    MAX_PLAYER_TEAM_ACTORS,
-    MAX_QUEST_BONUS_ALLIES
+    MAX_STANDARD_PLAYER_ACTORS
 } = require('../combatEncounters.js');
 
 function companion(number) {
@@ -60,41 +58,9 @@ test('an explicit empty activeIds array benches every optional mercenary', () =>
     assert.deepEqual(getDeployedCompanions(knight), []);
 });
 
-test('quest-required mercenaries deploy from the bench as bonus allies without consuming selected slots', () => {
+test('Wilderness 20 keeps the selected mercenary cap when Kreg joins the battle', () => {
     const companions = Array.from({ length: 6 }, (_, index) => companion(index + 1));
-    const knight = player(companions, ['merc_1', 'merc_2', 'merc_3'], {
-        activeQuestSession: { requiredCompanionIds: ['merc_5', 'merc_6'] }
-    });
-
-    const deployed = getDeployedCompanions(knight);
-
-    assert.equal(MAX_QUEST_BONUS_ALLIES, 2);
-    assert.deepEqual(deployed.map(entry => entry.instanceId), [
-        'merc_1', 'merc_2', 'merc_3', 'merc_5', 'merc_6'
-    ]);
-});
-
-test('a legacy selected required ID cannot displace any of the three optional mercenaries', () => {
-    const companions = Array.from({ length: 5 }, (_, index) => companion(index + 1));
-    const knight = player(companions, ['merc_5', 'merc_1', 'merc_2', 'merc_3'], {
-        activeQuestSession: { requiredCompanionIds: ['merc_5'] }
-    });
-
-    const deployed = getDeployedCompanions(knight);
-
-    assert.deepEqual(deployed.map(entry => entry.instanceId), [
-        'merc_1',
-        'merc_2',
-        'merc_3',
-        'merc_5'
-    ]);
-});
-
-test('the Wilderness 20 quest NPC reservation keeps the total friendly battle team at six', () => {
-    const companions = Array.from({ length: 6 }, (_, index) => companion(index + 1));
-    const knight = player(companions, ['merc_1', 'merc_2', 'merc_3'], {
-        activeQuestSession: { requiredCompanionIds: ['merc_4', 'merc_5'] }
-    });
+    const knight = player(companions, ['merc_1', 'merc_2', 'merc_3', 'merc_4']);
 
     const combat = createCombatEncounter(knight, { zoneChoice: 'WILDERNESS', activeLevel: 20 });
     const friendlyActors = combat.actors.filter(actor => actor.teamId === 'PLAYER');
@@ -102,9 +68,8 @@ test('the Wilderness 20 quest NPC reservation keeps the total friendly battle te
         .filter(actor => actor.kind === 'companion')
         .map(actor => actor.companionInstanceId);
 
-    assert.equal(MAX_PLAYER_TEAM_ACTORS, 6);
-    assert.equal(friendlyActors.length, MAX_PLAYER_TEAM_ACTORS);
-    assert.deepEqual(deployedIds, ['merc_1', 'merc_2', 'merc_3', 'merc_4']);
+    assert.equal(friendlyActors.length, 5);
+    assert.deepEqual(deployedIds, ['merc_1', 'merc_2', 'merc_3']);
     assert.equal(friendlyActors.some(actor => actor.uid === 'ally_kreg'), true);
 });
 

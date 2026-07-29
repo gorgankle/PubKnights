@@ -501,7 +501,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             }
             p.roster.activeIds = [];
             normalizeRosterState(p);
-            socket.emit('townReceipt', { success: true, action: 'benchAllCompanions', updatedPlayer: p, message: 'All optional mercenaries moved to the bench. Quest-required allies will still join their encounters.' });
+            socket.emit('townReceipt', { success: true, action: 'benchAllCompanions', updatedPlayer: p, message: 'All mercenaries moved to the bench.' });
         }
         else if (data.action === 'fillActiveCompanions') {
             if (activeCombats && activeCombats[socket.id]) {

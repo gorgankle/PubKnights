@@ -9,7 +9,6 @@ const mongoose = require('mongoose');
 const injectTownRouter = require('./townRouter.js');
 const injectCombatRouter = require('./combatRouter.js');
 const injectSocialRouter = require('./socialRouter.js');
-const injectQuestRouter = require('./questRouter.js');
 const { CombatMapTemplates, obstacleStyleForZone } = require('./combatMapTemplates.js');
 const { ItemDatabase } = require('./public/js/items.js');
 const {
@@ -133,7 +132,6 @@ function createSaveSnapshot(playerState) {
     delete snapshot.tradeLocked;
     delete snapshot.tradeConfirmed;
     delete snapshot.activeTradePartner;
-    delete snapshot.activeQuestSession;
     delete snapshot.currentZone;
     delete snapshot.socialX;
     delete snapshot.socialY;
@@ -195,8 +193,7 @@ function createDefaultSaveData(username) {
         inventory: [], stash: [],
         roster: { companions: [], activeIds: [] },
         maxInventorySlots: 5, backpackUpgrades: 0,
-        pet: { adopted: false, level: 1 },
-        quests: { completed: {} }
+        pet: { adopted: false, level: 1 }
     };
 }
 
@@ -223,7 +220,6 @@ function hydratePlayerData(playerDoc) {
     delete pd.tradeLocked;
     delete pd.tradeConfirmed;
     delete pd.activeTradePartner;
-    delete pd.activeQuestSession;
     delete pd.currentZone;
     delete pd.socialX;
     delete pd.socialY;
@@ -245,8 +241,6 @@ function hydratePlayerData(playerDoc) {
         pd.stash = pd.stash.map(item => sanitizeItemSchema(item)).filter(Boolean);
     }
 
-    if (!pd.quests) pd.quests = { completed: {} };
-    if (!pd.quests.completed) pd.quests.completed = {};
     normalizeSavedRoster(pd);
     pd.activeBuffs = [];
     pd.activeCombatBuff = null;
@@ -460,7 +454,6 @@ if (data.saveData) {
         injectTownRouter(socket, io, activePlayers, activeCombats);
         injectCombatRouter(socket, io, activePlayers, activeCombats);
         injectSocialRouter(socket, io, activePlayers, activeCombats);
-        injectQuestRouter(socket, io, activePlayers);
 
 
         // === RESTORED: DISCONNECT HANDLER ===

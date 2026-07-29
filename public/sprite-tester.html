@@ -146,12 +146,16 @@
         };
     </script>
 
-    <script src="js/character-creator.js?v=2"></script>
+    <script src="js/character-creator.js?v=5"></script>
     <script src="js/items.js"></script>
     <script src="js/item-assets.js?v=2"></script>
     <script src="js/icon-assets.js?v=2"></script>
     <script src="js/npc-assets.js?v=2"></script>
     <script src="js/map-assets.js?v=2"></script>
+    <script src="js/sprite-overhaul.js?v=17"></script>
+    <script src="js/sprite-overhaul-equipment.js?v=10"></script>
+    <script src="js/sprite-overhaul-world.js?v=1"></script>
+    <script src="js/sprite-overhaul-icons.js?v=1"></script>
 
    <script>
         const TESTER_GRID_SIZE = typeof PROCEDURAL_SPRITE_GRID_SIZE === 'number'
@@ -318,8 +322,11 @@
             // The weapon is drawn onto the main canvas AFTER the buffer so it retains its own independent scaling and rotation
             if (eq.weapon && eq.weapon.spriteId) {
                 ctx.save();
-                let wPivotX = spriteSize * 0.58;
-                let wPivotY = spriteSize * 0.5;
+                const weaponAnchor = typeof PLAYER_SPRITE_ANCHORS !== 'undefined'
+                    ? PLAYER_SPRITE_ANCHORS.weaponHand
+                    : { x: 0.58, y: 0.5 };
+                let wPivotX = spriteSize * weaponAnchor.x;
+                let wPivotY = spriteSize * weaponAnchor.y;
                 ctx.translate(wPivotX, wPivotY);
                 let scaleMult = eq.weapon.oversizeScale || 1.0;
                 ctx.scale(scaleMult, scaleMult);

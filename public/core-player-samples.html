@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pub Knights - Core Player Forge</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            --ink: #171310;
+            --surface: #24211e;
+            --surface-raised: #302a25;
+            --line: #5f5145;
+            --text: #f4ebd9;
+            --muted: #b8aa98;
+            --brass: #d5a13f;
+            --claret: #8f3442;
+            --moss: #3f6b46;
+            --cyan: #39b8ba;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            min-width: 320px;
+            margin: 0;
+            background: var(--ink);
+            color: var(--text);
+            font-family: "Courier New", Courier, monospace;
+        }
+
+        button,
+        select {
+            font: inherit;
+        }
+
+        button,
+        a,
+        select {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .app-header {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 24px;
+            width: min(1180px, calc(100% - 32px));
+            margin: 0 auto;
+            padding: 26px 0 18px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .eyebrow {
+            margin: 0 0 5px;
+            color: var(--brass);
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        h1,
+        h2,
+        p {
+            margin-top: 0;
+        }
+
+        h1 {
+            margin-bottom: 0;
+            font-family: Georgia, "Times New Roman", serif;
+            font-size: clamp(28px, 5vw, 46px);
+            font-weight: 700;
+            letter-spacing: 0;
+        }
+
+        .tool-nav {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .tool-link {
+            min-height: 38px;
+            padding: 9px 12px;
+            border: 1px solid var(--line);
+            border-radius: 4px;
+            color: var(--text);
+            text-decoration: none;
+        }
+
+        .tool-link:hover,
+        .tool-link:focus-visible {
+            border-color: var(--brass);
+            outline: none;
+        }
+
+        main {
+            width: min(1180px, calc(100% - 32px));
+            margin: 0 auto;
+            padding: 26px 0 44px;
+        }
+
+        .workbench {
+            display: grid;
+            grid-template-columns: minmax(300px, 1fr) minmax(320px, 0.9fr);
+            min-height: 520px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .stage {
+            display: grid;
+            place-items: center;
+            min-width: 0;
+            padding: 20px 32px 32px 0;
+        }
+
+        .stage-inner {
+            width: min(100%, 430px);
+        }
+
+        .canvas-frame {
+            display: grid;
+            place-items: center;
+            aspect-ratio: 1;
+            width: 100%;
+            border: 2px solid #79634e;
+            border-radius: 4px;
+            background: #100e0d;
+            box-shadow: 0 18px 42px rgba(0, 0, 0, 0.42);
+        }
+
+        canvas {
+            display: block;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
+        #hero-canvas {
+            width: min(88%, 352px);
+            height: auto;
+            aspect-ratio: 1;
+        }
+
+        .stage-readout {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 16px;
+            padding-top: 13px;
+        }
+
+        .stage-name {
+            margin: 0;
+            font-family: Georgia, "Times New Roman", serif;
+            font-size: 24px;
+        }
+
+        .native-badge {
+            flex: 0 0 auto;
+            color: var(--cyan);
+            font-size: 12px;
+        }
+
+        .controls {
+            min-width: 0;
+            padding: 20px 0 32px 32px;
+            border-left: 1px solid var(--line);
+        }
+
+        .controls h2,
+        .samples-heading h2 {
+            margin-bottom: 18px;
+            font-family: Georgia, "Times New Roman", serif;
+            font-size: 22px;
+            letter-spacing: 0;
+        }
+
+        .control-block {
+            margin: 0 0 20px;
+            padding: 0;
+            border: 0;
+        }
+
+        .control-label,
+        .control-block legend {
+            display: block;
+            width: 100%;
+            margin-bottom: 8px;
+            color: var(--muted);
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+
+        .segment {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 2px;
+            padding: 2px;
+            border: 1px solid var(--line);
+            border-radius: 5px;
+            background: #141210;
+        }
+
+        .segment button {
+            min-width: 0;
+            min-height: 38px;
+            border: 0;
+            border-radius: 3px;
+            background: transparent;
+            color: var(--muted);
+            cursor: pointer;
+        }
+
+        .segment button[aria-pressed="true"] {
+            background: var(--claret);
+            color: #fff8ee;
+        }
+
+        .select-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        select {
+            width: 100%;
+            min-height: 40px;
+            padding: 8px 30px 8px 10px;
+            border: 1px solid var(--line);
+            border-radius: 4px;
+            background: #141210;
+            color: var(--text);
+        }
+
+        select:focus-visible,
+        button:focus-visible {
+            border-color: var(--brass);
+            outline: 2px solid var(--brass);
+            outline-offset: 2px;
+        }
+
+        .swatch-groups {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 15px 20px;
+        }
+
+        .swatches {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+        }
+
+        .swatch {
+            position: relative;
+            width: 28px;
+            height: 28px;
+            padding: 0;
+            border: 2px solid #181512;
+            border-radius: 3px;
+            background: var(--swatch-color);
+            box-shadow: 0 0 0 1px var(--line);
+            cursor: pointer;
+        }
+
+        .swatch[aria-pressed="true"]::after {
+            content: "";
+            position: absolute;
+            inset: 5px;
+            border: 2px solid #fff;
+            border-radius: 1px;
+            box-shadow: 0 0 0 1px #000;
+        }
+
+        .action-row {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 24px;
+        }
+
+        .action-button {
+            min-height: 42px;
+            border: 1px solid var(--line);
+            border-radius: 4px;
+            background: var(--surface-raised);
+            color: var(--text);
+            cursor: pointer;
+        }
+
+        .action-button.primary {
+            border-color: #b47c2d;
+            background: #855c23;
+        }
+
+        .samples {
+            padding-top: 28px;
+        }
+
+        .samples-heading {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .samples-heading p {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .sample-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .sample-card {
+            min-width: 0;
+            padding: 12px;
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            background: var(--surface);
+            color: var(--text);
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .sample-card:hover,
+        .sample-card:focus-visible,
+        .sample-card[aria-current="true"] {
+            border-color: var(--brass);
+            outline: none;
+        }
+
+        .sample-card[aria-current="true"] {
+            box-shadow: inset 0 -3px 0 var(--brass);
+        }
+
+        .sample-canvas-wrap {
+            display: grid;
+            place-items: center;
+            aspect-ratio: 1;
+            margin-bottom: 11px;
+            background: #100e0d;
+        }
+
+        .sample-canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .sample-title {
+            display: block;
+            margin-bottom: 5px;
+            overflow-wrap: anywhere;
+            font-family: Georgia, "Times New Roman", serif;
+            font-size: 17px;
+        }
+
+        .sample-note {
+            display: block;
+            min-height: 32px;
+            color: var(--muted);
+            font-size: 11px;
+            line-height: 1.45;
+        }
+
+        @media (max-width: 900px) {
+            .workbench {
+                grid-template-columns: 1fr;
+            }
+
+            .stage {
+                padding-right: 0;
+            }
+
+            .controls {
+                padding-left: 0;
+                border-top: 1px solid var(--line);
+                border-left: 0;
+            }
+
+            .sample-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 560px) {
+            .app-header {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .tool-nav {
+                justify-content: flex-start;
+            }
+
+            .stage {
+                padding-top: 2px;
+            }
+
+            .select-grid,
+            .swatch-groups {
+                grid-template-columns: 1fr;
+            }
+
+            .sample-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .sample-card {
+                display: grid;
+                grid-template-columns: 116px minmax(0, 1fr);
+                gap: 13px;
+                align-items: center;
+            }
+
+            .sample-canvas-wrap {
+                margin: 0;
+            }
+
+            .sample-note {
+                min-height: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="app-header">
+        <div>
+            <p class="eyebrow">Pub Knights / Sprite Lab</p>
+            <h1>Core Player Forge</h1>
+        </div>
+        <nav class="tool-nav" aria-label="Sprite tools">
+            <a class="tool-link" href="sprite-tester.html">Matrix Inspector</a>
+            <a class="tool-link" href="pixel-studio.html">Pixel Studio</a>
+        </nav>
+    </header>
+
+    <main>
+        <section class="workbench" aria-label="Core player workbench">
+            <div class="stage">
+                <div class="stage-inner">
+                    <div class="canvas-frame">
+                        <canvas id="hero-canvas" width="32" height="32" aria-label="Selected player sprite"></canvas>
+                    </div>
+                    <div class="stage-readout">
+                        <h2 class="stage-name" id="stage-name">Tavern Warden</h2>
+                        <span class="native-badge">Native 32x32</span>
+                    </div>
+                </div>
+            </div>
+
+            <aside class="controls">
+                <h2>Build &amp; Palette</h2>
+
+                <fieldset class="control-block">
+                    <legend>Gender</legend>
+                    <div class="segment" id="body-segment">
+                        <button type="button" data-body="body_core_male">Male</button>
+                        <button type="button" data-body="body_core_female">Female</button>
+                    </div>
+                </fieldset>
+
+                <div class="select-grid">
+                    <label>
+                        <span class="control-label">Hair</span>
+                        <select id="hair-select"></select>
+                    </label>
+                    <label>
+                        <span class="control-label">Outfit</span>
+                        <select id="outfit-select"></select>
+                    </label>
+                </div>
+
+                <div class="swatch-groups" id="swatch-groups"></div>
+
+                <div class="action-row">
+                    <button class="action-button primary" id="randomize-button" type="button">Randomize</button>
+                    <button class="action-button" id="reset-button" type="button">Reset Preset</button>
+                </div>
+            </aside>
+        </section>
+
+        <section class="samples" aria-labelledby="samples-title">
+            <div class="samples-heading">
+                <h2 id="samples-title">Hero Lineup</h2>
+                <p>Four tavern-born adventurers</p>
+            </div>
+            <div class="sample-grid" id="sample-grid"></div>
+        </section>
+    </main>
+
+    <script>
+        var player = {
+            appearance: {
+                gender: 'male',
+                skin: 'light',
+                hair: 'hair_messy',
+                hairColor: 'brown',
+                eyes: 'eyes_blue',
+                shirtColor: 'blue',
+                pantsColor: 'dark',
+                bootsColor: 'leather'
+            },
+            equipment: {
+                helmet: null,
+                armor: null,
+                weapon: null,
+                gloves: null,
+                boots: null
+            }
+        };
+    </script>
+    <script src="js/character-creator.js?v=5"></script>
+    <script src="js/sprite-overhaul.js?v=17"></script>
+    <script>
+        const HAIR_OPTIONS = CorePlayerHairStyleOptions.map(({ sampleId, label }) => [
+            sampleId,
+            label
+        ]);
+        const OUTFIT_OPTIONS = [
+            ['', 'Base Adventurer'],
+            ['outfit_core_apron', 'Tavern Apron'],
+            ['outfit_core_jerkin', 'Hearth Jerkin'],
+            ['outfit_core_scout', 'Cellar Cloak'],
+            ['outfit_core_brewer', 'Runebrewer Coat']
+        ];
+        const SWATCH_CONFIG = [
+            ['Skin', 'skin', SkinTones, ['light', 'tan', 'dark', 'deep', 'pale', 'orc']],
+            ['Hair', 'hairColor', HairTones, ['brown', 'auburn', 'straw', 'raven', 'silver', 'red']],
+            ['Eyes', 'eyes', EyeTones, ['blue', 'green', 'brown', 'gold', 'purple', 'grey']],
+            ['Tunic', 'shirtColor', ShirtTones, ['claret', 'moss', 'ale', 'teal', 'navy', 'pewter']],
+            ['Trousers', 'pantsColor', PantsTones, ['charcoal', 'umber', 'olive', 'maroon', 'grey', 'navy']],
+            ['Boots', 'bootsColor', BootsTones, ['leather', 'suede', 'oxblood', 'black', 'iron', 'burgundy']]
+        ];
+
+        const heroCanvas = document.getElementById('hero-canvas');
+        const heroContext = heroCanvas.getContext('2d', { alpha: true });
+        const sampleGrid = document.getElementById('sample-grid');
+        const stageName = document.getElementById('stage-name');
+        const hairSelect = document.getElementById('hair-select');
+        const outfitSelect = document.getElementById('outfit-select');
+        const bodySegment = document.getElementById('body-segment');
+        const swatchGroups = document.getElementById('swatch-groups');
+        let activePresetId = CorePlayerSamplePresets[0].id;
+        let workingSample = clonePreset(CorePlayerSamplePresets[0]);
+
+        function clonePreset(preset) {
+            return {
+                ...preset,
+                appearance: { ...preset.appearance }
+            };
+        }
+
+        function populateSelect(select, options) {
+            options.forEach(([value, label]) => {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = label;
+                select.appendChild(option);
+            });
+        }
+
+        function createSwatches() {
+            SWATCH_CONFIG.forEach(([label, property, tones, keys]) => {
+                const group = document.createElement('div');
+                const groupLabel = document.createElement('span');
+                const row = document.createElement('div');
+
+                groupLabel.className = 'control-label';
+                groupLabel.textContent = label;
+                row.className = 'swatches';
+                row.dataset.property = property;
+
+                keys.forEach(key => {
+                    const button = document.createElement('button');
+                    const toneKey = property === 'eyes' ? `eyes_${key}` : key;
+                    button.type = 'button';
+                    button.className = 'swatch';
+                    button.dataset.value = toneKey;
+                    button.style.setProperty('--swatch-color', tones[key]);
+                    button.title = key;
+                    button.setAttribute('aria-label', `${label}: ${key}`);
+                    button.addEventListener('click', () => {
+                        workingSample.appearance[property] = toneKey;
+                        renderWorkbench();
+                    });
+                    row.appendChild(button);
+                });
+
+                group.append(groupLabel, row);
+                swatchGroups.appendChild(group);
+            });
+        }
+
+        function createSampleCards() {
+            CorePlayerSamplePresets.forEach(preset => {
+                const card = document.createElement('button');
+                const canvasWrap = document.createElement('span');
+                const canvas = document.createElement('canvas');
+                const copy = document.createElement('span');
+                const title = document.createElement('span');
+                const note = document.createElement('span');
+
+                card.type = 'button';
+                card.className = 'sample-card';
+                card.dataset.presetId = preset.id;
+                card.setAttribute('aria-label', `Load ${preset.name}`);
+
+                canvasWrap.className = 'sample-canvas-wrap';
+                canvas.className = 'sample-canvas';
+                canvas.width = CORE_PLAYER_SAMPLE_SIZE;
+                canvas.height = CORE_PLAYER_SAMPLE_SIZE;
+                canvasWrap.appendChild(canvas);
+
+                title.className = 'sample-title';
+                title.textContent = preset.name;
+                note.className = 'sample-note';
+                note.textContent = preset.note;
+                copy.append(title, note);
+                card.append(canvasWrap, copy);
+
+                card.addEventListener('click', () => loadPreset(preset.id));
+                sampleGrid.appendChild(card);
+
+                const context = canvas.getContext('2d', { alpha: true });
+                context.clearRect(0, 0, canvas.width, canvas.height);
+                drawCorePlayerSample(context, preset, canvas.width);
+            });
+        }
+
+        function updateControls() {
+            stageName.textContent = workingSample.name;
+            hairSelect.value = workingSample.hair;
+            outfitSelect.value = workingSample.outfit;
+
+            bodySegment.querySelectorAll('button').forEach(button => {
+                button.setAttribute(
+                    'aria-pressed',
+                    String(button.dataset.body === workingSample.body)
+                );
+            });
+
+            document.querySelectorAll('.swatches').forEach(row => {
+                const property = row.dataset.property;
+                row.querySelectorAll('.swatch').forEach(button => {
+                    button.setAttribute(
+                        'aria-pressed',
+                        String(button.dataset.value === workingSample.appearance[property])
+                    );
+                });
+            });
+
+            sampleGrid.querySelectorAll('.sample-card').forEach(card => {
+                card.setAttribute(
+                    'aria-current',
+                    String(card.dataset.presetId === activePresetId)
+                );
+            });
+        }
+
+        function renderWorkbench() {
+            heroContext.clearRect(0, 0, heroCanvas.width, heroCanvas.height);
+            drawCorePlayerSample(heroContext, workingSample, heroCanvas.width);
+            updateControls();
+        }
+
+        function loadPreset(presetId) {
+            const preset = getCorePlayerSamplePreset(presetId);
+            activePresetId = preset.id;
+            workingSample = clonePreset(preset);
+            renderWorkbench();
+        }
+
+        function randomValue(values) {
+            return values[Math.floor(Math.random() * values.length)];
+        }
+
+        populateSelect(hairSelect, HAIR_OPTIONS);
+        populateSelect(outfitSelect, OUTFIT_OPTIONS);
+        createSwatches();
+        createSampleCards();
+
+        bodySegment.addEventListener('click', event => {
+            const button = event.target.closest('button[data-body]');
+            if (!button) return;
+            workingSample.body = button.dataset.body;
+            renderWorkbench();
+        });
+
+        hairSelect.addEventListener('change', () => {
+            workingSample.hair = hairSelect.value;
+            renderWorkbench();
+        });
+
+        outfitSelect.addEventListener('change', () => {
+            workingSample.outfit = outfitSelect.value;
+            renderWorkbench();
+        });
+
+        document.getElementById('randomize-button').addEventListener('click', () => {
+            workingSample.body = randomValue(['body_core_male', 'body_core_female']);
+            workingSample.hair = randomValue(HAIR_OPTIONS).at(0);
+            workingSample.outfit = randomValue(OUTFIT_OPTIONS).at(0);
+
+            SWATCH_CONFIG.forEach(([, property, , keys]) => {
+                const key = randomValue(keys);
+                workingSample.appearance[property] = property === 'eyes' ? `eyes_${key}` : key;
+            });
+
+            activePresetId = '';
+            workingSample.name = 'Custom Adventurer';
+            renderWorkbench();
+        });
+
+        document.getElementById('reset-button').addEventListener('click', () => {
+            loadPreset(activePresetId || CorePlayerSamplePresets[0].id);
+        });
+
+        renderWorkbench();
+    </script>
+</body>
+</html>

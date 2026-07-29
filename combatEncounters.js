@@ -4,10 +4,7 @@
 const { createEnemy } = require('./public/js/npc-database.js');
 const { sanitizeToken, clampInt } = require('./serverSecurity.js');
 const { getTemplateForEncounter, obstacleStyleForZone } = require('./combatMapTemplates.js');
-const {
-    MAX_SELECTED_COMPANIONS,
-    getRequiredCompanionIds
-} = require('./companionRoster.js');
+const { MAX_SELECTED_COMPANIONS } = require('./companionRoster.js');
 const {
     addCombatActor,
     createPlayerActor,
@@ -22,8 +19,6 @@ const {
 
 const VALID_ZONES = Object.freeze(['WILDERNESS', 'CELLARS', 'ABYSS', 'GORILLA_ARENA']);
 const MAX_STANDARD_PLAYER_ACTORS = 1 + MAX_SELECTED_COMPANIONS;
-const MAX_PLAYER_TEAM_ACTORS = 6;
-const MAX_QUEST_BONUS_ALLIES = MAX_PLAYER_TEAM_ACTORS - MAX_STANDARD_PLAYER_ACTORS;
 const PARTY_FORMATION_OFFSETS = Object.freeze([
     { x: 1, y: 0 },
     { x: 0, y: 1 },
@@ -45,7 +40,7 @@ const PARTY_FORMATION_OFFSETS = Object.freeze([
     { x: -2, y: -1 }
 ].map(offset => Object.freeze(offset)));
 
-function getDeployedCompanions(player, options = {}) {
+function getDeployedCompanions(player) {
     const roster = player && player.roster && typeof player.roster === 'object' ? player.roster : {};
     const companions = Array.isArray(roster.companions) ? roster.companions : [];
     const companionsById = new Map();
@@ -56,17 +51,6 @@ function getDeployedCompanions(player, options = {}) {
         }
     });
 
-    const requiredIds = getRequiredCompanionIds(player);
-    const requiredIdSet = new Set(requiredIds);
-    const requestedRequiredLimit = Number(options.maxRequiredCompanions);
-    const maxRequiredCompanions = Number.isFinite(requestedRequiredLimit)
-        ? Math.max(0, Math.min(MAX_QUEST_BONUS_ALLIES, Math.trunc(requestedRequiredLimit)))
-        : MAX_QUEST_BONUS_ALLIES;
-    const requiredCompanions = requiredIds
-        .slice(0, maxRequiredCompanions)
-        .map(instanceId => companionsById.get(instanceId))
-        .filter(Boolean);
-
     const hasCanonicalActiveIds = Object.prototype.hasOwnProperty.call(roster, 'activeIds');
     const activeCandidates = hasCanonicalActiveIds
         ? (Array.isArray(roster.activeIds) ? roster.activeIds : [])
@@ -76,7 +60,6 @@ function getDeployedCompanions(player, options = {}) {
     activeCandidates.forEach(value => {
         const instanceId = sanitizeToken(value, '');
         if (!instanceId
-            || requiredIdSet.has(instanceId)
             || selectedIds.has(instanceId)
             || !companionsById.has(instanceId)
             || selectedCompanions.length >= MAX_SELECTED_COMPANIONS) return;
@@ -84,7 +67,7 @@ function getDeployedCompanions(player, options = {}) {
         selectedCompanions.push(companionsById.get(instanceId));
     });
 
-    return [...selectedCompanions, ...requiredCompanions];
+    return selectedCompanions;
 }
 
 function getCompanionFormationTiles(origin) {
@@ -94,10 +77,6 @@ function getCompanionFormationTiles(origin) {
     }));
 }
 
-function getRequiredCompanionCapacity(zone, runLvl) {
-    const reservedQuestAllies = zone === 'WILDERNESS' && runLvl === 20 ? 1 : 0;
-    return Math.max(0, MAX_QUEST_BONUS_ALLIES - reservedQuestAllies);
-}
 function addEnemyFromSlot(combatState, slot, prefix = "", statMult = 1) {
     const enemyId = slot.id;
     if (!enemyId) return;
@@ -158,9 +137,7 @@ function createCombatEncounter(player, data) {
     addCombatActor(combatState, createPlayerActor(player, template.playerStart));
 
     const companionFormationTiles = getCompanionFormationTiles(template.playerStart);
-    getDeployedCompanions(player, {
-        maxRequiredCompanions: getRequiredCompanionCapacity(zone, runLvl)
-    }).forEach(companion => {
+    getDeployedCompanions(player).forEach(companion => {
         const companionTile = findOpenTileNear(combatState, template.playerStart, companionFormationTiles);
         if (companionTile) addCombatActor(combatState, createCompanionActor(companion, companionTile));
     });
@@ -240,7 +217,5 @@ module.exports = {
     getDeployedCompanions,
     getCompanionFormationTiles,
     MAX_STANDARD_PLAYER_ACTORS,
-    MAX_PLAYER_TEAM_ACTORS,
-    MAX_QUEST_BONUS_ALLIES,
     VALID_ZONES
 };

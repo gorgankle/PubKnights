@@ -114,12 +114,12 @@
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-bold text-yellow-500">Pivot X: <span id="pivotXText">14</span></label>
-                        <input type="range" id="pivotX" min="0" max="24" step="1" value="14" class="w-full">
+                        <label class="block text-xs font-bold text-yellow-500">Pivot X: <span id="pivotXText">24</span></label>
+                        <input type="range" id="pivotX" min="0" max="32" step="1" value="24" class="w-full">
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-yellow-500">Pivot Y: <span id="pivotYText">14</span></label>
-                        <input type="range" id="pivotY" min="0" max="24" step="1" value="14" class="w-full">
+                        <label class="block text-xs font-bold text-yellow-500">Pivot Y: <span id="pivotYText">21</span></label>
+                        <input type="range" id="pivotY" min="0" max="32" step="1" value="21" class="w-full">
                     </div>
                 </div>
             </div>
@@ -192,10 +192,14 @@
 <!-- ========================================================== -->
 <!-- LOAD YOUR ACTUAL GAME ASSETS -->
 <!-- ========================================================== -->
-<script src="js/character-creator.js"></script>
+<script src="js/character-creator.js?v=5"></script>
 <script src="js/item-assets.js"></script>
 <script src="js/map-assets.js"></script>
 <script src="js/npc-assets.js"></script>
+<script src="js/sprite-overhaul.js?v=17"></script>
+<script src="js/sprite-overhaul-equipment.js?v=10"></script>
+<script src="js/sprite-overhaul-world.js?v=1"></script>
+<script src="js/sprite-overhaul-icons.js?v=1"></script>
 
 <script>
 // ==========================================================
@@ -727,8 +731,11 @@ function drawScene() {
     if (SpriteMatrices[selWeapon]) {
         ctx.save();
         
-        let handAnchorX = attackerX + (TILE_SIZE * 0.58);
-        let handAnchorY = attackerY + (TILE_SIZE * 0.5);
+        const weaponAnchor = typeof PLAYER_SPRITE_ANCHORS !== 'undefined'
+            ? PLAYER_SPRITE_ANCHORS.weaponHand
+            : { x: 0.58, y: 0.5 };
+        let handAnchorX = attackerX + (TILE_SIZE * weaponAnchor.x);
+        let handAnchorY = attackerY + (TILE_SIZE * weaponAnchor.y);
 
         ctx.translate(handAnchorX, handAnchorY);
 
@@ -739,8 +746,8 @@ function drawScene() {
 
         let pX = parseInt(pivotXSlider.value);
         let pY = parseInt(pivotYSlider.value);
-        let pivotOffsetX = (pX / 24) * TILE_SIZE;
-        let pivotOffsetY = (pY / 24) * TILE_SIZE;
+        let pivotOffsetX = (pX / 32) * TILE_SIZE;
+        let pivotOffsetY = (pY / 32) * TILE_SIZE;
 
         ctx.translate(-pivotOffsetX, -pivotOffsetY);
         drawProceduralSprite(ctx, SpriteMatrices[selWeapon], 0, 0, TILE_SIZE);

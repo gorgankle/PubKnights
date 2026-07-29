@@ -7,28 +7,9 @@ const COMPANION_UI_MAX_SELECTED = 3;
 const COMPANION_UI_MAX_ROSTER = 6;
 const COMPANION_UI_TRAINING_GOLD_PER_TARGET_LEVEL = 150;
 
-function getCompanionRequiredIds() {
-    if (typeof getClientRequiredCompanionIds === 'function') {
-        return new Set(getClientRequiredCompanionIds(player));
-    }
-
-    const requiredIds = [];
-    const sources = [
-        player && player.activeQuestSession,
-        player && player.quests && player.quests.active
-    ];
-    sources.forEach(source => {
-        if (!source || !Array.isArray(source.requiredCompanionIds)) return;
-        source.requiredCompanionIds.forEach(instanceId => {
-            if (instanceId && !requiredIds.includes(instanceId)) requiredIds.push(instanceId);
-        });
-    });
-    return new Set(requiredIds);
-}
-
-function getSelectedCompanionIds(activeIds, requiredIds = getCompanionRequiredIds()) {
+function getSelectedCompanionIds(activeIds) {
     const sourceIds = Array.isArray(activeIds) ? activeIds : [];
-    return [...new Set(sourceIds.filter(instanceId => instanceId && !requiredIds.has(instanceId)))];
+    return [...new Set(sourceIds.filter(Boolean))];
 }
 
 function isCompanionPocketEligible(item) {
@@ -78,9 +59,7 @@ function renderCompanionRosterUI(companions, activeIds) {
     const partyList = document.getElementById('party-roster-list');
     if (!partyList) return;
     partyList.innerHTML = '';
-    const requiredIds = getCompanionRequiredIds();
-    activeIds = getSelectedCompanionIds(activeIds, requiredIds);
-    const optionalCompanions = companions.filter(companion => !requiredIds.has(companion.instanceId));
+    activeIds = getSelectedCompanionIds(activeIds);
 
     const toolbar = document.createElement('div');
     toolbar.className = 'companion-roster-toolbar';
@@ -88,7 +67,7 @@ function renderCompanionRosterUI(companions, activeIds) {
     status.textContent = `Active ${activeIds.length}/${COMPANION_UI_MAX_SELECTED} • Roster ${companions.length}/${COMPANION_UI_MAX_ROSTER}`;
     const fillButton = makeCompanionButton('Fill Party', 'companion-activate-button', fillActiveCompanions);
     fillButton.disabled = activeIds.length >= COMPANION_UI_MAX_SELECTED
-        || !optionalCompanions.some(companion => !activeIds.includes(companion.instanceId));
+        || !companions.some(companion => !activeIds.includes(companion.instanceId));
     const benchAllButton = makeCompanionButton('Bench All', 'companion-bench-button', benchAllCompanions);
     benchAllButton.disabled = activeIds.length === 0;
     toolbar.append(status, fillButton, benchAllButton);
@@ -105,16 +84,15 @@ function renderCompanionRosterUI(companions, activeIds) {
 
     companions.forEach(companion => {
         const isActive = activeIds.includes(companion.instanceId);
-        const isRequired = requiredIds.has(companion.instanceId);
         const isSelected = window.selectedCompanionInstanceId === companion.instanceId;
         const row = document.createElement('div');
-        row.className = 'companion-roster-row' + (isActive || isRequired ? ' is-active' : '') + (isSelected ? ' is-selected' : '');
+        row.className = 'companion-roster-row' + (isActive ? ' is-active' : '') + (isSelected ? ' is-selected' : '');
 
         const summary = document.createElement('div');
         summary.className = 'companion-roster-summary';
         const name = document.createElement('div');
         name.className = 'companion-roster-name';
-        const partyLabel = isRequired ? 'Quest Ally' : (isActive ? 'Active' : 'Benched');
+        const partyLabel = isActive ? 'Active' : 'Benched';
         name.textContent = `${companion.name || 'Mercenary'} • Lv ${companion.level || 1} (${partyLabel})`;
         const stats = document.createElement('div');
         stats.className = 'companion-roster-stats';
@@ -127,12 +105,11 @@ function renderCompanionRosterUI(companions, activeIds) {
         if (isActive) {
             controls.appendChild(makeCompanionButton('Bench', 'companion-bench-button', () => benchCompanion(companion.instanceId)));
         } else {
-            const activate = makeCompanionButton(isRequired ? 'Quest Locked' : 'Activate', 'companion-activate-button', () => setActiveCompanion(companion.instanceId));
-            activate.disabled = isRequired || activeIds.length >= COMPANION_UI_MAX_SELECTED;
+            const activate = makeCompanionButton('Activate', 'companion-activate-button', () => setActiveCompanion(companion.instanceId));
+            activate.disabled = activeIds.length >= COMPANION_UI_MAX_SELECTED;
             controls.appendChild(activate);
         }
         const dismiss = makeCompanionButton('Dismiss', 'companion-danger-button', () => dismissCompanion(companion.instanceId, companion.name));
-        dismiss.disabled = isRequired;
         controls.appendChild(dismiss);
 
         row.append(summary, controls);

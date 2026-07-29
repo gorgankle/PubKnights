@@ -4,10 +4,14 @@
     <meta charset="UTF-8">
     <title>Pub Knights - Matrix Pixel Studio</title>
     
-    <script src="js/character-creator.js?v=2"></script>
+    <script src="js/character-creator.js?v=5"></script>
     <script src="js/item-assets.js?v=2"></script>
     <script src="js/map-assets.js?v=2"></script>
     <script src="js/npc-assets.js?v=2"></script>
+    <script src="js/sprite-overhaul.js?v=17"></script>
+    <script src="js/sprite-overhaul-equipment.js?v=10"></script>
+    <script src="js/sprite-overhaul-world.js?v=1"></script>
+    <script src="js/sprite-overhaul-icons.js?v=1"></script>
 
     <style>
         body {
@@ -112,7 +116,7 @@
             border: 2px solid #634e3d;
             border-radius: 4px;
             padding: 10px;
-            max-height: 250px;
+            max-height: 300px;
             overflow-y: auto;
         }
         .palette-section { margin-bottom: 10px; }
@@ -130,6 +134,7 @@
             gap: 4px;
         }
         .swatch {
+            position: relative;
             width: 28px;
             height: 28px;
             border: 2px solid #110d0a;
@@ -146,6 +151,48 @@
         .swatch.active {
             border-color: #2ecc71;
             box-shadow: 0 0 8px #2ecc71;
+        }
+        .swatch-key {
+            position: absolute;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: bold;
+            text-shadow:
+                -1px -1px 0 #000000,
+                1px -1px 0 #000000,
+                -1px 1px 0 #000000,
+                1px 1px 0 #000000;
+            pointer-events: none;
+        }
+        .shade-settings {
+            background: #1a1512;
+            border: 1px solid #4a3b2c;
+            padding: 10px;
+        }
+        .shade-select-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+        }
+        .shade-control {
+            min-width: 0;
+        }
+        .shade-control label {
+            display: block;
+            margin-bottom: 4px;
+            color: #bbaaa0;
+            font-size: 9px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .shade-control select {
+            width: 100%;
+            min-width: 0;
+            padding: 6px 4px;
+            font-size: 11px;
         }
 
         .checkerboard {
@@ -197,6 +244,35 @@
                 <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 5px;">
                     <label style="color: #bbaaa0; font-size: 11px; font-weight: bold;">COLOR PALETTE:</label>
                     <span id="active-color-name" style="color: #2ecc71; font-size: 10px; font-weight: bold;">[ . ] Eraser</span>
+                </div>
+                <div class="shade-settings">
+                    <div class="palette-header">CHARACTER SHADE PREVIEW</div>
+                    <div class="shade-select-grid">
+                        <div class="shade-control">
+                            <label for="studio-skin">Skin</label>
+                            <select id="studio-skin"></select>
+                        </div>
+                        <div class="shade-control">
+                            <label for="studio-hair">Hair</label>
+                            <select id="studio-hair"></select>
+                        </div>
+                        <div class="shade-control">
+                            <label for="studio-eyes">Eyes</label>
+                            <select id="studio-eyes"></select>
+                        </div>
+                        <div class="shade-control">
+                            <label for="studio-shirt">Tunic</label>
+                            <select id="studio-shirt"></select>
+                        </div>
+                        <div class="shade-control">
+                            <label for="studio-pants">Trousers</label>
+                            <select id="studio-pants"></select>
+                        </div>
+                        <div class="shade-control">
+                            <label for="studio-boots">Boots</label>
+                            <select id="studio-boots"></select>
+                        </div>
+                    </div>
                 </div>
                 <div class="palette-container" id="palette-grid">
                     <!-- Swatches injected via JS -->
@@ -269,6 +345,43 @@
         let isDrawing = false;
         let activeChar = '.';
         let currentTool = 'brush'; // 'brush', 'fill', 'eyedropper'
+        let studioDynamicPalette = {};
+
+        const studioAppearance = {
+            skin: 'tan',
+            hairColor: 'auburn',
+            eyes: 'eyes_green',
+            shirtColor: 'claret',
+            pantsColor: 'charcoal',
+            bootsColor: 'suede'
+        };
+        const CHARACTER_SHADER_LABELS = {
+            'X': 'Shared outline',
+            'F': 'Skin shadow',
+            'S': 'Skin base',
+            'Q': 'Skin highlight',
+            'M': 'Hair shadow',
+            'H': 'Hair base',
+            'T': 'Hair highlight',
+            'u': 'Tunic shadow',
+            'U': 'Tunic base',
+            'r': 'Tunic highlight',
+            'n': 'Trouser shadow',
+            'P': 'Trouser base',
+            'x': 'Trouser highlight',
+            'D': 'Boot base',
+            'g': 'Boot highlight',
+            'Z': 'Eye color'
+        };
+        const CHARACTER_SHADER_KEYS = Object.keys(CHARACTER_SHADER_LABELS);
+        const SHADE_CONTROL_CONFIG = [
+            { id: 'studio-skin', appearanceKey: 'skin', tones: SkinTones },
+            { id: 'studio-hair', appearanceKey: 'hairColor', tones: HairTones },
+            { id: 'studio-eyes', appearanceKey: 'eyes', tones: EyeTones, prefix: 'eyes_' },
+            { id: 'studio-shirt', appearanceKey: 'shirtColor', tones: ShirtTones },
+            { id: 'studio-pants', appearanceKey: 'pantsColor', tones: PantsTones },
+            { id: 'studio-boots', appearanceKey: 'bootsColor', tones: BootsTones }
+        ];
 
         bgSelect.addEventListener('change', drawGrid);
         canvasBgSelect.addEventListener('change', setCanvasBackground);
@@ -293,18 +406,59 @@
             else canvas.style.cursor = 'crosshair';
         }
 
+        function formatToneName(value) {
+            return String(value)
+                .replace(/_/g, ' ')
+                .replace(/\b\w/g, letter => letter.toUpperCase());
+        }
+
+        function refreshStudioDynamicPalette() {
+            studioDynamicPalette = typeof createProceduralDynamicPalette === 'function'
+                ? createProceduralDynamicPalette(studioAppearance)
+                : {};
+        }
+
+        function resolveStudioColor(char) {
+            return Object.prototype.hasOwnProperty.call(studioDynamicPalette, char)
+                ? studioDynamicPalette[char]
+                : PALETTE[char];
+        }
+
+        function populateShadeControls() {
+            SHADE_CONTROL_CONFIG.forEach(config => {
+                const select = document.getElementById(config.id);
+                const selectedTone = config.prefix
+                    ? String(studioAppearance[config.appearanceKey]).replace(config.prefix, '')
+                    : studioAppearance[config.appearanceKey];
+
+                Object.keys(config.tones).forEach(tone => {
+                    const option = document.createElement('option');
+                    option.value = tone;
+                    option.innerText = formatToneName(tone);
+                    option.selected = tone === selectedTone;
+                    select.appendChild(option);
+                });
+
+                select.addEventListener('change', () => {
+                    studioAppearance[config.appearanceKey] = config.prefix
+                        ? `${config.prefix}${select.value}`
+                        : select.value;
+                    initPalette();
+                    drawGrid();
+                });
+            });
+        }
+
         // --- NEW: PALETTE GRID GENERATOR ---
         function initPalette() {
             if (typeof PALETTE === 'undefined') return alert("CRITICAL ERROR: PALETTE object not found!");
 
+            refreshStudioDynamicPalette();
             const paletteGrid = document.getElementById('palette-grid');
             paletteGrid.innerHTML = ''; 
 
             const systemTools = ['.', '_'];
-            const dynamicColors = {
-                'S': 'Skin Tone', 'H': 'Hair Tone', 'Z': 'Eye Color',
-                'U': 'Shirt Color', 'P': 'Pants Color', 'D': 'Boots Color'
-            };
+            const dynamicColors = CHARACTER_SHADER_LABELS;
 
             const addSection = (title, chars) => {
                 let section = document.createElement('div');
@@ -312,14 +466,17 @@
                 
                 let header = document.createElement('div');
                 header.className = 'palette-header';
-                header.innerText = title;
+                const isCharacterShaderSection =
+                    chars.length === CHARACTER_SHADER_KEYS.length
+                    && CHARACTER_SHADER_KEYS.every(key => chars.includes(key));
+                header.innerText = isCharacterShaderSection ? 'CHARACTER SHADERS' : title;
                 section.appendChild(header);
 
                 let gridDiv = document.createElement('div');
                 gridDiv.className = 'swatch-grid';
 
                 chars.forEach(char => {
-                    let hex = PALETTE[char];
+                    let hex = resolveStudioColor(char);
                     let swatch = document.createElement('div');
                     swatch.className = 'swatch';
                     swatch.id = `swatch-${char}`;
@@ -327,10 +484,11 @@
                     let label = `[ ${char} ] `;
                     if (char === '.') label += "Eraser (Transparent)";
                     else if (char === '_') label += "Hair Clipping Mask";
-                    else if (dynamicColors[char]) label += `Dynamic: ${dynamicColors[char]}`;
+                    else if (dynamicColors[char]) label += `${dynamicColors[char]}: ${hex}`;
                     else label += hex;
                     
                     swatch.title = label; // Native HTML tooltip
+                    swatch.setAttribute('aria-label', label);
 
                     if (char === '.') swatch.classList.add('checkerboard');
                     else if (char === '_') {
@@ -340,7 +498,15 @@
                         swatch.style.backgroundColor = hex;
                     }
 
-                    if (char === activeChar) swatch.classList.add('active');
+                    const keyLabel = document.createElement('span');
+                    keyLabel.className = 'swatch-key';
+                    keyLabel.innerText = char;
+                    swatch.appendChild(keyLabel);
+
+                    if (char === activeChar) {
+                        swatch.classList.add('active');
+                        activeColorName.innerText = label;
+                    }
 
                     swatch.onclick = () => {
                         document.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
@@ -381,12 +547,7 @@
                         for (let x = 0; x < GRID_SIZE; x++) {
                             let char = matrix[y][x];
                             if (char && char !== '.') {
-                                let color = PALETTE[char] || '#ff00ff';
-                                if (char === 'S') color = '#f1c27d'; 
-                                if (char === 'P') color = '#2c3e50'; 
-                                if (char === 'U') color = '#2980b9'; 
-                                if (char === 'D') color = '#3e2723'; 
-                                if (char === 'Z') color = '#ffffff'; 
+                                let color = resolveStudioColor(char) || '#ff00ff';
                                 
                                 ctx.fillStyle = color;
                                 ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
@@ -418,7 +579,7 @@
                         ctx.lineTo((x + 1) * CELL_SIZE, (y + 1) * CELL_SIZE);
                         ctx.stroke();
                     } else {
-                        ctx.fillStyle = PALETTE[char] || '#ff00ff'; 
+                        ctx.fillStyle = resolveStudioColor(char) || '#ff00ff';
                         ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
                     }
                 }
@@ -548,6 +709,7 @@
 
         window.onload = () => {
             setCanvasBackground();
+            populateShadeControls();
             initPalette();
             populateInjector();
             drawGrid();

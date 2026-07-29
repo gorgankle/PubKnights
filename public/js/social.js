@@ -125,8 +125,11 @@ function renderSocialZone() {
         // Weapon with Pivot scaling
         if (p.equipment.weapon && p.equipment.weapon.spriteId) {
             ctx.save();
-            let wPivotX = drawX + (24 * 0.58);
-            let wPivotY = drawY + (24 * 0.5); 
+            const weaponAnchor = typeof PLAYER_SPRITE_ANCHORS !== 'undefined'
+                ? PLAYER_SPRITE_ANCHORS.weaponHand
+                : { x: 0.58, y: 0.5 };
+            let wPivotX = drawX + (24 * weaponAnchor.x);
+            let wPivotY = drawY + (24 * weaponAnchor.y);
             ctx.translate(wPivotX, wPivotY);
             let scaleMult = p.equipment.weapon.oversizeScale || 1.0;
             ctx.scale(scaleMult, scaleMult);

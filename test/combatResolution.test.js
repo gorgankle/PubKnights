@@ -115,7 +115,7 @@ const defeatSources = [
     { label: 'player', source: { uid: 'player_0', name: 'Knight', kind: 'player' }, cause: 'weapon' },
     { label: 'mercenary', source: { uid: 'ally_merc_1', name: 'Mira', kind: 'companion' }, cause: 'weapon' },
     { label: 'legacy pet', source: { uid: 'ally_pet', name: 'Biscuit', kind: 'pet' }, cause: 'attack' },
-    { label: 'quest NPC', source: { uid: 'ally_kreg', name: 'Kreg', kind: 'quest_npc' }, cause: 'attack' },
+    { label: 'allied NPC', source: { uid: 'ally_kreg', name: 'Kreg', kind: 'npc' }, cause: 'attack' },
     { label: 'poison', source: { uid: 'player_0', name: 'Knight', kind: 'player' }, cause: 'poison' }
 ];
 
@@ -213,7 +213,7 @@ test('pet retrieval happens after rogue theft resolves', t => {
     harness.combat.zone = 'CELLARS';
     harness.combat.activeLevel = 20;
     harness.combat.actors.push({
-        uid: 'rogue_1', kind: 'quest_npc', controller: 'ai_rogue', teamId: 'ROGUE',
+        uid: 'rogue_1', kind: 'npc', controller: 'ai_rogue', teamId: 'ROGUE',
         name: 'Cellar Dweller', hp: 10, maxHp: 10, alive: true, stealsBossLoot: true, x: 2, y: 2
     });
 

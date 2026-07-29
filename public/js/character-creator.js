@@ -10,11 +10,21 @@ const PALETTE = {
     'H': '#5c3a21',     // Hair Tone (Dynamic)
     'B': '#111111',     // Black / Bald
     'Z': '#ffffff',     // Eye Tone (Dynamic)
+    'X': '#171310',     // Shared Sprite Outline
+    'F': '#b87850',     // Skin Shadow (Dynamic)
+    'Q': '#ffd29d',     // Skin Highlight (Dynamic)
+    'M': '#382114',     // Hair Shadow (Dynamic)
+    'T': '#805234',     // Hair Highlight (Dynamic)
 
     // --- 2. DEFAULT CLOTHING ---
     'U': '#2980b9',     // Blue Tunic
     'P': '#2c3e50',     // Dark Pants / Midnight Blue
     'D': '#3e2723',     // Dark Leather Boots / Shadow
+    'u': '#174d66',     // Tunic Shadow (Dynamic)
+    'r': '#56a5c8',     // Tunic Highlight (Dynamic)
+    'n': '#18242c',     // Pants Shadow (Dynamic)
+    'x': '#4b6270',     // Pants Highlight (Dynamic)
+    'g': '#6c493a',     // Boot Highlight (Dynamic)
 
     // --- 3. MASTER MATERIALS & METALS ---
     'I': '#7f8c8d',     // Iron Plate Armor Gray
@@ -75,6 +85,11 @@ const PALETTE = {
     '&': '#9932cc',     // Dark Void Purple
     '%': '#ffd700',     // Holy Radiance
     '$': '#00ff00',     // Pure Emerald Glow
+
+    // --- 8. NATIVE 32x32 OVERHAUL MATERIALS ---
+    'z': '#315d7d',     // Denim Blue
+    '?': '#4f7f9f',     // Denim Highlight
+    ':': '#d8b45d',     // Straw / Dry Grass
 	
 	// === NEW: ENGINE CLIPPING MASK ===
     '_': 'ERASE'        // Magic Masking Pixel (Hides layers beneath it)
@@ -97,7 +112,11 @@ const ShirtTones = {
     'olive': '#6b8e23',    // Earthy ranger green
     'gold': '#f1c40f',     // Bright tavern yellow/gold
     'burgundy': '#722f37', // Deep, warm wine red
-    'teal': '#16a085'      // A nice muted cyan/teal
+    'teal': '#16a085',     // A nice muted cyan/teal
+    'ale': '#c98b2e',      // Warm tavern amber
+    'moss': '#3f6b46',     // Muted woodland cloth
+    'claret': '#8f3442',   // Brighter wine-red cloth
+    'pewter': '#556168'    // Cool neutral work cloth
 };
 
 const PantsTones = { 
@@ -105,8 +124,10 @@ const PantsTones = {
     // --- NEW ---
     'olive': '#556b2f',    // Matches well with woodland themes
     'khaki': '#c3b091',    // Lighter than tan, good for merchants
-    'charcoal': '#111111', // True black/dark grey
-    'maroon': '#641e16'    // Deep reddish-brown
+    'charcoal': '#24272b', // Near-black charcoal that preserves the sprite silhouette
+    'maroon': '#641e16',   // Deep reddish-brown
+    'umber': '#4a342b',    // Warm work-trouser brown
+    'navy': '#1f3342'      // Cool deep blue
 };
 const BootsTones = { 
     'leather': '#3e2723', 'black': '#111111', 'grey': '#95a5a6',
@@ -114,7 +135,8 @@ const BootsTones = {
     'suede': '#8b5a2b',    // Lighter, warm brown leather
     'iron': '#7f8c8d',     // Matches the plate armor grey perfectly
     'burgundy': '#641e16', // Dyed noble leather
-    'olive': '#556b2f'     // Muted woodland trapper boots
+    'olive': '#556b2f',    // Muted woodland trapper boots
+    'oxblood': '#552a2a'   // Deep red-brown polished leather
 };
 
 const HairTones = {
@@ -125,7 +147,9 @@ const HairTones = {
     'silver': '#bdc3c7',  // Veteran knight grey/silver
     'pink': '#ffb6c1',    // Classic JRPG fantasy trope
     'teal': '#1abc9c',    // Bright, magical blue-green
-    'green': '#27ae60'    // Woodland ranger green
+    'green': '#27ae60',   // Woodland ranger green
+    'straw': '#d8b45d',   // Weathered golden blonde
+    'raven': '#201b22'    // Soft blue-black
 };
 
 
@@ -143,19 +167,62 @@ const appearanceOptions = {
         'hair_messy', 'hair_spiky', 'hair_long', 'hair_bob', 
         'hair_braid', 'hair_buzzcut', 'hair_mohawk', 'hair_ponytail', 
         'hair_undercut', 'hair_topknot', 'hair_curly', 'hair_twintails', 
+        'hair_waves', 'hair_halfup', 'hair_slickback', 'hair_locs',
         'hair_bald'
     ],
     
     // Added: auburn, silver, pink, teal, green
-    hairColor: ['brown', 'blonde', 'black', 'white', 'orange', 'red', 'blue', 'purple', 'auburn', 'silver', 'pink', 'teal', 'green'],
+    hairColor: ['brown', 'blonde', 'black', 'white', 'orange', 'red', 'blue', 'purple', 'auburn', 'silver', 'pink', 'teal', 'green', 'straw', 'raven'],
     
     eyes: ['eyes_blue', 'eyes_green', 'eyes_brown', 'eyes_red', 'eyes_purple', 'eyes_gold', 'eyes_grey', 'eyes_black', 'eyes_white'],
-    shirtColor: ['blue', 'red', 'green', 'black', 'white', 'purple', 'brown', 'navy', 'olive', 'gold', 'burgundy', 'teal'],
-    pantsColor: ['dark', 'brown', 'grey', 'tan', 'blue', 'olive', 'khaki', 'charcoal', 'maroon'],
+    shirtColor: ['blue', 'red', 'green', 'black', 'white', 'purple', 'brown', 'navy', 'olive', 'gold', 'burgundy', 'teal', 'ale', 'moss', 'claret', 'pewter'],
+    pantsColor: ['dark', 'brown', 'grey', 'tan', 'blue', 'olive', 'khaki', 'charcoal', 'maroon', 'umber', 'navy'],
     
     // Added: suede, iron, burgundy, olive
-    bootsColor: ['leather', 'black', 'grey', 'suede', 'iron', 'burgundy', 'olive']
+    bootsColor: ['leather', 'black', 'grey', 'suede', 'iron', 'burgundy', 'olive', 'oxblood']
 };
+
+function shiftProceduralColor(hex, amount) {
+    const normalized = String(hex || '').replace('#', '');
+    if (!/^[0-9a-f]{6}$/i.test(normalized)) return hex;
+
+    const channels = [0, 2, 4].map(offset => {
+        const value = parseInt(normalized.slice(offset, offset + 2), 16);
+        return Math.max(0, Math.min(255, value + amount))
+            .toString(16)
+            .padStart(2, '0');
+    });
+
+    return `#${channels.join('')}`;
+}
+
+function createProceduralDynamicPalette(appearance = {}) {
+    const skin = SkinTones[appearance.skin] || SkinTones.light;
+    const hair = HairTones[appearance.hairColor] || HairTones.brown;
+    const shirt = ShirtTones[appearance.shirtColor] || ShirtTones.blue;
+    const pants = PantsTones[appearance.pantsColor] || PantsTones.dark;
+    const boots = BootsTones[appearance.bootsColor] || BootsTones.leather;
+    const eyeKey = String(appearance.eyes || 'eyes_blue').replace('eyes_', '');
+    const eyes = EyeTones[eyeKey] || EyeTones.blue;
+
+    return {
+        S: skin,
+        F: shiftProceduralColor(skin, -34),
+        Q: shiftProceduralColor(skin, 28),
+        H: hair,
+        M: shiftProceduralColor(hair, -38),
+        T: shiftProceduralColor(hair, 34),
+        U: shirt,
+        u: shiftProceduralColor(shirt, -38),
+        r: shiftProceduralColor(shirt, 30),
+        P: pants,
+        n: shiftProceduralColor(pants, -30),
+        x: shiftProceduralColor(pants, 26),
+        D: boots,
+        g: shiftProceduralColor(boots, 34),
+        Z: eyes
+    };
+}
 
 // Existing coded art is authored on the legacy 24x24 grid. Keep those source
 // strings readable while exposing one 32x32 matrix contract everywhere else.
@@ -402,7 +469,7 @@ const SpriteMatrices = {
         "....H........HH.........",
         "....H........HH.........",
         ".....H......HH..........",
-        "...,......HH............",
+        "..........HH............",
         "..........HH............",
         "..........HHH..........."
     ]),
@@ -424,6 +491,10 @@ function drawProceduralSprite(context, matrix, startX, startY, size) {
     
     const gridCount = PROCEDURAL_SPRITE_GRID_SIZE;
     const pixelSize = size / gridCount;
+    const appearance = typeof player !== 'undefined' && player.appearance
+        ? player.appearance
+        : {};
+    const dynamicPalette = createProceduralDynamicPalette(appearance);
 
     for (let row = 0; row < matrix.length; row++) {
         if (row >= gridCount) break;
@@ -431,19 +502,9 @@ function drawProceduralSprite(context, matrix, startX, startY, size) {
             if (col >= gridCount) break;
             
             const colorKey = matrix[row][col];
-            let color = PALETTE[colorKey];
-            
-            if (colorKey === 'S') color = SkinTones[player.appearance.skin];
-            if (colorKey === 'H') color = HairTones[player.appearance.hairColor || 'brown'];
-            if (colorKey === 'U') color = ShirtTones[player.appearance.shirtColor || 'blue'];
-            if (colorKey === 'P') color = PantsTones[player.appearance.pantsColor || 'dark'];
-            if (colorKey === 'D') color = BootsTones[player.appearance.bootsColor || 'leather'];
-            
-            // --- DYNAMIC EYE RENDERER ---
-            if (colorKey === 'Z') {
-                let eyeColor = player.appearance.eyes ? player.appearance.eyes.replace('eyes_', '') : 'blue';
-                color = EyeTones[eyeColor] || EyeTones['blue'];
-            }
+            const color = Object.prototype.hasOwnProperty.call(dynamicPalette, colorKey)
+                ? dynamicPalette[colorKey]
+                : PALETTE[colorKey];
 
 if (color && color !== 'transparent') {
                 // === NEW: MAGIC ERASER MASK LOGIC ===
@@ -542,6 +603,8 @@ if (typeof module !== 'undefined' && module.exports) {
         getAuthoredSpriteSize,
         normalizeSpriteMatrix,
         buildSprite,
+        shiftProceduralColor,
+        createProceduralDynamicPalette,
         drawProceduralSprite
     };
 }

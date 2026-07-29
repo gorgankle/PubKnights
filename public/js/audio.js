@@ -119,7 +119,7 @@ const musicTracks = [
         }
     },
     {
-        name: "Midnight Quest",
+        name: "Midnight Journey",
         tempo: 75,
         arrangement: ["A", "A", "B", "A"], 
         phrases: {

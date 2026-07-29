@@ -7,31 +7,11 @@ const COMPANION_EQUIPMENT_SLOTS = Object.freeze(['weapon', 'helmet', 'armor', 'g
 const COMPANION_POCKET_COUNT = 2;
 const MAX_ROSTER_COMPANIONS = 6;
 const MAX_SELECTED_COMPANIONS = 3;
-// Kept as a compatibility alias for older callers. "Selected" is the clearer
-// term now that quest-required companions can be deployed as bonus allies.
 const MAX_ACTIVE_COMPANIONS = MAX_SELECTED_COMPANIONS;
 const MAX_COMPANION_LEVEL = 50;
 
 function createCompanionInstanceId() {
     return `merc_${crypto.randomBytes(12).toString('hex')}`;
-}
-
-function getRequiredCompanionIds(player) {
-    const sources = [
-        player && player.activeQuestSession,
-        player && player.quests && player.quests.active
-    ];
-    const requiredIds = [];
-
-    sources.forEach(source => {
-        if (!source || !Array.isArray(source.requiredCompanionIds)) return;
-        source.requiredCompanionIds.forEach(value => {
-            const instanceId = sanitizeToken(value, '');
-            if (instanceId && !requiredIds.includes(instanceId)) requiredIds.push(instanceId);
-        });
-    });
-
-    return requiredIds;
 }
 
 function makePolicy(allowed, message = '') {
@@ -64,19 +44,13 @@ function canActivateCompanion(player, value, options = {}) {
     if (!companion || companion.hired === false) {
         return makePolicy(false, 'That mercenary is not on your roster.');
     }
-    if (getRequiredCompanionIds(player).includes(companion.instanceId)) {
-        return makePolicy(false, `${companion.name} is locked to the active quest and does not use a selected party slot.`);
-    }
-
     const activeIds = player && player.roster && Array.isArray(player.roster.activeIds)
         ? player.roster.activeIds
         : [];
-    const requiredIds = new Set(getRequiredCompanionIds(player));
-    const selectedIds = [...new Set(activeIds.filter(instanceId => !requiredIds.has(instanceId)))];
     if (activeIds.includes(companion.instanceId)) {
         return makePolicy(false, `${companion.name} is already in the active party.`);
     }
-    if (selectedIds.length >= MAX_SELECTED_COMPANIONS) {
+    if (new Set(activeIds).size >= MAX_SELECTED_COMPANIONS) {
         return makePolicy(false, `The active party is full (${MAX_SELECTED_COMPANIONS}/${MAX_SELECTED_COMPANIONS} mercenaries).`);
     }
     return makePolicy(true);
@@ -88,10 +62,6 @@ function canBenchCompanion(player, value, options = {}) {
 
     const companion = findCompanionByInstanceId(player, value);
     if (!companion) return makePolicy(false, 'That mercenary is not on your roster.');
-    if (getRequiredCompanionIds(player).includes(companion.instanceId)) {
-        return makePolicy(false, `${companion.name} is required by the active quest and cannot be benched.`);
-    }
-
     const activeIds = player && player.roster && Array.isArray(player.roster.activeIds)
         ? player.roster.activeIds
         : [];
@@ -107,9 +77,6 @@ function canDismissCompanion(player, value, options = {}) {
 
     const companion = findCompanionByInstanceId(player, value);
     if (!companion) return makePolicy(false, 'That mercenary is not on your roster.');
-    if (getRequiredCompanionIds(player).includes(companion.instanceId)) {
-        return makePolicy(false, `${companion.name} is required by the active quest and cannot be dismissed.`);
-    }
     return makePolicy(true);
 }
 
@@ -189,15 +156,11 @@ function normalizeRosterState(player, options = {}) {
         .filter(Boolean);
 
     const validInstanceIds = new Set(normalizedCompanions.map(companion => companion.instanceId));
-    const requiredInstanceIds = new Set(getRequiredCompanionIds(player).map(requiredId => (
-        validInstanceIds.has(requiredId) ? requiredId : legacyIdMap.get(requiredId)
-    )).filter(Boolean));
     const activeIds = [];
     const activeCandidates = hasCanonicalActiveIds ? requestedActiveIds : flaggedActiveIds;
     activeCandidates.forEach(requestedId => {
         const instanceId = validInstanceIds.has(requestedId) ? requestedId : legacyIdMap.get(requestedId);
         if (instanceId
-            && !requiredInstanceIds.has(instanceId)
             && !activeIds.includes(instanceId)
             && activeIds.length < maxActive) activeIds.push(instanceId);
     });
@@ -224,7 +187,6 @@ module.exports = {
     createCompanionInstanceId,
     normalizeRosterState,
     findCompanionByInstanceId,
-    getRequiredCompanionIds,
     canHireCompanion,
     canActivateCompanion,
     canBenchCompanion,

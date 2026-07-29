@@ -7,7 +7,6 @@ const {
     MAX_ROSTER_COMPANIONS,
     MAX_SELECTED_COMPANIONS,
     normalizeRosterState,
-    getRequiredCompanionIds,
     canHireCompanion,
     canActivateCompanion,
     canBenchCompanion,
@@ -152,45 +151,6 @@ test('normalization preserves an explicitly empty bench and caps selected mercen
     assert.deepEqual(player.roster.activeIds, ['merc_0', 'merc_1', 'merc_2']);
 });
 
-test('quest-required allies are removed before applying the three selected-slot cap', () => {
-    const player = makePlayer();
-    player.roster = {
-        companions: [
-            makeCompanion('merc_required'),
-            makeCompanion('merc_1'),
-            makeCompanion('merc_2'),
-            makeCompanion('merc_3')
-        ],
-        activeIds: ['merc_required', 'merc_1', 'merc_2', 'merc_3']
-    };
-    player.activeQuestSession = { requiredCompanionIds: ['merc_required'] };
-
-    normalizeRosterState(player);
-
-    assert.deepEqual(player.roster.activeIds, ['merc_1', 'merc_2', 'merc_3']);
-    assert.equal(player.roster.companions[0].active, false);
-    assert.deepEqual(player.inventory, []);
-});
-
-test('activation policy counts only optional selected mercenaries in stale roster data', () => {
-    const player = makePlayer();
-    player.roster = {
-        companions: [
-            makeCompanion('merc_required'),
-            makeCompanion('merc_1'),
-            makeCompanion('merc_2'),
-            makeCompanion('merc_3'),
-            makeCompanion('merc_4')
-        ],
-        activeIds: ['merc_required', 'merc_1', 'merc_2']
-    };
-    player.activeQuestSession = { requiredCompanionIds: ['merc_required'] };
-
-    assert.equal(canActivateCompanion(player, 'merc_3').allowed, true);
-    player.roster.activeIds.push('merc_3');
-    assert.equal(canActivateCompanion(player, 'merc_4').allowed, false);
-});
-
 test('companion xp and exactly two pockets survive normalization without losing overflow items', () => {
     const player = makePlayer();
     player.roster.companions = [{
@@ -209,18 +169,14 @@ test('companion xp and exactly two pockets survive normalization without losing 
     assert.deepEqual(player.inventory.map(item => item.id), ['spare_boots']);
 });
 
-test('roster policies enforce capacity, combat locks, and quest-required locks', () => {
+test('roster policies enforce capacity and combat locks', () => {
     const player = makePlayer();
     player.roster.companions = Array.from({ length: MAX_ROSTER_COMPANIONS }, (_, index) => (
         makeCompanion(`merc_${index}`)
     ));
     player.roster.activeIds = ['merc_0', 'merc_1', 'merc_2'];
-    player.activeQuestSession = {
-        requiredCompanionIds: ['merc_3', 'merc_3', 'not valid!']
-    };
     normalizeRosterState(player);
 
-    assert.deepEqual(getRequiredCompanionIds(player), ['merc_3']);
     assert.equal(canHireCompanion(player).allowed, false);
     assert.match(canHireCompanion(player).message, /full/i);
     assert.equal(canHireCompanion(makePlayer(), { inCombat: true }).allowed, false);
@@ -228,12 +184,10 @@ test('roster policies enforce capacity, combat locks, and quest-required locks',
 
     assert.equal(canActivateCompanion(player, 'merc_4').allowed, false);
     assert.match(canActivateCompanion(player, 'merc_4').message, /active party is full/i);
-    assert.equal(canActivateCompanion(player, 'merc_3').allowed, false);
-    assert.match(canActivateCompanion(player, 'merc_3').message, /active quest/i);
+    assert.equal(canBenchCompanion(player, 'merc_0').allowed, true);
     assert.equal(canBenchCompanion(player, 'merc_3').allowed, false);
-    assert.match(canBenchCompanion(player, 'merc_3').message, /cannot be benched/i);
-    assert.equal(canDismissCompanion(player, 'merc_3').allowed, false);
-    assert.match(canDismissCompanion(player, 'merc_3').message, /cannot be dismissed/i);
+    assert.match(canBenchCompanion(player, 'merc_3').message, /already benched/i);
+    assert.equal(canDismissCompanion(player, 'merc_3').allowed, true);
     assert.equal(canDismissCompanion(player, 'merc_4', { activeCombat: true }).allowed, false);
 });
 

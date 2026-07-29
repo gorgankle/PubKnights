@@ -477,8 +477,11 @@ mapObstacles.forEach(o => {
         ctx.save();
 
         // 1. Establish the hand's pivot point (Standard Left Hand / Viewer's Right)
-		let wPivotX = pX + (currentTileSize * 0.58);
-        let wPivotY = pY + (currentTileSize * 0.5);
+        const weaponAnchor = typeof PLAYER_SPRITE_ANCHORS !== 'undefined'
+            ? PLAYER_SPRITE_ANCHORS.weaponHand
+            : { x: 0.58, y: 0.5 };
+		let wPivotX = pX + (currentTileSize * weaponAnchor.x);
+        let wPivotY = pY + (currentTileSize * weaponAnchor.y);
 
         // 2. Move the canvas origin to the hand
         ctx.translate(wPivotX, wPivotY);
