@@ -93,6 +93,12 @@ const FXEngine = {
                 }
             }, i * speed); 
         }
+
+        const travelTime = particleCount * speed;
+        if (typeof config.onComplete === 'function') {
+            setTimeout(config.onComplete, travelTime);
+        }
+        return travelTime;
     },
     // ==============================================================
 
@@ -149,6 +155,17 @@ const FXEngine = {
             life: 0,
             maxLife: config.frames || 15, // 15 frames = snappy, visceral strike
             onComplete: config.onComplete || null
+        });
+    },
+
+    spawnMeleeImpact: function(targetX, targetY, clipId, config = {}) {
+        this.queue.push({
+            type: 'MELEE_IMPACT',
+            x: targetX,
+            y: targetY,
+            clipId: clipId === 'bash' ? 'bash' : 'slash',
+            life: 0,
+            maxLife: config.frames || 10
         });
     },
 
@@ -224,6 +241,33 @@ const FXEngine = {
                 
                 ctx.beginPath(); ctx.arc(cx, cy, currentRadius * 0.4, 0, Math.PI * 2);
                 ctx.fillStyle = fx.colors[2]; ctx.fill();
+            }
+            else if (fx.type === 'MELEE_IMPACT') {
+                const cx = (fx.x * tileSize) + (tileSize / 2);
+                const cy = (fx.y * tileSize) + (tileSize / 2);
+                const impactWave = Math.sin(progress * Math.PI);
+
+                ctx.globalAlpha = globalAlpha;
+                ctx.translate(cx, cy);
+                if (fx.clipId === 'bash') {
+                    ctx.strokeStyle = "#f39c12";
+                    ctx.lineWidth = Math.max(2, tileSize * 0.08);
+                    ctx.beginPath();
+                    ctx.arc(0, 0, tileSize * (0.16 + impactWave * 0.34), 0, Math.PI * 2);
+                    ctx.stroke();
+                } else {
+                    ctx.strokeStyle = "#ffffff";
+                    ctx.lineWidth = Math.max(2, tileSize * 0.07);
+                    ctx.beginPath();
+                    ctx.arc(
+                        0,
+                        0,
+                        tileSize * (0.25 + impactWave * 0.28),
+                        -Math.PI * 0.7,
+                        Math.PI * 0.18
+                    );
+                    ctx.stroke();
+                }
             }
             else if (fx.type === 'MELEE') {
                 let p = fx.attacker;

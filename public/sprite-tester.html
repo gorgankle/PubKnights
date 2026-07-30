@@ -70,6 +70,203 @@
         select.asset-listbox:focus { outline: none; border-color: #f1c40f; }
 
         .section-title { color: #bbaaa0; font-size: 14px; text-transform: uppercase; margin: 0 0 15px 0; border-bottom: 1px dashed #634e3d; padding-bottom: 5px; text-align: left; }
+
+        .side-study {
+            max-width: 900px;
+            margin: 0 auto 20px;
+        }
+
+        .side-study-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 230px;
+            gap: 22px;
+            align-items: start;
+        }
+
+        .side-study-stages {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .side-study-stage {
+            min-width: 0;
+        }
+
+        .side-study-canvas-wrap {
+            display: grid;
+            place-items: center;
+            aspect-ratio: 1;
+            border: 1px solid #634e3d;
+            border-radius: 4px;
+            background: #1a1512;
+        }
+
+        .side-study-canvas {
+            display: block;
+            width: min(100%, 224px);
+            height: auto;
+            aspect-ratio: 1;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
+        .side-study-stage-label {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-top: 8px;
+            color: #f4ebd9;
+            font-size: 12px;
+            text-align: left;
+        }
+
+        .side-study-stage-label span:last-child {
+            color: #39b8ba;
+        }
+
+        .side-study-controls {
+            display: grid;
+            gap: 16px;
+            text-align: left;
+        }
+
+        .study-control-label {
+            display: block;
+            margin-bottom: 7px;
+            color: #bbaaa0;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+
+        .study-segment {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 4px;
+        }
+
+        .study-segment.clips {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .study-segment button {
+            min-width: 0;
+            min-height: 36px;
+            padding: 7px 4px;
+            border-color: #634e3d;
+            background: #1a1512;
+        }
+
+        .study-segment button[aria-pressed="true"] {
+            border-color: #ffcc66;
+            background: #8b5a2b;
+        }
+
+        .study-toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            min-height: 36px;
+        }
+
+        .study-checkbox {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #f4ebd9;
+            font-size: 12px;
+        }
+
+        .study-checkbox input {
+            width: 17px;
+            height: 17px;
+            accent-color: #d5a13f;
+        }
+
+        .study-speed {
+            width: 100%;
+            accent-color: #d5a13f;
+        }
+
+        .study-select {
+            width: 100%;
+            min-height: 36px;
+            border: 1px solid #634e3d;
+            border-radius: 3px;
+            background: #1a1512;
+            color: #f4ebd9;
+            padding: 7px 9px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .study-select:focus {
+            outline: none;
+            border-color: #ffcc66;
+        }
+
+        .side-motion-sheet {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        .side-frame {
+            display: grid;
+            grid-template-rows: auto 22px;
+            place-items: center;
+            min-width: 0;
+            padding: 7px;
+            border: 1px solid #4a3c31;
+            border-radius: 4px;
+            background: #1a1512;
+        }
+
+        .side-frame[aria-current="true"] {
+            border-color: #ffcc66;
+        }
+
+        .side-frame canvas {
+            display: block;
+            width: min(100%, 96px);
+            height: auto;
+            aspect-ratio: 1;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
+        .side-frame span {
+            align-self: end;
+            color: #bbaaa0;
+            font-size: 10px;
+        }
+
+        @media (max-width: 760px) {
+            body {
+                padding: 22px 14px;
+            }
+
+            .side-study-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .side-study-controls {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 520px) {
+            .side-study-stages,
+            .side-study-controls {
+                grid-template-columns: 1fr;
+            }
+
+            .side-motion-sheet {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
     </style>
 </head>
 <body>
@@ -81,6 +278,101 @@
         <canvas id="menuCharacterCanvas" style="display:none;"></canvas>
         <canvas id="tester-canvas" width="32" height="32"></canvas>
     </div>
+
+    <section class="panel side-study" aria-labelledby="side-study-title">
+        <h2 class="section-title" id="side-study-title" style="color: #ffcc66;">Side Animation Study</h2>
+        <div class="side-study-layout">
+            <div class="side-study-stages">
+                <div class="side-study-stage">
+                    <div class="side-study-canvas-wrap">
+                        <canvas
+                            class="side-study-canvas"
+                            id="side-study-male"
+                            width="32"
+                            height="32"
+                            aria-label="Male side-facing animation study"
+                        ></canvas>
+                    </div>
+                    <div class="side-study-stage-label">
+                        <strong>Male</strong>
+                        <span id="side-study-male-frame">Frame 1/4</span>
+                    </div>
+                </div>
+                <div class="side-study-stage">
+                    <div class="side-study-canvas-wrap">
+                        <canvas
+                            class="side-study-canvas"
+                            id="side-study-female"
+                            width="32"
+                            height="32"
+                            aria-label="Female side-facing animation study"
+                        ></canvas>
+                    </div>
+                    <div class="side-study-stage-label">
+                        <strong>Female</strong>
+                        <span id="side-study-female-frame">Frame 1/4</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="side-study-controls">
+                <div>
+                    <label class="study-control-label" for="side-study-hair">Hair Style</label>
+                    <select class="study-select" id="side-study-hair"></select>
+                </div>
+
+                <div>
+                    <span class="study-control-label">Motion</span>
+                    <div class="study-segment clips" id="side-study-clips">
+                        <button type="button" data-side-clip="idle">Idle</button>
+                        <button type="button" data-side-clip="walk">Walk</button>
+                        <button type="button" data-side-clip="slash">Sword</button>
+                        <button type="button" data-side-clip="bash">Mace</button>
+                        <button type="button" data-side-clip="shoot">Bow</button>
+                        <button type="button" data-side-clip="cast">Cast</button>
+                    </div>
+                </div>
+
+                <div>
+                    <span class="study-control-label">Facing</span>
+                    <div class="study-segment" id="side-study-facing">
+                        <button type="button" data-side-facing="right">Right</button>
+                        <button type="button" data-side-facing="left">Left</button>
+                    </div>
+                </div>
+
+                <div>
+                    <span class="study-control-label">Motion Sheet</span>
+                    <div class="study-segment" id="side-study-sheet-gender">
+                        <button type="button" data-side-gender="male">Male</button>
+                        <button type="button" data-side-gender="female">Female</button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="study-control-label" for="side-study-speed">Playback Speed</label>
+                    <input
+                        class="study-speed"
+                        id="side-study-speed"
+                        type="range"
+                        min="0.5"
+                        max="1.75"
+                        step="0.25"
+                        value="1"
+                    >
+                </div>
+
+                <div class="study-toggle-row">
+                    <label class="study-checkbox">
+                        <input id="side-study-anchors" type="checkbox">
+                        Anchors
+                    </label>
+                    <button type="button" id="side-study-playback">Pause</button>
+                </div>
+            </div>
+        </div>
+        <div class="side-motion-sheet" id="side-motion-sheet"></div>
+    </section>
 
     <div class="panel" style="max-width: 900px; margin: 0 auto 20px auto;">
         <div class="section-title" style="color: #f1c40f;">🧍 Box 1: Character & Equipment</div>
@@ -146,24 +438,236 @@
         };
     </script>
 
-    <script src="js/character-creator.js?v=5"></script>
+    <script src="js/character-creator.js?v=6"></script>
     <script src="js/items.js"></script>
     <script src="js/item-assets.js?v=2"></script>
     <script src="js/icon-assets.js?v=2"></script>
     <script src="js/npc-assets.js?v=2"></script>
     <script src="js/map-assets.js?v=2"></script>
     <script src="js/sprite-overhaul.js?v=17"></script>
-    <script src="js/sprite-overhaul-equipment.js?v=10"></script>
+    <script src="js/sprite-overhaul-animation.js?v=26"></script>
+    <script src="js/sprite-overhaul-equipment.js?v=38"></script>
     <script src="js/sprite-overhaul-world.js?v=1"></script>
-    <script src="js/sprite-overhaul-icons.js?v=1"></script>
+    <script src="js/sprite-overhaul-icons.js?v=2"></script>
 
    <script>
         const TESTER_GRID_SIZE = typeof PROCEDURAL_SPRITE_GRID_SIZE === 'number'
             ? PROCEDURAL_SPRITE_GRID_SIZE
             : 32;
+        const TESTER_PREVIEW_SIZE = TESTER_GRID_SIZE * 8;
+        const SIDE_STUDY_PREVIEW_SIZE = SIDE_PLAYER_ANIMATION_SIZE * 7;
+        const SIDE_MOTION_PREVIEW_SIZE = SIDE_PLAYER_ANIMATION_SIZE * 3;
         const testerCanvas = document.getElementById('tester-canvas');
-        testerCanvas.width = TESTER_GRID_SIZE;
-        testerCanvas.height = TESTER_GRID_SIZE;
+        testerCanvas.width = TESTER_PREVIEW_SIZE;
+        testerCanvas.height = TESTER_PREVIEW_SIZE;
+
+        const sideStudyState = {
+            clipId: 'walk',
+            facing: 'right',
+            sheetGender: 'male',
+            frameIndex: 0,
+            playing: true,
+            speed: 1,
+            showAnchors: false,
+            lastTimestamp: 0,
+            frameAccumulator: 0
+        };
+        const sideStudyCanvases = {
+            male: document.getElementById('side-study-male'),
+            female: document.getElementById('side-study-female')
+        };
+        Object.values(sideStudyCanvases).forEach(canvas => {
+            canvas.width = SIDE_STUDY_PREVIEW_SIZE;
+            canvas.height = SIDE_STUDY_PREVIEW_SIZE;
+        });
+        const sideMotionSheet = document.getElementById('side-motion-sheet');
+        let sideMotionFrames = [];
+
+        function setSideStudyPlaying(playing) {
+            sideStudyState.playing = playing;
+            sideStudyState.frameAccumulator = 0;
+            document.getElementById('side-study-playback').textContent = playing
+                ? 'Pause'
+                : 'Play';
+        }
+
+        function buildSideMotionSheet() {
+            const clip = SidePlayerAnimationClips[sideStudyState.clipId];
+            sideMotionSheet.replaceChildren();
+            sideMotionFrames = clip.frames.map((poseId, frameIndex) => {
+                const button = document.createElement('button');
+                const canvas = document.createElement('canvas');
+                const label = document.createElement('span');
+
+                button.type = 'button';
+                button.className = 'side-frame';
+                button.dataset.frameIndex = String(frameIndex);
+                button.setAttribute('aria-label', `${clip.label} frame ${frameIndex + 1}`);
+                canvas.width = SIDE_MOTION_PREVIEW_SIZE;
+                canvas.height = SIDE_MOTION_PREVIEW_SIZE;
+                label.textContent = `${frameIndex + 1}. ${poseId.replace(`${sideStudyState.clipId}_`, '')}`;
+                button.append(canvas, label);
+                button.addEventListener('click', () => {
+                    sideStudyState.frameIndex = frameIndex;
+                    setSideStudyPlaying(false);
+                    renderSideStudy();
+                });
+                sideMotionSheet.appendChild(button);
+
+                return { button, canvas };
+            });
+        }
+
+        function drawSideStudyCanvas(canvas, gender, frameIndex) {
+            const context = canvas.getContext('2d', { alpha: true });
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            drawSidePlayerAnimationFrame(
+                context,
+                gender,
+                sideStudyState.clipId,
+                frameIndex,
+                canvas.width,
+                {
+                    facing: sideStudyState.facing,
+                    showAnchors: sideStudyState.showAnchors,
+                    hairStyle: player.appearance.hair,
+                    helmetItem: player.equipment.helmet || null,
+                    armorItem: player.equipment.armor || null,
+                    gloveItem: player.equipment.gloves || null,
+                    bootItem: player.equipment.boots || null,
+                    weaponItem: player.equipment.weapon || null
+                }
+            );
+        }
+
+        function renderSideStudy() {
+            const clip = SidePlayerAnimationClips[sideStudyState.clipId];
+            sideStudyState.frameIndex %= clip.frames.length;
+
+            drawSideStudyCanvas(
+                sideStudyCanvases.male,
+                'male',
+                sideStudyState.frameIndex
+            );
+            drawSideStudyCanvas(
+                sideStudyCanvases.female,
+                'female',
+                sideStudyState.frameIndex
+            );
+
+            const frameLabel = `Frame ${sideStudyState.frameIndex + 1}/${clip.frames.length}`;
+            document.getElementById('side-study-male-frame').textContent = frameLabel;
+            document.getElementById('side-study-female-frame').textContent = frameLabel;
+
+            document.querySelectorAll('[data-side-clip]').forEach(button => {
+                button.setAttribute(
+                    'aria-pressed',
+                    String(button.dataset.sideClip === sideStudyState.clipId)
+                );
+            });
+            document.querySelectorAll('[data-side-facing]').forEach(button => {
+                button.setAttribute(
+                    'aria-pressed',
+                    String(button.dataset.sideFacing === sideStudyState.facing)
+                );
+            });
+            document.querySelectorAll('[data-side-gender]').forEach(button => {
+                button.setAttribute(
+                    'aria-pressed',
+                    String(button.dataset.sideGender === sideStudyState.sheetGender)
+                );
+            });
+
+            sideMotionFrames.forEach(({ button, canvas }, frameIndex) => {
+                drawSideStudyCanvas(canvas, sideStudyState.sheetGender, frameIndex);
+                button.setAttribute(
+                    'aria-current',
+                    String(frameIndex === sideStudyState.frameIndex)
+                );
+            });
+        }
+
+        function initializeSideStudy() {
+            buildSideMotionSheet();
+
+            const hairSelect = document.getElementById('side-study-hair');
+            CorePlayerHairStyleOptions.forEach(option => {
+                const hairOption = document.createElement('option');
+                hairOption.value = option.runtimeId;
+                hairOption.textContent = option.label;
+                hairSelect.appendChild(hairOption);
+            });
+            hairSelect.value = player.appearance.hair;
+            hairSelect.addEventListener('change', event => {
+                player.appearance.hair = event.target.value;
+                renderSideStudy();
+                renderPreview();
+            });
+
+            document.getElementById('side-study-clips').addEventListener('click', event => {
+                const button = event.target.closest('[data-side-clip]');
+                if (!button) return;
+                sideStudyState.clipId = button.dataset.sideClip;
+                sideStudyState.frameIndex = 0;
+                sideStudyState.frameAccumulator = 0;
+                buildSideMotionSheet();
+                renderSideStudy();
+            });
+
+            document.getElementById('side-study-facing').addEventListener('click', event => {
+                const button = event.target.closest('[data-side-facing]');
+                if (!button) return;
+                sideStudyState.facing = button.dataset.sideFacing;
+                renderSideStudy();
+            });
+
+            document.getElementById('side-study-sheet-gender').addEventListener('click', event => {
+                const button = event.target.closest('[data-side-gender]');
+                if (!button) return;
+                sideStudyState.sheetGender = button.dataset.sideGender;
+                renderSideStudy();
+            });
+
+            document.getElementById('side-study-speed').addEventListener('input', event => {
+                sideStudyState.speed = Number(event.target.value) || 1;
+                sideStudyState.frameAccumulator = 0;
+            });
+
+            document.getElementById('side-study-anchors').addEventListener('change', event => {
+                sideStudyState.showAnchors = event.target.checked;
+                renderSideStudy();
+            });
+
+            document.getElementById('side-study-playback').addEventListener('click', () => {
+                setSideStudyPlaying(!sideStudyState.playing);
+                renderSideStudy();
+            });
+
+            renderSideStudy();
+            requestAnimationFrame(updateSideStudy);
+        }
+
+        function updateSideStudy(timestamp) {
+            if (!sideStudyState.lastTimestamp) sideStudyState.lastTimestamp = timestamp;
+            const elapsed = Math.min(100, timestamp - sideStudyState.lastTimestamp);
+            sideStudyState.lastTimestamp = timestamp;
+
+            if (sideStudyState.playing) {
+                const clip = SidePlayerAnimationClips[sideStudyState.clipId];
+                const frameDuration = 1000 / (clip.fps * sideStudyState.speed);
+                sideStudyState.frameAccumulator += elapsed;
+
+                if (sideStudyState.frameAccumulator >= frameDuration) {
+                    sideStudyState.frameAccumulator %= frameDuration;
+                    sideStudyState.frameIndex = (
+                        sideStudyState.frameIndex + 1
+                    ) % clip.frames.length;
+                    renderSideStudy();
+                }
+            }
+
+            requestAnimationFrame(updateSideStudy);
+        }
 
         // === 1. POPULATE BOX 1 (EQUIPMENT) ===
         function initializeInventoryUI() {
@@ -264,6 +768,7 @@
             resetStandaloneSelectors(); 
             if (itemId === "none") player.equipment[slot] = null;
             else player.equipment[slot] = ItemDatabase[itemId];
+            renderSideStudy();
             renderPreview();
         }
 
@@ -272,6 +777,10 @@
             let currentIdx = appearanceOptions[part].indexOf(player.appearance[part]);
             let nextIdx = (currentIdx + 1) % appearanceOptions[part].length;
             player.appearance[part] = appearanceOptions[part][nextIdx];
+            if (part === 'hair') {
+                document.getElementById('side-study-hair').value = player.appearance.hair;
+            }
+            renderSideStudy();
             renderPreview();
         }
 
@@ -321,18 +830,27 @@
 
             // The weapon is drawn onto the main canvas AFTER the buffer so it retains its own independent scaling and rotation
             if (eq.weapon && eq.weapon.spriteId) {
-                ctx.save();
-                const weaponAnchor = typeof PLAYER_SPRITE_ANCHORS !== 'undefined'
-                    ? PLAYER_SPRITE_ANCHORS.weaponHand
-                    : { x: 0.58, y: 0.5 };
-                let wPivotX = spriteSize * weaponAnchor.x;
-                let wPivotY = spriteSize * weaponAnchor.y;
-                ctx.translate(wPivotX, wPivotY);
-                let scaleMult = eq.weapon.oversizeScale || 1.0;
-                ctx.scale(scaleMult, scaleMult);
-                ctx.translate(-wPivotX, -wPivotY);
-                drawProceduralSprite(ctx, SpriteMatrices[eq.weapon.spriteId], 0, 0, spriteSize);
-                ctx.restore();
+                if (typeof drawFrontPaperdollWeapon === 'function') {
+                    drawFrontPaperdollWeapon(
+                        ctx,
+                        eq.weapon.spriteId,
+                        0,
+                        0,
+                        spriteSize,
+                        {
+                            scaleMultiplier:
+                                eq.weapon.oversizeScale || 1
+                        }
+                    );
+                } else if (SpriteMatrices[eq.weapon.spriteId]) {
+                    drawProceduralSprite(
+                        ctx,
+                        SpriteMatrices[eq.weapon.spriteId],
+                        0,
+                        0,
+                        spriteSize
+                    );
+                }
             }
 
             PALETTE['b'] = originalB;
@@ -340,6 +858,7 @@
 
         // === 6. BOOT INITIALIZATION ===
         window.addEventListener('load', () => {
+            initializeSideStudy();
             initializeInventoryUI();
             initializeAssetBoxes();
             renderPreview();

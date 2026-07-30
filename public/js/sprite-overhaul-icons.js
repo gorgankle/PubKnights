@@ -4,7 +4,7 @@ function makeCenteredOverhaulIcon(matrix, padding = 4) {
     const occupied = [];
     matrix.forEach((row, y) => {
         row.forEach((key, x) => {
-            if (key !== '.') occupied.push({ x, y, key });
+            if (key !== '.' && key !== '_') occupied.push({ x, y, key });
         });
     });
 

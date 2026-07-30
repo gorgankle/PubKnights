@@ -121,7 +121,13 @@ function renderDialoguePortrait(portraitId) {
         }
         
         if (eq.helmet && eq.helmet.spriteId && SpriteMatrices[eq.helmet.spriteId]) {
-            drawOptimizedSprite(pCtx, eq.helmet.spriteId, SpriteMatrices[eq.helmet.spriteId], ox, oy, zoomSize);
+            drawProceduralSprite(
+                pCtx,
+                SpriteMatrices[eq.helmet.spriteId],
+                ox,
+                oy,
+                zoomSize
+            );
         }
         
     } else if (portraitId) {

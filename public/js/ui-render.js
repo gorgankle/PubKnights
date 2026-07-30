@@ -832,7 +832,25 @@ function renderMainScreenSprites() {
         if (eq.boots && eq.boots.spriteId && SpriteMatrices[eq.boots.spriteId]) drawProceduralSprite(pCtx, SpriteMatrices[eq.boots.spriteId], 0, 0, pCanvas.width);
         if (eq.gloves && eq.gloves.spriteId && SpriteMatrices[eq.gloves.spriteId]) drawProceduralSprite(pCtx, SpriteMatrices[eq.gloves.spriteId], 0, 0, pCanvas.width);
         if (eq.helmet && eq.helmet.spriteId && SpriteMatrices[eq.helmet.spriteId]) drawProceduralSprite(pCtx, SpriteMatrices[eq.helmet.spriteId], 0, 0, pCanvas.width);
-        if (eq.weapon && eq.weapon.spriteId && SpriteMatrices[eq.weapon.spriteId]) drawProceduralSprite(pCtx, SpriteMatrices[eq.weapon.spriteId], 0, 0, pCanvas.width);
+        if (eq.weapon && eq.weapon.spriteId) {
+            if (typeof drawFrontPaperdollWeapon === 'function') {
+                drawFrontPaperdollWeapon(
+                    pCtx,
+                    eq.weapon.spriteId,
+                    0,
+                    0,
+                    pCanvas.width
+                );
+            } else if (SpriteMatrices[eq.weapon.spriteId]) {
+                drawProceduralSprite(
+                    pCtx,
+                    SpriteMatrices[eq.weapon.spriteId],
+                    0,
+                    0,
+                    pCanvas.width
+                );
+            }
+        }
     }
 
     // 2. Render Pet onto Canvas (Leave this untouched below)

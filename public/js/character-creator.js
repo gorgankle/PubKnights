@@ -586,7 +586,25 @@ function renderPaperDoll(isNaked = false) {
         if (eq.boots && eq.boots.spriteId) drawProceduralSprite(mCtx, SpriteMatrices[eq.boots.spriteId], 0, 0, menuCanvas.width);
         if (eq.gloves && eq.gloves.spriteId) drawProceduralSprite(mCtx, SpriteMatrices[eq.gloves.spriteId], 0, 0, menuCanvas.width);
         if (eq.helmet && eq.helmet.spriteId) drawProceduralSprite(mCtx, SpriteMatrices[eq.helmet.spriteId], 0, 0, menuCanvas.width);
-        if (eq.weapon && eq.weapon.spriteId) drawProceduralSprite(mCtx, SpriteMatrices[eq.weapon.spriteId], 0, 0, menuCanvas.width);
+        if (eq.weapon && eq.weapon.spriteId) {
+            if (typeof drawFrontPaperdollWeapon === 'function') {
+                drawFrontPaperdollWeapon(
+                    mCtx,
+                    eq.weapon.spriteId,
+                    0,
+                    0,
+                    menuCanvas.width
+                );
+            } else {
+                drawProceduralSprite(
+                    mCtx,
+                    SpriteMatrices[eq.weapon.spriteId],
+                    0,
+                    0,
+                    menuCanvas.width
+                );
+            }
+        }
     }
 }
 

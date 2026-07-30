@@ -97,6 +97,349 @@ function getCombatEventActorUid(event) {
     return null;
 }
 
+function getCombatResultWeapon(sourceActor) {
+    if (
+        sourceActor
+        && sourceActor.equipment
+        && sourceActor.equipment.weapon
+    ) {
+        return sourceActor.equipment.weapon;
+    }
+    return player && player.equipment ? player.equipment.weapon : null;
+}
+
+function getCombatResultAnimationProfile(result, weapon) {
+    const profileKey = result.actionName === 'special'
+        ? 'special'
+        : 'standard';
+    const profile = (
+        weapon
+        && weapon.combat
+        && weapon.combat[profileKey]
+    ) || {};
+    const fx = result.fx || {};
+    const clipId = typeof resolveCombatAnimationClip === 'function'
+        ? resolveCombatAnimationClip({
+            source: result.source,
+            actionType: profile.actionType,
+            isProjectile: fx.isProjectile,
+            animType: profile.animType,
+            weapon
+        })
+        : (
+            result.source === 'spell'
+                ? 'cast'
+                : (fx.isProjectile ? 'shoot' : 'slash')
+        );
+
+    return {
+        clipId,
+        animType: profile.animType || (
+            clipId === 'bash' ? 'lunge_bash' : 'lunge_slash'
+        ),
+        lift: String(profile.animType || '').includes('jump')
+    };
+}
+
+function getCombatResultTarget(result, sourceActor) {
+    const fx = result.fx || {};
+    const firstTarget = Array.isArray(result.targets)
+        ? result.targets[0]
+        : null;
+    const targetActor = firstTarget
+        ? getCombatActorByUid(firstTarget.uid)
+        : null;
+    if (targetActor && result.source === 'weapon' && !fx.isAoE) {
+        return {
+            x: targetActor.x + ((targetActor.size || 1) / 2) - 0.5,
+            y: targetActor.y + ((targetActor.size || 1) / 2) - 0.5
+        };
+    }
+
+    if (Number.isFinite(fx.tx) && Number.isFinite(fx.ty)) {
+        return { x: fx.tx, y: fx.ty };
+    }
+
+    const fallbackTarget = targetActor || selectedEnemy;
+    if (fallbackTarget) {
+        return {
+            x: fallbackTarget.x + ((fallbackTarget.size || 1) / 2) - 0.5,
+            y: fallbackTarget.y + ((fallbackTarget.size || 1) / 2) - 0.5
+        };
+    }
+
+    return {
+        x: (Number(sourceActor && sourceActor.x) || 0) + 1,
+        y: Number(sourceActor && sourceActor.y) || 0
+    };
+}
+
+function applyOutgoingCombatImpact(result) {
+    const targets = Array.isArray(result.targets) ? result.targets : [];
+
+    if (result.source === 'spell') {
+        if (typeof playRetroSound === 'function') playRetroSound('explosion');
+        if (targets.length === 0) {
+            logMessage("💨 Spell scorched nothing but the earth.");
+        }
+    } else {
+        const isCrit = targets.length > 0 && targets[0].isCrit;
+        if (typeof playRetroSound === 'function') {
+            playRetroSound(
+                isCrit
+                    ? 'playerCrit'
+                    : (result.actionName === 'special' ? 'heavyAttack' : 'attack')
+            );
+        }
+    }
+
+    targets.forEach(targetData => {
+        const target = getCombatActorByUid(targetData.uid);
+        if (!target) return;
+
+        target.hp = Math.max(0, target.hp - targetData.damage);
+        if (targetData.killed) {
+            target.hp = 0;
+            target.alive = false;
+        }
+        if (targetData.statusEffects) {
+            target.statusEffects = targetData.statusEffects;
+        }
+
+        if (result.source === 'spell') {
+            logMessage(
+                `🔥 ${target.name} caught in blast for ${targetData.damage} DMG!`
+            );
+            FXEngine.spawnText(
+                target.x,
+                target.y,
+                `-${targetData.damage}`,
+                { color: "#e74c3c" }
+            );
+        } else if (targetData.isCrit) {
+            logMessage(
+                `💥 CRITICAL STRIKE! Executed ${result.actionName.toUpperCase()} onto ${target.name} for ${targetData.damage} DMG!`
+            );
+            FXEngine.spawnText(
+                target.x,
+                target.y,
+                `-${targetData.damage}!`,
+                { color: "#f1c40f", isCrit: true }
+            );
+        } else {
+            logMessage(
+                `⚔️ Executed ${result.actionName.toUpperCase()} strike onto ${target.name} for ${targetData.damage} DMG!`
+            );
+            FXEngine.spawnText(
+                target.x,
+                target.y,
+                `-${targetData.damage}`,
+                { color: "#e74c3c" }
+            );
+        }
+
+        if (targetData.statusApplied === 'poison') {
+            logMessage(`${target.name} is poisoned!`);
+            FXEngine.spawnText(
+                target.x,
+                target.y,
+                "POISON",
+                { color: "#8e44ad" }
+            );
+        }
+    });
+
+    if (selectedEnemy && !selectedEnemy.alive) selectedEnemy = null;
+    refreshSystemUI();
+}
+
+function finalizeOutgoingCombatAction(result, resultCombatState) {
+    if (resultCombatState) syncCombatCollectionsFromState(resultCombatState);
+    if (selectedEnemy && !selectedEnemy.alive) selectedEnemy = null;
+
+    if (result.combatComplete) {
+        presentCombatVictory();
+    } else {
+        settleCombatActionState(resultCombatState);
+    }
+    refreshSystemUI();
+}
+
+function playOutgoingCombatHit(result, sourceActor, resultCombatState) {
+    const fx = result.fx || {};
+    const weapon = getCombatResultWeapon(sourceActor);
+    const animation = getCombatResultAnimationProfile(result, weapon);
+    const target = getCombatResultTarget(result, sourceActor);
+    const barrier = createCombatPlaybackBarrier(() => {
+        finalizeOutgoingCombatAction(result, resultCombatState);
+    });
+    let impactApplied = false;
+
+    function applyImpact() {
+        if (impactApplied) return;
+        impactApplied = true;
+        applyOutgoingCombatImpact(result);
+        barrier.markImpactComplete();
+    }
+
+    function launchAtActionFrame(event = {}) {
+        const releaseOrigin = event.releaseOrigin || {
+            x: Number.isFinite(fx.sx) ? fx.sx : sourceActor.x,
+            y: Number.isFinite(fx.sy) ? fx.sy : sourceActor.y
+        };
+
+        if (result.source === 'spell' && fx.type === 'burst') {
+            FXEngine.spawnMagicBurst(target.x, target.y, fx);
+            applyImpact();
+            return;
+        }
+
+        if (result.source === 'spell') {
+            FXEngine.spawnBeam(
+                releaseOrigin.x,
+                releaseOrigin.y,
+                target.x,
+                target.y,
+                { ...fx, onComplete: applyImpact }
+            );
+            return;
+        }
+
+        if (fx.isProjectile) {
+            FXEngine.spawnProjectile(
+                releaseOrigin.x,
+                releaseOrigin.y,
+                target.x,
+                target.y,
+                fx.spriteId,
+                {
+                    arc: 0,
+                    spin: false,
+                    frames: 15,
+                    onComplete: applyImpact
+                }
+            );
+            return;
+        }
+
+        if (typeof FXEngine.spawnMeleeImpact === 'function') {
+            FXEngine.spawnMeleeImpact(
+                target.x,
+                target.y,
+                animation.clipId
+            );
+        }
+        applyImpact();
+    }
+
+    const started = (
+        typeof CombatSpriteAnimation !== 'undefined'
+        && CombatSpriteAnimation.startAction(
+            sourceActor,
+            {
+                clipId: animation.clipId,
+                targetX: target.x,
+                targetY: target.y,
+                lift: animation.lift,
+                onEvent: launchAtActionFrame,
+                onComplete: barrier.markActionComplete
+            }
+        )
+    );
+
+    if (!started) {
+        launchAtActionFrame();
+        barrier.markActionComplete();
+    }
+}
+
+function playOutgoingCombatMiss(result, sourceActor, resultCombatState) {
+    const weapon = getCombatResultWeapon(sourceActor);
+    const isProjectile = Boolean(weapon && weapon.projectileSprite);
+    const animation = getCombatResultAnimationProfile(
+        {
+            ...result,
+            source: 'weapon',
+            fx: { isProjectile }
+        },
+        weapon
+    );
+    const target = selectedEnemy
+        ? {
+            x: selectedEnemy.x + ((selectedEnemy.size || 1) / 2) - 0.5,
+            y: selectedEnemy.y + ((selectedEnemy.size || 1) / 2) - 0.5
+        }
+        : getCombatResultTarget(result, sourceActor);
+    const targetX = Number(target.x) || 0;
+    const targetY = Number(target.y) || 0;
+    const barrier = createCombatPlaybackBarrier(() => {
+        finalizeOutgoingCombatAction(result, resultCombatState);
+    });
+    let missShown = false;
+
+    function showMiss() {
+        if (missShown) return;
+        missShown = true;
+        logMessage(
+            `💨 Strike MISSED! Target evaded (${result.hitChance}% Hit Chance).`
+        );
+        if (typeof playRetroSound === 'function') playRetroSound('error');
+        if (selectedEnemy) {
+            FXEngine.spawnText(
+                selectedEnemy.x,
+                selectedEnemy.y,
+                "MISS",
+                { color: "#3498db" }
+            );
+        }
+        barrier.markImpactComplete();
+    }
+
+    function releaseMiss(event = {}) {
+        if (!isProjectile) {
+            showMiss();
+            return;
+        }
+
+        const releaseOrigin = event.releaseOrigin || {
+            x: sourceActor.x,
+            y: sourceActor.y
+        };
+        FXEngine.spawnProjectile(
+            releaseOrigin.x,
+            releaseOrigin.y,
+            targetX,
+            targetY,
+            weapon.projectileSprite,
+            {
+                arc: 0,
+                spin: false,
+                frames: 15,
+                onComplete: showMiss
+            }
+        );
+    }
+
+    const started = (
+        typeof CombatSpriteAnimation !== 'undefined'
+        && CombatSpriteAnimation.startAction(
+            sourceActor,
+            {
+                clipId: animation.clipId,
+                targetX,
+                targetY,
+                onEvent: releaseMiss,
+                onComplete: barrier.markActionComplete
+            }
+        )
+    );
+
+    if (!started) {
+        releaseMiss();
+        barrier.markActionComplete();
+    }
+}
+
 // === SERVER-AUTHORITATIVE SYNC ===
 
 socket.on('serverTick', (serverData) => {
@@ -152,11 +495,14 @@ socket.on('combatResult', (result) => {
 
     // --- 1. HANDLE EVASION ---
     if (result.type === 'miss') {
-        logMessage(`💨 Strike MISSED! Target evaded (${result.hitChance}% Hit Chance).`);
-        if (typeof playRetroSound === 'function') playRetroSound('error');
-        if (selectedEnemy) FXEngine.spawnText(selectedEnemy.x, selectedEnemy.y, "MISS", { color: "#3498db" });
-
-        settleCombatActionState(resultCombatState);
+        const sourceActor = getCombatActorByUid(
+            result.actorUid || 'player_0'
+        ) || player;
+        playOutgoingCombatMiss(
+            result,
+            sourceActor,
+            resultCombatState
+        );
         return;
     }
 
@@ -164,120 +510,11 @@ socket.on('combatResult', (result) => {
     if (result.type === 'hit') {
         let fx = result.fx || {};
         const sourceActor = getCombatActorByUid(result.actorUid || fx.sourceUid || 'player_0') || player;
-        const sourceX = Number.isFinite(fx.sx) ? fx.sx : sourceActor.x;
-        const sourceY = Number.isFinite(fx.sy) ? fx.sy : sourceActor.y;
-
-        // Define animation physics based on the attack type
-        let animOptions = { arc: 0, spin: true, frames: 10 };
-
-        // What happens the exact millisecond the projectile finishes traveling?
-        animOptions.onComplete = () => {
-
-            // Play physical impact visuals/audio
-            if (result.source === 'spell') {
-                // === NEW: Spell Impact Sounds ===
-                if (typeof playRetroSound === 'function') playRetroSound('explosion');
-                if (result.targets.length === 0) logMessage("💨 Spell scorched nothing but the earth.");
-            } else {
-                let isCrit = result.targets.length > 0 && result.targets[0].isCrit;
-                if (typeof playRetroSound === 'function') playRetroSound(isCrit ? 'playerCrit' : (result.actionName === 'special' ? 'heavyAttack' : 'attack'));
-            }
-
-            // Loop through EVERY enemy hit by this attack and process damage dynamically
-            result.targets.forEach(targetData => {
-                let e = getCombatActorByUid(targetData.uid);
-                if (!e) return;
-
-                e.hp -= targetData.damage;
-                if (targetData.killed) { e.hp = 0; e.alive = false; }
-                if (targetData.statusEffects) e.statusEffects = targetData.statusEffects;
-
-                if (result.source === 'spell') {
-                    logMessage(`🔥 ${e.name} caught in blast for ${targetData.damage} DMG!`);
-                    FXEngine.spawnText(e.x, e.y, `-${targetData.damage}`, { color: "#e74c3c" });
-                } else {
-                    if (targetData.isCrit) {
-                        logMessage(`💥 CRITICAL STRIKE! Executed ${result.actionName.toUpperCase()} onto ${e.name} for ${targetData.damage} DMG!`);
-                        FXEngine.spawnText(e.x, e.y, `-${targetData.damage}!`, { color: "#f1c40f", isCrit: true });
-                    } else {
-                        logMessage(`⚔️ Executed ${result.actionName.toUpperCase()} strike onto ${e.name} for ${targetData.damage} DMG!`);
-                        FXEngine.spawnText(e.x, e.y, `-${targetData.damage}`, { color: "#e74c3c" });
-                    }
-                }
-
-                if (targetData.statusApplied === 'poison') {
-                    logMessage(`${e.name} is poisoned!`);
-                    FXEngine.spawnText(e.x, e.y, "POISON", { color: "#8e44ad" });
-                }
-            });
-
-            // Cleanup & Victory Checks
-            if (resultCombatState) syncCombatCollectionsFromState(resultCombatState);
-            if (selectedEnemy && !selectedEnemy.alive) selectedEnemy = null;
-
-            if (result.combatComplete) {
-                presentCombatVictory();
-            } else {
-                settleCombatActionState(resultCombatState);
-            }
-
-            refreshSystemUI();
-        };
-
-        // === THE MASTER ANIMATION TRIGGER ===
-        if (result.source === 'spell' && fx && fx.type === 'beam') {
-
-            // THE FIX: Pass the entire 'fx' configuration object instead of just the style string!
-            FXEngine.spawnBeam(sourceX, sourceY, fx.tx, fx.ty, fx);
-
-            setTimeout(() => {
-                if (typeof animOptions.onComplete === 'function') animOptions.onComplete();
-            }, 350);
-
-        } else if (result.source === 'spell' && fx && fx.type === 'burst') {
-            FXEngine.spawnMagicBurst(fx.tx, fx.ty, fx);
-
-            setTimeout(() => {
-                if (typeof animOptions.onComplete === 'function') animOptions.onComplete();
-            }, 350);
-
-       // === NEW: ROUTE RANGED WEAPONS (BOWS/CROSSBOWS) ===
-        } else if (result.source === 'weapon' && fx && fx.isProjectile) {
-
-            animOptions.arc = 0;         // Flat trajectory
-            animOptions.spin = false;    // Arrows point directly at target
-            animOptions.frames = 15;     // Quick flight speed
-
-            FXEngine.spawnProjectile(sourceX, sourceY, fx.tx, fx.ty, fx.spriteId, animOptions);
-        // ===================================================
-
-        } else {
-            // 1. Determine if they used 'standard' or 'special'
-            let profileKey = result.actionName === 'special' ? 'special' : 'standard';
-
-            // === THE FIX: UNARMED ANIMATION FALLBACK ===
-            // Inject a mock weapon profile so the client doesn't crash when bare-handed!
-            let weapon = sourceActor && sourceActor.equipment ? sourceActor.equipment.weapon : player.equipment.weapon;
-            if (!weapon || !weapon.combat) {
-                weapon = {
-                    combat: {
-                        standard: { animType: 'lunge_bash' },
-                        special: { animType: 'lunge_bash' }
-                    }
-                };
-            }
-
-            // 2. Fetch the exact animation profile
-            let weaponProfile = weapon.combat[profileKey];
-            let animType = weaponProfile && weaponProfile.animType ? weaponProfile.animType : 'lunge_slash';
-
-            // 3. Trigger the lunge, and ONLY execute the damage math when the strike physically connects!
-            FXEngine.spawnMeleeStrike(sourceActor, fx.tx, fx.ty, animType, {
-                frames: 15,
-                onComplete: animOptions.onComplete
-            });
-        }
-        // ====================================
+        playOutgoingCombatHit(
+            result,
+            sourceActor,
+            resultCombatState
+        );
     }
 });
 
@@ -514,6 +751,12 @@ socket.on('combatDeployed', (serverCombatState) => {
     combatVictoryPresentationStarted = false;
     reachableTiles = null;
     hideTooltip();
+    if (typeof CombatSpriteAnimation !== 'undefined') {
+        CombatSpriteAnimation.clear();
+    }
+    delete player.visualX;
+    delete player.visualY;
+    delete player.moveAnimTimer;
 
     // Sync browser state to the Server's command
     player.idleJob = 'NONE';
@@ -585,9 +828,21 @@ socket.on('enemyTurnReceipt', (receipt) => {
     function playEnemyAttackFx(ev, onComplete, targetActor = null) {
         const targetX = targetActor ? targetActor.x : player.x;
         const targetY = targetActor ? targetActor.y : player.y;
+        if (
+            !targetActor
+            && typeof CombatSpriteAnimation !== 'undefined'
+            && Number.isFinite(ev.ex)
+        ) {
+            CombatSpriteAnimation.faceActorToward(player, ev.ex + 0.5);
+        }
         if (ev.spellFx && ev.spellFx.type === 'beam') {
-            FXEngine.spawnBeam(ev.ex, ev.ey, targetX, targetY, ev.spellFx);
-            setTimeout(onComplete, 350);
+            FXEngine.spawnBeam(
+                ev.ex,
+                ev.ey,
+                targetX,
+                targetY,
+                { ...ev.spellFx, onComplete }
+            );
         } else if (ev.projectileSprite) {
             FXEngine.spawnProjectile(ev.ex, ev.ey, targetX, targetY, ev.projectileSprite, { arc: 0, spin: false, frames: 20, onComplete: onComplete });
         } else {

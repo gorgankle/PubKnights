@@ -317,12 +317,15 @@ function drawActiveTurnMarker() {
 
 
 // === ENGINE HEARTBEAT LOOP ===
-function updateAnimationEngine() {
+function updateAnimationEngine(timestamp) {
     requestAnimationFrame(updateAnimationEngine);
     globalAnimClock++;
 
     // Otherwise, run the normal tactical game
     if (gameState === 'COMBAT') {
+        if (typeof CombatSpriteAnimation !== 'undefined') {
+            CombatSpriteAnimation.update(timestamp);
+        }
         drawGrid();
     }
 }
@@ -366,7 +369,13 @@ function drawGrid() {
     } else {
         player.visualX = player.x; player.visualY = player.y; player.moveAnimTimer = 0;
     }
-    let playerHopY = Math.abs(Math.sin(player.moveAnimTimer)) * 14;
+    const usesSidePlayerRenderer = (
+        typeof CombatSpriteAnimation !== 'undefined'
+        && typeof drawSidePlayerAnimationFrame === 'function'
+    );
+    let playerHopY = usesSidePlayerRenderer
+        ? 0
+        : Math.abs(Math.sin(player.moveAnimTimer)) * 14;
 
 // --- DRAW THE CORE TACTICAL GRID ---
     let cols = currentGridSize.cols || currentGridSize || 8;
@@ -426,82 +435,186 @@ mapObstacles.forEach(o => {
     }
 
 // --- RENDERING PIPELINE: DYNAMIC TRANSFORMS KNIGHT ---
-    // === NEW: DYNAMIC LUNGE OFFSETS ===
-    const pX = (player.visualX * currentTileSize) + (player.lungeOffsetX || 0);
-    const pY = (player.visualY * currentTileSize) - playerHopY + (player.lungeOffsetY || 0) - (player.lungeHop || 0);
+    const eq = player.equipment || {};
+    const appearance = player.appearance || {};
+    let playerRenderState = null;
+    let combatLunge = { x: 0, y: 0, hop: 0 };
+
+    if (usesSidePlayerRenderer) {
+        if (
+            !pIsMoving
+            && !CombatSpriteAnimation.isAnimating(player)
+        ) {
+            const facingTarget = (
+                selectedEnemy
+                && selectedEnemy.alive !== false
+            ) ? selectedEnemy : [
+                ...(enemies || []),
+                ...(rogues || [])
+            ].find(actor => actor && actor.alive !== false);
+
+            if (facingTarget) {
+                CombatSpriteAnimation.faceActorToward(
+                    player,
+                    facingTarget.x + ((facingTarget.size || 1) / 2)
+                );
+            }
+        }
+
+        playerRenderState = CombatSpriteAnimation.getRenderState(
+            player,
+            {
+                isMoving: pIsMoving,
+                deltaX: pDeltaX,
+                deltaY: pDeltaY
+            }
+        );
+        combatLunge = CombatSpriteAnimation.getLungeOffset(
+            player,
+            currentTileSize
+        );
+    }
+
+    const pX = (player.visualX * currentTileSize)
+        + (player.lungeOffsetX || 0)
+        + combatLunge.x;
+    const pY = (player.visualY * currentTileSize)
+        - playerHopY
+        + (player.lungeOffsetY || 0)
+        - (player.lungeHop || 0)
+        + combatLunge.y
+        - combatLunge.hop;
 
     ctx.save();
 
-    let pScaleY = 1.0 + Math.sin(globalAnimClock * 0.08) * 0.02;
-    let pScaleX = 1.0 - Math.sin(globalAnimClock * 0.08) * 0.01;
+    if (usesSidePlayerRenderer && playerRenderState) {
+        ctx.translate(pX, pY);
+        drawSidePlayerAnimationFrame(
+            ctx,
+            appearance.gender,
+            playerRenderState.clipId,
+            playerRenderState.frameIndex,
+            currentTileSize,
+            {
+                facing: playerRenderState.facing,
+                hairStyle: appearance.hair,
+                helmetItem: eq.helmet || null,
+                armorItem: eq.armor || null,
+                gloveItem: eq.gloves || null,
+                bootItem: eq.boots || null,
+                weaponItem: eq.weapon || null
+            }
+        );
+    } else {
+        const pScaleY = 1.0
+            + Math.sin(globalAnimClock * 0.08) * 0.02;
+        const pScaleX = 1.0
+            - Math.sin(globalAnimClock * 0.08) * 0.01;
+        const pPivotX = pX + currentTileSize / 2;
+        const pPivotY = pY + currentTileSize;
 
-    // Notice we removed 'let' here so it simply updates your existing variables
-    pPivotX = pX + currentTileSize / 2;
-    pPivotY = pY + currentTileSize;
+        ctx.translate(pPivotX, pPivotY);
+        ctx.scale(pScaleX, pScaleY);
+        ctx.translate(-pPivotX, -pPivotY);
 
-    ctx.translate(pPivotX, pPivotY);
-    ctx.scale(pScaleX, pScaleY);
-    ctx.translate(-pPivotX, -pPivotY);
+        playerBufferCanvas.width = currentTileSize;
+        playerBufferCanvas.height = currentTileSize;
+        playerBufferCtx.clearRect(0, 0, currentTileSize, currentTileSize);
 
-    // === NEW: RENDER BODY TO BUFFER FIRST FOR MASKING ===
-    playerBufferCanvas.width = currentTileSize;
-    playerBufferCanvas.height = currentTileSize;
-    playerBufferCtx.clearRect(0, 0, currentTileSize, currentTileSize);
+        const bodySprite = appearance.gender === 'female'
+            ? 'body_female'
+            : 'body_male';
+        if (SpriteMatrices[bodySprite]) {
+            drawProceduralSprite(
+                playerBufferCtx,
+                SpriteMatrices[bodySprite],
+                0,
+                0,
+                currentTileSize
+            );
+        }
+        if (SpriteMatrices[appearance.eyes]) {
+            drawProceduralSprite(
+                playerBufferCtx,
+                SpriteMatrices[appearance.eyes],
+                0,
+                0,
+                currentTileSize
+            );
+        }
 
-    let bodySprite = player.appearance.gender === 'female' ? 'body_female' : 'body_male';
-    if (SpriteMatrices[bodySprite]) drawProceduralSprite(playerBufferCtx, SpriteMatrices[bodySprite], 0, 0, currentTileSize);
-    if (SpriteMatrices[player.appearance.eyes]) drawProceduralSprite(playerBufferCtx, SpriteMatrices[player.appearance.eyes], 0, 0, currentTileSize);
+        const hidesHair = eq.helmet && eq.helmet.hidesHair;
+        if (!hidesHair && SpriteMatrices[appearance.hair]) {
+            drawProceduralSprite(
+                playerBufferCtx,
+                SpriteMatrices[appearance.hair],
+                0,
+                0,
+                currentTileSize
+            );
+        }
 
-    const hidesHair = player.equipment.helmet && player.equipment.helmet.hidesHair;
-    if (!hidesHair && SpriteMatrices[player.appearance.hair]) {
-        drawProceduralSprite(playerBufferCtx, SpriteMatrices[player.appearance.hair], 0, 0, currentTileSize);
+        const genderSuffix = appearance.gender === 'female'
+            ? '_female'
+            : '_male';
+        if (eq.armor && eq.armor.spriteId) {
+            const genderedArmorId = eq.armor.spriteId + genderSuffix;
+            if (SpriteMatrices[genderedArmorId]) {
+                drawProceduralSprite(
+                    playerBufferCtx,
+                    SpriteMatrices[genderedArmorId],
+                    0,
+                    0,
+                    currentTileSize
+                );
+            } else if (SpriteMatrices[eq.armor.spriteId]) {
+                drawProceduralSprite(
+                    playerBufferCtx,
+                    SpriteMatrices[eq.armor.spriteId],
+                    0,
+                    0,
+                    currentTileSize
+                );
+            }
+        }
+
+        ['boots', 'gloves', 'helmet'].forEach(slot => {
+            const item = eq[slot];
+            if (item && item.spriteId && SpriteMatrices[item.spriteId]) {
+                drawProceduralSprite(
+                    playerBufferCtx,
+                    SpriteMatrices[item.spriteId],
+                    0,
+                    0,
+                    currentTileSize
+                );
+            }
+        });
+        ctx.drawImage(playerBufferCanvas, pX, pY);
+
+        if (eq.weapon && eq.weapon.spriteId) {
+            if (typeof drawFrontPaperdollWeapon === 'function') {
+                drawFrontPaperdollWeapon(
+                    ctx,
+                    eq.weapon.spriteId,
+                    pX,
+                    pY,
+                    currentTileSize,
+                    {
+                        scaleMultiplier: eq.weapon.oversizeScale || 1
+                    }
+                );
+            } else if (SpriteMatrices[eq.weapon.spriteId]) {
+                drawProceduralSprite(
+                    ctx,
+                    SpriteMatrices[eq.weapon.spriteId],
+                    pX,
+                    pY,
+                    currentTileSize
+                );
+            }
+        }
     }
-
-    const eq = player.equipment; let gSuffix = player.appearance.gender === 'female' ? '_female' : '_male';
-
-    if (eq.armor && eq.armor.spriteId) {
-        let sId = eq.armor.spriteId + gSuffix;
-        if (SpriteMatrices[sId]) drawProceduralSprite(playerBufferCtx, SpriteMatrices[sId], 0, 0, currentTileSize);
-        else if (SpriteMatrices[eq.armor.spriteId]) drawProceduralSprite(playerBufferCtx, SpriteMatrices[eq.armor.spriteId], 0, 0, currentTileSize);
-    }
-
-    if (eq.boots && eq.boots.spriteId && SpriteMatrices[eq.boots.spriteId]) drawProceduralSprite(playerBufferCtx, SpriteMatrices[eq.boots.spriteId], 0, 0, currentTileSize);
-    if (eq.gloves && eq.gloves.spriteId && SpriteMatrices[eq.gloves.spriteId]) drawProceduralSprite(playerBufferCtx, SpriteMatrices[eq.gloves.spriteId], 0, 0, currentTileSize);
-    if (eq.helmet && eq.helmet.spriteId && SpriteMatrices[eq.helmet.spriteId]) drawProceduralSprite(playerBufferCtx, SpriteMatrices[eq.helmet.spriteId], 0, 0, currentTileSize);
-
-    // Stamp the fully assembled/masked character onto the main canvas
-    ctx.drawImage(playerBufferCanvas, pX, pY);
-    // ====================================================
-
-    if (eq.weapon && eq.weapon.spriteId && SpriteMatrices[eq.weapon.spriteId]) {
-        ctx.save();
-
-        // 1. Establish the hand's pivot point (Standard Left Hand / Viewer's Right)
-        const weaponAnchor = typeof PLAYER_SPRITE_ANCHORS !== 'undefined'
-            ? PLAYER_SPRITE_ANCHORS.weaponHand
-            : { x: 0.58, y: 0.5 };
-		let wPivotX = pX + (currentTileSize * weaponAnchor.x);
-        let wPivotY = pY + (currentTileSize * weaponAnchor.y);
-
-        // 2. Move the canvas origin to the hand
-        ctx.translate(wPivotX, wPivotY);
-
-        // 3. Clear hardcoded rotations
-        ctx.rotate(0);
-
-        // === 4. THE ENGINE TRICK: SCALE THE CANVAS ===
-        let scaleMult = eq.weapon.oversizeScale || 1.0;
-        ctx.scale(scaleMult, scaleMult);
-        // =============================================
-
-        // 5. Move the origin back so the procedural matrix aligns correctly
-        ctx.translate(-wPivotX, -wPivotY);
-
-        // 6. Draw the weapon!
-        drawProceduralSprite(ctx, SpriteMatrices[eq.weapon.spriteId], pX, pY, currentTileSize);
-        ctx.restore();
-    }
-
 
     ctx.restore();
 
@@ -591,8 +704,18 @@ if (SpriteMatrices[e.id]) {
             actor.visualX = actor.x; actor.visualY = actor.y; actor.moveAnimTimer = 0;
         }
         let hopY = Math.abs(Math.sin(actor.moveAnimTimer)) * 10;
-        let ax = (actor.visualX * currentTileSize) + (actor.lungeOffsetX || 0);
-        let ay = (actor.visualY * currentTileSize) - hopY + (actor.lungeOffsetY || 0) - (actor.lungeHop || 0);
+        const actorCombatLunge = typeof CombatSpriteAnimation !== 'undefined'
+            ? CombatSpriteAnimation.getLungeOffset(actor, currentTileSize)
+            : { x: 0, y: 0, hop: 0 };
+        let ax = (actor.visualX * currentTileSize)
+            + (actor.lungeOffsetX || 0)
+            + actorCombatLunge.x;
+        let ay = (actor.visualY * currentTileSize)
+            - hopY
+            + (actor.lungeOffsetY || 0)
+            - (actor.lungeHop || 0)
+            + actorCombatLunge.y
+            - actorCombatLunge.hop;
 
         ctx.save();
         if (SpriteMatrices[actor.id]) {

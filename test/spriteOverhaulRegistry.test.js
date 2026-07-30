@@ -104,6 +104,19 @@ test('every inventory item resolves to a rebuilt icon', () => {
     assert.equal(missingIcons.length, 0);
 });
 
+test('equipment icons omit runtime-only hair eraser pixels', () => {
+    const context = loadCompleteOverhaul();
+    const leakingIconIds = vm.runInContext(`(() => (
+        Object.keys(EquipmentOverhaulSpecs.helmet)
+            .map(spriteId => 'icon_' + spriteId)
+            .filter(iconId =>
+                SpriteMatrices[iconId].some(row => row.includes('_'))
+            )
+    ))()`, context);
+
+    assert.equal(leakingIconIds.length, 0);
+});
+
 test('world and pet overhaul registries cover their complete legacy families', () => {
     const context = loadCompleteOverhaul();
     const result = vm.runInContext(`(() => ({

@@ -122,20 +122,30 @@ function renderSocialZone() {
         if (p.equipment.gloves && p.equipment.gloves.spriteId) drawProceduralSprite(ctx, SpriteMatrices[p.equipment.gloves.spriteId], drawX, drawY, 24);
         if (p.equipment.helmet && p.equipment.helmet.spriteId) drawProceduralSprite(ctx, SpriteMatrices[p.equipment.helmet.spriteId], drawX, drawY, 24);
         
-        // Weapon with Pivot scaling
         if (p.equipment.weapon && p.equipment.weapon.spriteId) {
-            ctx.save();
-            const weaponAnchor = typeof PLAYER_SPRITE_ANCHORS !== 'undefined'
-                ? PLAYER_SPRITE_ANCHORS.weaponHand
-                : { x: 0.58, y: 0.5 };
-            let wPivotX = drawX + (24 * weaponAnchor.x);
-            let wPivotY = drawY + (24 * weaponAnchor.y);
-            ctx.translate(wPivotX, wPivotY);
-            let scaleMult = p.equipment.weapon.oversizeScale || 1.0;
-            ctx.scale(scaleMult, scaleMult);
-            ctx.translate(-wPivotX, -wPivotY);
-            drawProceduralSprite(ctx, SpriteMatrices[p.equipment.weapon.spriteId], drawX, drawY, 24);
-            ctx.restore();
+            if (typeof drawFrontPaperdollWeapon === 'function') {
+                drawFrontPaperdollWeapon(
+                    ctx,
+                    p.equipment.weapon.spriteId,
+                    drawX,
+                    drawY,
+                    24,
+                    {
+                        scaleMultiplier:
+                            p.equipment.weapon.oversizeScale || 1
+                    }
+                );
+            } else if (
+                SpriteMatrices[p.equipment.weapon.spriteId]
+            ) {
+                drawProceduralSprite(
+                    ctx,
+                    SpriteMatrices[p.equipment.weapon.spriteId],
+                    drawX,
+                    drawY,
+                    24
+                );
+            }
         }
 
         // Draw Player Nameplate

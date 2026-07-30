@@ -518,6 +518,9 @@ function isValidPlayerMovePath(targetX, targetY) {
 }
 // === RESTORED TRANSITION FUNCTION ===
 window.transitionToTown = function() {
+    if (typeof CombatSpriteAnimation !== 'undefined') {
+        CombatSpriteAnimation.clear();
+    }
     if (typeof setGameState === 'function') {
         setGameState('KNIGHT');
     }
