@@ -257,6 +257,9 @@ function syncPlayerActor(combat, player) {
 
 function syncCombatViews(combat, player) {
     if (!combat) return combat;
+    if (!Number.isSafeInteger(combat.turnSequence) || combat.turnSequence < 0) {
+        combat.turnSequence = 0;
+    }
     ensureCombatActors(combat, player || {});
     const playerActor = syncPlayerActor(combat, player || {}) || getPlayerActor(combat);
 

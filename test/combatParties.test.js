@@ -57,6 +57,7 @@ test('party activation and clearing update the single activeActorUid token atomi
     assert.equal(activatePartyActor(combat, mercenary), mercenary);
     assert.equal(combat.activeActorUid, mercenary.uid);
     assert.equal(combat.atbPaused, true);
+    assert.equal(combat.turnSequence, 1);
 
     assert.equal(clearActivePartyActor(combat, 'wrong_uid'), false);
     assert.equal(combat.activeActorUid, mercenary.uid);
@@ -65,4 +66,7 @@ test('party activation and clearing update the single activeActorUid token atomi
     assert.equal(clearActivePartyActor(combat, mercenary.uid), true);
     assert.equal(combat.activeActorUid, null);
     assert.equal(combat.atbPaused, false);
+
+    assert.equal(activatePartyActor(combat, mercenary), mercenary);
+    assert.equal(combat.turnSequence, 2);
 });

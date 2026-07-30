@@ -177,6 +177,10 @@ function createCombatEncounter(player, data) {
         allies: [],
         rogues: [],
         nextActorId: 0,
+        turnSequence: 0,
+        playbackLock: false,
+        playbackId: null,
+        playbackExpiresAt: 0,
         obstacles: (template.obstacles || []).map(obstacle => ({
             x: obstacle.x,
             y: obstacle.y,

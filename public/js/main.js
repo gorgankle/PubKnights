@@ -6,8 +6,159 @@ const socket = io();
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-function syncCombatCollectionsFromState(serverCombatState) {
-    if (!serverCombatState) return;
+let latestCombatTurnSequence = -1;
+let combatAuthorityRevision = 0;
+let combatPlaybackGeneration = 0;
+let combatConnectionRecoveryPending = false;
+const acknowledgedCombatPlaybackIds = new Set();
+const pendingCombatPlaybackIds = new Set();
+
+function getCombatTurnSequence(payload) {
+    if (
+        payload
+        && typeof payload === 'object'
+        && Object.prototype.hasOwnProperty.call(payload, 'turnSequence')
+        && Number.isSafeInteger(payload.turnSequence)
+        && payload.turnSequence >= 0
+    ) {
+        return payload.turnSequence;
+    }
+    const nestedState = (
+        payload
+        && typeof payload === 'object'
+        && payload.updatedCombatState
+        && typeof payload.updatedCombatState === 'object'
+    ) ? payload.updatedCombatState : null;
+    if (
+        nestedState
+        && Object.prototype.hasOwnProperty.call(
+            nestedState,
+            'turnSequence'
+        )
+        && Number.isSafeInteger(nestedState.turnSequence)
+        && nestedState.turnSequence >= 0
+    ) {
+        return nestedState.turnSequence;
+    }
+    return null;
+}
+
+function registerCombatAuthority(payload) {
+    const turnSequence = getCombatTurnSequence(payload);
+    if (
+        turnSequence !== null
+        && latestCombatTurnSequence >= 0
+        && turnSequence < latestCombatTurnSequence
+    ) {
+        return Object.freeze({
+            revision: combatAuthorityRevision,
+            turnSequence,
+            stale: true
+        });
+    }
+
+    if (turnSequence !== null) {
+        latestCombatTurnSequence = Math.max(
+            latestCombatTurnSequence,
+            turnSequence
+        );
+    }
+    combatAuthorityRevision += 1;
+    return Object.freeze({
+        revision: combatAuthorityRevision,
+        turnSequence,
+        stale: false
+    });
+}
+
+function resetCombatAuthority(serverCombatState = null) {
+    latestCombatTurnSequence = -1;
+    combatAuthorityRevision += 1;
+    return registerCombatAuthority(serverCombatState || {});
+}
+
+function canApplyCombatControls(serverCombatState, authority = null) {
+    const turnSequence = getCombatTurnSequence(serverCombatState);
+    if (
+        turnSequence !== null
+        && latestCombatTurnSequence >= 0
+        && turnSequence < latestCombatTurnSequence
+    ) {
+        return false;
+    }
+    if (
+        authority
+        && (
+            authority.stale
+            || authority.revision !== combatAuthorityRevision
+        )
+    ) {
+        return false;
+    }
+    return true;
+}
+
+function acknowledgeCombatPlayback(playbackId) {
+    if (
+        playbackId === undefined
+        || playbackId === null
+        || String(playbackId).length === 0
+    ) {
+        return false;
+    }
+    const normalizedPlaybackId = String(playbackId);
+    if (acknowledgedCombatPlaybackIds.has(normalizedPlaybackId)) {
+        return false;
+    }
+    pendingCombatPlaybackIds.delete(normalizedPlaybackId);
+    acknowledgedCombatPlaybackIds.add(normalizedPlaybackId);
+    socket.emit('clientPlaybackComplete', {
+        playbackId: normalizedPlaybackId
+    });
+    return true;
+}
+
+function trackCombatPlayback(playbackId) {
+    if (
+        playbackId === undefined
+        || playbackId === null
+        || String(playbackId).length === 0
+    ) {
+        return false;
+    }
+    const normalizedPlaybackId = String(playbackId);
+    if (acknowledgedCombatPlaybackIds.has(normalizedPlaybackId)) {
+        return false;
+    }
+    pendingCombatPlaybackIds.add(normalizedPlaybackId);
+    return true;
+}
+
+function cancelPendingCombatPlaybacks() {
+    [...pendingCombatPlaybackIds].forEach(acknowledgeCombatPlayback);
+}
+
+function syncCombatCollectionsFromState(
+    serverCombatState,
+    authority = null
+) {
+    if (!serverCombatState) {
+        return canApplyCombatControls(null, authority);
+    }
+    const applyCombatControls = canApplyCombatControls(
+        serverCombatState,
+        authority
+    );
+    const stateTurnSequence = getCombatTurnSequence(serverCombatState);
+    if (
+        applyCombatControls
+        && stateTurnSequence !== null
+    ) {
+        latestCombatTurnSequence = Math.max(
+            latestCombatTurnSequence,
+            stateTurnSequence
+        );
+    }
     const selectedEnemyUid = selectedEnemy && selectedEnemy.uid ? selectedEnemy.uid : null;
     if (serverCombatState.player) {
         player.x = serverCombatState.player.x;
@@ -23,18 +174,40 @@ function syncCombatCollectionsFromState(serverCombatState) {
     if (serverCombatState.parties && typeof serverCombatState.parties === "object") {
         combatParties = serverCombatState.parties;
     }
-    if (Object.prototype.hasOwnProperty.call(serverCombatState, "activeActorUid")) {
+    if (
+        applyCombatControls
+        && Object.prototype.hasOwnProperty.call(
+            serverCombatState,
+            "activeActorUid"
+        )
+    ) {
         activeCombatActorUid = serverCombatState.activeActorUid || null;
     }
-    if (Number.isInteger(serverCombatState.actionsRemaining)) {
+    if (
+        applyCombatControls
+        && Number.isInteger(serverCombatState.actionsRemaining)
+    ) {
         combatActionsRemaining = serverCombatState.actionsRemaining;
     }
+    return applyCombatControls;
 }
 
-function settleCombatActionState(serverCombatState = null) {
-    if (serverCombatState) syncCombatCollectionsFromState(serverCombatState);
+function settleCombatActionState(
+    serverCombatState = null,
+    authority = null
+) {
+    const controlsApplied = syncCombatCollectionsFromState(
+        serverCombatState,
+        authority
+    );
     selectedEnemy = selectedEnemy && selectedEnemy.alive ? selectedEnemy : null;
     pendingMove = null;
+
+    if (!controlsApplied) {
+        refreshSystemUI();
+        if (typeof drawGrid === 'function') drawGrid();
+        return false;
+    }
 
     if (activeCombatActorUid && combatActionsRemaining > 0) {
         currentTurn = 'PLAYER';
@@ -48,6 +221,7 @@ function settleCombatActionState(serverCombatState = null) {
 
     refreshSystemUI();
     if (typeof drawGrid === 'function') drawGrid();
+    return true;
 }
 
 function getCombatActorByUid(uid) {
@@ -253,6 +427,110 @@ function cancelPendingCombatSpriteActions() {
         }
     });
     pendingCombatSpriteActionRetries.clear();
+}
+
+function setCombatConnectionRecoveryMessage(message) {
+    const loginScreen = document.getElementById('login-screen');
+    if (!loginScreen) return null;
+    let notice = document.getElementById('connection-recovery-message');
+    if (!notice) {
+        notice = document.createElement('p');
+        notice.id = 'connection-recovery-message';
+        notice.setAttribute('role', 'status');
+        notice.style.cssText = [
+            'color:#f5c16c',
+            'background:#2b211a',
+            'border:1px solid #c47b35',
+            'padding:9px',
+            'margin:0 0 12px',
+            'font-size:12px',
+            'text-align:center'
+        ].join(';');
+        const formPanel = loginScreen.querySelector('.dashboard-panel');
+        loginScreen.insertBefore(notice, formPanel || null);
+    }
+    notice.textContent = message;
+    notice.style.display = 'block';
+    return notice;
+}
+
+function clearCombatConnectionRecovery() {
+    combatConnectionRecoveryPending = false;
+    const notice = document.getElementById('connection-recovery-message');
+    if (notice) notice.style.display = 'none';
+}
+
+function recoverDiscardedSocketSession() {
+    const mainContainer = document.getElementById('main-game-container');
+    const creationScreen = document.getElementById('char-creation-screen');
+    const loginScreen = document.getElementById('login-screen');
+    const authenticatedUiVisible = Boolean(
+        (mainContainer && mainContainer.style.display === 'flex')
+        || (
+            creationScreen
+            && creationScreen.style.display !== 'none'
+        )
+        || gameState === 'COMBAT'
+    );
+    if (!authenticatedUiVisible) return false;
+
+    combatConnectionRecoveryPending = true;
+    combatPlaybackGeneration += 1;
+    latestCombatTurnSequence = -1;
+    combatAuthorityRevision += 1;
+
+    // Change state before cancellation callbacks run so an abandoned movie
+    // cannot put the client back into an actionable combat phase.
+    gameState = 'LOGIN';
+    currentTurn = 'ENEMY';
+    combatPhase = 'DISCONNECTED';
+    activeCombatActorUid = null;
+    combatActionsRemaining = 0;
+    pendingMove = null;
+    selectedEnemy = null;
+    reachableTiles = null;
+
+    cancelPendingCombatPlaybacks();
+    cancelPendingCombatSpriteActions();
+    if (typeof CombatSpriteAnimation !== 'undefined') {
+        CombatSpriteAnimation.clear();
+    }
+    acknowledgedCombatPlaybackIds.clear();
+    pendingCombatPlaybackIds.clear();
+
+    enemies = [];
+    allies = [];
+    rogues = [];
+    combatParties = {};
+    activeCombatFloorTiles = [];
+    if (typeof pendingLoot !== 'undefined') pendingLoot = [];
+    if (typeof hideTooltip === 'function') hideTooltip();
+
+    const combatScreen = document.getElementById('combat-screen');
+    if (combatScreen) combatScreen.style.display = 'none';
+    if (mainContainer) mainContainer.style.display = 'none';
+    if (creationScreen) creationScreen.style.display = 'none';
+    if (loginScreen) loginScreen.style.display = 'block';
+
+    const usernameInput = document.getElementById('char-name-input');
+    if (
+        usernameInput
+        && !usernameInput.value
+        && player
+        && player.username
+    ) {
+        usernameInput.value = player.username;
+    }
+    const passwordInput = document.getElementById('char-pass-input');
+    if (passwordInput) passwordInput.value = '';
+
+    setCombatConnectionRecoveryMessage(
+        'Connection lost. This server session was discarded; reconnecting now. Please log in again. Your password was not retained.'
+    );
+    if (typeof window !== 'undefined' && typeof window.scrollTo === 'function') {
+        window.scrollTo(0, 0);
+    }
+    return true;
 }
 
 function isCurrentCombatSpriteActor(actor) {
@@ -545,19 +823,33 @@ function applyOutgoingCombatImpact(result) {
     refreshSystemUI();
 }
 
-function finalizeOutgoingCombatAction(result, resultCombatState) {
-    if (resultCombatState) syncCombatCollectionsFromState(resultCombatState);
+function finalizeOutgoingCombatAction(
+    result,
+    resultCombatState,
+    authority = null
+) {
+    const controlsApplied = syncCombatCollectionsFromState(
+        resultCombatState,
+        authority
+    );
     if (selectedEnemy && !selectedEnemy.alive) selectedEnemy = null;
 
-    if (result.combatComplete) {
+    if (result.combatComplete && controlsApplied) {
         presentCombatVictory();
-    } else {
-        settleCombatActionState(resultCombatState);
+    } else if (!result.combatComplete) {
+        settleCombatActionState(null, authority);
     }
     refreshSystemUI();
+    return controlsApplied;
 }
 
-function playOutgoingCombatHit(result, sourceActor, resultCombatState) {
+function playOutgoingCombatHit(
+    result,
+    sourceActor,
+    resultCombatState,
+    authority = null
+) {
+    trackCombatPlayback(result.playbackId);
     const fx = result.fx || {};
     const weapon = getCombatResultWeapon(sourceActor);
     const animation = getCombatResultAnimationProfile(
@@ -566,16 +858,31 @@ function playOutgoingCombatHit(result, sourceActor, resultCombatState) {
         sourceActor
     );
     const target = getCombatResultTarget(result, sourceActor);
-    const barrier = createCombatPlaybackBarrier(() => {
-        finalizeOutgoingCombatAction(result, resultCombatState);
-    });
     let impactApplied = false;
     let presentationCancelled = false;
+    let presentationSettled = false;
+
+    function settlePresentation() {
+        if (presentationSettled) return;
+        presentationSettled = true;
+        try {
+            finalizeOutgoingCombatAction(
+                result,
+                resultCombatState,
+                authority
+            );
+        } finally {
+            acknowledgeCombatPlayback(result.playbackId);
+        }
+    }
+
+    const barrier = createCombatPlaybackBarrier(settlePresentation);
 
     function cancelPresentation() {
         if (presentationCancelled) return;
         presentationCancelled = true;
         barrier.cancel();
+        settlePresentation();
     }
 
     function applyImpact() {
@@ -654,7 +961,13 @@ function playOutgoingCombatHit(result, sourceActor, resultCombatState) {
     );
 }
 
-function playOutgoingCombatMiss(result, sourceActor, resultCombatState) {
+function playOutgoingCombatMiss(
+    result,
+    sourceActor,
+    resultCombatState,
+    authority = null
+) {
+    trackCombatPlayback(result.playbackId);
     const weapon = getCombatResultWeapon(sourceActor);
     const isProjectile = Boolean(weapon && weapon.projectileSprite);
     const animation = getCombatResultAnimationProfile(
@@ -691,15 +1004,29 @@ function playOutgoingCombatMiss(result, sourceActor, resultCombatState) {
     const defenseProfile = result.deflectReason === 'armor'
         ? getHumanoidShieldDefenseProfile(targetActor)
         : null;
-    const barrier = createCombatPlaybackBarrier(() => {
-        finalizeOutgoingCombatAction(result, resultCombatState);
-    });
     let missShown = false;
     let presentationCancelled = false;
+    let presentationSettled = false;
     let sourceComplete = false;
     let defenseComplete = true;
     let defenseStarted = false;
     let defenseState = null;
+
+    function settlePresentation() {
+        if (presentationSettled) return;
+        presentationSettled = true;
+        try {
+            finalizeOutgoingCombatAction(
+                result,
+                resultCombatState,
+                authority
+            );
+        } finally {
+            acknowledgeCombatPlayback(result.playbackId);
+        }
+    }
+
+    const barrier = createCombatPlaybackBarrier(settlePresentation);
 
     function markCombinedActionComplete() {
         if (
@@ -771,6 +1098,7 @@ function playOutgoingCombatMiss(result, sourceActor, resultCombatState) {
         presentationCancelled = true;
         cancelTargetDefense();
         barrier.cancel();
+        settlePresentation();
     }
 
     function showMiss() {
@@ -852,6 +1180,25 @@ function playOutgoingCombatMiss(result, sourceActor, resultCombatState) {
 
 // === SERVER-AUTHORITATIVE SYNC ===
 
+socket.on('disconnect', () => {
+    recoverDiscardedSocketSession();
+});
+
+socket.on('connect', () => {
+    if (!combatConnectionRecoveryPending) return;
+    setCombatConnectionRecoveryMessage(
+        'Connection restored. Please log in again to create a fresh server session. Your password was not retained.'
+    );
+});
+
+socket.on('loginSuccess', () => {
+    clearCombatConnectionRecovery();
+});
+
+socket.on('registerSuccess', () => {
+    clearCombatConnectionRecovery();
+});
+
 socket.on('serverTick', (serverData) => {
     // Failsafe: Ignore background ticks if the player hasn't logged in yet
     if (document.getElementById('main-game-container').style.display !== 'flex') return;
@@ -867,26 +1214,34 @@ socket.on('serverTick', (serverData) => {
 socket.on('combatResult', (result) => {
     if (!result || gameState !== 'COMBAT') return;
 
-    if (result.updatedPlayer) Object.assign(player, result.updatedPlayer); // Instantly sync stamina
+    const authority = registerCombatAuthority(result);
     const resultCombatState = result.updatedCombatState || null;
+    if (authority.stale) {
+        syncCombatCollectionsFromState(resultCombatState, authority);
+        acknowledgeCombatPlayback(result.playbackId);
+        refreshSystemUI();
+        if (typeof drawGrid === 'function') drawGrid();
+        return;
+    }
+    if (result.updatedPlayer) Object.assign(player, result.updatedPlayer); // Instantly sync stamina
 
     // === THE FIX: HANDLE ERRORS & PASS TURN ===
     if (result.type === 'error') {
         logMessage(result.message);
         if (typeof playRetroSound === 'function') playRetroSound('error');
-        settleCombatActionState(resultCombatState);
+        settleCombatActionState(resultCombatState, authority);
         return;
     }
 
     if (result.type === 'rest') {
         logMessage(`${result.actorName || 'Party member'} rested and recovered ${result.recovered} stamina.`);
-        settleCombatActionState(resultCombatState);
+        settleCombatActionState(resultCombatState, authority);
         return;
     }
 
     if (result.type === 'endTurn') {
         logMessage(`${result.actorName || 'Party member'} ended their turn.`);
-        settleCombatActionState(resultCombatState);
+        settleCombatActionState(resultCombatState, authority);
         return;
     }
 
@@ -911,7 +1266,8 @@ socket.on('combatResult', (result) => {
         playOutgoingCombatMiss(
             result,
             sourceActor,
-            resultCombatState
+            resultCombatState,
+            authority
         );
         return;
     }
@@ -923,24 +1279,49 @@ socket.on('combatResult', (result) => {
         playOutgoingCombatHit(
             result,
             sourceActor,
-            resultCombatState
+            resultCombatState,
+            authority
         );
+        return;
     }
+
+    // A future server-side result type must not strand an issued playback lock.
+    acknowledgeCombatPlayback(result.playbackId);
+    settleCombatActionState(resultCombatState, authority);
 });
 
 // === SERVER-AUTHORITATIVE COMBAT ITEM RECEIPT ===
 socket.on('combatItemReceipt', (receipt) => {
+    if (!receipt) return;
+    const authority = registerCombatAuthority(receipt);
+    if (authority.stale) {
+        syncCombatCollectionsFromState(
+            receipt.updatedCombatState || null,
+            authority
+        );
+        refreshSystemUI();
+        if (typeof drawGrid === 'function') drawGrid();
+        return;
+    }
     if (!receipt.success) {
         logMessage(receipt.message);
         if (typeof playRetroSound === 'function') playRetroSound('error');
 
-        settleCombatActionState(receipt.updatedCombatState || null);
+        settleCombatActionState(
+            receipt.updatedCombatState || null,
+            authority
+        );
 
         return;
     }
 
     if (receipt.updatedPlayer) Object.assign(player, receipt.updatedPlayer); // Magic bullet sync
-    if (receipt.updatedCombatState) syncCombatCollectionsFromState(receipt.updatedCombatState);
+    if (receipt.updatedCombatState) {
+        syncCombatCollectionsFromState(
+            receipt.updatedCombatState,
+            authority
+        );
+    }
 
     logMessage(receipt.message);
     if (receipt.message.includes("gear")) {
@@ -951,7 +1332,10 @@ socket.on('combatItemReceipt', (receipt) => {
 
     if (typeof saveGame === 'function') saveGame();
 
-    settleCombatActionState(receipt.updatedCombatState || null);
+    settleCombatActionState(
+        receipt.updatedCombatState || null,
+        authority
+    );
 
     // === THE MISSING CANVAS REPAINT ===
     // Forces the physical game board to instantly redraw the new movement/range tiles!
@@ -963,10 +1347,26 @@ socket.on('combatItemReceipt', (receipt) => {
 
 // === SERVER-AUTHORITATIVE MOVEMENT RECEIPT ===
 socket.on('moveReceipt', (receipt) => {
+    if (!receipt) return;
+    const authority = registerCombatAuthority(receipt);
+    if (authority.stale) {
+        syncCombatCollectionsFromState(
+            receipt.updatedCombatState || null,
+            authority
+        );
+        refreshSystemUI();
+        if (typeof drawGrid === 'function') drawGrid();
+        return;
+    }
     if (receipt.updatedPlayer) Object.assign(player, receipt.updatedPlayer);
     if (!receipt.success) {
         logMessage(receipt.message);
-        if (receipt.updatedCombatState) syncCombatCollectionsFromState(receipt.updatedCombatState);
+        if (receipt.updatedCombatState) {
+            syncCombatCollectionsFromState(
+                receipt.updatedCombatState,
+                authority
+            );
+        }
         const failedMoveActor = receipt.actorUid && typeof getCombatActorByUid === 'function' ? getCombatActorByUid(receipt.actorUid) : player;
         if (failedMoveActor && Number.isFinite(receipt.x) && Number.isFinite(receipt.y)) {
             failedMoveActor.x = receipt.x;
@@ -974,11 +1374,16 @@ socket.on('moveReceipt', (receipt) => {
         }
         if (typeof playRetroSound === 'function') playRetroSound('error');
     }
-    settleCombatActionState(receipt.updatedCombatState || null);
+    settleCombatActionState(
+        receipt.updatedCombatState || null,
+        authority
+    );
 });
 
 socket.on('ATB_READY', (payload = {}) => {
     if (gameState !== 'COMBAT') return;
+    const authority = registerCombatAuthority(payload);
+    if (authority.stale) return;
     activeCombatActorUid = payload.actorUid || 'player_0';
     combatActionsRemaining = Number.isInteger(payload.actionsRemaining) ? payload.actionsRemaining : 2;
     combatPhase = 'ACTION_READY';
@@ -1133,8 +1538,23 @@ socket.on('combatRewardsReceipt', (receipt) => {
 
 socket.on('statusEffectReceipt', (receipt) => {
     if (!receipt || gameState !== 'COMBAT') return;
+    const authority = registerCombatAuthority(receipt);
+    if (authority.stale) {
+        syncCombatCollectionsFromState(
+            receipt.updatedCombatState || null,
+            authority
+        );
+        refreshSystemUI();
+        if (typeof drawGrid === 'function') drawGrid();
+        return;
+    }
     if (receipt.updatedPlayer) Object.assign(player, receipt.updatedPlayer);
-    if (receipt.updatedCombatState) syncCombatCollectionsFromState(receipt.updatedCombatState);
+    if (receipt.updatedCombatState) {
+        syncCombatCollectionsFromState(
+            receipt.updatedCombatState,
+            authority
+        );
+    }
 
     (receipt.events || []).forEach(ev => {
         if (ev.status === 'poison') {
@@ -1164,6 +1584,9 @@ socket.on('statusEffectReceipt', (receipt) => {
 });
 
 socket.on('combatDeployed', (serverCombatState) => {
+    combatPlaybackGeneration += 1;
+    const authority = resetCombatAuthority(serverCombatState);
+    cancelPendingCombatPlaybacks();
     activeCombatActorUid = null;
     combatActionsRemaining = 0;
     combatVictoryPresentationStarted = false;
@@ -1173,6 +1596,8 @@ socket.on('combatDeployed', (serverCombatState) => {
     if (typeof CombatSpriteAnimation !== 'undefined') {
         CombatSpriteAnimation.clear();
     }
+    acknowledgedCombatPlaybackIds.clear();
+    pendingCombatPlaybackIds.clear();
     delete player.visualX;
     delete player.visualY;
     delete player.moveAnimTimer;
@@ -1195,7 +1620,7 @@ socket.on('combatDeployed', (serverCombatState) => {
     currentTileSize = serverCombatState.tileSize;
     player.x = serverCombatState.player.x;
     player.y = serverCombatState.player.y;
-    syncCombatCollectionsFromState(serverCombatState);
+    syncCombatCollectionsFromState(serverCombatState, authority);
     selectedEnemy = null;
 
     activeCombatZone = serverCombatState.zone;
@@ -1222,6 +1647,23 @@ socket.on('combatDeployed', (serverCombatState) => {
 
 // === SERVER-AUTHORITATIVE AI CATCHER (THE MOVIE PLAYER) ===
 socket.on('enemyTurnReceipt', (receipt) => {
+    if (!receipt || gameState !== 'COMBAT') {
+        acknowledgeCombatPlayback(receipt && receipt.playbackId);
+        return;
+    }
+    const authority = registerCombatAuthority(receipt);
+    const receiptPlaybackGeneration = combatPlaybackGeneration;
+    if (authority.stale) {
+        syncCombatCollectionsFromState(
+            receipt.updatedCombatState || null,
+            authority
+        );
+        acknowledgeCombatPlayback(receipt.playbackId);
+        refreshSystemUI();
+        if (typeof drawGrid === 'function') drawGrid();
+        return;
+    }
+    trackCombatPlayback(receipt.playbackId);
     // 1. Accept only the player's math instantly (so death checks work)
     if (receipt.updatedPlayer) Object.assign(player, receipt.updatedPlayer);
 
@@ -1229,6 +1671,8 @@ socket.on('enemyTurnReceipt', (receipt) => {
     const combatDefeated = !!receipt.combatDefeated || events.some(ev => ev && ev.type === 'death');
     const combatComplete = !!receipt.combatComplete;
     currentTurn = "ENEMY";
+    activeCombatActorUid = null;
+    combatActionsRemaining = 0;
 
     // === NEW: DYNAMIC FAST-FORWARD MATH ===
     // If there are hundreds of events (Gorilla Pit), compress the time!
@@ -1245,6 +1689,14 @@ socket.on('enemyTurnReceipt', (receipt) => {
     const compressedPlaybackOptions = {
         playbackRate: 1 / Math.max(0.15, timeCompression)
     };
+
+    function isEnemyReceiptPlaybackCurrent() {
+        return (
+            receiptPlaybackGeneration === combatPlaybackGeneration
+            && gameState === 'COMBAT'
+            && canApplyCombatControls(null, authority)
+        );
+    }
 
     function getEnemyEventSourceActor(ev) {
         const sourceUid = getCombatEventActorUid(ev);
@@ -1400,6 +1852,7 @@ socket.on('enemyTurnReceipt', (receipt) => {
     }
 
     function playEnemyAttackFx(ev, onComplete, targetActor = null) {
+        if (!isEnemyReceiptPlaybackCurrent()) return;
         const sourceActor = getEnemyEventSourceActor(ev);
         const resolvedTarget = targetActor || player;
         const targetSize = Math.max(
@@ -1427,8 +1880,12 @@ socket.on('enemyTurnReceipt', (receipt) => {
 
         const clipId = getEnemyEventActionClip(ev, sourceActor);
         let released = false;
+        function completeCurrentAttack() {
+            if (!isEnemyReceiptPlaybackCurrent()) return;
+            onComplete();
+        }
         function releaseAttack(event = {}) {
-            if (released) return;
+            if (released || !isEnemyReceiptPlaybackCurrent()) return;
             released = true;
             const sourceSize = Math.max(
                 1,
@@ -1456,7 +1913,7 @@ socket.on('enemyTurnReceipt', (receipt) => {
                             (Number(ev.spellFx.speed) || 15)
                                 * timeCompression
                         ),
-                        onComplete
+                        onComplete: completeCurrentAttack
                     }
                 );
             } else if (ev.projectileSprite) {
@@ -1473,14 +1930,14 @@ socket.on('enemyTurnReceipt', (receipt) => {
                             3,
                             Math.round(20 * timeCompression)
                         ),
-                        onComplete
+                        onComplete: completeCurrentAttack
                     }
                 );
             } else {
                 if (typeof FXEngine.spawnMeleeImpact === 'function') {
                     FXEngine.spawnMeleeImpact(targetX, targetY, clipId);
                 }
-                onComplete();
+                completeCurrentAttack();
             }
         }
 
@@ -1512,6 +1969,7 @@ socket.on('enemyTurnReceipt', (receipt) => {
     // 2. Play the events sequentially on the screen
     events.forEach(ev => {
         setTimeout(() => {
+            if (!isEnemyReceiptPlaybackCurrent()) return;
             const eventActorUid = getCombatEventActorUid(ev);
             if (eventActorUid) activeCombatActorUid = eventActorUid;
             const eventActor = eventActorUid ? getCombatActorByUid(eventActorUid) : null;
@@ -1643,7 +2101,12 @@ socket.on('enemyTurnReceipt', (receipt) => {
                 const healer = getEnemyEventSourceActor(ev);
                 let healApplied = false;
                 const applyHeal = () => {
-                    if (healApplied) return;
+                    if (
+                        healApplied
+                        || !isEnemyReceiptPlaybackCurrent()
+                    ) {
+                        return;
+                    }
                     healApplied = true;
                     player.hp = ev.hp || player.hp;
                     logMessage(`${ev.sourceName} patches you up for ${ev.amount} HP.`);
@@ -1691,6 +2154,7 @@ socket.on('enemyTurnReceipt', (receipt) => {
                 logMessage("💀 casualty verified. Transporting to safety structures.");
                 if (typeof playRetroSound === 'function') playRetroSound('death');
                 setTimeout(() => {
+                    if (!isEnemyReceiptPlaybackCurrent()) return;
                     transitionToTown();
                     if (typeof saveGame === 'function') saveGame();
                     refreshSystemUI();
@@ -1704,27 +2168,37 @@ socket.on('enemyTurnReceipt', (receipt) => {
 
     // 3. Finally, hand control back to the player!
     setTimeout(() => {
-        if (combatDefeated) return;
-        if (combatComplete) {
-            presentCombatVictory();
-            return;
-        }
+        try {
+            if (!isEnemyReceiptPlaybackCurrent()) return;
+            if (combatDefeated) return;
+            if (combatComplete) {
+                presentCombatVictory();
+                return;
+            }
 
-        // We only overwrite the grid with the server's truth AFTER the movie finishes playing!
-        if (receipt.updatedCombatState) syncCombatCollectionsFromState(receipt.updatedCombatState);
-        activeCombatActorUid = null;
-        combatActionsRemaining = 0;
+            // We only overwrite the grid with the server's truth AFTER the movie finishes playing!
+            const controlsApplied = receipt.updatedCombatState
+                ? syncCombatCollectionsFromState(
+                    receipt.updatedCombatState,
+                    authority
+                )
+                : canApplyCombatControls(null, authority);
+            if (controlsApplied) {
+                activeCombatActorUid = null;
+                combatActionsRemaining = 0;
+            }
 
-        if (player.hp > 0) {
-            reachableTiles = null;
-            // (Ghost Unlock remains removed!)
-            if (typeof saveGame === 'function') saveGame();
-            refreshSystemUI();
-            if (typeof drawGrid === 'function') drawGrid();
-
-            // === THE FIX: THE MOVIE HANDSHAKE ===
-            // Tell the server the visual animation is finished so it can unpause the ATB Heartbeat!
-            socket.emit('clientPlaybackComplete');
+            if (controlsApplied && player.hp > 0) {
+                reachableTiles = null;
+                // (Ghost Unlock remains removed!)
+                if (typeof saveGame === 'function') saveGame();
+                refreshSystemUI();
+                if (typeof drawGrid === 'function') drawGrid();
+            }
+        } finally {
+            // Release this exact server-side movie token after completion,
+            // or after cleanup has invalidated the local presentation.
+            acknowledgeCombatPlayback(receipt.playbackId);
         }
     }, delay + 200);
 });
@@ -1740,6 +2214,7 @@ let combatActionsRemaining = 0;
 let activeCombatZone = 'WILDERNESS';
 let activeCombatFloorSpriteId = 'ground_wilderness';
 let activeCombatFloorTiles = [];
+let enemies = [];
 let allies = [];
 let rogues = [];
 let combatParties = {};

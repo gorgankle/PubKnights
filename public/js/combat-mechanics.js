@@ -518,14 +518,29 @@ function isValidPlayerMovePath(targetX, targetY) {
 }
 // === RESTORED TRANSITION FUNCTION ===
 window.transitionToTown = function() {
+    // Invalidate delayed combat callbacks before clearing animation state.
+    // A cancelled presentation must not be able to restore combat controls
+    // after the player has already returned to town.
+    if (typeof setGameState === 'function') {
+        setGameState('KNIGHT');
+    }
+    if (typeof combatPlaybackGeneration !== 'undefined') {
+        combatPlaybackGeneration += 1;
+    }
+    if (typeof combatAuthorityRevision !== 'undefined') {
+        combatAuthorityRevision += 1;
+    }
+    if (typeof latestCombatTurnSequence !== 'undefined') {
+        latestCombatTurnSequence = -1;
+    }
+    if (typeof cancelPendingCombatPlaybacks === 'function') {
+        cancelPendingCombatPlaybacks();
+    }
     if (typeof cancelPendingCombatSpriteActions === 'function') {
         cancelPendingCombatSpriteActions();
     }
     if (typeof CombatSpriteAnimation !== 'undefined') {
         CombatSpriteAnimation.clear();
-    }
-    if (typeof setGameState === 'function') {
-        setGameState('KNIGHT');
     }
     
     // Failsafe cleanup of combat states

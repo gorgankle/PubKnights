@@ -86,6 +86,12 @@ function activatePartyActor(combat, actor) {
     syncCombatParties(combat);
     const partyId = getActorPartyId(actor);
     if (!partyId || !combat.parties[partyId].memberUids.includes(actor.uid)) return null;
+    const previousTurnSequence = Number.isSafeInteger(combat.turnSequence)
+        ? Math.max(0, combat.turnSequence)
+        : 0;
+    combat.turnSequence = previousTurnSequence >= Number.MAX_SAFE_INTEGER
+        ? 1
+        : previousTurnSequence + 1;
     combat.activeActorUid = actor.uid;
     combat.atbPaused = true;
     beginActionTurn(combat);

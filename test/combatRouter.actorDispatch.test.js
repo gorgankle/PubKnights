@@ -541,3 +541,136 @@ test('the active mercenary consumes its own pocket item for one action', () => {
     assert.deepEqual(harness.player.inventory.map(item => item.id), ['backpack_stout']);
     assert.equal(harness.combat.actionsRemaining, 1);
 });
+
+test('animated combat results hold ATB behind a tokenized playback acknowledgement', t => {
+    pinRandom(t);
+    const weapon = makeWeapon({
+        range: 3,
+        staminaCost: 1,
+        multiplier: 1
+    });
+    const harness = createHarness({ weapon });
+
+    const attack = () => harness.socket.dispatch('dispatchCombatAction', {
+        actorUid: harness.companion.uid,
+        actionCategory: 'weapon',
+        subType: 'slash',
+        targetEnemy: { uid: harness.enemies[0].uid }
+    });
+
+    attack();
+    const firstResult = harness.socket.lastPayload('combatResult');
+    const firstPlaybackId = firstResult.playbackId;
+    assert.equal(firstResult.type, 'hit');
+    assert.match(firstPlaybackId, /^combat-playback-\d+$/);
+    assert.equal(firstResult.turnSequence, 0);
+    assert.equal(harness.combat.playbackLock, true);
+    assert.equal(harness.combat.playbackId, firstPlaybackId);
+    assert.ok(harness.combat.playbackExpiresAt > Date.now());
+
+    harness.socket.dispatch('clientPlaybackComplete', {
+        playbackId: firstPlaybackId
+    });
+    assert.equal(harness.combat.playbackLock, false);
+
+    attack();
+    const secondResult = harness.socket.lastPayload('combatResult');
+    const secondPlaybackId = secondResult.playbackId;
+    assert.notEqual(secondPlaybackId, firstPlaybackId);
+    assert.equal(harness.combat.atbPaused, false);
+    assert.equal(harness.combat.activeActorUid, null);
+    assert.equal(harness.combat.playbackLock, true);
+
+    harness.socket.dispatch('clientPlaybackComplete', {
+        playbackId: firstPlaybackId
+    });
+    assert.equal(harness.combat.playbackLock, true);
+    assert.equal(harness.combat.playbackId, secondPlaybackId);
+
+    harness.socket.dispatch('clientPlaybackComplete', {
+        playbackId: secondPlaybackId
+    });
+    assert.equal(harness.combat.playbackLock, false);
+});
+
+test('malformed combat actions always receive an explicit recovery receipt', () => {
+    const aoeWeapon = makeWeapon(
+        { range: 1, staminaCost: 1, multiplier: 1 },
+        {
+            range: 4,
+            staminaCost: 5,
+            multiplier: 1,
+            targetType: 'aoe',
+            aoeRadius: 1
+        }
+    );
+    const harness = createHarness({ weapon: aoeWeapon });
+
+    harness.socket.dispatch('dispatchCombatAction', undefined);
+    let result = harness.socket.lastPayload('combatResult');
+    assert.equal(result.type, 'error');
+    assert.match(result.message, /invalid combat action payload/i);
+    assert.equal(result.updatedCombatState, harness.combat);
+
+    harness.socket.dispatch('dispatchCombatAction', {
+        actionCategory: 'unsupported-action'
+    });
+    result = harness.socket.lastPayload('combatResult');
+    assert.equal(result.type, 'error');
+    assert.match(result.message, /unsupported combat action/i);
+    assert.equal(result.updatedCombatState, harness.combat);
+
+    harness.socket.dispatch('dispatchCombatAction', {
+        actionCategory: 'weapon',
+        subType: 'special'
+    });
+    result = harness.socket.lastPayload('combatResult');
+    assert.equal(result.type, 'error');
+    assert.match(result.message, /target tile is required/i);
+    assert.equal(result.updatedCombatState, harness.combat);
+});
+
+test('missing spell targets and empty equipment entries return item receipts', () => {
+    const spellItem = {
+        id: 'test_spell_item',
+        name: 'Test Spell Item',
+        slot: 'consumable',
+        combat: {
+            actionType: 'spell',
+            spellId: 'not_needed_without_target',
+            staminaCost: 0
+        }
+    };
+    const weapon = makeWeapon({
+        range: 1,
+        staminaCost: 1,
+        multiplier: 1
+    });
+    const harness = createHarness({
+        weapon,
+        inventory: [spellItem, null]
+    });
+    const playerActor = harness.combat.actors.find(
+        actor => actor.uid === 'player_0'
+    );
+    harness.combat.activeActorUid = playerActor.uid;
+    harness.combat.atbPaused = true;
+
+    harness.socket.dispatch('dispatchCombatAction', {
+        actionCategory: 'consumable',
+        invIndex: 0
+    });
+    let receipt = harness.socket.lastPayload('combatItemReceipt');
+    assert.equal(receipt.success, false);
+    assert.match(receipt.message, /target tile is required/i);
+    assert.equal(receipt.updatedCombatState, harness.combat);
+
+    harness.socket.dispatch('dispatchCombatAction', {
+        actionCategory: 'equip',
+        invIndex: 1
+    });
+    receipt = harness.socket.lastPayload('combatItemReceipt');
+    assert.equal(receipt.success, false);
+    assert.match(receipt.message, /invalid item data/i);
+    assert.equal(receipt.updatedCombatState, harness.combat);
+});

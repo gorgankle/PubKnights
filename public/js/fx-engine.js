@@ -4,6 +4,91 @@
 
 const FXEngine = {
     queue: [],
+    completionFrameMs: 1000 / 60,
+    completionFallbackFloorMs: 500,
+    completionFallbackGraceMs: 100,
+
+    _getCompletionFallbackDelay: function(fx) {
+        if (Number.isFinite(fx.completionFallbackMs)) {
+            return Math.max(0, fx.completionFallbackMs);
+        }
+
+        const remainingFrames = Math.max(
+            1,
+            (Number(fx.maxLife) || 1) - (Number(fx.life) || 0)
+        );
+        return Math.max(
+            this.completionFallbackFloorMs,
+            Math.ceil(
+                (remainingFrames * this.completionFrameMs)
+                + this.completionFallbackGraceMs
+            )
+        );
+    },
+
+    _cancelCompletionFallback: function(fx) {
+        if (!fx) return;
+        if (
+            fx.completionTimer !== null
+            && fx.completionTimer !== undefined
+            && typeof clearTimeout === 'function'
+        ) {
+            clearTimeout(fx.completionTimer);
+        }
+        fx.completionTimer = null;
+        fx.completionTimerToken = null;
+    },
+
+    _armCompletionFallback: function(fx) {
+        if (
+            !fx
+            || fx.completed
+            || typeof fx.onComplete !== 'function'
+            || typeof setTimeout !== 'function'
+        ) {
+            return;
+        }
+
+        this._cancelCompletionFallback(fx);
+        const timerToken = {};
+        fx.completionTimerToken = timerToken;
+        fx.completionTimer = setTimeout(() => {
+            // A cleared timer can still already be queued. Only the newest
+            // watchdog may settle the effect.
+            if (fx.completed || fx.completionTimerToken !== timerToken) return;
+            fx.completionTimer = null;
+            fx.completionTimerToken = null;
+            this._completeQueuedEffect(fx);
+        }, this._getCompletionFallbackDelay(fx));
+    },
+
+    _completeQueuedEffect: function(fx) {
+        if (!fx || fx.completed) return false;
+
+        fx.completed = true;
+        this._cancelCompletionFallback(fx);
+
+        const queueIndex = this.queue.indexOf(fx);
+        if (queueIndex >= 0) {
+            this.queue.splice(queueIndex, 1);
+        }
+
+        if (fx.type === 'MELEE' && fx.attacker) {
+            fx.attacker.lungeOffsetX = 0;
+            fx.attacker.lungeOffsetY = 0;
+            fx.attacker.lungeHop = 0;
+        }
+
+        const callback = (
+            (fx.type === 'PROJECTILE' || fx.type === 'MELEE')
+            && typeof fx.onComplete === 'function'
+        )
+            ? fx.onComplete
+            : null;
+        fx.onComplete = null;
+        if (callback) callback();
+        return true;
+    },
 
     getMagicColors: function(style) {
         const palettes = {
@@ -38,7 +123,7 @@ const FXEngine = {
 
     // 2. Data-Driven Projectiles
     spawnProjectile: function(startX, startY, targetX, targetY, spriteId, config = {}) {
-        this.queue.push({
+        const fx = {
             type: 'PROJECTILE',
             sx: startX, sy: startY,
             tx: targetX, ty: targetY,
@@ -47,8 +132,14 @@ const FXEngine = {
             spin: config.spin || false,
             life: 0,
             maxLife: config.frames || 20,
-            onComplete: config.onComplete || null
-        });
+            onComplete: config.onComplete || null,
+            completed: false,
+            completionTimer: null,
+            completionTimerToken: null,
+            completionFallbackMs: config.completionFallbackMs
+        };
+        this.queue.push(fx);
+        this._armCompletionFallback(fx);
     },
 	
 	// === 3. CONTINUOUS MAGIC BEAMS (Data-Driven Interpolation) ===
@@ -147,15 +238,21 @@ const FXEngine = {
 
     // 5. Melee Lunges
     spawnMeleeStrike: function(playerRef, targetX, targetY, animType, config = {}) {
-        this.queue.push({
+        const fx = {
             type: 'MELEE',
             attacker: playerRef, // <--- THE FIX: Change attackerObj to playerRef!
             tx: targetX, ty: targetY,
             animType: animType,
             life: 0,
             maxLife: config.frames || 15, // 15 frames = snappy, visceral strike
-            onComplete: config.onComplete || null
-        });
+            onComplete: config.onComplete || null,
+            completed: false,
+            completionTimer: null,
+            completionTimerToken: null,
+            completionFallbackMs: config.completionFallbackMs
+        };
+        this.queue.push(fx);
+        this._armCompletionFallback(fx);
     },
 
     spawnMeleeImpact: function(targetX, targetY, clipId, config = {}) {
@@ -178,15 +275,14 @@ const FXEngine = {
 
             // Remove dead effects
             if (progress >= 1.0) {
-                let callback = null;
-                if ((fx.type === 'PROJECTILE' || fx.type === 'MELEE') && typeof fx.onComplete === 'function') {
-                    callback = fx.onComplete;
-                }
-                
-                this.queue.splice(i, 1);
-                if (callback) callback();
+                this._completeQueuedEffect(fx);
                 continue;
             }
+
+            // Rendering can be suspended by a backgrounded tab. Refresh the
+            // watchdog while frames are healthy so foreground completion stays
+            // frame-authored, but a stalled queue still releases combat.
+            this._armCompletionFallback(fx);
 			
             ctx.save();
             let globalAlpha = 1.0 - Math.pow(progress, 3); // Fast fade at the very end

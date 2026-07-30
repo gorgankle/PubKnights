@@ -72,6 +72,8 @@ function createClientHarness(deflectReason = 'armor') {
         defense: null,
         cleared: [],
         finalized: 0,
+        playbackTracked: [],
+        playbackAcknowledged: [],
         logs: [],
         sounds: [],
         text: []
@@ -145,6 +147,12 @@ function createClientHarness(deflectReason = 'armor') {
         finalizeOutgoingCombatAction() {
             calls.finalized++;
         },
+        trackCombatPlayback(playbackId) {
+            calls.playbackTracked.push(playbackId);
+        },
+        acknowledgeCombatPlayback(playbackId) {
+            calls.playbackAcknowledged.push(playbackId);
+        },
         logMessage(message) {
             calls.logs.push(message);
         },
@@ -171,7 +179,8 @@ function createClientHarness(deflectReason = 'armor') {
             actorUid: sourceActor.uid,
             targetUid: shieldTarget.uid,
             deflectReason,
-            hitChance: deflectReason === 'armor' ? 100 : 0
+            hitChance: deflectReason === 'armor' ? 100 : 0,
+            playbackId: 'combat-playback-shield-test'
         },
         sourceActor,
         { actors: [] }
@@ -212,9 +221,13 @@ test('outgoing armor deflect uses the authoritative shield target and waits for 
     calls.defense.options.onComplete();
     calls.defense.options.onComplete();
     assert.equal(calls.finalized, 1);
+    assert.deepEqual(
+        calls.playbackAcknowledged,
+        ['combat-playback-shield-test']
+    );
 });
 
-test('cancelled outgoing playback clears its shield reaction and ignores late callbacks', () => {
+test('cancelled outgoing playback settles state, clears its shield reaction, and ignores late callbacks', () => {
     const harness = createClientHarness();
     const { calls, shieldTarget } = harness;
 
@@ -224,7 +237,11 @@ test('cancelled outgoing playback clears its shield reaction and ignores late ca
     calls.action.options.onEvent();
     calls.action.options.onComplete();
     calls.defense.options.onComplete();
-    assert.equal(calls.finalized, 0);
+    assert.equal(calls.finalized, 1);
+    assert.deepEqual(
+        calls.playbackAcknowledged,
+        ['combat-playback-shield-test']
+    );
     assert.deepEqual(calls.text, []);
 });
 
@@ -239,6 +256,10 @@ test('an evasion miss keeps the authoritative target but does not invent a shiel
     calls.action.options.onComplete();
 
     assert.equal(calls.finalized, 1);
+    assert.deepEqual(
+        calls.playbackAcknowledged,
+        ['combat-playback-shield-test']
+    );
     assert.deepEqual(calls.text, [{
         x: shieldTarget.x,
         y: shieldTarget.y,
