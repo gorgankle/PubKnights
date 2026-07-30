@@ -45,7 +45,6 @@ const CombatMapTemplates = Object.freeze({
             { x: 12, y: 2 }, { x: 12, y: 3 }, { x: 12, y: 4 },
             { x: 11, y: 2 }, { x: 11, y: 3 }, { x: 11, y: 4 }
         ],
-        baitedEnemies: [{ id: "alpha_poacher", x: 8, y: 5 }],
         obstacles: [
             { x: 4, y: 1 }, { x: 4, y: 8 }, { x: 6, y: 3 }, { x: 6, y: 6 }, { x: 8, y: 1 },
             { x: 8, y: 8 }, { x: 10, y: 4 }, { x: 10, y: 6 }, { x: 13, y: 1 }, { x: 13, y: 8 }
@@ -109,7 +108,7 @@ const CombatMapTemplates = Object.freeze({
         playerStart: { x: 0, y: 9 },
         enemySlots: [
             { id: "spectral_barfly", x: 11, y: 1 }, { id: "mash_crawler", x: 12, y: 3 }, { id: "eldritch_keg", x: 13, y: 5 },
-            { id: "mash_crawler", x: 10, y: 7 }, { id: "spectral_barfly", x: 14, y: 2 }, { id: "eldritch_keg", x: 9, y: 4 },
+            { id: "cult_champion", x: 10, y: 7 }, { id: "spectral_barfly", x: 14, y: 2 }, { id: "eldritch_keg", x: 9, y: 4 },
             { id: "mash_crawler", x: 12, y: 8 }, { id: "spectral_barfly", x: 8, y: 2 }, { id: "eldritch_keg", x: 14, y: 6 },
             { id: "mash_crawler", x: 7, y: 7 }, { id: "spectral_barfly", x: 10, y: 0 }, { id: "eldritch_keg", x: 15, y: 8 }
         ],

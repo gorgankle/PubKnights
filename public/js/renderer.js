@@ -272,6 +272,221 @@ function drawCombatAura(target, gridX, gridY, size = 1) {
     });
 }
 
+function getHumanoidCombatVisual(actor) {
+    if (
+        !actor
+        || typeof resolveHumanoidActorVisualProfile !== 'function'
+    ) {
+        return null;
+    }
+    return resolveHumanoidActorVisualProfile(actor);
+}
+
+function canRenderHumanoidCombatActor(actor) {
+    return Boolean(
+        getHumanoidCombatVisual(actor)
+        && typeof CombatSpriteAnimation !== 'undefined'
+        && (
+            typeof drawHumanoidAnimationFrame === 'function'
+            || typeof drawSidePlayerAnimationFrame === 'function'
+        )
+    );
+}
+
+function hasHumanoidTerminalPose(actor) {
+    if (typeof CombatSpriteAnimation === 'undefined') return false;
+    const activeState = typeof CombatSpriteAnimation.getActionState === 'function'
+        ? CombatSpriteAnimation.getActionState(actor)
+        : null;
+    if (activeState && activeState.clipId === 'defeat') return true;
+    return Boolean(
+        typeof CombatSpriteAnimation.hasTerminalState === 'function'
+        && CombatSpriteAnimation.hasTerminalState(actor)
+    );
+}
+
+function getHumanoidFacingTarget(actor) {
+    if (!actor) return null;
+    if (actor.kind === 'player') {
+        if (selectedEnemy && selectedEnemy.alive !== false) {
+            return selectedEnemy;
+        }
+        return [
+            ...(enemies || []),
+            ...(rogues || [])
+        ].find(target => target && target.alive !== false) || null;
+    }
+
+    const teamId = actor.teamId || (
+        actor.kind === 'companion' ? 'PLAYER' : 'ENEMY'
+    );
+    if (teamId === 'PLAYER') {
+        return [
+            ...(enemies || []),
+            ...(rogues || [])
+        ].find(target => target && target.alive !== false) || null;
+    }
+    if (teamId === 'ENEMY') {
+        return [
+            player,
+            ...(allies || []),
+            ...(rogues || [])
+        ].find(target => target && target.alive !== false) || null;
+    }
+    return [
+        player,
+        ...(allies || []),
+        ...(enemies || [])
+    ].find(target => (
+        target
+        && target.uid !== actor.uid
+        && target.alive !== false
+    )) || null;
+}
+
+function getHumanoidRenderState(
+    actor,
+    isMoving,
+    deltaX,
+    deltaY
+) {
+    if (!canRenderHumanoidCombatActor(actor)) return null;
+
+    if (
+        !isMoving
+        && !CombatSpriteAnimation.isAnimating(actor)
+        && !hasHumanoidTerminalPose(actor)
+    ) {
+        const facingTarget = getHumanoidFacingTarget(actor);
+        if (facingTarget) {
+            CombatSpriteAnimation.faceActorToward(
+                actor,
+                (Number(facingTarget.x) || 0)
+                    + ((Math.max(1, Number(facingTarget.size) || 1) - 1) / 2)
+            );
+        }
+    }
+
+    return CombatSpriteAnimation.getRenderState(actor, {
+        isMoving,
+        deltaX,
+        deltaY
+    });
+}
+
+function getHumanoidCombatDrawBounds(
+    actor,
+    visual,
+    x,
+    y,
+    footprintSize
+) {
+    const collisionSize = Math.max(1, Number(actor && actor.size) || 1);
+    const tileSize = Math.max(1, Number(footprintSize) || 1)
+        / collisionSize;
+    const requestedScale = Number(
+        visual
+        && visual.stanceProfile
+        && visual.stanceProfile.visualScale
+    );
+    const visualScale = Number.isFinite(requestedScale)
+        && requestedScale > 0
+        ? requestedScale
+        : 1;
+    const drawSize = tileSize * visualScale;
+    const inset = (
+        Math.max(1, Number(footprintSize) || 1) - drawSize
+    ) / 2;
+    return {
+        x: Number(x) + inset,
+        y: Number(y) + inset,
+        size: drawSize
+    };
+}
+
+function drawHumanoidCombatActor(
+    context,
+    actor,
+    visual,
+    renderState,
+    x,
+    y,
+    size
+) {
+    if (!context || !visual || !renderState) return false;
+    const appearance = visual.appearance || {};
+    const equipment = visual.equipment || {};
+    const anchorOffsets = (
+        typeof resolveHumanoidProfileAnchorOffsets === 'function'
+    )
+        ? resolveHumanoidProfileAnchorOffsets(
+            visual,
+            renderState.clipId
+        )
+        : null;
+    const drawFrame = typeof drawHumanoidAnimationFrame === 'function'
+        ? drawHumanoidAnimationFrame
+        : drawSidePlayerAnimationFrame;
+    const drawSharedActorFrame = (
+        typeof drawHumanoidActorAnimationFrame === 'function'
+    )
+        ? drawHumanoidActorAnimationFrame
+        : null;
+    const drawBounds = getHumanoidCombatDrawBounds(
+        actor,
+        visual,
+        x,
+        y,
+        size
+    );
+
+    context.save();
+    context.translate(drawBounds.x, drawBounds.y);
+    const drawOptions = {
+        facing: renderState.facing,
+        appearance,
+        hairStyle: appearance.hairStyle || appearance.hair,
+        helmetItem: equipment.helmet || null,
+        armorItem: equipment.armor || null,
+        gloveItem: equipment.gloves || null,
+        bootItem: equipment.boots || null,
+        weaponItem: equipment.weapon || null,
+        offhandItem: equipment.offhand || null,
+        stanceProfile: visual.stanceProfile || null,
+        anchorOffsets,
+        layerOverrides: visual.overrides
+            ? visual.overrides.layers
+            : null
+    };
+    if (drawSharedActorFrame) {
+        drawSharedActorFrame(
+            context,
+            visual,
+            renderState.clipId,
+            renderState.frameIndex,
+            drawBounds.size,
+            drawOptions
+        );
+    } else {
+        drawFrame(
+            context,
+            appearance.gender,
+            renderState.clipId,
+            renderState.frameIndex,
+            drawBounds.size,
+            drawOptions
+        );
+    }
+    context.restore();
+    return true;
+}
+
+function getCombatMovementInterpolation(actor) {
+    const requested = Number(actor && actor.combatMovementRate);
+    if (!Number.isFinite(requested)) return 0.15;
+    return Math.min(1, Math.max(0.15, requested));
+}
+
 
 function drawActiveTurnMarker() {
     if (typeof activeCombatActorUid === "undefined" || !activeCombatActorUid) return;
@@ -363,17 +578,17 @@ function drawGrid() {
     let pIsMoving = Math.abs(pDeltaX) > 0.01 || Math.abs(pDeltaY) > 0.01;
 
     if (pIsMoving) {
-        player.visualX += pDeltaX * 0.15;
-        player.visualY += pDeltaY * 0.15;
+        const interpolation = getCombatMovementInterpolation(player);
+        player.visualX += pDeltaX * interpolation;
+        player.visualY += pDeltaY * interpolation;
         player.moveAnimTimer += 0.25;
     } else {
         player.visualX = player.x; player.visualY = player.y; player.moveAnimTimer = 0;
+        delete player.combatMovementRate;
     }
-    const usesSidePlayerRenderer = (
-        typeof CombatSpriteAnimation !== 'undefined'
-        && typeof drawSidePlayerAnimationFrame === 'function'
-    );
-    let playerHopY = usesSidePlayerRenderer
+    const playerHumanoidVisual = getHumanoidCombatVisual(player);
+    const usesHumanoidPlayerRenderer = canRenderHumanoidCombatActor(player);
+    let playerHopY = usesHumanoidPlayerRenderer
         ? 0
         : Math.abs(Math.sin(player.moveAnimTimer)) * 14;
 
@@ -435,39 +650,15 @@ mapObstacles.forEach(o => {
     }
 
 // --- RENDERING PIPELINE: DYNAMIC TRANSFORMS KNIGHT ---
-    const eq = player.equipment || {};
-    const appearance = player.appearance || {};
     let playerRenderState = null;
     let combatLunge = { x: 0, y: 0, hop: 0 };
 
-    if (usesSidePlayerRenderer) {
-        if (
-            !pIsMoving
-            && !CombatSpriteAnimation.isAnimating(player)
-        ) {
-            const facingTarget = (
-                selectedEnemy
-                && selectedEnemy.alive !== false
-            ) ? selectedEnemy : [
-                ...(enemies || []),
-                ...(rogues || [])
-            ].find(actor => actor && actor.alive !== false);
-
-            if (facingTarget) {
-                CombatSpriteAnimation.faceActorToward(
-                    player,
-                    facingTarget.x + ((facingTarget.size || 1) / 2)
-                );
-            }
-        }
-
-        playerRenderState = CombatSpriteAnimation.getRenderState(
+    if (usesHumanoidPlayerRenderer) {
+        playerRenderState = getHumanoidRenderState(
             player,
-            {
-                isMoving: pIsMoving,
-                deltaX: pDeltaX,
-                deltaY: pDeltaY
-            }
+            pIsMoving,
+            pDeltaX,
+            pDeltaY
         );
         combatLunge = CombatSpriteAnimation.getLungeOffset(
             player,
@@ -487,25 +678,19 @@ mapObstacles.forEach(o => {
 
     ctx.save();
 
-    if (usesSidePlayerRenderer && playerRenderState) {
-        ctx.translate(pX, pY);
-        drawSidePlayerAnimationFrame(
+    if (usesHumanoidPlayerRenderer && playerRenderState) {
+        drawHumanoidCombatActor(
             ctx,
-            appearance.gender,
-            playerRenderState.clipId,
-            playerRenderState.frameIndex,
-            currentTileSize,
-            {
-                facing: playerRenderState.facing,
-                hairStyle: appearance.hair,
-                helmetItem: eq.helmet || null,
-                armorItem: eq.armor || null,
-                gloveItem: eq.gloves || null,
-                bootItem: eq.boots || null,
-                weaponItem: eq.weapon || null
-            }
+            player,
+            playerHumanoidVisual,
+            playerRenderState,
+            pX,
+            pY,
+            currentTileSize
         );
     } else {
+        const eq = player.equipment || {};
+        const appearance = player.appearance || {};
         const pScaleY = 1.0
             + Math.sin(globalAnimClock * 0.08) * 0.02;
         const pScaleX = 1.0
@@ -625,70 +810,151 @@ renderGridHealthBar(player.visualX, player.visualY - (playerHopY / currentTileSi
 
     // --- INTERPOLATION ENGINE: ENEMIES ---
     enemies.forEach(e => {
-        if (e.alive) {
-            let sSize = e.size || 1;
+        const humanoidVisual = getHumanoidCombatVisual(e);
+        const terminalPose = humanoidVisual && hasHumanoidTerminalPose(e);
+        if (!e.alive && !terminalPose) return;
 
-            // === NEW: ENEMY ATB VISUAL MATH ===
-            if (e.visualAtb === undefined) e.visualAtb = 0;
-            if (combatPhase === 'WAITING_FOR_ATB') {
-                let eSpeed = ((e.speed || 1) * 3) + 5; // Matches server buff
-                e.visualAtb += (eSpeed * 5) / 60;
-                if (e.visualAtb > 100) e.visualAtb = 100;
-            }
+        const sSize = e.size || 1;
+        if (e.visualAtb === undefined) e.visualAtb = 0;
+        if (e.alive && combatPhase === 'WAITING_FOR_ATB') {
+            const eSpeed = ((e.speed || 1) * 3) + 5;
+            e.visualAtb += (eSpeed * 5) / 60;
+            if (e.visualAtb > 100) e.visualAtb = 100;
+        }
 
-            if (e.visualX === undefined) {
-                e.visualX = e.x; e.visualY = e.y; e.moveAnimTimer = 0; e.attackTimer = 0;
-            }
+        if (e.visualX === undefined) {
+            e.visualX = e.x;
+            e.visualY = e.y;
+            e.moveAnimTimer = 0;
+            e.attackTimer = 0;
+        }
 
-            let eDeltaX = e.x - e.visualX; let eDeltaY = e.y - e.visualY;
-            let eIsMoving = Math.abs(eDeltaX) > 0.01 || Math.abs(eDeltaY) > 0.01;
+        let eDeltaX = e.x - e.visualX;
+        let eDeltaY = e.y - e.visualY;
+        let eIsMoving = e.alive && (
+            Math.abs(eDeltaX) > 0.01
+            || Math.abs(eDeltaY) > 0.01
+        );
+        if (eIsMoving) {
+            const interpolation = getCombatMovementInterpolation(e);
+            e.visualX += eDeltaX * interpolation;
+            e.visualY += eDeltaY * interpolation;
+            e.moveAnimTimer += 0.25;
+        } else {
+            e.visualX = e.x;
+            e.visualY = e.y;
+            e.moveAnimTimer = 0;
+            delete e.combatMovementRate;
+        }
 
-            if (eIsMoving) {
-                e.visualX += eDeltaX * 0.15; e.visualY += eDeltaY * 0.15;
-                e.moveAnimTimer += 0.25;
-            } else {
-                e.visualX = e.x; e.visualY = e.y; e.moveAnimTimer = 0;
-            }
-            let enemyHopY = Math.abs(Math.sin(e.moveAnimTimer)) * 14;
+        const usesHumanoidRenderer = Boolean(
+            humanoidVisual
+            && canRenderHumanoidCombatActor(e)
+        );
+        const enemyHopY = usesHumanoidRenderer
+            ? 0
+            : Math.abs(Math.sin(e.moveAnimTimer)) * 14;
+        const humanoidRenderState = usesHumanoidRenderer
+            ? getHumanoidRenderState(
+                e,
+                eIsMoving,
+                eDeltaX,
+                eDeltaY
+            )
+            : null;
+        const actorCombatLunge = typeof CombatSpriteAnimation !== 'undefined'
+            ? CombatSpriteAnimation.getLungeOffset(e, currentTileSize)
+            : { x: 0, y: 0, hop: 0 };
+        const exPosition = (e.visualX * currentTileSize)
+            + (e.lungeOffsetX || 0)
+            + actorCombatLunge.x;
+        const eyPosition = (e.visualY * currentTileSize)
+            - enemyHopY
+            + (e.lungeOffsetY || 0)
+            - (e.lungeHop || 0)
+            + actorCombatLunge.y
+            - actorCombatLunge.hop;
 
+        if (usesHumanoidRenderer) {
+            drawHumanoidCombatActor(
+                ctx,
+                e,
+                humanoidVisual,
+                humanoidRenderState,
+                exPosition,
+                eyPosition,
+                currentTileSize * sSize
+            );
+        } else {
             ctx.save();
+            const eScaleY = 1.0
+                + Math.sin((globalAnimClock + (e.x * 15)) * 0.07) * 0.02;
+            const eScaleX = 1.0
+                - Math.sin((globalAnimClock + (e.x * 15)) * 0.07) * 0.01;
+            const ePivotX = exPosition + (currentTileSize * sSize) / 2;
+            const ePivotY = eyPosition + (currentTileSize * sSize);
+            ctx.translate(ePivotX, ePivotY);
+            ctx.scale(eScaleX, eScaleY);
+            ctx.translate(-ePivotX, -ePivotY);
 
-            // Retain only the idle breathing animation math
-            let eScaleY = 1.0 + Math.sin((globalAnimClock + (e.x * 15)) * 0.07) * 0.02;
-            let eScaleX = 1.0 - Math.sin((globalAnimClock + (e.x * 15)) * 0.07) * 0.01;
-
-            // Base positional variables completely stripped of lunge mechanics
-            let exPosition = e.visualX * currentTileSize;
-            let eyPosition = (e.visualY * currentTileSize) - enemyHopY;
-
-            let ePivotX = exPosition + (currentTileSize * sSize) / 2;
-            let ePivotY = eyPosition + (currentTileSize * sSize);
-            ctx.translate(ePivotX, ePivotY); ctx.scale(eScaleX, eScaleY); ctx.translate(-ePivotX, -ePivotY);
-
-if (SpriteMatrices[e.id]) {
-                // === GPU RASTER SWAP ===
-                drawOptimizedSprite(ctx, e.id, SpriteMatrices[e.id], exPosition, eyPosition, currentTileSize * sSize);
+            if (SpriteMatrices[e.id]) {
+                drawOptimizedSprite(
+                    ctx,
+                    e.id,
+                    SpriteMatrices[e.id],
+                    exPosition,
+                    eyPosition,
+                    currentTileSize * sSize
+                );
             } else {
-                ctx.fillStyle = activeCombatZone === 'GORILLA_ARENA' ? "#5c4033" : "#d35400";
-                ctx.fillRect(exPosition + 1, eyPosition + 1, (currentTileSize * sSize) - 2, (currentTileSize * sSize) - 2);
-                let fontScale = currentGridSize > 10 ? "13px" : "20px"; let yOffset = currentGridSize > 10 ? 22 : 36; let xOffset = currentGridSize > 10 ? 9 : 14;
-                ctx.fillStyle = "#fff"; ctx.font = `${fontScale} Courier New`; ctx.fillText(e.icon, exPosition + xOffset, eyPosition + yOffset);
+                ctx.fillStyle = activeCombatZone === 'GORILLA_ARENA'
+                    ? "#5c4033"
+                    : "#d35400";
+                ctx.fillRect(
+                    exPosition + 1,
+                    eyPosition + 1,
+                    (currentTileSize * sSize) - 2,
+                    (currentTileSize * sSize) - 2
+                );
+                const fontScale = currentGridSize > 10 ? "13px" : "20px";
+                const yOffset = currentGridSize > 10 ? 22 : 36;
+                const xOffset = currentGridSize > 10 ? 9 : 14;
+                ctx.fillStyle = "#fff";
+                ctx.font = `${fontScale} Courier New`;
+                ctx.fillText(e.icon, exPosition + xOffset, eyPosition + yOffset);
             }
             ctx.restore();
+        }
 
-            drawCombatAura(e, e.visualX, e.visualY - (enemyHopY / currentTileSize), sSize);
-
-            renderGridHealthBar(e.visualX, e.visualY - (enemyHopY / currentTileSize), e.hp, e.maxHp, sSize, e.stamina, e.maxStamina, e.visualAtb);
+        if (e.alive) {
+            drawCombatAura(
+                e,
+                e.visualX,
+                e.visualY - (enemyHopY / currentTileSize),
+                sSize
+            );
+            renderGridHealthBar(
+                e.visualX,
+                e.visualY - (enemyHopY / currentTileSize),
+                e.hp,
+                e.maxHp,
+                sSize,
+                e.stamina,
+                e.maxStamina,
+                e.visualAtb
+            );
         }
     });
 
 
     function drawNonEnemyActor(actor, palette) {
-        if (!actor.alive) return;
-        let sSize = actor.size || 1;
+        const humanoidVisual = getHumanoidCombatVisual(actor);
+        const terminalPose = humanoidVisual && hasHumanoidTerminalPose(actor);
+        if (!actor.alive && !terminalPose) return;
+        const sSize = actor.size || 1;
         if (actor.visualAtb === undefined) actor.visualAtb = 0;
-        if (combatPhase === 'WAITING_FOR_ATB') {
-            let aSpeed = ((actor.speed || 1) * 3) + 5;
+        if (actor.alive && combatPhase === 'WAITING_FOR_ATB') {
+            const aSpeed = ((actor.speed || 1) * 3) + 5;
             actor.visualAtb += (aSpeed * 5) / 60;
             if (actor.visualAtb > 100) actor.visualAtb = 100;
         }
@@ -696,14 +962,34 @@ if (SpriteMatrices[e.id]) {
             actor.visualX = actor.x; actor.visualY = actor.y; actor.moveAnimTimer = 0;
         }
         let deltaX = actor.x - actor.visualX; let deltaY = actor.y - actor.visualY;
-        let isMoving = Math.abs(deltaX) > 0.01 || Math.abs(deltaY) > 0.01;
+        let isMoving = actor.alive && (
+            Math.abs(deltaX) > 0.01
+            || Math.abs(deltaY) > 0.01
+        );
         if (isMoving) {
-            actor.visualX += deltaX * 0.15; actor.visualY += deltaY * 0.15;
+            const interpolation = getCombatMovementInterpolation(actor);
+            actor.visualX += deltaX * interpolation;
+            actor.visualY += deltaY * interpolation;
             actor.moveAnimTimer += 0.25;
         } else {
             actor.visualX = actor.x; actor.visualY = actor.y; actor.moveAnimTimer = 0;
+            delete actor.combatMovementRate;
         }
-        let hopY = Math.abs(Math.sin(actor.moveAnimTimer)) * 10;
+        const usesHumanoidRenderer = Boolean(
+            humanoidVisual
+            && canRenderHumanoidCombatActor(actor)
+        );
+        let hopY = usesHumanoidRenderer
+            ? 0
+            : Math.abs(Math.sin(actor.moveAnimTimer)) * 10;
+        const humanoidRenderState = usesHumanoidRenderer
+            ? getHumanoidRenderState(
+                actor,
+                isMoving,
+                deltaX,
+                deltaY
+            )
+            : null;
         const actorCombatLunge = typeof CombatSpriteAnimation !== 'undefined'
             ? CombatSpriteAnimation.getLungeOffset(actor, currentTileSize)
             : { x: 0, y: 0, hop: 0 };
@@ -717,23 +1003,70 @@ if (SpriteMatrices[e.id]) {
             + actorCombatLunge.y
             - actorCombatLunge.hop;
 
-        ctx.save();
-        if (SpriteMatrices[actor.id]) {
-            drawOptimizedSprite(ctx, actor.id, SpriteMatrices[actor.id], ax, ay, currentTileSize * sSize);
+        if (usesHumanoidRenderer) {
+            drawHumanoidCombatActor(
+                ctx,
+                actor,
+                humanoidVisual,
+                humanoidRenderState,
+                ax,
+                ay,
+                currentTileSize * sSize
+            );
         } else {
-            ctx.fillStyle = palette.fill;
-            ctx.fillRect(ax + 1, ay + 1, (currentTileSize * sSize) - 2, (currentTileSize * sSize) - 2);
-            ctx.fillStyle = "#fff";
-            ctx.font = `${currentGridSize > 10 ? "13px" : "20px"} Courier New`;
-            ctx.fillText(actor.icon || "?", ax + 14, ay + 36);
+            ctx.save();
+            if (SpriteMatrices[actor.id]) {
+                drawOptimizedSprite(
+                    ctx,
+                    actor.id,
+                    SpriteMatrices[actor.id],
+                    ax,
+                    ay,
+                    currentTileSize * sSize
+                );
+            } else {
+                ctx.fillStyle = palette.fill;
+                ctx.fillRect(
+                    ax + 1,
+                    ay + 1,
+                    (currentTileSize * sSize) - 2,
+                    (currentTileSize * sSize) - 2
+                );
+                ctx.fillStyle = "#fff";
+                ctx.font = `${
+                    currentGridSize > 10 ? "13px" : "20px"
+                } Courier New`;
+                ctx.fillText(actor.icon || "?", ax + 14, ay + 36);
+            }
+            ctx.restore();
         }
-        ctx.restore();
 
-        ctx.strokeStyle = palette.stroke;
-        ctx.lineWidth = 2;
-        ctx.strokeRect(actor.x * currentTileSize + 2, actor.y * currentTileSize + 2, (currentTileSize * sSize) - 4, (currentTileSize * sSize) - 4);
-        drawCombatAura(actor, actor.visualX, actor.visualY - (hopY / currentTileSize), sSize);
-        renderGridHealthBar(actor.visualX, actor.visualY - (hopY / currentTileSize), actor.hp, actor.maxHp, sSize, actor.stamina, actor.maxStamina, actor.visualAtb);
+        if (actor.alive) {
+            ctx.strokeStyle = palette.stroke;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(
+                actor.x * currentTileSize + 2,
+                actor.y * currentTileSize + 2,
+                (currentTileSize * sSize) - 4,
+                (currentTileSize * sSize) - 4
+            );
+            drawCombatAura(
+                actor,
+                actor.visualX,
+                actor.visualY - (hopY / currentTileSize),
+                sSize
+            );
+            renderGridHealthBar(
+                actor.visualX,
+                actor.visualY - (hopY / currentTileSize),
+                actor.hp,
+                actor.maxHp,
+                sSize,
+                actor.stamina,
+                actor.maxStamina,
+                actor.visualAtb
+            );
+        }
     }
 
     (allies || []).forEach(actor => drawNonEnemyActor(actor, { fill: "#216b4f", stroke: "#2ecc71" }));

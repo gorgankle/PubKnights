@@ -100,10 +100,24 @@ const EquipmentOverhaulSpecs = {
             shadow: 'J',
             highlight: '?',
             accent: 'N'
+        },
+        armor_innkeeper_apron: {
+            style: 'innkeeper',
+            primary: 'W',
+            shadow: 'b',
+            highlight: 'p',
+            accent: 'w'
         }
     },
 
     helmet: {
+        helm_goblin_ears: {
+            style: 'goblin_ears',
+            primary: 'S',
+            shadow: 'F',
+            highlight: 'Q',
+            accent: 'S'
+        },
         helm_alpha: {
             style: 'collar',
             primary: 'l',
@@ -225,6 +239,14 @@ const EquipmentOverhaulSpecs = {
             accent: '0',
             hairMask: 'full',
             hidesHair: true
+        },
+        helm_innkeeper: {
+            style: 'widehat',
+            primary: 'W',
+            shadow: 'b',
+            highlight: 'p',
+            accent: 'w',
+            hairMask: 'brim'
         }
     },
 
@@ -262,6 +284,7 @@ const EquipmentOverhaulSpecs = {
         weap_bow: { style: 'bow', primary: 'c', shadow: 'd', highlight: ':', accent: 'W' },
         weap_bone: { style: 'club', primary: 'b', shadow: 'a', highlight: 'W', accent: 'd' },
         weap_rusty_mace: { style: 'mace', primary: 'I', shadow: 'J', highlight: 's', accent: 'N' },
+        weap_goblin_axe: { style: 'axe', primary: 'I', shadow: 'J', highlight: 's', accent: 'c' },
         weap_behemoth_maw: { style: 'greatclub', primary: 'd', shadow: '0', highlight: 'c', accent: 'I' },
         weap_machete: { style: 'machete', primary: 'I', shadow: 'J', highlight: 's', accent: 'l' },
         weap_spear: { style: 'spear', primary: 'c', shadow: 'd', highlight: 's', accent: 'I' },
@@ -291,8 +314,168 @@ const EquipmentOverhaulSpecs = {
         weap_bogwood_staff: { style: 'staff', primary: 'y', shadow: 'd', highlight: 'h', accent: '&' },
         weap_stormcaller_staff: { style: 'staff', primary: 'I', shadow: 'J', highlight: '^', accent: 'W' },
         weap_last_call_voidstaff: { style: 'staff', primary: '0', shadow: 'k', highlight: 'v', accent: '&' }
+    },
+
+    offhand: {
+        offhand_captains_shield: {
+            style: 'heater',
+            offhandType: 'shield',
+            primary: 'I',
+            shadow: 'J',
+            highlight: 's',
+            accent: 'Y'
+        },
+        offhand_round_shield: {
+            style: 'round',
+            offhandType: 'shield',
+            primary: 'c',
+            shadow: 'd',
+            highlight: 'l',
+            accent: 'I'
+        },
+        offhand_tower_shield: {
+            style: 'tower',
+            offhandType: 'shield',
+            primary: 'J',
+            shadow: '0',
+            highlight: 'I',
+            accent: 'N'
+        },
+        offhand_parrying_dagger: {
+            style: 'dagger',
+            offhandType: 'weapon',
+            primary: 'I',
+            shadow: 'J',
+            highlight: 'W',
+            accent: 'Y'
+        }
     }
 };
+
+const WeaponAnimationContracts = Object.freeze({
+    weap_bow: Object.freeze({
+        animationFamily: 'shoot',
+        handedness: 'two',
+        gripMode: 'two_hand'
+    }),
+    weap_bone: Object.freeze({
+        animationFamily: 'bash',
+        handedness: 'one',
+        gripMode: 'one_hand'
+    }),
+    weap_rusty_mace: Object.freeze({
+        animationFamily: 'bash',
+        handedness: 'one',
+        gripMode: 'one_hand'
+    }),
+    weap_goblin_axe: Object.freeze({
+        animationFamily: 'slash',
+        handedness: 'one',
+        gripMode: 'one_hand'
+    }),
+    weap_behemoth_maw: Object.freeze({
+        animationFamily: 'heavy',
+        handedness: 'two',
+        gripMode: 'two_hand'
+    }),
+    weap_machete: Object.freeze({
+        animationFamily: 'slash',
+        handedness: 'one',
+        gripMode: 'one_hand'
+    }),
+    weap_spear: Object.freeze({
+        animationFamily: 'thrust',
+        handedness: 'two',
+        gripMode: 'pole'
+    }),
+    weap_mimic_dagger: Object.freeze({
+        animationFamily: 'dagger',
+        handedness: 'one',
+        gripMode: 'one_hand'
+    }),
+    brewmasters_club: Object.freeze({
+        animationFamily: 'heavy',
+        handedness: 'two',
+        gripMode: 'two_hand'
+    }),
+    silverback_greatclub: Object.freeze({
+        animationFamily: 'heavy',
+        handedness: 'two',
+        gripMode: 'two_hand'
+    }),
+    weap_knuckles: Object.freeze({
+        animationFamily: 'bash',
+        handedness: 'one',
+        gripMode: 'one_hand'
+    }),
+    weap_beerglass: Object.freeze({
+        animationFamily: 'dagger',
+        handedness: 'one',
+        gripMode: 'one_hand'
+    }),
+    weap_tankard: Object.freeze({
+        animationFamily: 'heavy',
+        handedness: 'two',
+        gripMode: 'two_hand'
+    }),
+    weap_blackout: Object.freeze({
+        animationFamily: 'heavy',
+        handedness: 'two',
+        gripMode: 'two_hand'
+    }),
+    weap_timberlord: Object.freeze({
+        animationFamily: 'heavy',
+        handedness: 'two',
+        gripMode: 'two_hand'
+    }),
+    sawblade_chakram: Object.freeze({
+        animationFamily: 'slash',
+        handedness: 'one',
+        gripMode: 'one_hand'
+    }),
+    harpoon_trident: Object.freeze({
+        animationFamily: 'thrust',
+        handedness: 'two',
+        gripMode: 'pole'
+    }),
+    pitchfork_spear: Object.freeze({
+        animationFamily: 'thrust',
+        handedness: 'two',
+        gripMode: 'pole'
+    }),
+    scythe_of_reaping: Object.freeze({
+        animationFamily: 'scythe',
+        handedness: 'two',
+        gripMode: 'pole'
+    }),
+    weap_apprentice_staff: Object.freeze({
+        animationFamily: 'cast',
+        handedness: 'two',
+        gripMode: 'pole'
+    }),
+    weap_bogwood_staff: Object.freeze({
+        animationFamily: 'cast',
+        handedness: 'two',
+        gripMode: 'pole'
+    }),
+    weap_stormcaller_staff: Object.freeze({
+        animationFamily: 'cast',
+        handedness: 'two',
+        gripMode: 'pole'
+    }),
+    weap_last_call_voidstaff: Object.freeze({
+        animationFamily: 'cast',
+        handedness: 'two',
+        gripMode: 'pole'
+    })
+});
+
+Object.entries(WeaponAnimationContracts).forEach(([spriteId, contract]) => {
+    if (!EquipmentOverhaulSpecs.weapon[spriteId]) return;
+    Object.assign(EquipmentOverhaulSpecs.weapon[spriteId], contract, {
+        twoHanded: contract.handedness === 'two'
+    });
+});
 
 const ArmorDesignProfiles = Object.freeze({
     hide: Object.freeze({
@@ -309,6 +492,14 @@ const ArmorDesignProfiles = Object.freeze({
         weight: 'light',
         length: 'short',
         sleeves: 'short',
+        shoulders: 'fitted'
+    }),
+    innkeeper: Object.freeze({
+        material: 'linen shirt and service apron',
+        silhouette: 'fitted apron with split hem',
+        weight: 'light',
+        length: 'short',
+        sleeves: 'rolled',
         shoulders: 'fitted'
     }),
     cask: Object.freeze({
@@ -575,6 +766,7 @@ function paintFrontArmorDefinitiveSilhouette(
             ], spec.accent);
             break;
         case 'tunic':
+        case 'innkeeper':
             points([
                 [centerX - 2, 13],
                 [centerX, 15],
@@ -583,6 +775,11 @@ function paintFrontArmorDefinitiveSilhouette(
             line(torsoX + 2, 21, centerX - 1, 23, spec.primary);
             line(torsoX + torsoWidth - 3, 21, centerX + 1, 23, spec.primary);
             setArmorSplitHem(painter, centerX, 22, spec.shadow);
+            if (spec.style === 'innkeeper') {
+                line(centerX - 3, 14, centerX - 3, 21, spec.accent);
+                line(centerX + 3, 14, centerX + 3, 21, spec.accent);
+                line(centerX - 3, 21, centerX + 3, 21, spec.highlight);
+            }
             break;
         case 'cask':
         case 'barrel':
@@ -745,8 +942,13 @@ function drawArmorOverhaulDetails(painter, spec, gender, bounds) {
             points([[torsoX + 2, 17], [torsoX + torsoWidth - 3, 18], [centerX, 15]], spec.highlight);
             break;
         case 'tunic':
+        case 'innkeeper':
             line(centerX - 1, 14, centerX - 1, 20, spec.shadow);
             points([[centerX + 1, 15], [centerX + 1, 17], [centerX + 1, 19]], spec.accent);
+            if (spec.style === 'innkeeper') {
+                line(centerX - 3, 15, centerX - 3, 21, spec.accent);
+                line(centerX + 3, 15, centerX + 3, 21, spec.accent);
+            }
             break;
         case 'cask':
             line(torsoX + 3, 14, torsoX + 3, 21, spec.shadow);
@@ -986,6 +1188,14 @@ function makeHelmetOverhaulSprite(spec) {
         paintHelmetHairMask(painter, spec.hairMask);
 
         switch (spec.style) {
+            case 'goblin_ears':
+                line(10, 7, 4, 4, 'X', 4);
+                line(10, 7, 4, 4, spec.primary, 2);
+                line(22, 7, 28, 4, 'X', 4);
+                line(22, 7, 28, 4, spec.primary, 2);
+                points([[4, 4], [5, 5], [27, 5], [28, 4]], spec.highlight);
+                points([[8, 7], [24, 7]], spec.shadow);
+                break;
             case 'collar':
                 paintOutlinedOverhaulShape(painter, [
                     [10, 10, 12],
@@ -1623,6 +1833,55 @@ function makeBootsOverhaulSprite(spec) {
                 set(right ? 20 : 11, 29, spec.highlight);
             }
         });
+    });
+}
+
+function makeOffhandOverhaulSprite(spec) {
+    return createNativeOverhaulSprite(painter => {
+        const { set, rect, frame, line, points, ellipse } = painter;
+
+        if (spec.offhandType === 'weapon') {
+            line(9, 24, 15, 14, 'X', 4);
+            line(9, 24, 15, 14, spec.primary, 2);
+            line(10, 22, 15, 14, spec.highlight);
+            line(7, 23, 12, 26, spec.accent, 2);
+            line(8, 25, 6, 29, spec.shadow, 2);
+            set(15, 13, 'W');
+            return;
+        }
+
+        if (spec.style === 'round') {
+            ellipse(10, 19, 6, 8, 'X');
+            ellipse(10, 19, 5, 7, spec.primary);
+            ellipse(10, 19, 3, 5, spec.shadow);
+            ellipse(10, 19, 2, 3, spec.accent);
+            points([[8, 14], [9, 13], [12, 15]], spec.highlight);
+            return;
+        }
+
+        if (spec.style === 'tower') {
+            rect(5, 10, 11, 16, 'X');
+            rect(6, 11, 9, 14, spec.primary);
+            line(10, 11, 10, 25, spec.shadow, 2);
+            line(7, 12, 14, 12, spec.highlight);
+            line(7, 23, 14, 23, spec.accent);
+            points([[5, 26], [6, 27], [14, 27], [15, 26]], 'X');
+            points([[7, 25], [13, 25]], spec.primary);
+            return;
+        }
+
+        points([
+            [6, 11], [14, 11], [16, 14], [15, 22],
+            [10, 27], [5, 22], [4, 14]
+        ], 'X');
+        rect(6, 12, 9, 10, spec.primary);
+        points([
+            [5, 14], [15, 14], [14, 22], [10, 26], [6, 22]
+        ], spec.primary);
+        line(10, 12, 10, 25, spec.shadow, 2);
+        line(6, 14, 14, 14, spec.highlight);
+        ellipse(10, 18, 2, 2, spec.accent);
+        frame(8, 16, 5, 5, spec.shadow);
     });
 }
 
@@ -3060,7 +3319,8 @@ function getFrontPaperdollWeaponMatrix(spriteId) {
 function getFrontPaperdollWeaponBitmap(
     spriteId,
     matrix,
-    renderSize = CORE_PLAYER_SAMPLE_SIZE
+    renderSize = CORE_PLAYER_SAMPLE_SIZE,
+    appearanceOverride = null
 ) {
     if (typeof document === 'undefined') return null;
 
@@ -3068,13 +3328,17 @@ function getFrontPaperdollWeaponBitmap(
         CORE_PLAYER_SAMPLE_SIZE,
         Math.round(renderSize)
     );
-    const cacheKey = `${spriteId}:${bitmapSize}`;
     const appearance = (
-        typeof player !== 'undefined'
-        && player.appearance
+        appearanceOverride
+        && typeof appearanceOverride === 'object'
     )
-        ? player.appearance
-        : {};
+        ? appearanceOverride
+        : (
+            typeof player !== 'undefined'
+            && player.appearance
+                ? player.appearance
+                : {}
+        );
     const dynamicPalette = (
         typeof createProceduralDynamicPalette === 'function'
     )
@@ -3094,6 +3358,7 @@ function getFrontPaperdollWeaponBitmap(
             return `${key}:${color || ''}`;
         })
         .join('|');
+    const cacheKey = `${spriteId}:${bitmapSize}:${paletteSignature}`;
     const cached = FrontPaperdollWeaponBitmapCache.get(cacheKey);
 
     if (
@@ -3217,7 +3482,8 @@ function drawFrontPaperdollWeapon(
             fallback,
             startX,
             startY,
-            size
+            size,
+            options.appearance || null
         );
         context.restore();
         return true;
@@ -3226,7 +3492,8 @@ function drawFrontPaperdollWeapon(
     const bitmap = getFrontPaperdollWeaponBitmap(
         spriteId,
         canonical,
-        size
+        size,
+        options.appearance || null
     );
     if (!bitmap) return false;
 
@@ -3312,6 +3579,10 @@ Object.entries(EquipmentOverhaulSpecs.boots).forEach(([spriteId, spec]) => {
     EquipmentOverhaulMatrices[spriteId] = makeBootsOverhaulSprite(spec);
 });
 
+Object.entries(EquipmentOverhaulSpecs.offhand).forEach(([spriteId, spec]) => {
+    EquipmentOverhaulMatrices[spriteId] = makeOffhandOverhaulSprite(spec);
+});
+
 Object.entries(EquipmentOverhaulSpecs.weapon).forEach(([spriteId, spec]) => {
     const source = makeWeaponOverhaulSprite(spec);
     const centeredBlueprint = FRONT_CENTERED_WEAPON_BLUEPRINTS[spec.style];
@@ -3350,6 +3621,7 @@ if (typeof ItemDatabase !== 'undefined') {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         EquipmentOverhaulSpecs,
+        WeaponAnimationContracts,
         ArmorDesignProfiles,
         GloveDesignProfiles,
         BootDesignProfiles,
@@ -3377,6 +3649,7 @@ if (typeof module !== 'undefined' && module.exports) {
         makeHelmetOverhaulSprite,
         makeGlovesOverhaulSprite,
         makeBootsOverhaulSprite,
+        makeOffhandOverhaulSprite,
         makeWeaponOverhaulSprite,
         paintCompactFrontWeaponHead,
         paintMappedFrontWeaponShape,

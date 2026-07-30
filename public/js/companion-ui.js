@@ -1,7 +1,21 @@
 // --- UI: COMPANION ROSTER, PAPERDOLL, POCKETS & PROGRESSION ---
 
-const COMPANION_UI_EQUIPMENT_SLOTS = ['weapon', 'helmet', 'armor', 'gloves', 'boots'];
-const COMPANION_UI_SLOT_LABELS = { weapon: 'Weapon', helmet: 'Helmet', armor: 'Armor', gloves: 'Gloves', boots: 'Boots' };
+const COMPANION_UI_EQUIPMENT_SLOTS = [
+    'weapon',
+    'offhand',
+    'helmet',
+    'armor',
+    'gloves',
+    'boots'
+];
+const COMPANION_UI_SLOT_LABELS = {
+    weapon: 'Weapon',
+    offhand: 'Offhand',
+    helmet: 'Helmet',
+    armor: 'Armor',
+    gloves: 'Gloves',
+    boots: 'Boots'
+};
 const COMPANION_UI_LEVEL_GROWTH = Object.freeze({ vitality: 0.5, offense: 0.5, defense: 0.4, speed: 0.2 });
 const COMPANION_UI_MAX_SELECTED = 3;
 const COMPANION_UI_MAX_ROSTER = 6;
@@ -320,10 +334,10 @@ function renderCompanionEquipmentPanel(companions, activeIds) {
     const slots = document.createElement('div');
     slots.className = 'paper-doll-grid companion-paper-doll-grid';
     slots.append(
-        createCompanionPaperdollEmptyCell(),
+        createCompanionPaperdollSlot(selected, 'gloves'),
         createCompanionPaperdollSlot(selected, 'helmet'),
         createCompanionPaperdollEmptyCell(),
-        createCompanionPaperdollSlot(selected, 'gloves'),
+        createCompanionPaperdollSlot(selected, 'offhand'),
         createCompanionPaperdollSlot(selected, 'armor'),
         createCompanionPaperdollSlot(selected, 'weapon'),
         createCompanionPocketSlot(selected, 0),

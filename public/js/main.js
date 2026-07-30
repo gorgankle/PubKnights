@@ -105,10 +105,297 @@ function getCombatResultWeapon(sourceActor) {
     ) {
         return sourceActor.equipment.weapon;
     }
-    return player && player.equipment ? player.equipment.weapon : null;
+    if (
+        sourceActor
+        && typeof getHumanoidActorWeapon === 'function'
+    ) {
+        const visualWeapon = getHumanoidActorWeapon(sourceActor);
+        if (visualWeapon) return visualWeapon;
+    }
+    if (
+        sourceActor
+        && (
+            sourceActor.kind === 'player'
+            || sourceActor === player
+        )
+    ) {
+        return player && player.equipment
+            ? player.equipment.weapon
+            : null;
+    }
+    return null;
 }
 
-function getCombatResultAnimationProfile(result, weapon) {
+function playHumanoidImpactReaction(
+    actor,
+    defeated = false,
+    options = {}
+) {
+    if (
+        !actor
+        || typeof CombatSpriteAnimation === 'undefined'
+        || (
+            typeof isHumanoidActor === 'function'
+            && !isHumanoidActor(actor)
+        )
+    ) {
+        return null;
+    }
+
+    if (
+        defeated
+        && typeof CombatSpriteAnimation.startDefeat === 'function'
+    ) {
+        return CombatSpriteAnimation.startDefeat(actor, options);
+    }
+    if (
+        !defeated
+        && typeof CombatSpriteAnimation.startHitReaction === 'function'
+    ) {
+        return CombatSpriteAnimation.startHitReaction(actor, options);
+    }
+    return null;
+}
+
+function getHumanoidShieldDefenseProfile(actor) {
+    if (!actor) return null;
+    const visual = typeof resolveHumanoidActorVisualProfile === 'function'
+        ? resolveHumanoidActorVisualProfile(actor)
+        : null;
+    const offhand = visual
+        && visual.equipment
+        && visual.equipment.offhand;
+    const offhandSpec = (
+        offhand
+        && typeof EquipmentOverhaulSpecs !== 'undefined'
+        && EquipmentOverhaulSpecs.offhand
+    )
+        ? EquipmentOverhaulSpecs.offhand[offhand.spriteId]
+        : null;
+    if (!offhandSpec || offhandSpec.offhandType !== 'shield') {
+        return null;
+    }
+    return {
+        visual,
+        clipId: visual.defensiveClip || 'shield_block'
+    };
+}
+
+function playHumanoidDefensiveReaction(
+    actor,
+    attacker = null,
+    options = {}
+) {
+    if (
+        !actor
+        || typeof CombatSpriteAnimation === 'undefined'
+        || typeof CombatSpriteAnimation.startDefensiveReaction
+            !== 'function'
+    ) {
+        return null;
+    }
+    const defenseProfile = getHumanoidShieldDefenseProfile(actor);
+    if (!defenseProfile) return null;
+    const attackerSize = Math.max(
+        1,
+        Number(attacker && attacker.size) || 1
+    );
+    return CombatSpriteAnimation.startDefensiveReaction(actor, {
+        ...options,
+        clipId: defenseProfile.clipId,
+        interrupt: true,
+        targetX: attacker
+            ? Number(attacker.x) + ((attackerSize - 1) / 2)
+            : undefined
+    });
+}
+
+function getHumanoidDeflectPlaybackOptions(
+    targetActor,
+    impactTimeMs
+) {
+    const defenseProfile = getHumanoidShieldDefenseProfile(targetActor);
+    const defensiveClip = defenseProfile
+        ? defenseProfile.clipId
+        : 'shield_block';
+    const blockTimeline = (
+        typeof getCombatAnimationTimeline === 'function'
+    )
+        ? getCombatAnimationTimeline(defensiveClip)
+        : { frameDurationMs: 125 };
+    const guardMidpointMs = Math.max(
+        1,
+        (Number(blockTimeline.frameDurationMs) || 125) * 2
+    );
+    const resolvedImpactTimeMs = Math.max(
+        34,
+        Number(impactTimeMs) || 0
+    );
+
+    return {
+        playbackRate: Math.min(
+            8,
+            Math.max(0.1, guardMidpointMs / resolvedImpactTimeMs)
+        )
+    };
+}
+
+let combatSpriteActionRetryGeneration = 0;
+const pendingCombatSpriteActionRetries = new Set();
+
+function cancelPendingCombatSpriteActions() {
+    combatSpriteActionRetryGeneration += 1;
+    pendingCombatSpriteActionRetries.forEach(token => {
+        token.cancelled = true;
+        if (token.timerId !== null) {
+            clearTimeout(token.timerId);
+            token.timerId = null;
+        }
+    });
+    pendingCombatSpriteActionRetries.clear();
+}
+
+function isCurrentCombatSpriteActor(actor) {
+    if (!actor) return false;
+    if (
+        typeof gameState !== 'undefined'
+        && gameState !== 'COMBAT'
+    ) {
+        return false;
+    }
+    if (typeof player !== 'undefined' && actor === player) return true;
+
+    const collections = [];
+    if (typeof allies !== 'undefined' && Array.isArray(allies)) {
+        collections.push(allies);
+    }
+    if (typeof enemies !== 'undefined' && Array.isArray(enemies)) {
+        collections.push(enemies);
+    }
+    if (typeof rogues !== 'undefined' && Array.isArray(rogues)) {
+        collections.push(rogues);
+    }
+    if (collections.length === 0) return true;
+
+    const uid = actor.uid || actor.id;
+    return collections.some(collection => collection.some(candidate => (
+        candidate === actor
+        || (
+            uid
+            && candidate
+            && (candidate.uid || candidate.id) === uid
+        )
+    )));
+}
+
+function startCombatSpriteActionWhenReady(
+    actor,
+    options,
+    onUnavailable,
+    onStarted
+) {
+    let bypassed = false;
+    let retryCount = 0;
+    const token = {
+        cancelled: false,
+        generation: combatSpriteActionRetryGeneration,
+        timerId: null
+    };
+    pendingCombatSpriteActionRetries.add(token);
+
+    function finishPendingRetry() {
+        if (token.timerId !== null) {
+            clearTimeout(token.timerId);
+            token.timerId = null;
+        }
+        pendingCombatSpriteActionRetries.delete(token);
+    }
+
+    function bypassAnimation() {
+        if (bypassed || token.cancelled) return;
+        bypassed = true;
+        finishPendingRetry();
+        if (typeof onUnavailable === 'function') onUnavailable();
+    }
+
+    function attemptStart() {
+        token.timerId = null;
+        if (
+            token.cancelled
+            || token.generation !== combatSpriteActionRetryGeneration
+            || !isCurrentCombatSpriteActor(actor)
+        ) {
+            token.cancelled = true;
+            finishPendingRetry();
+            return;
+        }
+        if (
+            !actor
+            || typeof CombatSpriteAnimation === 'undefined'
+            || typeof CombatSpriteAnimation.startAction !== 'function'
+        ) {
+            bypassAnimation();
+            return;
+        }
+
+        if (typeof CombatSpriteAnimation.update === 'function') {
+            CombatSpriteAnimation.update();
+        }
+        const started = CombatSpriteAnimation.startAction(actor, options);
+        if (started) {
+            finishPendingRetry();
+            if (typeof onStarted === 'function') {
+                onStarted(started);
+            }
+            return;
+        }
+
+        const activeState = (
+            typeof CombatSpriteAnimation.getActionState === 'function'
+        )
+            ? CombatSpriteAnimation.getActionState(actor)
+            : null;
+        const terminal = (
+            typeof CombatSpriteAnimation.hasTerminalState === 'function'
+            && CombatSpriteAnimation.hasTerminalState(actor)
+        );
+        if (
+            activeState
+            && !terminal
+            && actor.alive !== false
+            && retryCount < 4
+        ) {
+            retryCount += 1;
+            const remainingMs = Math.max(
+                0,
+                (activeState.timeline?.durationMs || 0)
+                    - (activeState.elapsedMs || 0)
+            );
+            token.timerId = setTimeout(
+                attemptStart,
+                Math.max(16, Math.ceil(remainingMs) + 1)
+            );
+            return;
+        }
+
+        bypassAnimation();
+    }
+
+    attemptStart();
+    return Object.freeze({
+        cancel() {
+            if (token.cancelled) return;
+            token.cancelled = true;
+            finishPendingRetry();
+        }
+    });
+}
+
+function getCombatResultAnimationProfile(
+    result,
+    weapon,
+    sourceActor = null
+) {
     const profileKey = result.actionName === 'special'
         ? 'special'
         : 'standard';
@@ -124,7 +411,11 @@ function getCombatResultAnimationProfile(result, weapon) {
             actionType: profile.actionType,
             isProjectile: fx.isProjectile,
             animType: profile.animType,
-            weapon
+            weapon,
+            offhand: sourceActor
+                && sourceActor.equipment
+                ? sourceActor.equipment.offhand
+                : null
         })
         : (
             result.source === 'spell'
@@ -205,6 +496,7 @@ function applyOutgoingCombatImpact(result) {
         if (targetData.statusEffects) {
             target.statusEffects = targetData.statusEffects;
         }
+        playHumanoidImpactReaction(target, targetData.killed === true);
 
         if (result.source === 'spell') {
             logMessage(
@@ -268,21 +560,33 @@ function finalizeOutgoingCombatAction(result, resultCombatState) {
 function playOutgoingCombatHit(result, sourceActor, resultCombatState) {
     const fx = result.fx || {};
     const weapon = getCombatResultWeapon(sourceActor);
-    const animation = getCombatResultAnimationProfile(result, weapon);
+    const animation = getCombatResultAnimationProfile(
+        result,
+        weapon,
+        sourceActor
+    );
     const target = getCombatResultTarget(result, sourceActor);
     const barrier = createCombatPlaybackBarrier(() => {
         finalizeOutgoingCombatAction(result, resultCombatState);
     });
     let impactApplied = false;
+    let presentationCancelled = false;
+
+    function cancelPresentation() {
+        if (presentationCancelled) return;
+        presentationCancelled = true;
+        barrier.cancel();
+    }
 
     function applyImpact() {
-        if (impactApplied) return;
+        if (impactApplied || presentationCancelled) return;
         impactApplied = true;
         applyOutgoingCombatImpact(result);
         barrier.markImpactComplete();
     }
 
     function launchAtActionFrame(event = {}) {
+        if (presentationCancelled) return;
         const releaseOrigin = event.releaseOrigin || {
             x: Number.isFinite(fx.sx) ? fx.sx : sourceActor.x,
             y: Number.isFinite(fx.sy) ? fx.sy : sourceActor.y
@@ -332,25 +636,22 @@ function playOutgoingCombatHit(result, sourceActor, resultCombatState) {
         applyImpact();
     }
 
-    const started = (
-        typeof CombatSpriteAnimation !== 'undefined'
-        && CombatSpriteAnimation.startAction(
-            sourceActor,
-            {
-                clipId: animation.clipId,
-                targetX: target.x,
-                targetY: target.y,
-                lift: animation.lift,
-                onEvent: launchAtActionFrame,
-                onComplete: barrier.markActionComplete
-            }
-        )
+    startCombatSpriteActionWhenReady(
+        sourceActor,
+        {
+            clipId: animation.clipId,
+            targetX: target.x,
+            targetY: target.y,
+            lift: animation.lift,
+            onEvent: launchAtActionFrame,
+            onComplete: barrier.markActionComplete,
+            onCancel: cancelPresentation
+        },
+        () => {
+            launchAtActionFrame();
+            barrier.markActionComplete();
+        }
     );
-
-    if (!started) {
-        launchAtActionFrame();
-        barrier.markActionComplete();
-    }
 }
 
 function playOutgoingCombatMiss(result, sourceActor, resultCombatState) {
@@ -362,33 +663,142 @@ function playOutgoingCombatMiss(result, sourceActor, resultCombatState) {
             source: 'weapon',
             fx: { isProjectile }
         },
-        weapon
+        weapon,
+        sourceActor
     );
-    const target = selectedEnemy
+    const targetActor = (
+        result.targetUid
+            ? getCombatActorByUid(result.targetUid)
+            : null
+    ) || selectedEnemy;
+    const target = targetActor
         ? {
-            x: selectedEnemy.x + ((selectedEnemy.size || 1) / 2) - 0.5,
-            y: selectedEnemy.y + ((selectedEnemy.size || 1) / 2) - 0.5
+            x: targetActor.x + ((targetActor.size || 1) / 2) - 0.5,
+            y: targetActor.y + ((targetActor.size || 1) / 2) - 0.5
         }
         : getCombatResultTarget(result, sourceActor);
     const targetX = Number(target.x) || 0;
     const targetY = Number(target.y) || 0;
+    const attackTimeline = (
+        typeof getCombatAnimationTimeline === 'function'
+    )
+        ? getCombatAnimationTimeline(animation.clipId)
+        : { actionTimeMs: 250 };
+    const estimatedProjectileTravelMs = isProjectile ? 270 : 0;
+    const defenseImpactTimeMs = (
+        Number(attackTimeline.actionTimeMs) || 0
+    ) + estimatedProjectileTravelMs;
+    const defenseProfile = result.deflectReason === 'armor'
+        ? getHumanoidShieldDefenseProfile(targetActor)
+        : null;
     const barrier = createCombatPlaybackBarrier(() => {
         finalizeOutgoingCombatAction(result, resultCombatState);
     });
     let missShown = false;
+    let presentationCancelled = false;
+    let sourceComplete = false;
+    let defenseComplete = true;
+    let defenseStarted = false;
+    let defenseState = null;
+
+    function markCombinedActionComplete() {
+        if (
+            presentationCancelled
+            || !sourceComplete
+            || !defenseComplete
+        ) {
+            return;
+        }
+        barrier.markActionComplete();
+    }
+
+    function markSourceComplete() {
+        sourceComplete = true;
+        markCombinedActionComplete();
+    }
+
+    function markDefenseComplete() {
+        defenseComplete = true;
+        defenseState = null;
+        markCombinedActionComplete();
+    }
+
+    function startTargetDefense() {
+        if (
+            defenseStarted
+            || presentationCancelled
+            || !targetActor
+            || !defenseProfile
+        ) {
+            return null;
+        }
+        defenseStarted = true;
+        defenseComplete = false;
+        defenseState = playHumanoidDefensiveReaction(
+            targetActor,
+            sourceActor,
+            {
+                ...getHumanoidDeflectPlaybackOptions(
+                    targetActor,
+                    defenseImpactTimeMs
+                ),
+                onComplete: markDefenseComplete,
+                onCancel: markDefenseComplete
+            }
+        );
+        if (!defenseState) markDefenseComplete();
+        return defenseState;
+    }
+
+    function cancelTargetDefense() {
+        const state = defenseState;
+        defenseState = null;
+        defenseComplete = true;
+        if (
+            state
+            && targetActor
+            && typeof CombatSpriteAnimation !== 'undefined'
+            && typeof CombatSpriteAnimation.getActionState === 'function'
+            && typeof CombatSpriteAnimation.clear === 'function'
+            && CombatSpriteAnimation.getActionState(targetActor) === state
+        ) {
+            CombatSpriteAnimation.clear(targetActor);
+        }
+    }
+
+    function cancelPresentation() {
+        if (presentationCancelled) return;
+        presentationCancelled = true;
+        cancelTargetDefense();
+        barrier.cancel();
+    }
 
     function showMiss() {
-        if (missShown) return;
+        if (missShown || presentationCancelled) return;
         missShown = true;
-        logMessage(
-            `💨 Strike MISSED! Target evaded (${result.hitChance}% Hit Chance).`
-        );
-        if (typeof playRetroSound === 'function') playRetroSound('error');
-        if (selectedEnemy) {
+        const armorDeflect = result.deflectReason === 'armor';
+        const guardedDeflect = armorDeflect && Boolean(defenseProfile);
+        if (armorDeflect) {
+            logMessage(
+                guardedDeflect
+                    ? `${targetActor.name} blocked the strike!`
+                    : 'The strike was deflected by armor!'
+            );
+        } else {
+            logMessage(
+                `💨 Strike MISSED! Target evaded (${result.hitChance}% Hit Chance).`
+            );
+        }
+        if (typeof playRetroSound === 'function') {
+            playRetroSound(armorDeflect ? 'deflect' : 'error');
+        }
+        if (targetActor) {
             FXEngine.spawnText(
-                selectedEnemy.x,
-                selectedEnemy.y,
-                "MISS",
+                targetActor.x,
+                targetActor.y,
+                armorDeflect
+                    ? (guardedDeflect ? "BLOCK" : "DEFLECT")
+                    : "MISS",
                 { color: "#3498db" }
             );
         }
@@ -396,6 +806,7 @@ function playOutgoingCombatMiss(result, sourceActor, resultCombatState) {
     }
 
     function releaseMiss(event = {}) {
+        if (presentationCancelled) return;
         if (!isProjectile) {
             showMiss();
             return;
@@ -420,24 +831,23 @@ function playOutgoingCombatMiss(result, sourceActor, resultCombatState) {
         );
     }
 
-    const started = (
-        typeof CombatSpriteAnimation !== 'undefined'
-        && CombatSpriteAnimation.startAction(
-            sourceActor,
-            {
-                clipId: animation.clipId,
-                targetX,
-                targetY,
-                onEvent: releaseMiss,
-                onComplete: barrier.markActionComplete
-            }
-        )
+    startCombatSpriteActionWhenReady(
+        sourceActor,
+        {
+            clipId: animation.clipId,
+            targetX,
+            targetY,
+            onEvent: releaseMiss,
+            onComplete: markSourceComplete,
+            onCancel: cancelPresentation
+        },
+        () => {
+            startTargetDefense();
+            releaseMiss();
+            markSourceComplete();
+        },
+        startTargetDefense
     );
-
-    if (!started) {
-        releaseMiss();
-        barrier.markActionComplete();
-    }
 }
 
 // === SERVER-AUTHORITATIVE SYNC ===
@@ -602,7 +1012,7 @@ socket.on('townReceipt', (receipt) => {
         if (typeof playRetroSound === 'function') playRetroSound('statUp');
     } else if (receipt.action === 'claimCart') {
         if (!receipt.isAuto && typeof playRetroSound === 'function') playRetroSound('claim');
-    } else if (receipt.action === 'baitWilds' || receipt.action === 'chumCellars') {
+    } else if (receipt.action === 'chumCellars') {
         if (typeof playRetroSound === 'function') playRetroSound('splat');
     } else if (receipt.action === 'drinkBrew') {
         if (typeof playRetroSound === 'function') playRetroSound('chug');
@@ -729,11 +1139,19 @@ socket.on('statusEffectReceipt', (receipt) => {
     (receipt.events || []).forEach(ev => {
         if (ev.status === 'poison') {
             if (ev.targetType === 'player') {
+                playHumanoidImpactReaction(
+                    player,
+                    player.hp <= 0 || ev.killed === true
+                );
                 logMessage(`Poison burns you for ${ev.damage} DMG.`);
                 FXEngine.spawnText(player.x, player.y, `-${ev.damage}`, { color: "#8e44ad" });
             } else if (ev.uid) {
                 const e = getCombatActorByUid(ev.uid);
                 if (e) {
+                    playHumanoidImpactReaction(
+                        e,
+                        e.alive === false || ev.killed === true
+                    );
                     logMessage(`${e.name} suffers ${ev.damage} poison DMG.`);
                     FXEngine.spawnText(e.x, e.y, `-${ev.damage}`, { color: "#8e44ad" });
                 }
@@ -751,6 +1169,7 @@ socket.on('combatDeployed', (serverCombatState) => {
     combatVictoryPresentationStarted = false;
     reachableTiles = null;
     hideTooltip();
+    cancelPendingCombatSpriteActions();
     if (typeof CombatSpriteAnimation !== 'undefined') {
         CombatSpriteAnimation.clear();
     }
@@ -794,7 +1213,6 @@ socket.on('combatDeployed', (serverCombatState) => {
     else if (activeCombatZone === 'ABYSS') logMessage(`🌌 Descended to Abyss Depth ${player.abyssDepth || 1}. The pressure is crushing.`);
     else if (activeCombatZone === 'CELLARS' && (player.selectedCellarLevel || player.cellarLevel) === 20) logMessage("⚠️ THE FLOOR TREMBLES! An ancient, corrupted mega-cask awakens from its slumber!");
     else if (activeCombatZone === 'CELLARS' && player.cellarsChummed) logMessage("⚠️ SEAFOOD CODES LOADED: 5 Mimics burst out of the structural drain layers!");
-    else if (activeCombatZone === 'WILDERNESS' && player.mapBaited && (player.selectedWildernessLevel || player.wildernessLevel) === 20) logMessage("⚠️ THE BOSS SMELLS THE FISH BAIT! CRITICAL COMBAT PARAMETERS ENGAGED.");
 
     // Force the browser to draw the server's map
     refreshSystemUI();
@@ -824,30 +1242,271 @@ socket.on('enemyTurnReceipt', (receipt) => {
     }
 
     let delay = 0; // The playback timer!
+    const compressedPlaybackOptions = {
+        playbackRate: 1 / Math.max(0.15, timeCompression)
+    };
+
+    function getEnemyEventSourceActor(ev) {
+        const sourceUid = getCombatEventActorUid(ev);
+        return sourceUid ? getCombatActorByUid(sourceUid) : null;
+    }
+
+    function getEnemyEventActionClip(ev, sourceActor = null) {
+        if (
+            sourceActor
+            && typeof resolveHumanoidActorActionClip === 'function'
+        ) {
+            return resolveHumanoidActorActionClip(sourceActor, {
+                source: ev.spellFx ? 'spell' : 'weapon',
+                actionType: ev.spellFx ? 'spell' : null,
+                isProjectile: Boolean(ev.projectileSprite),
+                projectileSprite: ev.projectileSprite,
+                spellFx: ev.spellFx
+            });
+        }
+        if (typeof resolveCombatAnimationClip === 'function') {
+            return resolveCombatAnimationClip({
+                source: ev.spellFx ? 'spell' : 'weapon',
+                actionType: ev.spellFx ? 'spell' : null,
+                isProjectile: Boolean(ev.projectileSprite),
+                weapon: getCombatResultWeapon(sourceActor)
+            });
+        }
+        return ev.spellFx
+            ? 'cast'
+            : (ev.projectileSprite ? 'shoot' : 'slash');
+    }
+
+    function getEnemyEventPlaybackDuration(ev) {
+        const attackEvent = [
+            'hit',
+            'deflect',
+            'actorHit',
+            'actorDeflect',
+            'heal'
+        ].includes(ev.type);
+        const reactionEvent = (
+            ev.type === 'statusTick'
+            && ev.status === 'poison'
+        );
+        if (!attackEvent) {
+            if (reactionEvent) {
+                const reactionClip = ev.killed ? 'defeat' : 'hit';
+                const reactionTimeline = (
+                    typeof getCombatAnimationTimeline === 'function'
+                )
+                    ? getCombatAnimationTimeline(reactionClip)
+                    : { durationMs: ev.killed ? 667 : 300 };
+                return Math.max(
+                    50,
+                    (reactionTimeline.durationMs || 0) + 34
+                );
+            }
+            return ev.type === 'move' ? 420 : 50;
+        }
+
+        const sourceActor = getEnemyEventSourceActor(ev);
+        const clipId = ev.type === 'heal'
+            ? 'cast'
+            : getEnemyEventActionClip(ev, sourceActor);
+        const timeline = typeof getCombatAnimationTimeline === 'function'
+            ? getCombatAnimationTimeline(clipId)
+            : { actionTimeMs: 250, durationMs: 500 };
+        let impactTimeMs = timeline.actionTimeMs || 0;
+        if (ev.projectileSprite) {
+            impactTimeMs += 360;
+        } else if (ev.spellFx && ev.spellFx.type === 'beam') {
+            impactTimeMs += 500;
+        }
+
+        const hasReaction = ev.type === 'hit' || ev.type === 'actorHit';
+        if (hasReaction) {
+            const reactionClip = ev.killed ? 'defeat' : 'hit';
+            const reactionTimeline = (
+                typeof getCombatAnimationTimeline === 'function'
+            )
+                ? getCombatAnimationTimeline(reactionClip)
+                : { durationMs: ev.killed ? 667 : 300 };
+            impactTimeMs += reactionTimeline.durationMs || 0;
+        }
+        if (ev.type === 'deflect' || ev.type === 'actorDeflect') {
+            const targetActor = ev.type === 'actorDeflect'
+                ? getCombatActorByUid(ev.targetUid)
+                : player;
+            const defenseProfile = getHumanoidShieldDefenseProfile(
+                targetActor
+            );
+            if (defenseProfile) {
+                const defenseOptions = getDeflectPlaybackOptions(
+                    ev,
+                    sourceActor,
+                    targetActor
+                );
+                const defensiveTimeline = (
+                    typeof getCombatAnimationTimeline === 'function'
+                )
+                    ? getCombatAnimationTimeline(
+                        defenseProfile.clipId
+                    )
+                    : { durationMs: 500 };
+                const actualDefenseDuration = (
+                    Number(defensiveTimeline.durationMs) || 500
+                ) / Math.max(0.1, defenseOptions.playbackRate || 1);
+                const uncompressedDefenseDuration =
+                    actualDefenseDuration
+                    / Math.max(0.15, timeCompression);
+                impactTimeMs = Math.max(
+                    impactTimeMs,
+                    uncompressedDefenseDuration
+                );
+            }
+        }
+        return Math.max(
+            350,
+            (timeline.durationMs || 0) + 34,
+            impactTimeMs + 34
+        );
+    }
+
+    function getDeflectPlaybackOptions(
+        ev,
+        sourceActor,
+        targetActor = null
+    ) {
+        const clipId = getEnemyEventActionClip(ev, sourceActor);
+        const attackTimeline = (
+            typeof getCombatAnimationTimeline === 'function'
+        )
+            ? getCombatAnimationTimeline(clipId)
+            : { actionTimeMs: 250 };
+        let impactTimeMs = Number(attackTimeline.actionTimeMs) || 0;
+        if (ev.projectileSprite) {
+            impactTimeMs += 360;
+        } else if (ev.spellFx && ev.spellFx.type === 'beam') {
+            impactTimeMs += 500;
+        }
+        impactTimeMs = Math.max(
+            34,
+            impactTimeMs * Math.max(0.15, timeCompression)
+        );
+
+        // Put contact near the middle of the authored two-frame guard hold.
+        // Slower powerful/ranged attacks therefore produce a longer, readable
+        // brace without changing the attack or gameplay-event timeline.
+        return getHumanoidDeflectPlaybackOptions(
+            targetActor,
+            impactTimeMs
+        );
+    }
 
     function playEnemyAttackFx(ev, onComplete, targetActor = null) {
-        const targetX = targetActor ? targetActor.x : player.x;
-        const targetY = targetActor ? targetActor.y : player.y;
+        const sourceActor = getEnemyEventSourceActor(ev);
+        const resolvedTarget = targetActor || player;
+        const targetSize = Math.max(
+            1,
+            Number(resolvedTarget && resolvedTarget.size) || 1
+        );
+        const targetX = (Number(resolvedTarget && resolvedTarget.x) || 0)
+            + ((targetSize - 1) / 2);
+        const targetY = (Number(resolvedTarget && resolvedTarget.y) || 0)
+            + ((targetSize - 1) / 2);
         if (
             !targetActor
             && typeof CombatSpriteAnimation !== 'undefined'
-            && Number.isFinite(ev.ex)
+            && sourceActor
         ) {
-            CombatSpriteAnimation.faceActorToward(player, ev.ex + 0.5);
+            const sourceSize = Math.max(
+                1,
+                Number(sourceActor.size) || 1
+            );
+            CombatSpriteAnimation.faceActorToward(
+                player,
+                (Number(sourceActor.x) || 0) + ((sourceSize - 1) / 2)
+            );
         }
-        if (ev.spellFx && ev.spellFx.type === 'beam') {
-            FXEngine.spawnBeam(
-                ev.ex,
-                ev.ey,
+
+        const clipId = getEnemyEventActionClip(ev, sourceActor);
+        let released = false;
+        function releaseAttack(event = {}) {
+            if (released) return;
+            released = true;
+            const sourceSize = Math.max(
+                1,
+                Number(sourceActor && sourceActor.size) || 1
+            );
+            const releaseOrigin = event.releaseOrigin || {
+                x: Number.isFinite(ev.ex)
+                    ? ev.ex + ((sourceSize - 1) / 2)
+                    : Number(sourceActor && sourceActor.x) || 0,
+                y: Number.isFinite(ev.ey)
+                    ? ev.ey + ((sourceSize - 1) / 2)
+                    : Number(sourceActor && sourceActor.y) || 0
+            };
+
+            if (ev.spellFx && ev.spellFx.type === 'beam') {
+                FXEngine.spawnBeam(
+                    releaseOrigin.x,
+                    releaseOrigin.y,
+                    targetX,
+                    targetY,
+                    {
+                        ...ev.spellFx,
+                        speed: Math.max(
+                            1,
+                            (Number(ev.spellFx.speed) || 15)
+                                * timeCompression
+                        ),
+                        onComplete
+                    }
+                );
+            } else if (ev.projectileSprite) {
+                FXEngine.spawnProjectile(
+                    releaseOrigin.x,
+                    releaseOrigin.y,
+                    targetX,
+                    targetY,
+                    ev.projectileSprite,
+                    {
+                        arc: 0,
+                        spin: false,
+                        frames: Math.max(
+                            3,
+                            Math.round(20 * timeCompression)
+                        ),
+                        onComplete
+                    }
+                );
+            } else {
+                if (typeof FXEngine.spawnMeleeImpact === 'function') {
+                    FXEngine.spawnMeleeImpact(targetX, targetY, clipId);
+                }
+                onComplete();
+            }
+        }
+
+        const canAnimateSource = Boolean(
+            sourceActor
+            && typeof CombatSpriteAnimation !== 'undefined'
+            && (
+                typeof isHumanoidActor !== 'function'
+                || isHumanoidActor(sourceActor)
+            )
+        );
+        if (!canAnimateSource) {
+            releaseAttack();
+            return;
+        }
+        startCombatSpriteActionWhenReady(
+            sourceActor,
+            {
+                clipId,
                 targetX,
                 targetY,
-                { ...ev.spellFx, onComplete }
-            );
-        } else if (ev.projectileSprite) {
-            FXEngine.spawnProjectile(ev.ex, ev.ey, targetX, targetY, ev.projectileSprite, { arc: 0, spin: false, frames: 20, onComplete: onComplete });
-        } else {
-            onComplete();
-        }
+                playbackRate: 1 / Math.max(0.15, timeCompression),
+                onEvent: releaseAttack
+            },
+            releaseAttack
+        );
     }
 
     // 2. Play the events sequentially on the screen
@@ -862,7 +1521,14 @@ socket.on('enemyTurnReceipt', (receipt) => {
             }
             if (ev.type === 'move') {
                 let e = ev.uid ? getCombatActorByUid(ev.uid) : [...enemies, ...allies, ...rogues].find(en => en.name === ev.name);
-                if (e) { e.x = ev.finalX; e.y = ev.finalY; }
+                if (e) {
+                    e.x = ev.finalX;
+                    e.y = ev.finalY;
+                    e.combatMovementRate = Math.min(
+                        1,
+                        0.15 / Math.max(0.15, timeCompression)
+                    );
+                }
             }
             else if (ev.type === 'rest') {
                 logMessage(`${ev.name || 'Combatant'} rests and recovers ${ev.recovered || 0} stamina.`);
@@ -872,6 +1538,12 @@ socket.on('enemyTurnReceipt', (receipt) => {
                 logMessage(`💥 The massive ${ev.enemyName} crushes an obstacle in its path!`);
             }
             else if (ev.type === 'deflect') {
+                const attacker = getEnemyEventSourceActor(ev);
+                playHumanoidDefensiveReaction(
+                    player,
+                    attacker,
+                    getDeflectPlaybackOptions(ev, attacker, player)
+                );
                 playEnemyAttackFx(ev, () => {
                     logMessage(`Deflected attack from ${ev.enemyName}!`);
                     FXEngine.spawnText(player.x, player.y, "DEFLECT", { color: "#3498db" });
@@ -881,6 +1553,11 @@ socket.on('enemyTurnReceipt', (receipt) => {
             else if (ev.type === 'hit') {
                 let executeHit = () => {
                     if (ev.playerStatusEffects) player.statusEffects = ev.playerStatusEffects;
+                    playHumanoidImpactReaction(
+                        player,
+                        false,
+                        compressedPlaybackOptions
+                    );
                     const rangedLabel = ev.isRangedAttack ? " (Ranged)" : "";
                     if (ev.isCrit) {
                         logMessage(`💥 CRITICAL STRIKE! ${ev.enemyName} hits you for ${ev.damage} DMG!${rangedLabel}`);
@@ -907,10 +1584,20 @@ socket.on('enemyTurnReceipt', (receipt) => {
                         if (e) {
                             e.hp = Math.max(0, e.hp - ev.damage);
                             if (ev.killed) e.alive = false;
+                            playHumanoidImpactReaction(
+                                e,
+                                ev.killed === true,
+                                compressedPlaybackOptions
+                            );
                             logMessage(`${e.name} suffers ${ev.damage} poison DMG.`);
                             FXEngine.spawnText(e.x, e.y, `-${ev.damage}`, { color: "#8e44ad" });
                         }
                     } else if (ev.targetType === 'player') {
+                        playHumanoidImpactReaction(
+                            player,
+                            false,
+                            compressedPlaybackOptions
+                        );
                         logMessage(`Poison burns you for ${ev.damage} DMG.`);
                         FXEngine.spawnText(player.x, player.y, `-${ev.damage}`, { color: "#8e44ad" });
                     }
@@ -918,6 +1605,12 @@ socket.on('enemyTurnReceipt', (receipt) => {
             }
             else if (ev.type === 'actorDeflect') {
                 const target = getCombatActorByUid(ev.targetUid);
+                const attacker = getEnemyEventSourceActor(ev);
+                playHumanoidDefensiveReaction(
+                    target,
+                    attacker,
+                    getDeflectPlaybackOptions(ev, attacker, target)
+                );
                 playEnemyAttackFx(ev, () => {
                     if (target) FXEngine.spawnText(target.x, target.y, "DEFLECT", { color: "#3498db" });
                     logMessage(`${ev.targetName} deflected ${ev.sourceName}'s attack.`);
@@ -931,6 +1624,11 @@ socket.on('enemyTurnReceipt', (receipt) => {
                         target.hp = Math.max(0, target.hp - ev.damage);
                         if (ev.killed) target.alive = false;
                         if (ev.statusEffects) target.statusEffects = ev.statusEffects;
+                        playHumanoidImpactReaction(
+                            target,
+                            ev.killed === true,
+                            compressedPlaybackOptions
+                        );
                         FXEngine.spawnText(target.x, target.y, ev.isCrit ? `-${ev.damage}!` : `-${ev.damage}`, {
                             color: ev.sourceTeamId === 'PLAYER' ? "#f1c40f" : "#e74c3c",
                             isCrit: ev.isCrit
@@ -942,10 +1640,36 @@ socket.on('enemyTurnReceipt', (receipt) => {
                 }, target);
             }
             else if (ev.type === 'heal') {
-                player.hp = ev.hp || player.hp;
-                logMessage(`${ev.sourceName} patches you up for ${ev.amount} HP.`);
-                FXEngine.spawnText(player.x, player.y, `+${ev.amount}`, { color: "#2ecc71" });
-                if (typeof playRetroSound === 'function') playRetroSound('chug');
+                const healer = getEnemyEventSourceActor(ev);
+                let healApplied = false;
+                const applyHeal = () => {
+                    if (healApplied) return;
+                    healApplied = true;
+                    player.hp = ev.hp || player.hp;
+                    logMessage(`${ev.sourceName} patches you up for ${ev.amount} HP.`);
+                    FXEngine.spawnText(player.x, player.y, `+${ev.amount}`, { color: "#2ecc71" });
+                    if (typeof playRetroSound === 'function') playRetroSound('chug');
+                };
+                if (
+                    healer
+                    && typeof isHumanoidActor === 'function'
+                    && isHumanoidActor(healer)
+                ) {
+                    startCombatSpriteActionWhenReady(
+                        healer,
+                        {
+                            clipId: 'cast',
+                            targetX: player.x,
+                            targetY: player.y,
+                            playbackRate:
+                                compressedPlaybackOptions.playbackRate,
+                            onEvent: applyHeal
+                        },
+                        applyHeal
+                    );
+                } else {
+                    applyHeal();
+                }
             }
             else if (ev.type === 'retreat') {
                 const actor = getCombatActorByUid(ev.uid);
@@ -959,6 +1683,11 @@ socket.on('enemyTurnReceipt', (receipt) => {
                 logMessage(`🍺 The Mimic intercepts your gear inventory and chugs one of your Stouts!`);
             }
       else if (ev.type === 'death') {
+                playHumanoidImpactReaction(
+                    player,
+                    true,
+                    compressedPlaybackOptions
+                );
                 logMessage("💀 casualty verified. Transporting to safety structures.");
                 if (typeof playRetroSound === 'function') playRetroSound('death');
                 setTimeout(() => {
@@ -970,10 +1699,7 @@ socket.on('enemyTurnReceipt', (receipt) => {
             refreshSystemUI();
         }, delay);
 
-        // === NEW: MULTIPLY THE DELAY BY OUR TIME COMPRESSION ===
-        if (ev.type === 'move') delay += (100 * timeCompression);
-        else if (ev.type === 'hit' || ev.type === 'deflect' || ev.type === 'actorHit' || ev.type === 'actorDeflect') delay += (350 * timeCompression);
-        else delay += (50 * timeCompression);
+        delay += getEnemyEventPlaybackDuration(ev) * timeCompression;
     });
 
     // 3. Finally, hand control back to the player!

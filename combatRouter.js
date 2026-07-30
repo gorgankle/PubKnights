@@ -28,6 +28,10 @@ const { executeActorTurn } = require('./combatAI.js');
 const { applyPoison, tickPoison } = require('./combatStatus.js');
 const { applyPlayerCombatDefeat } = require('./combatDefeat.js');
 const {
+    EQUIPMENT_SLOTS,
+    equipItemWithHandRules
+} = require('./equipmentHandRules.js');
+const {
     syncCombatViews,
     syncPlayerActor,
     getPlayerActor,
@@ -149,7 +153,6 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             p.pendingGold = 0;
             p.pendingXp = 0;
             p.pendingLoot = [];
-            p.mapBaited = false;
             p.cellarsChummed = false;
             p.statusEffects = {};
             p.activeBuffs = [];
@@ -720,7 +723,16 @@ function handleActorWeaponAction(socket, p, combat, data, resolveDefeat, actor) 
     const speedMitigation = Math.random() * defenderSpeed;
 
     if ((offenseHitPower - speedMitigation) <= 0) {
-        return socket.emit('combatResult', { type: 'miss', actorUid: actor.uid, actorName: actor.name, hitChance: 0, newStamina: getActorStaminaValue(actor, p), updatedCombatState: syncCombatViews(combat, p) });
+        return socket.emit('combatResult', {
+            type: 'miss',
+            actorUid: actor.uid,
+            actorName: actor.name,
+            targetUid: serverEnemy.uid,
+            deflectReason: 'evasion',
+            hitChance: 0,
+            newStamina: getActorStaminaValue(actor, p),
+            updatedCombatState: syncCombatViews(combat, p)
+        });
     }
 
     const rawDamageRoll = Math.sqrt(Math.random()) * attackerOffense;
@@ -728,7 +740,16 @@ function handleActorWeaponAction(socket, p, combat, data, resolveDefeat, actor) 
     const mitigatedDmg = Math.floor(rawDamageRoll - armorAbsorption);
 
     if (mitigatedDmg <= 0) {
-        return socket.emit('combatResult', { type: 'miss', actorUid: actor.uid, actorName: actor.name, hitChance: 100, newStamina: getActorStaminaValue(actor, p), updatedCombatState: syncCombatViews(combat, p) });
+        return socket.emit('combatResult', {
+            type: 'miss',
+            actorUid: actor.uid,
+            actorName: actor.name,
+            targetUid: serverEnemy.uid,
+            deflectReason: 'armor',
+            hitChance: 100,
+            newStamina: getActorStaminaValue(actor, p),
+            updatedCombatState: syncCombatViews(combat, p)
+        });
     }
 
     const isCrit = mitigatedDmg >= Math.floor(attackerOffense * 0.90);
@@ -961,7 +982,15 @@ function handleWeaponAction(socket, p, combat, data, resolveDefeat) {
     const speedMitigation = Math.random() * defenderSpeed;
 
     if ((offenseHitPower - speedMitigation) <= 0) {
-        socket.emit('combatResult', { type: 'miss', actorUid: 'player_0', hitChance: 0, newStamina: p.stamina, updatedCombatState: syncCombatViews(combat, p) });
+        socket.emit('combatResult', {
+            type: 'miss',
+            actorUid: 'player_0',
+            targetUid: serverEnemy.uid,
+            deflectReason: 'evasion',
+            hitChance: 0,
+            newStamina: p.stamina,
+            updatedCombatState: syncCombatViews(combat, p)
+        });
         return;
     }
 
@@ -970,7 +999,15 @@ function handleWeaponAction(socket, p, combat, data, resolveDefeat) {
     const mitigatedDmg = Math.floor(rawDamageRoll - armorAbsorption);
 
     if (mitigatedDmg <= 0) {
-        socket.emit('combatResult', { type: 'miss', actorUid: 'player_0', hitChance: 100, newStamina: p.stamina, updatedCombatState: syncCombatViews(combat, p) });
+        socket.emit('combatResult', {
+            type: 'miss',
+            actorUid: 'player_0',
+            targetUid: serverEnemy.uid,
+            deflectReason: 'armor',
+            hitChance: 100,
+            newStamina: p.stamina,
+            updatedCombatState: syncCombatViews(combat, p)
+        });
         return;
     }
 
@@ -1280,17 +1317,29 @@ function handleCombatEquip(socket, p, combat, data, actor) {
     const item = p.inventory[invIndex];
     if (!item) return;
 
-    const validSlots = ["weapon", "helmet", "armor", "gloves", "boots"];
-    if (!validSlots.includes(item.slot)) {
+    if (!EQUIPMENT_SLOTS.includes(item.slot)) {
         return socket.emit('combatItemReceipt', { success: false, message: "This item cannot be equipped." });
     }
 
-    const slotKey = item.slot;
-    const worn = p.equipment[slotKey];
+    p.maxInventorySlots = p.maxInventorySlots || 5;
+    const equipResult = equipItemWithHandRules({
+        equipment: p.equipment,
+        inventory: p.inventory,
+        inventoryIndex: invIndex,
+        maxInventorySlots: p.maxInventorySlots
+    });
+    if (!equipResult.success) {
+        return socket.emit('combatItemReceipt', {
+            success: false,
+            message: equipResult.message
+        });
+    }
 
-    p.equipment[slotKey] = item;
-    if (worn) p.inventory[invIndex] = worn;
-    else p.inventory.splice(invIndex, 1);
-
-    return emitPlayerItemReceipt(socket, p, combat, actor, { success: true, message: "Swapped gear mid-combat." });
+    const handMessage = equipResult.conflictSlot
+        ? ' Conflicting hand gear was stowed.'
+        : '';
+    return emitPlayerItemReceipt(socket, p, combat, actor, {
+        success: true,
+        message: `Swapped gear mid-combat.${handMessage}`
+    });
 }

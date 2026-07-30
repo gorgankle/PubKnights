@@ -57,6 +57,159 @@ const SidePlayerAnimationClips = Object.freeze({
         loop: false,
         actionFrame: 3,
         frames: Object.freeze(['cast_a', 'cast_b', 'cast_c', 'cast_d'])
+    }),
+    thrust: Object.freeze({
+        label: 'Spear / Polearm Thrust',
+        fps: 8,
+        loop: false,
+        actionFrame: 2,
+        phases: Object.freeze({
+            windupEnd: 1,
+            contact: 2,
+            recoveryStart: 3
+        }),
+        frames: Object.freeze([
+            'thrust_a',
+            'thrust_b',
+            'thrust_c',
+            'thrust_d',
+            'thrust_e'
+        ])
+    }),
+    heavy: Object.freeze({
+        label: 'Two-Handed Heavy Swing',
+        fps: 6,
+        loop: false,
+        actionFrame: 3,
+        powerful: true,
+        phases: Object.freeze({
+            windupEnd: 2,
+            contact: 3,
+            recoveryStart: 4
+        }),
+        frames: Object.freeze([
+            'heavy_a',
+            'heavy_b',
+            'heavy_c',
+            'heavy_d',
+            'heavy_e',
+            'heavy_f'
+        ])
+    }),
+    dagger: Object.freeze({
+        label: 'Dagger / Shiv',
+        fps: 10,
+        loop: false,
+        actionFrame: 2,
+        phases: Object.freeze({
+            windupEnd: 1,
+            contact: 2,
+            recoveryStart: 3
+        }),
+        frames: Object.freeze([
+            'dagger_a',
+            'dagger_b',
+            'dagger_c',
+            'dagger_d',
+            'dagger_e'
+        ])
+    }),
+    scythe: Object.freeze({
+        label: 'Scythe Sweep',
+        fps: 7,
+        loop: false,
+        actionFrame: 3,
+        powerful: true,
+        phases: Object.freeze({
+            windupEnd: 2,
+            contact: 3,
+            recoveryStart: 4
+        }),
+        frames: Object.freeze([
+            'scythe_a',
+            'scythe_b',
+            'scythe_c',
+            'scythe_d',
+            'scythe_e',
+            'scythe_f'
+        ])
+    }),
+    shield_block: Object.freeze({
+        label: 'Shield Block',
+        fps: 8,
+        loop: false,
+        actionFrame: 1,
+        phases: Object.freeze({
+            windupEnd: 0,
+            guardStart: 1,
+            guardEnd: 2,
+            recoveryStart: 3
+        }),
+        frames: Object.freeze([
+            'shield_block_a',
+            'shield_block_b',
+            'shield_block_c',
+            'shield_block_d'
+        ])
+    }),
+    shield_bash: Object.freeze({
+        label: 'Shield Bash',
+        fps: 8,
+        loop: false,
+        actionFrame: 2,
+        phases: Object.freeze({
+            windupEnd: 1,
+            contact: 2,
+            recoveryStart: 3
+        }),
+        frames: Object.freeze([
+            'shield_bash_a',
+            'shield_bash_b',
+            'shield_bash_c',
+            'shield_bash_d',
+            'shield_bash_e'
+        ])
+    }),
+    dual_wield: Object.freeze({
+        label: 'Dual-Wield Flurry',
+        fps: 10,
+        loop: false,
+        actionFrame: 2,
+        phases: Object.freeze({
+            windupEnd: 1,
+            contact: 2,
+            visualSecondStrike: 3,
+            recoveryStart: 4
+        }),
+        frames: Object.freeze([
+            'dual_wield_a',
+            'dual_wield_b',
+            'dual_wield_c',
+            'dual_wield_d',
+            'dual_wield_e',
+            'dual_wield_f'
+        ])
+    }),
+    hit: Object.freeze({
+        label: 'Hit Reaction',
+        fps: 10,
+        loop: false,
+        actionFrame: null,
+        frames: Object.freeze(['hit_a', 'hit_b', 'hit_c'])
+    }),
+    defeat: Object.freeze({
+        label: 'Defeat',
+        fps: 6,
+        loop: false,
+        actionFrame: null,
+        terminal: true,
+        holdLastFrame: true,
+        frames: Object.freeze([
+            'defeat_a',
+            'defeat_b',
+            'defeat_c',
+            'defeat_d'
+        ])
     })
 });
 
@@ -295,6 +448,585 @@ const SidePlayerPoseDefinitions = Object.freeze({
             bottom: [19, 30],
             glow: 3
         }
+    },
+    thrust_a: {
+        bobY: 0,
+        farArm: [[13, 14], [16, 16], [18, 18]],
+        nearArm: [[18, 14], [16, 17], [15, 19]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        weapon: {
+            kind: 'sword',
+            grip: [15, 19],
+            supportGrip: [18, 18],
+            tip: [6, 20]
+        }
+    },
+    thrust_b: {
+        bobY: 0,
+        farArm: [[13, 14], [17, 15], [20, 17]],
+        nearArm: [[18, 14], [19, 16], [18, 17]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        weapon: {
+            kind: 'sword',
+            grip: [18, 17],
+            supportGrip: [20, 17],
+            tip: [28, 16]
+        }
+    },
+    thrust_c: {
+        bobY: 0,
+        farArm: [[13, 14], [18, 15], [22, 16]],
+        nearArm: [[18, 14], [22, 14], [25, 15]],
+        farLeg: [[17, 21], [19, 24], [22, 28], [24, 31]],
+        nearLeg: [[14, 21], [14, 25], [13, 29], [15, 31]],
+        weapon: {
+            kind: 'sword',
+            grip: [25, 15],
+            supportGrip: [22, 16],
+            tip: [31, 15]
+        }
+    },
+    thrust_d: {
+        bobY: 0,
+        farArm: [[13, 14], [18, 15], [21, 17]],
+        nearArm: [[18, 14], [21, 15], [23, 16]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        weapon: {
+            kind: 'sword',
+            grip: [23, 16],
+            supportGrip: [21, 17],
+            tip: [31, 16]
+        }
+    },
+    thrust_e: {
+        bobY: 0,
+        farArm: [[13, 14], [16, 17], [18, 19]],
+        nearArm: [[18, 14], [18, 17], [20, 19]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        weapon: {
+            kind: 'sword',
+            grip: [20, 19],
+            supportGrip: [18, 19],
+            tip: [29, 17]
+        }
+    },
+    heavy_a: {
+        bobY: 0,
+        farArm: [[13, 14], [16, 18], [19, 20]],
+        nearArm: [[18, 14], [19, 18], [21, 21]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        weapon: {
+            kind: 'mace',
+            grip: [21, 21],
+            supportGrip: [19, 20],
+            head: [27, 27]
+        }
+    },
+    heavy_b: {
+        bobY: -1,
+        farArm: [[13, 14], [14, 12], [16, 10]],
+        nearArm: [[18, 14], [18, 11], [17, 9]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        weapon: {
+            kind: 'mace',
+            grip: [17, 9],
+            supportGrip: [16, 10],
+            head: [9, 4]
+        }
+    },
+    heavy_c: {
+        bobY: -1,
+        farArm: [[13, 14], [16, 12], [19, 10]],
+        nearArm: [[18, 14], [18, 11], [18, 9]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        weapon: {
+            kind: 'mace',
+            grip: [18, 9],
+            supportGrip: [19, 10],
+            head: [13, 3]
+        }
+    },
+    heavy_d: {
+        bobY: 1,
+        farArm: [[13, 14], [18, 16], [22, 18]],
+        nearArm: [[18, 14], [22, 17], [25, 20]],
+        farLeg: [[17, 21], [19, 24], [22, 28], [24, 31]],
+        nearLeg: [[14, 21], [13, 25], [12, 29], [14, 31]],
+        weapon: {
+            kind: 'mace',
+            grip: [25, 20],
+            supportGrip: [22, 18],
+            head: [29, 28]
+        }
+    },
+    heavy_e: {
+        bobY: 1,
+        farArm: [[13, 14], [17, 17], [20, 20]],
+        nearArm: [[18, 14], [20, 18], [23, 22]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        weapon: {
+            kind: 'mace',
+            grip: [23, 22],
+            supportGrip: [20, 20],
+            head: [29, 29]
+        }
+    },
+    heavy_f: {
+        bobY: 0,
+        farArm: [[13, 14], [15, 18], [18, 20]],
+        nearArm: [[18, 14], [18, 18], [20, 21]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        weapon: {
+            kind: 'mace',
+            grip: [20, 21],
+            supportGrip: [18, 20],
+            head: [26, 27]
+        }
+    },
+    dagger_a: {
+        bobY: 0,
+        farArm: [[13, 14], [11, 17], [10, 20]],
+        nearArm: [[18, 14], [16, 13], [14, 12]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        weapon: { kind: 'sword', grip: [14, 12], tip: [9, 9] }
+    },
+    dagger_b: {
+        bobY: -1,
+        farArm: [[13, 14], [16, 17], [19, 19]],
+        nearArm: [[18, 14], [20, 14], [22, 13]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        weapon: { kind: 'sword', grip: [22, 13], tip: [27, 11] }
+    },
+    dagger_c: {
+        bobY: 0,
+        farArm: [[13, 14], [18, 16], [22, 18]],
+        nearArm: [[18, 14], [23, 14], [27, 15]],
+        farLeg: [[17, 21], [19, 24], [22, 28], [24, 31]],
+        nearLeg: [[14, 21], [14, 25], [13, 29], [15, 31]],
+        weapon: { kind: 'sword', grip: [27, 15], tip: [31, 14] }
+    },
+    dagger_d: {
+        bobY: 0,
+        farArm: [[13, 14], [17, 17], [20, 19]],
+        nearArm: [[18, 14], [20, 16], [23, 18]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        weapon: { kind: 'sword', grip: [23, 18], tip: [28, 19] }
+    },
+    dagger_e: {
+        bobY: 0,
+        farArm: [[13, 14], [14, 18], [16, 21]],
+        nearArm: [[18, 14], [17, 18], [19, 20]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        weapon: { kind: 'sword', grip: [19, 20], tip: [24, 17] }
+    },
+    scythe_a: {
+        bobY: 0,
+        farArm: [[13, 14], [16, 17], [18, 19]],
+        nearArm: [[18, 14], [18, 18], [20, 21]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        weapon: {
+            kind: 'sword',
+            grip: [20, 21],
+            supportGrip: [18, 19],
+            tip: [24, 3]
+        }
+    },
+    scythe_b: {
+        bobY: -1,
+        farArm: [[13, 14], [14, 12], [16, 10]],
+        nearArm: [[18, 14], [18, 11], [18, 9]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        weapon: {
+            kind: 'sword',
+            grip: [18, 9],
+            supportGrip: [16, 10],
+            tip: [8, 4]
+        }
+    },
+    scythe_c: {
+        bobY: -1,
+        farArm: [[13, 14], [14, 13], [16, 12]],
+        nearArm: [[18, 14], [17, 13], [18, 12]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        weapon: {
+            kind: 'sword',
+            grip: [18, 12],
+            supportGrip: [16, 12],
+            tip: [28, 4]
+        }
+    },
+    scythe_d: {
+        bobY: 0,
+        farArm: [[13, 14], [18, 15], [22, 17]],
+        nearArm: [[18, 14], [22, 14], [25, 16]],
+        farLeg: [[17, 21], [19, 24], [22, 28], [24, 31]],
+        nearLeg: [[14, 21], [13, 25], [12, 29], [14, 31]],
+        weapon: {
+            kind: 'sword',
+            grip: [25, 16],
+            supportGrip: [22, 17],
+            tip: [31, 23]
+        }
+    },
+    scythe_e: {
+        bobY: 1,
+        farArm: [[13, 14], [17, 18], [20, 21]],
+        nearArm: [[18, 14], [20, 18], [23, 22]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        weapon: {
+            kind: 'sword',
+            grip: [23, 22],
+            supportGrip: [20, 21],
+            tip: [30, 28]
+        }
+    },
+    scythe_f: {
+        bobY: 0,
+        farArm: [[13, 14], [15, 18], [18, 20]],
+        nearArm: [[18, 14], [18, 18], [20, 21]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        weapon: {
+            kind: 'sword',
+            grip: [20, 21],
+            supportGrip: [18, 20],
+            tip: [24, 4]
+        }
+    },
+    shield_block_a: {
+        bobY: 0,
+        farArm: [[13, 14], [14, 17], [16, 20]],
+        nearArm: [[18, 14], [19, 18], [21, 21]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        weapon: { kind: 'sword', grip: [21, 21], tip: [27, 15] },
+        offhand: {
+            kind: 'shield',
+            grip: [16, 20],
+            center: [18, 18],
+            angle: -8,
+            layer: 'front'
+        }
+    },
+    shield_block_b: {
+        bobY: -1,
+        farArm: [[13, 14], [17, 15], [20, 16]],
+        nearArm: [[18, 14], [18, 18], [20, 21]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        weapon: { kind: 'sword', grip: [20, 21], tip: [26, 15] },
+        offhand: {
+            kind: 'shield',
+            grip: [20, 16],
+            center: [23, 15],
+            angle: 0,
+            layer: 'front'
+        }
+    },
+    shield_block_c: {
+        bobY: -1,
+        farArm: [[13, 14], [18, 15], [21, 16]],
+        nearArm: [[18, 14], [18, 18], [20, 21]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        weapon: { kind: 'sword', grip: [20, 21], tip: [26, 15] },
+        offhand: {
+            kind: 'shield',
+            grip: [21, 16],
+            center: [24, 15],
+            angle: 2,
+            layer: 'front'
+        }
+    },
+    shield_block_d: {
+        bobY: 0,
+        farArm: [[13, 14], [16, 16], [19, 18]],
+        nearArm: [[18, 14], [18, 17], [20, 20]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        weapon: { kind: 'sword', grip: [20, 20], tip: [26, 14] },
+        offhand: {
+            kind: 'shield',
+            grip: [19, 18],
+            center: [21, 17],
+            angle: -3,
+            layer: 'front'
+        }
+    },
+    shield_bash_a: {
+        bobY: 0,
+        farArm: [[13, 14], [14, 17], [16, 20]],
+        nearArm: [[18, 14], [16, 13], [14, 12]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        weapon: { kind: 'sword', grip: [14, 12], tip: [9, 7] },
+        offhand: {
+            kind: 'shield',
+            grip: [16, 20],
+            center: [18, 18],
+            angle: -10,
+            layer: 'front'
+        }
+    },
+    shield_bash_b: {
+        bobY: -1,
+        farArm: [[13, 14], [17, 15], [20, 16]],
+        nearArm: [[18, 14], [16, 13], [14, 12]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        weapon: { kind: 'sword', grip: [14, 12], tip: [9, 7] },
+        offhand: {
+            kind: 'shield',
+            grip: [20, 16],
+            center: [23, 15],
+            angle: 0,
+            layer: 'front'
+        }
+    },
+    shield_bash_c: {
+        bobY: 0,
+        farArm: [[13, 14], [19, 15], [24, 16]],
+        nearArm: [[18, 14], [17, 16], [19, 19]],
+        farLeg: [[17, 21], [19, 24], [22, 28], [24, 31]],
+        nearLeg: [[14, 21], [14, 25], [13, 29], [15, 31]],
+        weapon: { kind: 'sword', grip: [19, 19], tip: [25, 13] },
+        offhand: {
+            kind: 'shield',
+            grip: [24, 16],
+            center: [28, 16],
+            angle: 8,
+            layer: 'front'
+        }
+    },
+    shield_bash_d: {
+        bobY: 0,
+        farArm: [[13, 14], [18, 16], [22, 17]],
+        nearArm: [[18, 14], [18, 17], [21, 20]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        weapon: { kind: 'sword', grip: [21, 20], tip: [27, 14] },
+        offhand: {
+            kind: 'shield',
+            grip: [22, 17],
+            center: [25, 17],
+            angle: 5,
+            layer: 'front'
+        }
+    },
+    shield_bash_e: {
+        bobY: 0,
+        farArm: [[13, 14], [15, 17], [17, 20]],
+        nearArm: [[18, 14], [19, 18], [21, 21]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        weapon: { kind: 'sword', grip: [21, 21], tip: [27, 15] },
+        offhand: {
+            kind: 'shield',
+            grip: [17, 20],
+            center: [19, 19],
+            angle: -6,
+            layer: 'front'
+        }
+    },
+    dual_wield_a: {
+        bobY: 0,
+        farArm: [[13, 14], [11, 16], [10, 18]],
+        nearArm: [[18, 14], [16, 13], [14, 12]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        weapon: { kind: 'sword', grip: [14, 12], tip: [9, 8] },
+        offhand: {
+            kind: 'weapon',
+            grip: [10, 18],
+            aim: [6, 21],
+            layer: 'back'
+        }
+    },
+    dual_wield_b: {
+        bobY: -1,
+        farArm: [[13, 14], [16, 16], [19, 17]],
+        nearArm: [[18, 14], [20, 14], [22, 13]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        weapon: { kind: 'sword', grip: [22, 13], tip: [27, 10] },
+        offhand: {
+            kind: 'weapon',
+            grip: [19, 17],
+            aim: [24, 19],
+            layer: 'back'
+        }
+    },
+    dual_wield_c: {
+        bobY: 0,
+        farArm: [[13, 14], [19, 15], [23, 16]],
+        nearArm: [[18, 14], [23, 14], [27, 15]],
+        farLeg: [[17, 21], [19, 24], [22, 28], [24, 31]],
+        nearLeg: [[14, 21], [14, 25], [13, 29], [15, 31]],
+        weapon: { kind: 'sword', grip: [27, 15], tip: [31, 14] },
+        offhand: {
+            kind: 'weapon',
+            grip: [23, 16],
+            aim: [29, 18],
+            layer: 'back'
+        }
+    },
+    dual_wield_d: {
+        bobY: 0,
+        farArm: [[13, 14], [18, 13], [22, 11]],
+        nearArm: [[18, 14], [18, 17], [20, 20]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        weapon: { kind: 'sword', grip: [20, 20], tip: [25, 17] },
+        offhand: {
+            kind: 'weapon',
+            grip: [22, 11],
+            aim: [28, 8],
+            layer: 'front'
+        }
+    },
+    dual_wield_e: {
+        bobY: 0,
+        farArm: [[13, 14], [18, 16], [22, 18]],
+        nearArm: [[18, 14], [19, 17], [22, 19]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        weapon: { kind: 'sword', grip: [22, 19], tip: [27, 21] },
+        offhand: {
+            kind: 'weapon',
+            grip: [22, 18],
+            aim: [27, 15],
+            layer: 'front'
+        }
+    },
+    dual_wield_f: {
+        bobY: 0,
+        farArm: [[13, 14], [14, 18], [16, 21]],
+        nearArm: [[18, 14], [17, 18], [19, 20]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        weapon: { kind: 'sword', grip: [19, 20], tip: [24, 17] },
+        offhand: {
+            kind: 'weapon',
+            grip: [16, 21],
+            aim: [11, 19],
+            layer: 'back'
+        }
+    },
+    hit_a: {
+        bobY: 0,
+        stance: 'profile',
+        farArm: [[13, 14], [11, 17], [12, 20]],
+        nearArm: [[18, 14], [20, 16], [22, 18]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        weapon: { kind: 'sword', grip: [22, 18], tip: [27, 11] }
+    },
+    hit_b: {
+        bobY: 0,
+        stance: 'profile',
+        farArm: [[13, 14], [10, 15], [8, 17]],
+        nearArm: [[18, 14], [16, 12], [13, 10]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        rigTransform: {
+            pivot: [16, 22],
+            translate: [3.36, -0.31],
+            rotateDegrees: -8,
+            scale: 0.96
+        },
+        weapon: { kind: 'sword', grip: [13, 10], tip: [7, 5] }
+    },
+    hit_c: {
+        bobY: 0,
+        stance: 'profile',
+        farArm: [[13, 14], [12, 17], [14, 20]],
+        nearArm: [[18, 14], [19, 17], [20, 20]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        rigTransform: {
+            pivot: [16, 22],
+            translate: [-0.83, -0.09],
+            rotateDegrees: -3,
+            scale: 0.98
+        },
+        weapon: { kind: 'sword', grip: [20, 20], tip: [26, 14] }
+    },
+    defeat_a: {
+        bobY: 0,
+        stance: 'profile',
+        farArm: [[13, 14], [10, 16], [8, 19]],
+        nearArm: [[18, 14], [16, 12], [12, 11]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        rigTransform: {
+            pivot: [16, 22],
+            translate: [4.24, -0.48],
+            rotateDegrees: -12,
+            scale: 0.95
+        },
+        weapon: { kind: 'sword', grip: [12, 11], tip: [6, 7] }
+    },
+    defeat_b: {
+        bobY: 0,
+        stance: 'profile',
+        farArm: [[13, 14], [11, 18], [9, 22]],
+        nearArm: [[18, 14], [19, 18], [21, 22]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        rigTransform: {
+            pivot: [16, 20],
+            translate: [2.07, -0.59],
+            rotateDegrees: -30,
+            scale: 0.88
+        },
+        weapon: { kind: 'sword', grip: [21, 22], tip: [28, 19] }
+    },
+    defeat_c: {
+        bobY: 0,
+        stance: 'profile',
+        farArm: [[13, 14], [15, 18], [18, 21]],
+        nearArm: [[18, 14], [21, 16], [24, 18]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        rigTransform: {
+            pivot: [16, 17],
+            translate: [0.05, 3.27],
+            rotateDegrees: -58,
+            scale: 0.82
+        },
+        weapon: { kind: 'sword', grip: [24, 18], tip: [30, 16] }
+    },
+    defeat_d: {
+        bobY: 0,
+        stance: 'profile',
+        farArm: [[13, 14], [15, 17], [17, 20]],
+        nearArm: [[18, 14], [19, 18], [19, 22]],
+        farLeg: SIDE_PLAYER_COMBAT_FAR_LEG,
+        nearLeg: SIDE_PLAYER_COMBAT_NEAR_LEG,
+        rigTransform: {
+            pivot: [16, 16],
+            translate: [0, 3],
+            rotateDegrees: -90,
+            scale: 0.82
+        },
+        weapon: { kind: 'sword', grip: [19, 22], tip: [25, 17] }
     }
 });
 
@@ -797,6 +1529,11 @@ function getSidePlayerHairLayers(hairStyle = 'hair_bald') {
 }
 
 const SidePlayerHelmetProfiles = Object.freeze({
+    helm_goblin_ears: Object.freeze({
+        style: 'goblin_ears',
+        hairMask: null,
+        hidesHair: false
+    }),
     helm_alpha: Object.freeze({
         style: 'collar',
         hairMask: null,
@@ -871,6 +1608,11 @@ const SidePlayerHelmetProfiles = Object.freeze({
         style: 'sack',
         hairMask: 'full',
         hidesHair: true
+    }),
+    helm_innkeeper: Object.freeze({
+        style: 'widehat',
+        hairMask: 'brim',
+        hidesHair: false
     })
 });
 
@@ -915,6 +1657,11 @@ function paintSidePlayerHelmetBack(painter, profile, spec) {
     const { line, points, rect } = painter;
 
     switch (profile.style) {
+        case 'goblin_ears':
+            line(9, 7, 4, 4, 'X', 4);
+            line(9, 7, 4, 4, spec.primary, 2);
+            points([[4, 4], [5, 5], [7, 6]], spec.highlight);
+            break;
         case 'collar':
             paintOutlinedOverhaulShape(painter, [
                 [11, 9, 15],
@@ -1000,6 +1747,12 @@ function paintSidePlayerHelmetFront(painter, profile, spec) {
     const { ellipse, frame, line, points, rect, set } = painter;
 
     switch (profile.style) {
+        case 'goblin_ears':
+            line(16, 7, 9, 5, 'X', 4);
+            line(16, 7, 9, 5, spec.primary, 2);
+            points([[13, 6], [11, 5], [9, 5]], spec.highlight);
+            set(16, 8, spec.shadow);
+            break;
         case 'collar':
             paintOutlinedOverhaulShape(painter, [
                 [10, 14, 17],
@@ -1636,6 +2389,7 @@ function paintSidePlayerArmorDetails(
             ], spec.highlight);
             break;
         case 'tunic':
+        case 'innkeeper':
             painter.line(centerX, 14, centerX, 21, spec.shadow);
             painter.points([
                 [centerX + 1, 15],
@@ -1647,6 +2401,22 @@ function paintSidePlayerArmorDetails(
                 [centerX, 22],
                 [centerX + 1, 23]
             ], spec.shadow);
+            if (spec.style === 'innkeeper') {
+                painter.line(
+                    centerX - 2,
+                    14,
+                    centerX - 2,
+                    21,
+                    spec.accent
+                );
+                painter.line(
+                    centerX + 2,
+                    14,
+                    centerX + 2,
+                    21,
+                    spec.accent
+                );
+            }
             break;
         case 'cask':
             painter.line(backX, 15, frontX, 15, spec.highlight);
@@ -2703,6 +3473,444 @@ function makeSidePlaceholderWeapon(weaponDefinition) {
     });
 }
 
+function fitSideEquipmentAim(
+    rawAim,
+    relativePoints,
+    padding = 0
+) {
+    const points = Array.isArray(relativePoints) && relativePoints.length
+        ? relativePoints
+        : [[0, 0]];
+    const minRelativeX = Math.min(...points.map(point => point[0]));
+    const maxRelativeX = Math.max(...points.map(point => point[0]));
+    const minRelativeY = Math.min(...points.map(point => point[1]));
+    const maxRelativeY = Math.max(...points.map(point => point[1]));
+    const minimumX = 1 + padding - minRelativeX;
+    const maximumX = 30 - padding - maxRelativeX;
+    const minimumY = 1 + padding - minRelativeY;
+    const maximumY = 30 - padding - maxRelativeY;
+    const clampAxis = (value, minimum, maximum) => {
+        if (minimum > maximum) return Math.round((minimum + maximum) / 2);
+        return Math.max(minimum, Math.min(maximum, Math.round(value)));
+    };
+    return [
+        clampAxis(rawAim[0], minimumX, maximumX),
+        clampAxis(rawAim[1], minimumY, maximumY)
+    ];
+}
+
+function makeNativeSideEquippedWeapon(spec, weaponDefinition) {
+    return createNativeOverhaulSprite(painter => {
+        const grip = weaponDefinition.grip;
+        const rawAim = getSidePoseWeaponAim(weaponDefinition);
+        const direction = getSideVector(grip, rawAim, 2);
+        const normal = [
+            -Math.sign(direction[1] || 1),
+            Math.sign(direction[0] || 1)
+        ];
+        const family = spec.animationFamily;
+        let unitDirection = getSideVector(grip, rawAim, 1);
+        if (unitDirection[0] === 0 && unitDirection[1] === 0) {
+            unitDirection = [1, 0];
+        }
+        const perpendicular = [
+            -unitDirection[1],
+            unitDirection[0]
+        ];
+        const outwardPerpendicular = (
+            perpendicular[0] < 0
+            || (perpendicular[0] === 0 && perpendicular[1] > 0)
+        )
+            ? [-perpendicular[0], -perpendicular[1]]
+            : [...perpendicular];
+        const supportGrip = Array.isArray(weaponDefinition.supportGrip)
+            ? weaponDefinition.supportGrip
+            : grip;
+        const containedPoint = point => [
+            Math.max(3, Math.min(28, Math.round(point[0]))),
+            Math.max(3, Math.min(28, Math.round(point[1])))
+        ];
+
+        if (family === 'thrust') {
+            const shaftButt = containedPoint([
+                supportGrip[0] - unitDirection[0] * 4,
+                supportGrip[1] - unitDirection[1] * 4
+            ]);
+            const hasTines = (
+                spec.style === 'pitchfork'
+                || spec.style === 'trident'
+            );
+            const spearHeadPoints = hasTines
+                ? [
+                    [0, 0],
+                    [
+                        -unitDirection[0]
+                            + perpendicular[0] * 2,
+                        -unitDirection[1]
+                            + perpendicular[1] * 2
+                    ],
+                    [
+                        -unitDirection[0]
+                            - perpendicular[0] * 2,
+                        -unitDirection[1]
+                            - perpendicular[1] * 2
+                    ],
+                    [
+                        -unitDirection[0] * 4
+                            + perpendicular[0] * 2,
+                        -unitDirection[1] * 4
+                            + perpendicular[1] * 2
+                    ],
+                    [
+                        -unitDirection[0] * 4
+                            - perpendicular[0] * 2,
+                        -unitDirection[1] * 4
+                            - perpendicular[1] * 2
+                    ]
+                ]
+                : [
+                    [0, 0],
+                    [
+                        -unitDirection[0] * 3
+                            + perpendicular[0] * 2,
+                        -unitDirection[1] * 3
+                            + perpendicular[1] * 2
+                    ],
+                    [
+                        -unitDirection[0] * 3
+                            - perpendicular[0] * 2,
+                        -unitDirection[1] * 3
+                            - perpendicular[1] * 2
+                    ]
+                ];
+            const aim = fitSideEquipmentAim(
+                rawAim,
+                spearHeadPoints,
+                1
+            );
+            const shaftFill = spec.style === 'pitchfork'
+                ? spec.accent
+                : spec.primary;
+
+            if (hasTines) {
+                const tineBase = [
+                    aim[0] - unitDirection[0] * 4,
+                    aim[1] - unitDirection[1] * 4
+                ];
+                const outerBaseA = [
+                    tineBase[0] + perpendicular[0] * 2,
+                    tineBase[1] + perpendicular[1] * 2
+                ];
+                const outerBaseB = [
+                    tineBase[0] - perpendicular[0] * 2,
+                    tineBase[1] - perpendicular[1] * 2
+                ];
+                const outerTipA = [
+                    aim[0] - unitDirection[0]
+                        + perpendicular[0] * 2,
+                    aim[1] - unitDirection[1]
+                        + perpendicular[1] * 2
+                ];
+                const outerTipB = [
+                    aim[0] - unitDirection[0]
+                        - perpendicular[0] * 2,
+                    aim[1] - unitDirection[1]
+                        - perpendicular[1] * 2
+                ];
+
+                paintSideLine(
+                    painter,
+                    shaftButt,
+                    tineBase,
+                    shaftFill,
+                    3,
+                    1
+                );
+                paintSideLine(
+                    painter,
+                    outerBaseA,
+                    outerBaseB,
+                    spec.primary,
+                    3,
+                    1
+                );
+                paintSideLine(
+                    painter,
+                    tineBase,
+                    aim,
+                    spec.primary,
+                    2,
+                    1
+                );
+                paintSideLine(
+                    painter,
+                    outerBaseA,
+                    outerTipA,
+                    spec.highlight,
+                    2,
+                    1
+                );
+                paintSideLine(
+                    painter,
+                    outerBaseB,
+                    outerTipB,
+                    spec.primary,
+                    2,
+                    1
+                );
+                painter.set(
+                    tineBase[0],
+                    tineBase[1],
+                    spec.accent
+                );
+                return;
+            }
+
+            paintSideLine(
+                painter,
+                shaftButt,
+                aim,
+                spec.primary,
+                3,
+                1
+            );
+            painter.line(
+                aim[0] - unitDirection[0] * 3
+                    + perpendicular[0] * 2,
+                aim[1] - unitDirection[1] * 3
+                    + perpendicular[1] * 2,
+                aim[0],
+                aim[1],
+                spec.highlight,
+                2
+            );
+            painter.line(
+                aim[0] - unitDirection[0] * 3
+                    - perpendicular[0] * 2,
+                aim[1] - unitDirection[1] * 3
+                    - perpendicular[1] * 2,
+                aim[0],
+                aim[1],
+                spec.accent,
+                2
+            );
+            return;
+        }
+
+        if (family === 'dagger') {
+            const aim = fitSideEquipmentAim(rawAim, [[0, 0]], 2);
+            paintSideLine(
+                painter,
+                grip,
+                aim,
+                spec.primary,
+                3,
+                1
+            );
+            painter.line(
+                grip[0] - normal[0] * 2,
+                grip[1] - normal[1] * 2,
+                grip[0] + normal[0] * 2,
+                grip[1] + normal[1] * 2,
+                spec.accent
+            );
+            painter.set(aim[0], aim[1], spec.highlight);
+            return;
+        }
+
+        let aim = rawAim;
+        if (family === 'scythe') {
+            const bladeRootOffset = [
+                -unitDirection[0],
+                -unitDirection[1]
+            ];
+            const bladeMidOffset = [
+                bladeRootOffset[0]
+                    + outwardPerpendicular[0] * 3
+                    - unitDirection[0],
+                bladeRootOffset[1]
+                    + outwardPerpendicular[1] * 3
+                    - unitDirection[1]
+            ];
+            const bladeTipOffset = [
+                bladeMidOffset[0]
+                    + outwardPerpendicular[0] * 3
+                    + unitDirection[0],
+                bladeMidOffset[1]
+                    + outwardPerpendicular[1] * 3
+                    + unitDirection[1]
+            ];
+            aim = fitSideEquipmentAim(
+                rawAim,
+                [
+                    [0, 0],
+                    bladeRootOffset,
+                    bladeMidOffset,
+                    bladeTipOffset
+                ],
+                3
+            );
+        } else if (spec.style === 'axe') {
+            aim = fitSideEquipmentAim(
+                rawAim,
+                [
+                    [0, 0],
+                    [
+                        -direction[0] + normal[0] * 4,
+                        -direction[1] + normal[1] * 4
+                    ],
+                    [
+                        -direction[0] - normal[0] * 3,
+                        -direction[1] - normal[1] * 3
+                    ]
+                ],
+                2
+            );
+        } else if (spec.style === 'maul') {
+            aim = fitSideEquipmentAim(
+                rawAim,
+                [
+                    [-normal[0] * 3, -normal[1] * 3],
+                    [normal[0] * 3, normal[1] * 3]
+                ],
+                2
+            );
+        } else {
+            aim = fitSideEquipmentAim(
+                rawAim,
+                [[-4, -5], [4, 5]],
+                0
+            );
+        }
+
+        paintSideLine(
+            painter,
+            family === 'scythe'
+                ? containedPoint([
+                    supportGrip[0] - unitDirection[0] * 6,
+                    supportGrip[1] - unitDirection[1] * 6
+                ])
+                : grip,
+            aim,
+            family === 'scythe'
+                ? spec.accent
+                : (
+                    spec.style === 'greatclub'
+                        ? spec.primary
+                        : spec.shadow
+                ),
+            family === 'scythe' ? 3 : 4,
+            family === 'scythe' ? 1 : 2
+        );
+
+        if (family === 'scythe') {
+            const bladeRoot = [
+                aim[0] - unitDirection[0],
+                aim[1] - unitDirection[1]
+            ];
+            const bladeMid = [
+                bladeRoot[0]
+                    + outwardPerpendicular[0] * 3
+                    - unitDirection[0],
+                bladeRoot[1]
+                    + outwardPerpendicular[1] * 3
+                    - unitDirection[1]
+            ];
+            const bladeTip = [
+                bladeMid[0]
+                    + outwardPerpendicular[0] * 3
+                    + unitDirection[0],
+                bladeMid[1]
+                    + outwardPerpendicular[1] * 3
+                    + unitDirection[1]
+            ];
+            paintSideLine(
+                painter,
+                bladeRoot,
+                bladeMid,
+                spec.highlight,
+                4,
+                2
+            );
+            paintSideLine(
+                painter,
+                bladeMid,
+                bladeTip,
+                spec.highlight,
+                3,
+                1
+            );
+            painter.set(bladeRoot[0], bladeRoot[1], spec.accent);
+            return;
+        }
+
+        if (spec.style === 'axe') {
+            const root = [
+                aim[0] - direction[0],
+                aim[1] - direction[1]
+            ];
+            const bladeA = [
+                root[0] + normal[0] * 4,
+                root[1] + normal[1] * 4
+            ];
+            const bladeB = [
+                root[0] - normal[0] * 3,
+                root[1] - normal[1] * 3
+            ];
+            paintSideLine(
+                painter,
+                bladeA,
+                aim,
+                spec.primary,
+                5,
+                3
+            );
+            paintSideLine(
+                painter,
+                aim,
+                bladeB,
+                spec.highlight,
+                4,
+                2
+            );
+            painter.set(aim[0], aim[1], spec.accent);
+            return;
+        }
+
+        if (spec.style === 'maul') {
+            painter.line(
+                aim[0] - normal[0] * 3,
+                aim[1] - normal[1] * 3,
+                aim[0] + normal[0] * 3,
+                aim[1] + normal[1] * 3,
+                'X',
+                4
+            );
+            painter.line(
+                aim[0] - normal[0] * 3,
+                aim[1] - normal[1] * 3,
+                aim[0] + normal[0] * 3,
+                aim[1] + normal[1] * 3,
+                spec.primary,
+                3
+            );
+            painter.set(aim[0], aim[1], spec.accent);
+            return;
+        }
+
+        painter.ellipse(aim[0], aim[1], 4, 5, 'X');
+        painter.ellipse(aim[0], aim[1], 3, 4, spec.primary);
+        painter.line(
+            aim[0] - normal[0] * 2,
+            aim[1] - normal[1] * 2,
+            aim[0] + normal[0] * 2,
+            aim[1] + normal[1] * 2,
+            spec.highlight
+        );
+        painter.set(aim[0], aim[1], spec.accent);
+    });
+}
+
 const SidePlayerAnimationMatrices = {};
 const SidePlayerPlaceholderWeaponMatrices = {};
 const SidePlayerEquippedWeaponMatrixCache = new Map();
@@ -2727,6 +3935,21 @@ function getSidePoseWeaponAim(weaponDefinition) {
         || weaponDefinition.grip;
 }
 
+function getRequestedSidePlayerWeaponScale(
+    style,
+    clipId,
+    centeredBlueprint = null
+) {
+    if (style === 'knuckles') {
+        return centeredBlueprint
+            ? (centeredBlueprint.scale || 0.72)
+            : 1;
+    }
+    if (clipId === 'shoot' || clipId === 'cast') return 0.72;
+    if (style === 'machete' || style === 'staff') return 0.64;
+    return 0.68;
+}
+
 function getSidePlayerEquippedWeaponMatrix(weaponItem, clipId, frameIndex = 0) {
     if (
         !weaponItem
@@ -2746,6 +3969,25 @@ function getSidePlayerEquippedWeaponMatrix(weaponItem, clipId, frameIndex = 0) {
     const weaponSpec = typeof EquipmentOverhaulSpecs !== 'undefined'
         ? EquipmentOverhaulSpecs.weapon[weaponItem.spriteId]
         : null;
+    if (
+        weaponSpec
+        && [
+            'thrust',
+            'heavy',
+            'dagger',
+            'scythe'
+        ].includes(weaponSpec.animationFamily)
+    ) {
+        const nativeMatrix = makeNativeSideEquippedWeapon(
+            weaponSpec,
+            frame.pose.weapon
+        );
+        SidePlayerEquippedWeaponMatrixCache.set(
+            cacheKey,
+            nativeMatrix
+        );
+        return nativeMatrix;
+    }
     const style = weaponSpec ? weaponSpec.style : String(weaponItem.type || '').toLowerCase();
     const centeredBlueprint = (
         typeof FRONT_CENTERED_WEAPON_BLUEPRINTS !== 'undefined'
@@ -2771,9 +4013,11 @@ function getSidePlayerEquippedWeaponMatrix(weaponItem, clipId, frameIndex = 0) {
     const rotation = rotatesWithPose
         ? targetAngle + (Math.PI / 2)
         : 0;
-    const scale = style === 'knuckles'
-        ? 1
-        : (frame.clipId === 'shoot' || frame.clipId === 'cast' ? 0.72 : 0.68);
+    const scale = getRequestedSidePlayerWeaponScale(
+        style,
+        frame.clipId,
+        centeredBlueprint
+    );
     const cosine = Math.cos(rotation);
     const sine = Math.sin(rotation);
     const rows = Array.from(
@@ -2806,11 +4050,82 @@ function getSidePlayerEquippedWeaponMatrix(weaponItem, clipId, frameIndex = 0) {
     return transformed;
 }
 
+function getContainedSideWeaponScale(
+    source,
+    sourceGrip,
+    targetGrip,
+    rotation,
+    requestedScale
+) {
+    if (!source || !source.length) return requestedScale;
+    const targetX = targetGrip[0] + 0.5;
+    const targetY = targetGrip[1] + 0.5;
+    const gripX = sourceGrip[0] + 0.5;
+    const gripY = sourceGrip[1] + 0.5;
+    const cosine = Math.cos(rotation);
+    const sine = Math.sin(rotation);
+    const minimum = 0.75;
+    const maximum = SIDE_PLAYER_ANIMATION_SIZE - 0.75;
+    let allowedScale = requestedScale;
+
+    source.forEach((row, y) => {
+        row.forEach((key, x) => {
+            if (key === '.' || key === '_') return;
+            [
+                [x, y],
+                [x + 1, y],
+                [x, y + 1],
+                [x + 1, y + 1]
+            ].forEach(([cornerX, cornerY]) => {
+                const deltaX = cornerX - gripX;
+                const deltaY = cornerY - gripY;
+                const rotatedX = (
+                    cosine * deltaX
+                    - sine * deltaY
+                );
+                const rotatedY = (
+                    sine * deltaX
+                    + cosine * deltaY
+                );
+                if (rotatedX < 0) {
+                    allowedScale = Math.min(
+                        allowedScale,
+                        (targetX - minimum) / -rotatedX
+                    );
+                } else if (rotatedX > 0) {
+                    allowedScale = Math.min(
+                        allowedScale,
+                        (maximum - targetX) / rotatedX
+                    );
+                }
+                if (rotatedY < 0) {
+                    allowedScale = Math.min(
+                        allowedScale,
+                        (targetY - minimum) / -rotatedY
+                    );
+                } else if (rotatedY > 0) {
+                    allowedScale = Math.min(
+                        allowedScale,
+                        (maximum - targetY) / rotatedY
+                    );
+                }
+            });
+        });
+    });
+
+    return Math.max(
+        0.42,
+        Math.min(requestedScale, allowedScale * 0.97)
+    );
+}
+
 function drawSidePlayerEquippedWeaponBitmap(
     context,
     weaponItem,
     frame,
-    size
+    size,
+    appearanceOverride = null,
+    anchorOffset = [0, 0]
 ) {
     if (
         !context
@@ -2826,6 +4141,17 @@ function drawSidePlayerEquippedWeaponBitmap(
     const weaponSpec = typeof EquipmentOverhaulSpecs !== 'undefined'
         ? EquipmentOverhaulSpecs.weapon[weaponItem.spriteId]
         : null;
+    if (
+        weaponSpec
+        && [
+            'thrust',
+            'heavy',
+            'dagger',
+            'scythe'
+        ].includes(weaponSpec.animationFamily)
+    ) {
+        return false;
+    }
     const style = weaponSpec
         ? weaponSpec.style
         : String(weaponItem.type || '').toLowerCase();
@@ -2839,12 +4165,17 @@ function drawSidePlayerEquippedWeaponBitmap(
     const bitmap = getFrontPaperdollWeaponBitmap(
         weaponItem.spriteId,
         source,
-        size
+        size,
+        appearanceOverride
     );
     if (!bitmap) return false;
 
-    const targetGrip =
+    const baseTargetGrip =
         frame.pose.weapon.grip || frame.anchors.weaponHand;
+    const targetGrip = [
+        baseTargetGrip[0] + Number(anchorOffset[0] || 0),
+        baseTargetGrip[1] + Number(anchorOffset[1] || 0)
+    ];
     const targetAim = getSidePoseWeaponAim(frame.pose.weapon);
     const targetAngle = Math.atan2(
         targetAim[1] - targetGrip[1],
@@ -2853,13 +4184,22 @@ function drawSidePlayerEquippedWeaponBitmap(
     const rotation = style === 'knuckles'
         ? 0
         : targetAngle + (Math.PI / 2);
+    const requestedRenderScale = getRequestedSidePlayerWeaponScale(
+        style,
+        frame.clipId,
+        centeredBlueprint
+    );
     const renderScale = style === 'knuckles'
-        ? (centeredBlueprint.scale || 0.72)
-        : (
-            frame.clipId === 'shoot'
-            || frame.clipId === 'cast'
-                ? 0.72
-                : 0.68
+        ? requestedRenderScale
+        : getContainedSideWeaponScale(
+            source,
+            [
+                centeredBlueprint.grip.x,
+                centeredBlueprint.grip.y
+            ],
+            targetGrip,
+            rotation,
+            requestedRenderScale
         );
     const cellSize = size / SIDE_PLAYER_ANIMATION_SIZE;
     const bitmapCellSize = bitmap.width
@@ -2901,6 +4241,302 @@ function drawSidePlayerEquippedWeaponBitmap(
     return true;
 }
 
+const SidePlayerOffhandMatrixCache = new Map();
+
+function getSidePlayerOffhandSpec(offhandItem) {
+    if (
+        !offhandItem
+        || !offhandItem.spriteId
+        || typeof EquipmentOverhaulSpecs === 'undefined'
+        || !EquipmentOverhaulSpecs.offhand
+    ) {
+        return null;
+    }
+    return EquipmentOverhaulSpecs.offhand[offhandItem.spriteId] || null;
+}
+
+function getSidePlayerOffhandPose(frame, offhandItem) {
+    const spec = getSidePlayerOffhandSpec(offhandItem);
+    if (!spec || !frame) return null;
+    const supportHand = frame.anchors.supportHand;
+    const authored = frame.pose.offhand || {};
+    const grip = Array.isArray(authored.grip)
+        ? authored.grip
+        : supportHand;
+    const defaultCenter = spec.offhandType === 'shield'
+        ? [grip[0] + 1, grip[1] - 2]
+        : grip;
+    const authoredLayer = ['back', 'underHands', 'front'].includes(
+        authored.layer
+    )
+        ? authored.layer
+        : null;
+    return {
+        kind: authored.kind || spec.offhandType,
+        grip,
+        center: Array.isArray(authored.center)
+            ? authored.center
+            : defaultCenter,
+        aim: Array.isArray(authored.aim)
+            ? authored.aim
+            : [grip[0] - 5, grip[1] + 2],
+        angle: Number(authored.angle) || 0,
+        // Keep the absence of an authored layer visible so a stance/profile
+        // override can supply it. Clip-authored block/bash depth still wins.
+        layer: authoredLayer
+    };
+}
+
+function makeSidePlayerShieldMatrix(spec, offhandPose) {
+    return createNativeOverhaulSprite(painter => {
+        const style = spec.style || 'heater';
+        const rawCenter = offhandPose.center;
+        const lean = Math.max(
+            -2,
+            Math.min(2, Math.round(Number(offhandPose.angle || 0) / 8))
+        );
+        const horizontalReach = style === 'round'
+            ? 5
+            : 5 + Math.abs(lean);
+        const verticalReach = style === 'round'
+            ? 7
+            : (style === 'tower' ? 7 : 7);
+        const centerX = Math.max(
+            1 + horizontalReach,
+            Math.min(
+                30 - horizontalReach,
+                Math.round(rawCenter[0])
+            )
+        );
+        const centerY = Math.max(
+            1 + verticalReach,
+            Math.min(
+                30 - verticalReach,
+                Math.round(rawCenter[1])
+            )
+        );
+
+        if (style === 'round') {
+            painter.ellipse(centerX, centerY, 5, 7, 'X');
+            painter.ellipse(
+                centerX,
+                centerY,
+                4,
+                6,
+                spec.primary
+            );
+            painter.ellipse(
+                centerX + Math.sign(lean),
+                centerY,
+                2,
+                4,
+                spec.shadow
+            );
+        } else if (style === 'tower') {
+            for (let dy = -7; dy <= 7; dy += 1) {
+                const rowY = centerY + dy;
+                const rowShift = Math.round((lean * dy) / 7);
+                const halfWidth = Math.abs(dy) >= 6 ? 4 : 5;
+                painter.line(
+                    centerX - halfWidth + rowShift,
+                    rowY,
+                    centerX + halfWidth + rowShift,
+                    rowY,
+                    'X'
+                );
+                if (Math.abs(dy) < 7) {
+                    painter.line(
+                        centerX - halfWidth + 1 + rowShift,
+                        rowY,
+                        centerX + halfWidth - 1 + rowShift,
+                        rowY,
+                        dy > 2 ? spec.shadow : spec.primary
+                    );
+                }
+            }
+        } else {
+            for (let dy = -6; dy <= 7; dy += 1) {
+                const rowY = centerY + dy;
+                const rowShift = Math.round((lean * dy) / 7);
+                const taper = dy > 2
+                    ? Math.floor((dy - 2) / 2)
+                    : (dy < -4 ? 1 : 0);
+                const halfWidth = Math.max(1, 5 - taper);
+                painter.line(
+                    centerX - halfWidth + rowShift,
+                    rowY,
+                    centerX + halfWidth + rowShift,
+                    rowY,
+                    'X'
+                );
+                if (halfWidth > 1) {
+                    painter.line(
+                        centerX - halfWidth + 1 + rowShift,
+                        rowY,
+                        centerX + halfWidth - 1 + rowShift,
+                        rowY,
+                        dy > 2 ? spec.shadow : spec.primary
+                    );
+                }
+            }
+        }
+
+        painter.line(
+            centerX + lean,
+            centerY - 5,
+            centerX,
+            centerY + 5,
+            spec.highlight
+        );
+        painter.ellipse(centerX, centerY, 2, 2, spec.accent);
+        painter.set(centerX, centerY, spec.highlight);
+        painter.line(
+            offhandPose.grip[0],
+            offhandPose.grip[1],
+            centerX,
+            centerY,
+            spec.shadow,
+            2
+        );
+    });
+}
+
+function makeSidePlayerOffhandWeaponMatrix(spec, offhandPose) {
+    return createNativeOverhaulSprite(painter => {
+        const grip = offhandPose.grip;
+        const aim = fitSideEquipmentAim(
+            offhandPose.aim,
+            [[0, 0]],
+            2
+        );
+        paintSideLine(painter, grip, aim, spec.primary, 3, 1);
+        const direction = getSideVector(grip, aim, 1);
+        const perpendicular = [
+            -Math.sign(direction[1] || 1),
+            Math.sign(direction[0] || 1)
+        ];
+        painter.line(
+            grip[0] - perpendicular[0] * 2,
+            grip[1] - perpendicular[1] * 2,
+            grip[0] + perpendicular[0] * 2,
+            grip[1] + perpendicular[1] * 2,
+            spec.accent
+        );
+        painter.set(aim[0], aim[1], spec.highlight);
+    });
+}
+
+function getSidePlayerOffhandMatrix(offhandItem, frame) {
+    const spec = getSidePlayerOffhandSpec(offhandItem);
+    const offhandPose = getSidePlayerOffhandPose(frame, offhandItem);
+    if (!spec || !offhandPose) return null;
+    const cacheKey = `${offhandItem.spriteId}:${frame.poseId}`;
+    if (SidePlayerOffhandMatrixCache.has(cacheKey)) {
+        return SidePlayerOffhandMatrixCache.get(cacheKey);
+    }
+    const matrix = spec.offhandType === 'weapon'
+        ? makeSidePlayerOffhandWeaponMatrix(spec, offhandPose)
+        : makeSidePlayerShieldMatrix(spec, offhandPose);
+    SidePlayerOffhandMatrixCache.set(cacheKey, matrix);
+    return matrix;
+}
+
+function getSidePlayerRigTransform(poseOrTransform = null) {
+    const source = (
+        poseOrTransform
+        && poseOrTransform.rigTransform
+    )
+        ? poseOrTransform.rigTransform
+        : (poseOrTransform || {});
+    const pivot = Array.isArray(source.pivot)
+        ? source.pivot
+        : [16, 16];
+    const translate = Array.isArray(source.translate)
+        ? source.translate
+        : [0, 0];
+
+    const requestedScale = Number(source.scale);
+    return {
+        pivot: [
+            Number.isFinite(Number(pivot[0])) ? Number(pivot[0]) : 16,
+            Number.isFinite(Number(pivot[1])) ? Number(pivot[1]) : 16
+        ],
+        translate: [
+            Number.isFinite(Number(translate[0])) ? Number(translate[0]) : 0,
+            Number.isFinite(Number(translate[1])) ? Number(translate[1]) : 0
+        ],
+        rotateDegrees: Number.isFinite(Number(source.rotateDegrees))
+            ? Number(source.rotateDegrees)
+            : 0,
+        scale: Number.isFinite(requestedScale) && requestedScale > 0
+            ? requestedScale
+            : 1
+    };
+}
+
+function applySidePlayerRigTransform(context, pose, pixelSize = 1) {
+    const transform = getSidePlayerRigTransform(pose);
+    const [translateX, translateY] = transform.translate;
+    const [pivotX, pivotY] = transform.pivot;
+
+    if (translateX !== 0 || translateY !== 0) {
+        context.translate(
+            translateX * pixelSize,
+            translateY * pixelSize
+        );
+    }
+    if (transform.rotateDegrees !== 0) {
+        context.translate(pivotX * pixelSize, pivotY * pixelSize);
+        context.rotate(transform.rotateDegrees * Math.PI / 180);
+        if (transform.scale !== 1) {
+            context.scale(transform.scale, transform.scale);
+        }
+        context.translate(-pivotX * pixelSize, -pivotY * pixelSize);
+    } else if (transform.scale !== 1) {
+        context.translate(pivotX * pixelSize, pivotY * pixelSize);
+        context.scale(transform.scale, transform.scale);
+        context.translate(-pivotX * pixelSize, -pivotY * pixelSize);
+    }
+
+    return transform;
+}
+
+function getTransformedSidePlayerAnchor(
+    anchor,
+    poseOrTransform = null,
+    facing = 'right'
+) {
+    const transform = getSidePlayerRigTransform(poseOrTransform);
+    const radians = transform.rotateDegrees * Math.PI / 180;
+    const cosine = Math.cos(radians);
+    const sine = Math.sin(radians);
+    const deltaX = (
+        anchor[0] - transform.pivot[0]
+    ) * transform.scale;
+    const deltaY = (
+        anchor[1] - transform.pivot[1]
+    ) * transform.scale;
+    let x = transform.pivot[0]
+        + (deltaX * cosine)
+        - (deltaY * sine)
+        + transform.translate[0];
+    const y = transform.pivot[1]
+        + (deltaX * sine)
+        + (deltaY * cosine)
+        + transform.translate[1]
+        + (
+            poseOrTransform
+            && Number(poseOrTransform.bobY)
+                ? Number(poseOrTransform.bobY)
+                : 0
+        );
+
+    if (facing === 'left') {
+        x = SIDE_PLAYER_ANIMATION_SIZE - 1 - x;
+    }
+    return { x, y };
+}
+
 function getSidePlayerAnimationFrame(gender, clipId, frameIndex = 0) {
     const resolvedGender = gender === 'female' ? 'female' : 'male';
     const clip = SidePlayerAnimationClips[clipId] || SidePlayerAnimationClips.idle;
@@ -2909,6 +4545,8 @@ function getSidePlayerAnimationFrame(gender, clipId, frameIndex = 0) {
     const poseId = clip.frames[normalizedIndex];
     const pose = SidePlayerPoseDefinitions[poseId];
     const legs = getSideProfileLegs(pose);
+    const supportHand = pose.farArm[pose.farArm.length - 1];
+    const weaponHand = pose.nearArm[pose.nearArm.length - 1];
 
     return {
         gender: resolvedGender,
@@ -2919,12 +4557,22 @@ function getSidePlayerAnimationFrame(gender, clipId, frameIndex = 0) {
         frameCount: clip.frames.length,
         poseId,
         pose,
+        rigTransform: getSidePlayerRigTransform(pose),
         body: SidePlayerAnimationMatrices[`${resolvedGender}_${poseId}`],
         weapon: SidePlayerPlaceholderWeaponMatrices[poseId],
         anchors: {
             headCenter: [16, 7],
-            supportHand: pose.farArm[pose.farArm.length - 1],
-            weaponHand: pose.nearArm[pose.nearArm.length - 1],
+            supportHand,
+            offhandHand: pose.offhand && Array.isArray(pose.offhand.grip)
+                ? pose.offhand.grip
+                : supportHand,
+            supportWeaponHand: (
+                pose.weapon
+                && Array.isArray(pose.weapon.supportGrip)
+            )
+                ? pose.weapon.supportGrip
+                : supportHand,
+            weaponHand,
             backFoot: legs.farLeg[legs.farLeg.length - 1],
             frontFoot: legs.nearLeg[legs.nearLeg.length - 1]
         }
@@ -2950,7 +4598,20 @@ function drawSidePlayerAnimationFrame(
     const frame = getSidePlayerAnimationFrame(gender, clipId, frameIndex);
     const pixelSize = size / SIDE_PLAYER_ANIMATION_SIZE;
     const facing = options.facing === 'left' ? 'left' : 'right';
+    const appearanceOverride = (
+        options.appearance
+        && typeof options.appearance === 'object'
+    )
+        ? options.appearance
+        : null;
     const hairStyle = options.hairStyle
+        || (
+            appearanceOverride
+            && (
+                appearanceOverride.hairStyle
+                || appearanceOverride.hair
+            )
+        )
         || (
             typeof player !== 'undefined'
             && player.appearance
@@ -2989,6 +4650,36 @@ function drawSidePlayerAnimationFrame(
             && player.equipment.boots
         )
         || null;
+    const requestedOffhandItem = Object.prototype.hasOwnProperty.call(
+        options,
+        'offhandItem'
+    )
+        ? options.offhandItem
+        : (
+            typeof player !== 'undefined'
+            && player.equipment
+            && player.equipment.offhand
+        )
+        || null;
+    const mainWeaponSpec = (
+        options.weaponItem
+        && options.weaponItem.spriteId
+        && typeof EquipmentOverhaulSpecs !== 'undefined'
+        && EquipmentOverhaulSpecs.weapon
+    )
+        ? EquipmentOverhaulSpecs.weapon[options.weaponItem.spriteId]
+        : null;
+    const mainWeaponIsTwoHanded = Boolean(
+        options.weaponItem
+        && (
+            options.weaponItem.twoHanded === true
+            || options.weaponItem.handedness === 'two'
+            || (mainWeaponSpec && mainWeaponSpec.twoHanded === true)
+        )
+    );
+    const offhandItem = mainWeaponIsTwoHanded
+        ? null
+        : requestedOffhandItem;
     const helmetLayers = getSidePlayerHelmetLayers(helmetItem);
     const hairLayers = getSidePlayerHairLayersForHelmet(hairStyle, helmetItem);
     const armorMatrix = getSidePlayerArmorMatrix(
@@ -3006,7 +4697,110 @@ function drawSidePlayerAnimationFrame(
         frame.gender,
         frame.poseId
     );
-    const showHair = options.showHair !== false;
+    const layerOverrides = (
+        options.layerOverrides
+        && typeof options.layerOverrides === 'object'
+    ) ? options.layerOverrides : {};
+    const anchorOffsets = (
+        options.anchorOffsets
+        && typeof options.anchorOffsets === 'object'
+    ) ? options.anchorOffsets : {};
+    const weaponAnchorOffset = Array.isArray(anchorOffsets.weapon)
+        ? anchorOffsets.weapon
+        : [0, 0];
+    const offhandAnchorOffset = Array.isArray(anchorOffsets.offhand)
+        ? anchorOffsets.offhand
+        : [0, 0];
+    const offhandSpec = getSidePlayerOffhandSpec(offhandItem);
+    const offhandPose = getSidePlayerOffhandPose(frame, offhandItem);
+    const offhandMatrix = getSidePlayerOffhandMatrix(
+        offhandItem,
+        frame
+    );
+    const offhandLayer = (
+        offhandPose
+        && offhandPose.layer
+    ) || (
+        ['back', 'underHands', 'front'].includes(
+            layerOverrides.offhand
+        )
+            ? layerOverrides.offhand
+            : 'back'
+    );
+    const offhandIsShield = Boolean(
+        offhandSpec && offhandSpec.offhandType === 'shield'
+    );
+    const offhandLeadsMainHand = Boolean(
+        offhandIsShield && offhandLayer === 'front'
+    );
+    const showHair = (
+        options.showHair !== false
+        && layerOverrides.hair !== 'hidden'
+    );
+    const usesEquippedWeapon = Object.prototype.hasOwnProperty.call(
+        options,
+        'weaponItem'
+    );
+
+    function drawWeaponLayer() {
+        let weaponDrawn = false;
+        context.save();
+        if (usesEquippedWeapon) {
+            weaponDrawn = drawSidePlayerEquippedWeaponBitmap(
+                context,
+                options.weaponItem,
+                frame,
+                size,
+                appearanceOverride,
+                weaponAnchorOffset
+            );
+        }
+        if (!weaponDrawn) {
+            context.translate(
+                Number(weaponAnchorOffset[0] || 0) * pixelSize,
+                Number(weaponAnchorOffset[1] || 0) * pixelSize
+            );
+            const weaponMatrix = usesEquippedWeapon
+                ? getSidePlayerEquippedWeaponMatrix(
+                    options.weaponItem,
+                    frame.clipId,
+                    frame.frameIndex
+                )
+                : frame.weapon;
+            if (weaponMatrix) {
+                drawProceduralSprite(
+                    context,
+                    weaponMatrix,
+                    0,
+                    0,
+                    size,
+                    appearanceOverride
+                );
+                weaponDrawn = true;
+            }
+        }
+        context.restore();
+        return weaponDrawn;
+    }
+
+    function drawOffhandLayer() {
+        if (!offhandMatrix) return false;
+        context.save();
+        context.translate(
+            Number(offhandAnchorOffset[0] || 0) * pixelSize,
+            Number(offhandAnchorOffset[1] || 0) * pixelSize
+        );
+        drawProceduralSprite(
+            context,
+            offhandMatrix,
+            0,
+            0,
+            size,
+            appearanceOverride
+        );
+        context.restore();
+        return true;
+    }
 
     context.save();
     context.imageSmoothingEnabled = false;
@@ -3015,73 +4809,139 @@ function drawSidePlayerAnimationFrame(
         context.scale(-1, 1);
     }
     context.translate(0, frame.pose.bobY * pixelSize);
-    if (helmetLayers) {
-        drawProceduralSprite(context, helmetLayers.back, 0, 0, size);
+    applySidePlayerRigTransform(context, frame.pose, pixelSize);
+    if (offhandLayer === 'back') {
+        drawOffhandLayer();
     }
-    if (showHair) {
-        drawProceduralSprite(context, hairLayers.back, 0, 0, size);
-    }
-    drawProceduralSprite(context, frame.body, 0, 0, size);
-    if (bootMatrix) {
-        drawProceduralSprite(context, bootMatrix, 0, 0, size);
-    }
-    if (armorMatrix) {
-        drawProceduralSprite(context, armorMatrix, 0, 0, size);
-    }
-    if (gloveMatrix) {
-        drawProceduralSprite(context, gloveMatrix, 0, 0, size);
-    }
-    if (showHair) {
-        drawProceduralSprite(context, hairLayers.front, 0, 0, size);
+    if (layerOverrides.weapon === 'back') {
+        drawWeaponLayer();
     }
     if (helmetLayers) {
-        drawProceduralSprite(context, helmetLayers.front, 0, 0, size);
-    }
-    const usesEquippedWeapon = Object.prototype.hasOwnProperty.call(
-        options,
-        'weaponItem'
-    );
-    let weaponDrawn = false;
-    if (usesEquippedWeapon) {
-        weaponDrawn = drawSidePlayerEquippedWeaponBitmap(
+        drawProceduralSprite(
             context,
-            options.weaponItem,
-            frame,
-            size
+            helmetLayers.back,
+            0,
+            0,
+            size,
+            appearanceOverride
         );
     }
-    if (!weaponDrawn) {
-        const weaponMatrix = usesEquippedWeapon
-            ? getSidePlayerEquippedWeaponMatrix(
-                options.weaponItem,
-                frame.clipId,
-                frame.frameIndex
-            )
-            : frame.weapon;
-        if (weaponMatrix) {
-            drawProceduralSprite(
-                context,
-                weaponMatrix,
-                0,
-                0,
-                size
-            );
-        }
+    if (showHair) {
+        drawProceduralSprite(
+            context,
+            hairLayers.back,
+            0,
+            0,
+            size,
+            appearanceOverride
+        );
+    }
+    drawProceduralSprite(
+        context,
+        frame.body,
+        0,
+        0,
+        size,
+        appearanceOverride
+    );
+    if (bootMatrix) {
+        drawProceduralSprite(
+            context,
+            bootMatrix,
+            0,
+            0,
+            size,
+            appearanceOverride
+        );
+    }
+    if (armorMatrix) {
+        drawProceduralSprite(
+            context,
+            armorMatrix,
+            0,
+            0,
+            size,
+            appearanceOverride
+        );
+    }
+    if (
+        layerOverrides.weapon === 'underHands'
+        || (
+            offhandLeadsMainHand
+            && layerOverrides.weapon !== 'back'
+        )
+    ) {
+        drawWeaponLayer();
+    }
+    if (
+        offhandLayer === 'underHands'
+        || (offhandLayer === 'front' && offhandIsShield)
+    ) {
+        drawOffhandLayer();
+    }
+    if (gloveMatrix) {
+        drawProceduralSprite(
+            context,
+            gloveMatrix,
+            0,
+            0,
+            size,
+            appearanceOverride
+        );
+    }
+    if (showHair) {
+        drawProceduralSprite(
+            context,
+            hairLayers.front,
+            0,
+            0,
+            size,
+            appearanceOverride
+        );
+    }
+    if (helmetLayers) {
+        drawProceduralSprite(
+            context,
+            helmetLayers.front,
+            0,
+            0,
+            size,
+            appearanceOverride
+        );
+    }
+    if (offhandLayer === 'front' && !offhandIsShield) {
+        drawOffhandLayer();
+    }
+    if (
+        layerOverrides.weapon !== 'back'
+        && layerOverrides.weapon !== 'underHands'
+        && !offhandLeadsMainHand
+    ) {
+        drawWeaponLayer();
     }
 
     if (options.showAnchors) {
         const anchorColors = {
             headCenter: '#39b8ba',
             supportHand: '#d5a13f',
+            supportWeaponHand: '#ffe28a',
+            offhandHand: '#9e72e8',
             weaponHand: '#f05c5c',
             backFoot: '#6abf69',
             frontFoot: '#8bc7ff'
         };
         Object.entries(frame.anchors).forEach(([anchorId, anchor]) => {
+            const offset = anchorId === 'weaponHand'
+                ? weaponAnchorOffset
+                : (
+                    anchorId === 'offhandHand'
+                        ? offhandAnchorOffset
+                        : [0, 0]
+                );
             context.fillStyle = anchorColors[anchorId];
             context.fillRect(
-                anchor[0] * pixelSize,
-                anchor[1] * pixelSize,
+                (anchor[0] + Number(offset[0] || 0)) * pixelSize,
+                (anchor[1] + Number(offset[1] || 0)) * pixelSize,
                 Math.max(1, pixelSize),
                 Math.max(1, pixelSize)
             );
@@ -3092,13 +4952,82 @@ function drawSidePlayerAnimationFrame(
     return frame;
 }
 
+const HUMANOID_ANIMATION_SIZE = SIDE_PLAYER_ANIMATION_SIZE;
+const HumanoidAnimationClips = SidePlayerAnimationClips;
+const getHumanoidAnimationFrame = getSidePlayerAnimationFrame;
+const drawHumanoidAnimationFrame = drawSidePlayerAnimationFrame;
+const getMirroredHumanoidAnchor = getMirroredSidePlayerAnchor;
+const HumanoidAnimationSets = Object.freeze({
+    humanoid_standard_32: Object.freeze({
+        id: 'humanoid_standard_32',
+        frameSize: HUMANOID_ANIMATION_SIZE,
+        clips: Object.freeze(Object.keys(HumanoidAnimationClips)),
+        getFrame: getHumanoidAnimationFrame,
+        drawFrame: drawHumanoidAnimationFrame
+    })
+});
+
+function getHumanoidAnimationSet(animationSetId) {
+    const resolvedId = animationSetId || 'humanoid_standard_32';
+    const animationSet = HumanoidAnimationSets[resolvedId];
+    if (!animationSet) {
+        throw new RangeError(
+            `Unknown humanoid animation set: ${resolvedId}`
+        );
+    }
+    return animationSet;
+}
+
+function drawHumanoidActorAnimationFrame(
+    context,
+    visualProfile,
+    clipId,
+    frameIndex,
+    size = HUMANOID_ANIMATION_SIZE,
+    options = {}
+) {
+    const animationSet = getHumanoidAnimationSet(
+        visualProfile && visualProfile.animationSet
+    );
+    const resolvedClipId = animationSet.clips.includes(clipId)
+        ? clipId
+        : 'idle';
+    const gender = (
+        visualProfile
+        && visualProfile.body
+        && visualProfile.body.gender
+    ) || (
+        visualProfile
+        && visualProfile.appearance
+        && visualProfile.appearance.gender
+    ) || 'male';
+    return animationSet.drawFrame(
+        context,
+        gender,
+        resolvedClipId,
+        frameIndex,
+        size,
+        options
+    );
+}
+
+if (typeof window !== 'undefined') {
+    window.HumanoidAnimationSets = HumanoidAnimationSets;
+    window.getHumanoidAnimationSet = getHumanoidAnimationSet;
+    window.drawHumanoidActorAnimationFrame =
+        drawHumanoidActorAnimationFrame;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         SIDE_PLAYER_ANIMATION_SIZE,
+        HUMANOID_ANIMATION_SIZE,
         SIDE_PLAYER_PROFILE_SHOULDER_X,
         SIDE_PLAYER_COMBAT_FAR_LEG,
         SIDE_PLAYER_COMBAT_NEAR_LEG,
         SidePlayerAnimationClips,
+        HumanoidAnimationClips,
+        HumanoidAnimationSets,
         SidePlayerPoseDefinitions,
         SidePlayerHairStyleProfiles,
         SidePlayerHairMatrices,
@@ -3113,6 +5042,7 @@ if (typeof module !== 'undefined' && module.exports) {
         SidePlayerAnimationMatrices,
         SidePlayerPlaceholderWeaponMatrices,
         SidePlayerEquippedWeaponMatrixCache,
+        SidePlayerOffhandMatrixCache,
         getSideProfileLegs,
         getSidePlayerHairLayers,
         getSidePlayerHelmetLayers,
@@ -3128,9 +5058,23 @@ if (typeof module !== 'undefined' && module.exports) {
         makeSidePlayerBootMatrix,
         applySidePlayerHairMask,
         getSidePlayerAnimationFrame,
+        getHumanoidAnimationFrame,
+        makeNativeSideEquippedWeapon,
         getSidePlayerEquippedWeaponMatrix,
         drawSidePlayerEquippedWeaponBitmap,
+        getSidePlayerOffhandSpec,
+        getSidePlayerOffhandPose,
+        makeSidePlayerShieldMatrix,
+        makeSidePlayerOffhandWeaponMatrix,
+        getSidePlayerOffhandMatrix,
+        getSidePlayerRigTransform,
+        applySidePlayerRigTransform,
+        getTransformedSidePlayerAnchor,
         getMirroredSidePlayerAnchor,
-        drawSidePlayerAnimationFrame
+        getMirroredHumanoidAnchor,
+        drawSidePlayerAnimationFrame,
+        drawHumanoidAnimationFrame,
+        getHumanoidAnimationSet,
+        drawHumanoidActorAnimationFrame
     };
 }

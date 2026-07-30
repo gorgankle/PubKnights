@@ -93,13 +93,10 @@ else if (item && item.slot === "consumable") {
         html = `<h3>🪓 Gather Wood</h3>Venture into the forest to passively collect <b>Timber</b> for upgrades and trade.`;
     }
     else if (type === 'idle_fish') {
-        html = `<h3>🎣 Catch Fish</h3>Relax by the lake to passively reel in <b>Fish</b> for trading and zone bait.`;
+        html = `<h3>🎣 Catch Fish</h3>Relax by the lake to passively reel in <b>Fish</b> for trading.`;
     }
     else if (type === 'idle_hops') {
         html = `<h3>🌾 Harvest Hops</h3>Work the fields to passively gather <b>Hops</b> for brewing and black market deals.`;
-    }
-    else if (type === 'bait_wilds') {
-        html = `<h3>Retired</h3>Wilds baiting has been retired for now.`;
     }
     else if (type === 'pack_up') {
         let pCost = getBackpackUpgradeCost();
@@ -141,6 +138,10 @@ function getItemTooltip(item) {
             html += `🛡️ <b>Defense:</b> Lvl +${item.defense}<br>`;
         }
         if (item.speed) html += `🏃 <b>Speed:</b> Lvl ${item.speed > 0 ? '+' : ''}${item.speed}<br>`;
+        if (item.twoHanded) html += `✋ <b>Hands:</b> Two-handed<br>`;
+        if (item.slot === "offhand") {
+            html += `🛡️ <b>Offhand:</b> ${item.offhandType || item.type || 'Equipment'}<br>`;
+        }
         
         // Dynamically pull range from the combat object
         if (item.combat && item.combat.standard) {
@@ -265,6 +266,12 @@ function showItemTooltip(event, item, index, location) {
         if (item.speed) {
             statsHtml += `🏃 <b>Speed:</b> Lvl ${item.speed > 0 ? '+' : ''}${item.speed}<br>`;
         }
+        if (item.twoHanded) {
+            statsHtml += `✋ <b>Hands:</b> Two-handed<br>`;
+        }
+        if (item.slot === 'offhand') {
+            statsHtml += `🛡️ <b>Offhand:</b> ${item.offhandType || item.type || 'Equipment'}<br>`;
+        }
         if (item.attackRange || (item.combat && item.combat.standard && item.combat.standard.range)) {
             let rng = item.attackRange || (item.combat && item.combat.standard && item.combat.standard.range) || 1;
             statsHtml += `📏 <b>Weapon Strike Radius:</b> ${rng} Tile(s)<br>`;
@@ -306,7 +313,14 @@ function showItemTooltip(event, item, index, location) {
     const isCombat = (typeof gameState !== 'undefined' && gameState === 'COMBAT');
 
     // Check against valid equippable database slots
-    const equippableSlots = ['weapon', 'helmet', 'armor', 'gloves', 'boots'];
+    const equippableSlots = [
+        'weapon',
+        'offhand',
+        'helmet',
+        'armor',
+        'gloves',
+        'boots'
+    ];
 
     if (location === 'backpack') {
         if (equippableSlots.includes(item.slot) && !isCombat) {

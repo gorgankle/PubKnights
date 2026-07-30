@@ -486,14 +486,29 @@ const SpriteMatrices = {
     eyes_black: eyeMatrix,
     eyes_white: eyeMatrix
 };
-function drawProceduralSprite(context, matrix, startX, startY, size) {
+function drawProceduralSprite(
+    context,
+    matrix,
+    startX,
+    startY,
+    size,
+    appearanceOverride = null
+) {
     if (!matrix) return;
     
     const gridCount = PROCEDURAL_SPRITE_GRID_SIZE;
     const pixelSize = size / gridCount;
-    const appearance = typeof player !== 'undefined' && player.appearance
-        ? player.appearance
-        : {};
+    const appearance = (
+        appearanceOverride
+        && typeof appearanceOverride === 'object'
+    )
+        ? appearanceOverride
+        : (
+            typeof player !== 'undefined'
+            && player.appearance
+                ? player.appearance
+                : {}
+        );
     const dynamicPalette = createProceduralDynamicPalette(appearance);
 
     for (let row = 0; row < matrix.length; row++) {
@@ -563,6 +578,20 @@ function renderPaperDoll(isNaked = false) {
     const mCtx = menuCanvas.getContext('2d');
     
     mCtx.clearRect(0, 0, menuCanvas.width, menuCanvas.height);
+
+    if (
+        !isNaked
+        && typeof drawHumanoidActorFront === 'function'
+        && drawHumanoidActorFront(
+            mCtx,
+            player,
+            0,
+            0,
+            menuCanvas.width
+        )
+    ) {
+        return;
+    }
     
     let bodySprite = player.appearance.gender === 'female' ? 'body_female' : 'body_male';
     drawProceduralSprite(mCtx, SpriteMatrices[bodySprite], 0, 0, menuCanvas.width);

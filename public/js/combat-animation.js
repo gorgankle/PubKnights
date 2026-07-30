@@ -4,7 +4,14 @@ const COMBAT_ANIMATION_EVENT_TYPES = Object.freeze({
     slash: 'contact',
     bash: 'contact',
     shoot: 'release',
-    cast: 'release'
+    cast: 'release',
+    thrust: 'contact',
+    heavy: 'contact',
+    dagger: 'contact',
+    scythe: 'contact',
+    shield_block: 'guard',
+    shield_bash: 'contact',
+    dual_wield: 'contact'
 });
 
 const COMBAT_ANIMATION_FALLBACK_CLIPS = Object.freeze({
@@ -43,14 +50,130 @@ const COMBAT_ANIMATION_FALLBACK_CLIPS = Object.freeze({
         loop: false,
         actionFrame: 3,
         frames: Object.freeze(['cast_a', 'cast_b', 'cast_c', 'cast_d'])
+    }),
+    thrust: Object.freeze({
+        fps: 8,
+        loop: false,
+        actionFrame: 2,
+        frames: Object.freeze([
+            'thrust_a', 'thrust_b', 'thrust_c', 'thrust_d', 'thrust_e'
+        ])
+    }),
+    heavy: Object.freeze({
+        fps: 6,
+        loop: false,
+        actionFrame: 3,
+        powerful: true,
+        frames: Object.freeze([
+            'heavy_a', 'heavy_b', 'heavy_c',
+            'heavy_d', 'heavy_e', 'heavy_f'
+        ])
+    }),
+    dagger: Object.freeze({
+        fps: 10,
+        loop: false,
+        actionFrame: 2,
+        frames: Object.freeze([
+            'dagger_a', 'dagger_b', 'dagger_c', 'dagger_d', 'dagger_e'
+        ])
+    }),
+    scythe: Object.freeze({
+        fps: 7,
+        loop: false,
+        actionFrame: 3,
+        powerful: true,
+        frames: Object.freeze([
+            'scythe_a', 'scythe_b', 'scythe_c',
+            'scythe_d', 'scythe_e', 'scythe_f'
+        ])
+    }),
+    shield_block: Object.freeze({
+        fps: 8,
+        loop: false,
+        actionFrame: 1,
+        frames: Object.freeze([
+            'shield_block_a',
+            'shield_block_b',
+            'shield_block_c',
+            'shield_block_d'
+        ])
+    }),
+    shield_bash: Object.freeze({
+        fps: 8,
+        loop: false,
+        actionFrame: 2,
+        frames: Object.freeze([
+            'shield_bash_a',
+            'shield_bash_b',
+            'shield_bash_c',
+            'shield_bash_d',
+            'shield_bash_e'
+        ])
+    }),
+    dual_wield: Object.freeze({
+        fps: 10,
+        loop: false,
+        actionFrame: 2,
+        frames: Object.freeze([
+            'dual_wield_a', 'dual_wield_b', 'dual_wield_c',
+            'dual_wield_d', 'dual_wield_e', 'dual_wield_f'
+        ])
+    }),
+    hit: Object.freeze({
+        fps: 10,
+        loop: false,
+        actionFrame: null,
+        frames: Object.freeze(['hit_a', 'hit_b', 'hit_c'])
+    }),
+    defeat: Object.freeze({
+        fps: 6,
+        loop: false,
+        actionFrame: null,
+        terminal: true,
+        holdLastFrame: true,
+        frames: Object.freeze([
+            'defeat_a',
+            'defeat_b',
+            'defeat_c',
+            'defeat_d'
+        ])
     })
 });
 
-function getCombatAnimationClipDefinition(clipId) {
-    const registry = typeof SidePlayerAnimationClips !== 'undefined'
+function getCombatAnimationClipRegistry() {
+    return typeof SidePlayerAnimationClips !== 'undefined'
         ? SidePlayerAnimationClips
         : COMBAT_ANIMATION_FALLBACK_CLIPS;
-    return registry[clipId] || registry.idle;
+}
+
+function hasCombatAnimationClip(clipId) {
+    const registry = getCombatAnimationClipRegistry();
+    return (
+        typeof clipId === 'string'
+        && (
+            Object.prototype.hasOwnProperty.call(registry, clipId)
+            || Object.prototype.hasOwnProperty.call(
+                COMBAT_ANIMATION_FALLBACK_CLIPS,
+                clipId
+            )
+        )
+    );
+}
+
+function getCombatAnimationClipDefinition(clipId) {
+    const registry = getCombatAnimationClipRegistry();
+    if (Object.prototype.hasOwnProperty.call(registry, clipId)) {
+        return registry[clipId];
+    }
+    if (
+        Object.prototype.hasOwnProperty.call(
+            COMBAT_ANIMATION_FALLBACK_CLIPS,
+            clipId
+        )
+    ) {
+        return COMBAT_ANIMATION_FALLBACK_CLIPS[clipId];
+    }
+    return registry.idle || COMBAT_ANIMATION_FALLBACK_CLIPS.idle;
 }
 
 function getCombatAnimationNow() {
@@ -73,26 +196,39 @@ function getCombatAnimationActorUid(actor) {
 }
 
 function getCombatAnimationTimeline(clipId) {
-    const clip = getCombatAnimationClipDefinition(clipId);
+    const resolvedClipId = hasCombatAnimationClip(clipId)
+        ? clipId
+        : 'idle';
+    const clip = getCombatAnimationClipDefinition(resolvedClipId);
+    const frames = Array.isArray(clip && clip.frames)
+        ? clip.frames
+        : COMBAT_ANIMATION_FALLBACK_CLIPS.idle.frames;
     const frameDurationMs = 1000 / Math.max(1, Number(clip.fps) || 1);
-    const actionFrame = Number.isInteger(clip.actionFrame)
+    const actionFrame = (
+        Number.isInteger(clip.actionFrame)
+        && clip.actionFrame >= 0
+        && clip.actionFrame < frames.length
+    )
         ? clip.actionFrame
         : null;
 
     return {
-        clipId: Object.prototype.hasOwnProperty.call(
-            COMBAT_ANIMATION_EVENT_TYPES,
-            clipId
-        ) ? clipId : 'idle',
-        eventType: COMBAT_ANIMATION_EVENT_TYPES[clipId] || null,
+        clipId: resolvedClipId,
+        eventType: COMBAT_ANIMATION_EVENT_TYPES[resolvedClipId] || null,
         frameDurationMs,
-        frameCount: clip.frames.length,
+        frameCount: frames.length,
         actionFrame,
         actionTimeMs: actionFrame === null
             ? null
             : actionFrame * frameDurationMs,
-        durationMs: clip.frames.length * frameDurationMs,
-        loop: clip.loop === true
+        durationMs: frames.length * frameDurationMs,
+        loop: clip.loop === true,
+        terminal: clip.terminal === true,
+        holdLastFrame: clip.holdLastFrame === true,
+        powerful: clip.powerful === true,
+        phases: clip.phases && typeof clip.phases === 'object'
+            ? Object.freeze({ ...clip.phases })
+            : Object.freeze({})
     };
 }
 
@@ -115,32 +251,284 @@ function getCombatWeaponAnimationStyle(weapon) {
     ].filter(Boolean).join(' ').toLowerCase();
 }
 
+function getCombatWeaponAnimationFamily(weapon) {
+    if (!weapon) return '';
+    if (weapon.animationFamily) {
+        return String(weapon.animationFamily).toLowerCase();
+    }
+    if (
+        weapon.spriteId
+        && typeof EquipmentOverhaulSpecs !== 'undefined'
+        && EquipmentOverhaulSpecs.weapon
+        && EquipmentOverhaulSpecs.weapon[weapon.spriteId]
+    ) {
+        return String(
+            EquipmentOverhaulSpecs.weapon[weapon.spriteId]
+                .animationFamily || ''
+        ).toLowerCase();
+    }
+    return '';
+}
+
+function getCombatOffhandType(offhand) {
+    if (!offhand) return '';
+    if (offhand.offhandType) {
+        return String(offhand.offhandType).toLowerCase();
+    }
+    if (
+        offhand.spriteId
+        && typeof EquipmentOverhaulSpecs !== 'undefined'
+        && EquipmentOverhaulSpecs.offhand
+        && EquipmentOverhaulSpecs.offhand[offhand.spriteId]
+    ) {
+        return String(
+            EquipmentOverhaulSpecs.offhand[offhand.spriteId]
+                .offhandType || ''
+        ).toLowerCase();
+    }
+    return '';
+}
+
+function isCombatWeaponTwoHanded(weapon) {
+    if (!weapon) return false;
+    if (weapon.twoHanded === true) return true;
+    const handedness = String(weapon.handedness || '').toLowerCase();
+    if (['two', 'two-handed', '2h'].includes(handedness)) return true;
+    if (
+        weapon.spriteId
+        && typeof EquipmentOverhaulSpecs !== 'undefined'
+        && EquipmentOverhaulSpecs.weapon
+        && EquipmentOverhaulSpecs.weapon[weapon.spriteId]
+    ) {
+        const spec = EquipmentOverhaulSpecs.weapon[weapon.spriteId];
+        return (
+            spec.twoHanded === true
+            || ['two', 'two-handed', '2h'].includes(
+                String(spec.handedness || '').toLowerCase()
+            )
+        );
+    }
+    return false;
+}
+
 function resolveCombatAnimationClip(options = {}) {
-    if (options.source === 'spell' || options.actionType === 'spell') {
+    const actionType = String(options.actionType || '').toLowerCase();
+    const animType = String(options.animType || '').toLowerCase();
+    if (
+        actionType === 'block'
+        || actionType === 'guard'
+        || animType === 'block'
+        || animType.includes('shield_block')
+    ) {
+        return 'shield_block';
+    }
+    if (
+        actionType === 'shield_bash'
+        || animType.includes('shield_bash')
+    ) {
+        return 'shield_bash';
+    }
+    if (options.source === 'spell' || actionType === 'spell') {
         return 'cast';
     }
-    if (options.isProjectile || (options.weapon && options.weapon.projectileSprite)) {
+    if (
+        options.isProjectile
+        || (options.weapon && options.weapon.projectileSprite)
+    ) {
         return 'shoot';
     }
+    if (
+        animType.includes('shoot')
+        || animType.includes('bow')
+        || actionType === 'shoot'
+    ) {
+        return 'shoot';
+    }
+    if (
+        animType.includes('cast')
+        || animType.includes('spell')
+        || actionType === 'cast'
+    ) {
+        return 'cast';
+    }
 
-    const animType = String(options.animType || '').toLowerCase();
-    if (animType.includes('bash') || animType.includes('smash')) return 'bash';
-    if (animType.includes('slash')) return 'slash';
+    if (animType.includes('dual_wield')) return 'dual_wield';
+
+    // A compatible offhand weapon changes the whole attack stance. Resolve it
+    // before a one-handed main-hand family such as dagger/slash/bash so live
+    // loadouts actually use the shared dual-wield clip.
+    if (
+        getCombatOffhandType(options.offhand) === 'weapon'
+        && !isCombatWeaponTwoHanded(options.weapon)
+    ) {
+        return 'dual_wield';
+    }
+
+    const authoredFamilies = [
+        'thrust',
+        'heavy',
+        'dagger',
+        'scythe'
+    ];
+    const authoredFamily = authoredFamilies.find(
+        family => animType.includes(family)
+    );
+    if (authoredFamily) return authoredFamily;
+
+    const animationFamily = getCombatWeaponAnimationFamily(
+        options.weapon
+    );
+    if (hasCombatAnimationClip(animationFamily)) {
+        return animationFamily;
+    }
 
     const style = getCombatWeaponAnimationStyle(options.weapon);
     if (style.includes('bow') || style.includes('crossbow')) return 'shoot';
     if (style.includes('staff') || style.includes('wand')) return 'cast';
+    if (
+        ['spear', 'trident', 'pitchfork', 'polearm', 'halberd', 'glaive']
+            .some(value => style.includes(value))
+    ) {
+        return 'thrust';
+    }
+    if (style.includes('dagger') || style.includes('shiv')) {
+        return 'dagger';
+    }
+    if (style.includes('scythe')) return 'scythe';
+    if (
+        ['greatclub', 'maul', 'greataxe', 'greatsword']
+            .some(value => style.includes(value))
+    ) {
+        return 'heavy';
+    }
 
     const bashStyles = [
         'club',
-        'greatclub',
         'mace',
-        'maul',
         'knuckle',
-        'tankard'
+        'tankard',
+        'hammer'
     ];
     if (bashStyles.some(value => style.includes(value))) return 'bash';
+
+    const slashStyles = [
+        'sword',
+        'blade',
+        'axe',
+        'machete',
+        'rapier',
+        'scimitar'
+    ];
+    if (slashStyles.some(value => style.includes(value))) return 'slash';
+
+    if (animType.includes('bash') || animType.includes('smash')) return 'bash';
+    if (animType.includes('slash')) return 'slash';
     return 'slash';
+}
+
+function getCombatAnimationVisualProfile(actor) {
+    let profile = null;
+    const resolver = typeof resolveHumanoidActorVisualProfile === 'function'
+        ? resolveHumanoidActorVisualProfile
+        : (
+            typeof globalThis !== 'undefined'
+            && typeof globalThis.resolveHumanoidActorVisualProfile === 'function'
+                ? globalThis.resolveHumanoidActorVisualProfile
+                : null
+        );
+
+    if (resolver) {
+        try {
+            profile = resolver(actor);
+        } catch (_error) {
+            profile = null;
+        }
+    }
+    return profile || (actor && actor.visualProfile) || null;
+}
+
+function getCombatAnimationVisualGender(actor, profile) {
+    const appearance = (
+        profile
+        && profile.appearance
+        && typeof profile.appearance === 'object'
+    ) ? profile.appearance : profile;
+    const gender = (
+        appearance
+        && appearance.gender
+    ) || (
+        actor
+        && actor.appearance
+        && actor.appearance.gender
+    ) || (actor && actor.gender);
+    return gender === 'female' ? 'female' : 'male';
+}
+
+function getCombatAnimationVisualWeapon(actor, profile) {
+    if (profile && typeof profile === 'object') {
+        if (Object.prototype.hasOwnProperty.call(profile, 'weaponItem')) {
+            return profile.weaponItem;
+        }
+        if (Object.prototype.hasOwnProperty.call(profile, 'weapon')) {
+            return profile.weapon;
+        }
+        if (
+            profile.equipment
+            && Object.prototype.hasOwnProperty.call(
+                profile.equipment,
+                'weapon'
+            )
+        ) {
+            return profile.equipment.weapon;
+        }
+    }
+    if (actor && actor.equipment && actor.equipment.weapon) {
+        return actor.equipment.weapon;
+    }
+    return actor && (actor.weaponItem || actor.weapon) || null;
+}
+
+function isCombatAnimationAnchor(anchor) {
+    return (
+        Array.isArray(anchor)
+        && Number.isFinite(Number(anchor[0]))
+        && Number.isFinite(Number(anchor[1]))
+    );
+}
+
+function getCombatAnimationActorFxOrigin(actor, preferVisual = false) {
+    const actorSize = Math.max(1, Number(actor && actor.size) || 1);
+    const logicalX = Number(actor && actor.x);
+    const logicalY = Number(actor && actor.y);
+    const visualX = Number(actor && actor.visualX);
+    const visualY = Number(actor && actor.visualY);
+    const x = preferVisual && Number.isFinite(visualX)
+        ? visualX
+        : (Number.isFinite(logicalX) ? logicalX : 0);
+    const y = preferVisual && Number.isFinite(visualY)
+        ? visualY
+        : (Number.isFinite(logicalY) ? logicalY : 0);
+    const visualProfile = getCombatAnimationVisualProfile(actor);
+    const requestedVisualScale = Number(
+        visualProfile
+        && visualProfile.stanceProfile
+        && visualProfile.stanceProfile.visualScale
+    );
+    const visualSize = visualProfile
+        && Number.isFinite(requestedVisualScale)
+        && requestedVisualScale > 0
+        ? requestedVisualScale
+        : actorSize;
+    const visualInset = (actorSize - visualSize) / 2;
+
+    return {
+        x: x + (actorSize / 2) - 0.5,
+        y: y + (actorSize / 2) - 0.5,
+        topLeftX: x + visualInset,
+        topLeftY: y + visualInset,
+        size: visualSize,
+        collisionSize: actorSize
+    };
 }
 
 function getCombatAnimationReleaseOrigin(
@@ -149,48 +537,115 @@ function getCombatAnimationReleaseOrigin(
     frameIndex,
     facing = 'right'
 ) {
+    const actorOrigin = getCombatAnimationActorFxOrigin(actor, true);
     if (
         !actor
         || typeof getSidePlayerAnimationFrame !== 'function'
     ) {
         return {
-            x: Number(actor && actor.x) || 0,
-            y: Number(actor && actor.y) || 0
+            x: actorOrigin.x,
+            y: actorOrigin.y
         };
     }
 
-    const gender = (
-        actor.appearance
-        && actor.appearance.gender === 'female'
-    ) ? 'female' : 'male';
-    const frame = getSidePlayerAnimationFrame(
-        gender,
-        clipId,
-        frameIndex
-    );
-    const weapon = frame.pose.weapon || {};
-    let anchor = frame.anchors.weaponHand;
+    const profile = getCombatAnimationVisualProfile(actor);
+    const gender = getCombatAnimationVisualGender(actor, profile);
+    const visualWeapon = getCombatAnimationVisualWeapon(actor, profile);
+    let frame = null;
+    try {
+        frame = getSidePlayerAnimationFrame(
+            gender,
+            clipId,
+            frameIndex
+        );
+    } catch (_error) {
+        frame = null;
+    }
+    const pose = frame && frame.pose ? frame.pose : {};
+    const weapon = pose.weapon || {};
+    const anchors = frame && frame.anchors ? frame.anchors : {};
+    const weaponHand = isCombatAnimationAnchor(anchors.weaponHand)
+        ? anchors.weaponHand
+        : null;
+    let anchor = weaponHand;
+    const weaponStyle = getCombatWeaponAnimationStyle(visualWeapon);
 
-    if (clipId === 'shoot') {
-        anchor = weapon.arrowTip || weapon.grip || anchor;
-    } else if (clipId === 'cast') {
-        anchor = weapon.top || weapon.grip || anchor;
+    if (
+        clipId === 'shoot'
+        && visualWeapon
+        && (
+            weaponStyle.includes('bow')
+            || weaponStyle.includes('crossbow')
+            || visualWeapon.projectileSprite
+        )
+    ) {
+        anchor = weapon.arrowTip || weapon.grip || weaponHand;
+    } else if (
+        clipId === 'cast'
+        && visualWeapon
+        && (
+            weaponStyle.includes('staff')
+            || weaponStyle.includes('wand')
+        )
+    ) {
+        anchor = weapon.top || weapon.grip || weaponHand;
+    }
+    if (!isCombatAnimationAnchor(anchor)) {
+        return {
+            x: actorOrigin.x,
+            y: actorOrigin.y
+        };
     }
 
     const gridSize = typeof SIDE_PLAYER_ANIMATION_SIZE === 'number'
         ? SIDE_PLAYER_ANIMATION_SIZE
         : 32;
+    let releaseOffset = [0, 0];
+    const offsetResolver = (
+        typeof resolveHumanoidProfileAnchorOffsets === 'function'
+    )
+        ? resolveHumanoidProfileAnchorOffsets
+        : (
+            typeof globalThis !== 'undefined'
+            && typeof globalThis.resolveHumanoidProfileAnchorOffsets
+                === 'function'
+                ? globalThis.resolveHumanoidProfileAnchorOffsets
+                : null
+        );
+    if (offsetResolver) {
+        try {
+            const resolvedOffsets = offsetResolver(profile || actor, clipId);
+            if (
+                resolvedOffsets
+                && isCombatAnimationAnchor(resolvedOffsets.release)
+            ) {
+                releaseOffset = resolvedOffsets.release;
+            }
+        } catch (_error) {
+            releaseOffset = [0, 0];
+        }
+    }
+    const resolvedAnchor = [
+        anchor[0] + Number(releaseOffset[0] || 0),
+        anchor[1] + Number(releaseOffset[1] || 0)
+    ];
     const anchorX = facing === 'left'
-        ? gridSize - 1 - anchor[0]
-        : anchor[0];
-    const actorSize = Math.max(1, Number(actor.size) || 1);
+        ? gridSize - 1 - resolvedAnchor[0]
+        : resolvedAnchor[0];
+    const bobY = Number(pose.bobY) || 0;
 
     return {
-        x: (Number(actor.x) || 0)
-            + ((anchorX + 0.5) / gridSize) * actorSize
+        x: actorOrigin.topLeftX
+            + ((anchorX + 0.5) / gridSize) * actorOrigin.size
             - 0.5,
-        y: (Number(actor.y) || 0)
-            + ((anchor[1] + 0.5) / gridSize) * actorSize
+        y: actorOrigin.topLeftY
+            + (
+                (
+                    resolvedAnchor[1]
+                    + bobY
+                    + 0.5
+                ) / gridSize
+            ) * actorOrigin.size
             - 0.5
     };
 }
@@ -199,9 +654,17 @@ function createCombatPlaybackBarrier(onFinished) {
     let actionComplete = false;
     let impactComplete = false;
     let finished = false;
+    let cancelled = false;
 
     function finishWhenReady() {
-        if (finished || !actionComplete || !impactComplete) return;
+        if (
+            finished
+            || cancelled
+            || !actionComplete
+            || !impactComplete
+        ) {
+            return;
+        }
         finished = true;
         onFinished();
     }
@@ -214,28 +677,51 @@ function createCombatPlaybackBarrier(onFinished) {
         markImpactComplete() {
             impactComplete = true;
             finishWhenReady();
+        },
+        cancel() {
+            if (finished || cancelled) return;
+            cancelled = true;
+            finished = true;
         }
     });
 }
 
 const CombatSpriteAnimation = (() => {
     const actions = new Map();
+    const terminal = new Map();
     const facings = new Map();
     const movement = new Map();
+    let cleanupDepth = 0;
 
-    function resolveFacing(actor, targetX, fallback = 'right') {
+    function rebindActorState(uid, actor) {
+        if (!uid || !actor) return;
+        const activeState = actions.get(uid);
+        const terminalState = terminal.get(uid);
+        if (activeState) activeState.actor = actor;
+        if (terminalState) terminalState.actor = actor;
+    }
+
+    function resolveFacing(actor, targetX, fallback) {
         const uid = getCombatAnimationActorUid(actor);
         const remembered = uid ? facings.get(uid) : null;
-        const actorCenterX = Number(actor && actor.x) + (
-            Math.max(1, Number(actor && actor.size) || 1) / 2
-        );
+        const actorCenterX = getCombatAnimationActorFxOrigin(actor).x;
         const numericTargetX = Number(targetX);
+        const explicitFallback = fallback === 'left' || fallback === 'right'
+            ? fallback
+            : null;
+        const actorFacing = actor && actor.combatFacing === 'left'
+            ? 'left'
+            : (
+                actor && actor.combatFacing === 'right'
+                    ? 'right'
+                    : null
+            );
 
         if (Number.isFinite(actorCenterX) && Number.isFinite(numericTargetX)) {
-            if (numericTargetX < actorCenterX) return 'left';
-            if (numericTargetX > actorCenterX) return 'right';
+            if (numericTargetX < actorCenterX - 0.001) return 'left';
+            if (numericTargetX > actorCenterX + 0.001) return 'right';
         }
-        return remembered || fallback;
+        return explicitFallback || remembered || actorFacing || 'right';
     }
 
     function rememberFacing(actor, facing) {
@@ -251,7 +737,89 @@ const CombatSpriteAnimation = (() => {
         return rememberFacing(actor, resolveFacing(actor, targetX));
     }
 
+    function resolvePlaybackFacing(actor, options) {
+        if (options.facing === 'left' || options.facing === 'right') {
+            return rememberFacing(actor, options.facing);
+        }
+        return rememberFacing(
+            actor,
+            resolveFacing(actor, options.targetX)
+        );
+    }
+
+    function createPlaybackState(actor, clipId, options, stateType) {
+        const uid = getCombatAnimationActorUid(actor);
+        const baseTimeline = getCombatAnimationTimeline(clipId);
+        const requestedPlaybackRate = Number(options.playbackRate);
+        const playbackRate = Number.isFinite(requestedPlaybackRate)
+            && requestedPlaybackRate > 0
+            ? Math.min(8, Math.max(0.1, requestedPlaybackRate))
+            : 1;
+        const timeline = {
+            ...baseTimeline,
+            frameDurationMs:
+                baseTimeline.frameDurationMs / playbackRate,
+            actionTimeMs: baseTimeline.actionTimeMs === null
+                ? null
+                : baseTimeline.actionTimeMs / playbackRate,
+            durationMs: baseTimeline.durationMs / playbackRate
+        };
+        return {
+            uid,
+            actor,
+            stateType,
+            clipId: timeline.clipId,
+            timeline,
+            playbackRate,
+            startTime: Number.isFinite(options.startTime)
+                ? options.startTime
+                : getCombatAnimationNow(),
+            elapsedMs: 0,
+            progress: 0,
+            eventFired: false,
+            completed: false,
+            cancelled: false,
+            lifecycleSettled: false,
+            facing: resolvePlaybackFacing(actor, options),
+            targetX: Number(options.targetX),
+            targetY: Number(options.targetY),
+            lift: options.lift === true,
+            onEvent: options.onEvent || options.onAction || null,
+            onComplete: options.onComplete || null,
+            onCancel: options.onCancel || null
+        };
+    }
+
+    function settlePlaybackLifecycle(
+        state,
+        { cancelled = false, reason = null } = {}
+    ) {
+        if (!state || state.lifecycleSettled) return;
+        state.lifecycleSettled = true;
+        state.cancelled = cancelled;
+        state.completed = true;
+        const payload = {
+            actor: state.actor,
+            clipId: state.clipId,
+            facing: state.facing,
+            cancelled,
+            reason
+        };
+        const callback = cancelled
+            ? state.onCancel
+            : state.onComplete;
+        if (typeof callback === 'function') callback(payload);
+    }
+
+    function cancelPlaybackState(state, reason) {
+        settlePlaybackLifecycle(state, {
+            cancelled: true,
+            reason: reason || 'cancelled'
+        });
+    }
+
     function updateActionState(state, now) {
+        if (!state || actions.get(state.uid) !== state) return;
         const elapsedMs = Math.max(0, now - state.startTime);
         state.elapsedMs = elapsedMs;
         state.progress = Math.min(1, elapsedMs / state.timeline.durationMs);
@@ -281,22 +849,24 @@ const CombatSpriteAnimation = (() => {
             }
         }
 
-        if (elapsedMs < state.timeline.durationMs) return;
+        if (actions.get(state.uid) !== state) return;
+        if (elapsedMs + 0.000001 < state.timeline.durationMs) return;
 
-        actions.delete(state.uid);
-        state.completed = true;
+        if (actions.get(state.uid) === state) {
+            actions.delete(state.uid);
+        }
+        if (state.stateType !== 'defeat') {
+            movement.set(state.uid, {
+                clipId: 'idle',
+                startTime: now
+            });
+        }
         if (state.actor) {
             state.actor.lungeOffsetX = 0;
             state.actor.lungeOffsetY = 0;
             state.actor.lungeHop = 0;
         }
-        if (typeof state.onComplete === 'function') {
-            state.onComplete({
-                actor: state.actor,
-                clipId: state.clipId,
-                facing: state.facing
-            });
-        }
+        settlePlaybackLifecycle(state);
     }
 
     function update(now = getCombatAnimationNow()) {
@@ -304,56 +874,185 @@ const CombatSpriteAnimation = (() => {
             ? now
             : getCombatAnimationNow();
         Array.from(actions.values()).forEach(state => {
+            if (actions.get(state.uid) !== state) return;
             updateActionState(state, resolvedNow);
         });
     }
 
+    function actorIsMarkedDefeated(actor) {
+        return Boolean(
+            actor
+            && (
+                actor.alive === false
+                || actor.defeated === true
+            )
+        );
+    }
+
+    function hasTerminalState(actor) {
+        const uid = getCombatAnimationActorUid(actor);
+        if (!uid) return false;
+        rebindActorState(uid, actor);
+        return terminal.has(uid);
+    }
+
+    function isActionLocked(actor) {
+        const uid = getCombatAnimationActorUid(actor);
+        if (!uid) return false;
+        rebindActorState(uid, actor);
+        return (
+            actions.has(uid)
+            || terminal.has(uid)
+            || actorIsMarkedDefeated(actor)
+        );
+    }
+
     function startAction(actor, options = {}) {
         const uid = getCombatAnimationActorUid(actor);
-        if (!uid) return null;
+        if (
+            !uid
+            || cleanupDepth > 0
+            || actions.has(uid)
+            || terminal.has(uid)
+            || actorIsMarkedDefeated(actor)
+        ) {
+            return null;
+        }
 
-        const clipId = Object.prototype.hasOwnProperty.call(
-            COMBAT_ANIMATION_EVENT_TYPES,
-            options.clipId
-        ) ? options.clipId : resolveCombatAnimationClip(options);
-        const timeline = getCombatAnimationTimeline(clipId);
-        const startTime = Number.isFinite(options.startTime)
-            ? options.startTime
-            : getCombatAnimationNow();
-        const facing = rememberFacing(
-            actor,
-            resolveFacing(actor, options.targetX, options.facing)
-        );
-        const state = {
-            uid,
+        if (
+            options.clipId !== undefined
+            && !Object.prototype.hasOwnProperty.call(
+                COMBAT_ANIMATION_EVENT_TYPES,
+                options.clipId
+            )
+        ) {
+            return null;
+        }
+        const clipId = options.clipId || resolveCombatAnimationClip(options);
+        const state = createPlaybackState(
             actor,
             clipId,
-            timeline,
-            startTime,
-            elapsedMs: 0,
-            progress: 0,
-            eventFired: false,
-            completed: false,
-            facing,
-            targetX: Number(options.targetX),
-            targetY: Number(options.targetY),
-            lift: options.lift === true,
-            onEvent: options.onEvent || options.onAction || null,
-            onComplete: options.onComplete || null
-        };
+            options,
+            'action'
+        );
 
         actions.set(uid, state);
         movement.delete(uid);
         return state;
     }
 
+    function startHitReaction(actor, options = {}) {
+        const uid = getCombatAnimationActorUid(actor);
+        if (
+            !uid
+            || cleanupDepth > 0
+            || terminal.has(uid)
+            || actorIsMarkedDefeated(actor)
+        ) {
+            return null;
+        }
+        const interruptedState = actions.get(uid) || null;
+        if (interruptedState && options.interrupt !== true) return null;
+
+        const state = createPlaybackState(
+            actor,
+            'hit',
+            options,
+            'reaction'
+        );
+        actions.set(uid, state);
+        movement.delete(uid);
+        if (interruptedState) {
+            cancelPlaybackState(interruptedState, 'hit');
+        }
+        return state;
+    }
+
+    function startDefensiveReaction(actor, options = {}) {
+        const clipId = options.clipId || 'shield_block';
+        if (clipId !== 'shield_block') return null;
+        const uid = getCombatAnimationActorUid(actor);
+        if (
+            !uid
+            || cleanupDepth > 0
+            || terminal.has(uid)
+            || actorIsMarkedDefeated(actor)
+        ) {
+            return null;
+        }
+        const interruptedState = actions.get(uid) || null;
+        if (interruptedState && options.interrupt !== true) return null;
+        const state = createPlaybackState(
+            actor,
+            clipId,
+            options,
+            'defense'
+        );
+        actions.set(uid, state);
+        movement.delete(uid);
+        if (interruptedState) {
+            cancelPlaybackState(interruptedState, 'block');
+        }
+        return state;
+    }
+
+    function startDefeat(actor, options = {}) {
+        const uid = getCombatAnimationActorUid(actor);
+        if (!uid || cleanupDepth > 0 || terminal.has(uid)) return null;
+
+        const interruptedState = actions.get(uid) || null;
+        const state = createPlaybackState(
+            actor,
+            'defeat',
+            options,
+            'defeat'
+        );
+
+        terminal.set(uid, state);
+        actions.set(uid, state);
+        movement.delete(uid);
+        if (interruptedState && interruptedState !== state) {
+            cancelPlaybackState(interruptedState, 'defeat');
+        }
+        return state;
+    }
+
     function getActionState(actor) {
         const uid = getCombatAnimationActorUid(actor);
-        return uid ? actions.get(uid) || null : null;
+        if (!uid) return null;
+        rebindActorState(uid, actor);
+        return actions.get(uid) || null;
+    }
+
+    function getActiveRenderState(state) {
+        const frameIndex = Math.min(
+            state.timeline.frameCount - 1,
+            Math.floor(state.elapsedMs / state.timeline.frameDurationMs)
+        );
+        return {
+            clipId: state.clipId,
+            frameIndex,
+            facing: state.facing,
+            isAction: true,
+            isTerminal: state.stateType === 'defeat',
+            progress: state.progress
+        };
+    }
+
+    function getTerminalRenderState(state) {
+        return {
+            clipId: state.clipId,
+            frameIndex: Math.max(0, state.timeline.frameCount - 1),
+            facing: state.facing,
+            isAction: false,
+            isTerminal: true,
+            progress: 1
+        };
     }
 
     function getRenderState(actor, options = {}) {
         const uid = getCombatAnimationActorUid(actor);
+        if (uid) rebindActorState(uid, actor);
         const now = Number.isFinite(options.now)
             ? options.now
             : getCombatAnimationNow();
@@ -363,18 +1062,14 @@ const CombatSpriteAnimation = (() => {
             updateActionState(action, now);
             const current = actions.get(uid);
             if (current) {
-                const frameIndex = Math.min(
-                    current.timeline.frameCount - 1,
-                    Math.floor(current.elapsedMs / current.timeline.frameDurationMs)
-                );
-                return {
-                    clipId: current.clipId,
-                    frameIndex,
-                    facing: current.facing,
-                    isAction: true,
-                    progress: current.progress
-                };
+                return getActiveRenderState(current);
             }
+        }
+
+        const terminalState = uid ? terminal.get(uid) : null;
+        if (terminalState) {
+            terminalState.actor = actor;
+            return getTerminalRenderState(terminalState);
         }
 
         const deltaX = Number(options.deltaX) || 0;
@@ -396,8 +1091,10 @@ const CombatSpriteAnimation = (() => {
                 if (uid) movement.set(uid, movementState);
             }
         } else {
-            if (uid) movement.delete(uid);
-            movementState = { clipId: 'idle', startTime: 0 };
+            if (!movementState || movementState.clipId !== 'idle') {
+                movementState = { clipId: 'idle', startTime: now };
+                if (uid) movement.set(uid, movementState);
+            }
         }
 
         const elapsedMs = Math.max(0, now - movementState.startTime);
@@ -414,12 +1111,26 @@ const CombatSpriteAnimation = (() => {
 
     function getLungeOffset(actor, tileSize) {
         const state = getActionState(actor);
-        if (!state || !['slash', 'bash'].includes(state.clipId)) {
+        if (
+            !state
+            || state.stateType !== 'action'
+            || ![
+                'slash',
+                'bash',
+                'thrust',
+                'heavy',
+                'dagger',
+                'scythe',
+                'shield_bash',
+                'dual_wield'
+            ].includes(state.clipId)
+        ) {
             return { x: 0, y: 0, hop: 0 };
         }
 
-        const actorX = Number(actor && actor.x) || 0;
-        const actorY = Number(actor && actor.y) || 0;
+        const actorOrigin = getCombatAnimationActorFxOrigin(actor);
+        const actorX = actorOrigin.x;
+        const actorY = actorOrigin.y;
         const dx = Number.isFinite(state.targetX)
             ? state.targetX - actorX
             : 0;
@@ -442,27 +1153,50 @@ const CombatSpriteAnimation = (() => {
 
     function clear(actor = null) {
         if (!actor) {
-            actions.clear();
-            facings.clear();
-            movement.clear();
+            const states = Array.from(new Set(actions.values()));
+            cleanupDepth += 1;
+            try {
+                actions.clear();
+                terminal.clear();
+                facings.clear();
+                movement.clear();
+                states.forEach(state => {
+                    cancelPlaybackState(state, 'cleanup');
+                });
+            } finally {
+                cleanupDepth -= 1;
+            }
             return;
         }
 
         const uid = getCombatAnimationActorUid(actor);
         if (!uid) return;
-        actions.delete(uid);
-        facings.delete(uid);
-        movement.delete(uid);
+        const action = actions.get(uid);
+        cleanupDepth += 1;
+        try {
+            actions.delete(uid);
+            terminal.delete(uid);
+            facings.delete(uid);
+            movement.delete(uid);
+            if (action) cancelPlaybackState(action, 'cleanup');
+        } finally {
+            cleanupDepth -= 1;
+        }
     }
 
     return Object.freeze({
         startAction,
+        startHitReaction,
+        startDefensiveReaction,
+        startDefeat,
         update,
         getActionState,
         getRenderState,
         getLungeOffset,
         faceActorToward,
         resolveFacing,
+        hasTerminalState,
+        isActionLocked,
         clear,
         isAnimating(actor) {
             return Boolean(getActionState(actor));
@@ -482,9 +1216,12 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         COMBAT_ANIMATION_EVENT_TYPES,
         COMBAT_ANIMATION_FALLBACK_CLIPS,
+        hasCombatAnimationClip,
         getCombatAnimationClipDefinition,
         getCombatAnimationTimeline,
         getCombatWeaponAnimationStyle,
+        getCombatWeaponAnimationFamily,
+        getCombatOffhandType,
         resolveCombatAnimationClip,
         getCombatAnimationReleaseOrigin,
         createCombatPlaybackBarrier,

@@ -85,7 +85,7 @@ test('all overhaul equipment matrices are native 32x32 and palette-complete', ()
         };
     })()`, context);
 
-    assert.equal(result.matrixCount, 103);
+    assert.equal(result.matrixCount, 113);
     assert.equal(result.allNative, true);
     assert.equal(result.missingPaletteKeys.length, 0);
 });
@@ -153,7 +153,7 @@ test('front armor establishes a complete and distinct design language for every 
         };
     })()`, context);
 
-    assert.equal(result.specCount, 14);
+    assert.equal(result.specCount, 15);
     assert.equal(result.profileCount, result.specCount);
     assert.equal(result.uniqueCount, result.specCount);
 
@@ -420,8 +420,8 @@ test('centered weapon assets stay separate from front paperdoll transforms', () 
         };
     })()`, context);
 
-    assert.equal(result.audits.length, 22);
-    assert.equal(result.frontCount, 22);
+    assert.equal(result.audits.length, 23);
+    assert.equal(result.frontCount, 23);
 
     result.audits.forEach(audit => {
         assert.equal(audit.canonicalPublished, true);
@@ -593,7 +593,7 @@ test('front-facing weapons use compact size tiers without crowding the hero face
         return { audits };
     })()`, context);
 
-    assert.equal(result.audits.length, 22);
+    assert.equal(result.audits.length, 23);
 
     result.audits.forEach(audit => {
         assert.ok(audit.tier, `${audit.spriteId} has no front-view size tier`);
@@ -760,7 +760,7 @@ test('centered pole blueprints rotate cleanly around the hand anchor', () => {
         return { audits };
     })()`, context);
 
-    assert.equal(result.audits.length, 11);
+    assert.equal(result.audits.length, 12);
     assert.deepEqual(
         Array.from(new Set(result.audits.map(audit => audit.style))).sort(),
         [
@@ -1246,7 +1246,7 @@ test('helmet eraser masks trim stress hairstyles without cutting into either her
         };
     })()`, context);
 
-    assert.equal(result.maskedCount, 11);
+    assert.equal(result.maskedCount, 12);
     assert.equal(result.fullMaskCount, 6);
     assert.equal(result.openAccessoriesWithErasers.length, 0);
 
@@ -1277,7 +1277,7 @@ test('every polished helmet keeps a distinct outlined silhouette', () => {
         };
     })()`, context);
 
-    assert.equal(result.helmetCount, 15);
-    assert.equal(result.uniqueCount, 15);
+    assert.equal(result.helmetCount, 17);
+    assert.equal(result.uniqueCount, 17);
     assert.equal(result.missingOutline.length, 0);
 });

@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <title>Pub Knights - Loot Simulator</title>
     
-    <script src="js/items.js"></script>
-    <script src="js/lootTables.js"></script>
+    <script src="js/items.js?v=4"></script>
+    <script src="js/lootTables.js?v=3"></script>
 
     <style>
         body {
@@ -190,11 +190,20 @@
             }
         };
 
-        // 2. THE SERVER-AUTHORITATIVE MATH ENGINE
-        // This is an exact 1:1 replica of your townRouter.js logic!
+        // 2. LOOT MATH
+        // Combat tables roll dropChance before their weighted pool. Crate
+        // tables omit dropChance and therefore proceed directly to the pool.
         function rollSecureCrateLoot(crateId) {
             const table = LootTables[crateId];
             if (!table || !table.pools) return null;
+
+            const dropChance = Number(table.dropChance);
+            if (
+                Number.isFinite(dropChance)
+                && Math.random() > dropChance
+            ) {
+                return null;
+            }
             
             let totalWeight = table.pools.reduce((sum, entry) => sum + entry.weight, 0);
             let roll = Math.random() * totalWeight;

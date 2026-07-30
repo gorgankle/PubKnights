@@ -2,8 +2,18 @@
 
 const crypto = require('crypto');
 const { sanitizeToken } = require('./serverSecurity.js');
+const {
+    normalizeEquipmentHandRules
+} = require('./equipmentHandRules.js');
 
-const COMPANION_EQUIPMENT_SLOTS = Object.freeze(['weapon', 'helmet', 'armor', 'gloves', 'boots']);
+const COMPANION_EQUIPMENT_SLOTS = Object.freeze([
+    'weapon',
+    'offhand',
+    'helmet',
+    'armor',
+    'gloves',
+    'boots'
+]);
 const COMPANION_POCKET_COUNT = 2;
 const MAX_ROSTER_COMPANIONS = 6;
 const MAX_SELECTED_COMPANIONS = 3;
@@ -122,6 +132,7 @@ function normalizeRosterState(player, options = {}) {
 
             const legacyAccessory = sanitizeItem(sourceEquipment.accessory);
             if (legacyAccessory) player.inventory.push(legacyAccessory);
+            normalizeEquipmentHandRules(equipment, player.inventory);
 
             const sourcePockets = Array.isArray(companion.pockets) ? companion.pockets : [];
             const pockets = Array.from({ length: COMPANION_POCKET_COUNT }, (_, index) => (

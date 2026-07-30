@@ -1,0 +1,2672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1"
+    >
+    <title>Pub Knights · Humanoid NPC Studio</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            --ink: #17110f;
+            --ink-soft: #211916;
+            --panel: #2a201b;
+            --panel-raised: #34271f;
+            --line: #71513a;
+            --line-soft: #4b382d;
+            --cream: #f1dfbc;
+            --cream-muted: #cbb994;
+            --amber: #e5a43b;
+            --amber-bright: #ffd36c;
+            --teal: #58b9a8;
+            --red: #db665d;
+            --green: #7dbe70;
+            --shadow: rgba(0, 0, 0, 0.42);
+            --checker-a: #141b1b;
+            --checker-b: #1b2524;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            min-width: 320px;
+            background: var(--ink);
+        }
+
+        body {
+            min-height: 100vh;
+            margin: 0;
+            color: var(--cream);
+            background:
+                radial-gradient(
+                    circle at 12% 0%,
+                    rgba(229, 164, 59, 0.13),
+                    transparent 36rem
+                ),
+                linear-gradient(180deg, #1c1512, var(--ink));
+            font-family:
+                Inter,
+                ui-sans-serif,
+                system-ui,
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                sans-serif;
+        }
+
+        button,
+        select,
+        input {
+            font: inherit;
+        }
+
+        button,
+        select {
+            min-height: 2.5rem;
+            border: 1px solid var(--line);
+            border-radius: 0.3rem;
+            color: var(--cream);
+            background: #231a16;
+        }
+
+        button {
+            padding: 0.55rem 0.85rem;
+            cursor: pointer;
+        }
+
+        button:hover,
+        button:focus-visible,
+        select:hover,
+        select:focus-visible {
+            border-color: var(--amber);
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(229, 164, 59, 0.18);
+        }
+
+        button[aria-pressed="true"] {
+            border-color: var(--amber-bright);
+            color: var(--ink);
+            background: var(--amber);
+        }
+
+        a {
+            color: var(--amber-bright);
+        }
+
+        code,
+        pre,
+        .technical {
+            font-family:
+                "Cascadia Code",
+                "SFMono-Regular",
+                Consolas,
+                monospace;
+        }
+
+        canvas {
+            display: block;
+            max-width: 100%;
+            height: auto;
+            border: 1px solid var(--line-soft);
+            border-radius: 0.25rem;
+            background-color: var(--checker-a);
+            background-image:
+                linear-gradient(
+                    45deg,
+                    var(--checker-b) 25%,
+                    transparent 25%
+                ),
+                linear-gradient(
+                    -45deg,
+                    var(--checker-b) 25%,
+                    transparent 25%
+                ),
+                linear-gradient(
+                    45deg,
+                    transparent 75%,
+                    var(--checker-b) 75%
+                ),
+                linear-gradient(
+                    -45deg,
+                    transparent 75%,
+                    var(--checker-b) 75%
+                );
+            background-position:
+                0 0,
+                0 8px,
+                8px -8px,
+                -8px 0;
+            background-size: 16px 16px;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.025);
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
+        .site-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 1rem clamp(1rem, 4vw, 3rem);
+            border-bottom: 1px solid var(--line-soft);
+            background: rgba(23, 17, 15, 0.84);
+            box-shadow: 0 0.35rem 1.25rem var(--shadow);
+            backdrop-filter: blur(9px);
+        }
+
+        .site-header h1 {
+            margin: 0;
+            font-family: Georgia, "Times New Roman", serif;
+            font-size: clamp(1.25rem, 3vw, 2rem);
+            letter-spacing: 0.025em;
+        }
+
+        .site-header p {
+            margin: 0.22rem 0 0;
+            color: var(--cream-muted);
+            font-size: 0.84rem;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .ready-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            min-height: 2rem;
+            padding: 0.35rem 0.65rem;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            color: var(--cream-muted);
+            background: var(--panel);
+            font-size: 0.78rem;
+            white-space: nowrap;
+        }
+
+        .ready-status::before {
+            width: 0.55rem;
+            height: 0.55rem;
+            border-radius: 50%;
+            background: var(--amber);
+            content: "";
+            box-shadow: 0 0 0.45rem rgba(229, 164, 59, 0.6);
+        }
+
+        .ready-status[data-state="ready"] {
+            border-color: rgba(125, 190, 112, 0.7);
+            color: #d8efcf;
+        }
+
+        .ready-status[data-state="ready"]::before {
+            background: var(--green);
+            box-shadow: 0 0 0.45rem rgba(125, 190, 112, 0.65);
+        }
+
+        .ready-status[data-state="error"] {
+            border-color: rgba(219, 102, 93, 0.75);
+            color: #ffd2cc;
+        }
+
+        .ready-status[data-state="error"]::before {
+            background: var(--red);
+            box-shadow: 0 0 0.45rem rgba(219, 102, 93, 0.65);
+        }
+
+        .back-link {
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+
+        main {
+            width: min(1540px, 100%);
+            margin: 0 auto;
+            padding: clamp(1rem, 3vw, 2rem);
+        }
+
+        .panel {
+            border: 1px solid var(--line-soft);
+            border-radius: 0.45rem;
+            background:
+                linear-gradient(
+                    150deg,
+                    rgba(255, 255, 255, 0.022),
+                    transparent 42%
+                ),
+                var(--panel);
+            box-shadow: 0 0.8rem 2.2rem var(--shadow);
+        }
+
+        .panel-heading {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 0.85rem 1rem;
+            border-bottom: 1px solid var(--line-soft);
+        }
+
+        .panel-heading h2 {
+            margin: 0;
+            font-family: Georgia, "Times New Roman", serif;
+            font-size: 1.05rem;
+            letter-spacing: 0.035em;
+        }
+
+        .panel-heading p {
+            margin: 0;
+            color: var(--cream-muted);
+            font-size: 0.76rem;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns:
+                repeat(auto-fit, minmax(11rem, 1fr));
+            gap: 0.85rem;
+            padding: 1rem;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.36rem;
+            min-width: 0;
+        }
+
+        .field-label {
+            color: var(--cream-muted);
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .field output {
+            color: var(--amber-bright);
+            font-size: 0.72rem;
+        }
+
+        .range-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            align-items: center;
+            gap: 0.55rem;
+            min-height: 2.5rem;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--amber);
+        }
+
+        .button-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.45rem;
+        }
+
+        .check-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            min-height: 2.5rem;
+            flex-wrap: wrap;
+        }
+
+        .check-row label {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            color: var(--cream-muted);
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+
+        .check-row input {
+            accent-color: var(--amber);
+        }
+
+        .workspace {
+            display: grid;
+            grid-template-columns: minmax(32rem, 1.25fr) minmax(20rem, 0.75fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .preview-panel {
+            min-width: 0;
+        }
+
+        .preview-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            padding: 1rem;
+        }
+
+        .preview-stage {
+            display: grid;
+            place-items: center;
+            min-width: 0;
+        }
+
+        .preview-stage canvas {
+            width: min(100%, 19rem);
+        }
+
+        .preview-caption {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            width: min(100%, 19rem);
+            gap: 0.65rem;
+            margin-top: 0.55rem;
+            color: var(--cream-muted);
+            font-size: 0.76rem;
+        }
+
+        .preview-caption strong {
+            color: var(--cream);
+            font-weight: 700;
+        }
+
+        .inspection-grid {
+            display: grid;
+            gap: 1rem;
+            padding: 1rem;
+        }
+
+        .inspection-card {
+            min-width: 0;
+            padding: 0.8rem;
+            border: 1px solid var(--line-soft);
+            border-radius: 0.35rem;
+            background: rgba(18, 13, 12, 0.32);
+        }
+
+        .inspection-card h3 {
+            margin: 0 0 0.65rem;
+            color: var(--amber-bright);
+            font-size: 0.78rem;
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+        }
+
+        .equipment-list {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr);
+            gap: 0.34rem 0.7rem;
+            margin: 0;
+            font-size: 0.76rem;
+        }
+
+        .equipment-list dt {
+            color: var(--cream-muted);
+            text-transform: capitalize;
+        }
+
+        .equipment-list dd {
+            min-width: 0;
+            margin: 0;
+            color: var(--cream);
+            overflow-wrap: anywhere;
+        }
+
+        .inspection-json {
+            min-height: 9rem;
+            max-height: 20rem;
+            margin: 0;
+            color: #d9d3c3;
+            font-size: 0.69rem;
+            line-height: 1.5;
+            overflow: auto;
+            white-space: pre-wrap;
+        }
+
+        .motion-panel,
+        .lineup-panel {
+            margin-top: 1rem;
+        }
+
+        .motion-strip {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(7.25rem, 1fr));
+            gap: 0.65rem;
+            padding: 1rem;
+        }
+
+        .motion-frame {
+            display: grid;
+            place-items: center;
+            min-width: 0;
+            padding: 0.55rem;
+            border: 1px solid var(--line-soft);
+            border-radius: 0.35rem;
+            color: var(--cream-muted);
+            background: var(--ink-soft);
+            cursor: pointer;
+        }
+
+        .motion-frame:hover,
+        .motion-frame:focus-visible {
+            border-color: var(--amber);
+            outline: none;
+        }
+
+        .motion-frame[aria-current="true"] {
+            border-color: var(--amber-bright);
+            background: rgba(229, 164, 59, 0.12);
+            box-shadow: 0 0 0 2px rgba(229, 164, 59, 0.12);
+        }
+
+        .motion-frame[data-event-frame="true"]::after {
+            margin-top: 0.3rem;
+            color: var(--red);
+            content: "authored event";
+            font-size: 0.62rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+
+        .motion-frame canvas {
+            width: min(100%, 8rem);
+        }
+
+        .motion-frame span {
+            margin-top: 0.42rem;
+            font-size: 0.68rem;
+            text-align: center;
+        }
+
+        .motion-frame small {
+            min-height: 1rem;
+            margin-top: 0.2rem;
+            color: var(--teal);
+            font-size: 0.58rem;
+            line-height: 1.35;
+            text-align: center;
+        }
+
+        .lineup-groups {
+            display: grid;
+            gap: 1rem;
+            padding: 1rem;
+        }
+
+        .lineup-group {
+            min-width: 0;
+            padding: 0.75rem;
+            border: 1px solid var(--line-soft);
+            border-radius: 0.4rem;
+            background: rgba(18, 13, 12, 0.22);
+        }
+
+        .lineup-group > h3 {
+            margin: 0 0 0.7rem;
+            color: var(--amber-bright);
+            font-size: 0.76rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .lineup-group-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+            gap: 0.8rem;
+        }
+
+        .combat-study {
+            margin-top: 1rem;
+        }
+
+        .combat-study-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(15rem, 1fr));
+            gap: 0.8rem;
+            padding: 1rem;
+        }
+
+        .combat-study-card {
+            display: grid;
+            grid-template-columns: minmax(8rem, 12rem) 1fr;
+            align-items: center;
+            gap: 0.85rem;
+            min-width: 0;
+            padding: 0.75rem;
+            border: 1px solid var(--line-soft);
+            border-radius: 0.4rem;
+            background: var(--ink-soft);
+        }
+
+        .combat-study-card canvas {
+            width: 100%;
+        }
+
+        .combat-study-card strong {
+            display: block;
+            margin-bottom: 0.35rem;
+            font-family: Georgia, "Times New Roman", serif;
+        }
+
+        .combat-study-card p {
+            margin: 0.2rem 0;
+            color: var(--cream-muted);
+            font-size: 0.69rem;
+            line-height: 1.45;
+        }
+
+        .lineup-card {
+            min-width: 0;
+            padding: 0.75rem;
+            border: 1px solid var(--line-soft);
+            border-radius: 0.4rem;
+            background: var(--ink-soft);
+        }
+
+        .lineup-card[data-selected="true"] {
+            border-color: var(--amber);
+            box-shadow: 0 0 0 2px rgba(229, 164, 59, 0.11);
+        }
+
+        .lineup-title {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 0.6rem;
+            margin-bottom: 0.65rem;
+        }
+
+        .lineup-title strong {
+            font-family: Georgia, "Times New Roman", serif;
+            font-size: 0.92rem;
+        }
+
+        .lineup-title code {
+            color: var(--cream-muted);
+            font-size: 0.62rem;
+        }
+
+        .lineup-views {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.45rem;
+        }
+
+        .lineup-view {
+            display: grid;
+            place-items: center;
+            min-width: 0;
+        }
+
+        .lineup-view canvas {
+            width: 100%;
+        }
+
+        .lineup-view span {
+            margin-top: 0.35rem;
+            color: var(--cream-muted);
+            font-size: 0.62rem;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .selection-status {
+            color: var(--teal);
+            font-size: 0.75rem;
+        }
+
+        @media (max-width: 1080px) {
+            .controls {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+
+            .workspace {
+                grid-template-columns: 1fr;
+            }
+
+            .inspection-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .site-header {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .header-actions {
+                justify-content: flex-start;
+            }
+
+            .controls {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .preview-grid,
+            .inspection-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .lineup-group-grid,
+            .combat-study-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .controls {
+                grid-template-columns: 1fr;
+            }
+
+            .preview-grid {
+                gap: 1.4rem;
+            }
+        }
+    </style>
+</head>
+<body data-studio-ready="false">
+    <header class="site-header">
+        <div>
+            <h1>Humanoid NPC Studio</h1>
+            <p>
+                Shared 32×32 paper-doll, equipment, and combat-motion inspection.
+            </p>
+        </div>
+        <div class="header-actions">
+            <span
+                id="studio-status"
+                class="ready-status"
+                data-state="loading"
+                role="status"
+                aria-live="polite"
+            >Loading shared rig…</span>
+            <a class="back-link" href="sprite-tester.html">
+                Back to Sprite Tester
+            </a>
+        </div>
+    </header>
+
+    <main>
+        <section class="panel" aria-labelledby="controls-title">
+            <div class="panel-heading">
+                <h2 id="controls-title">Studio Controls</h2>
+                <p id="selection-status" class="selection-status">
+                    Initializing…
+                </p>
+            </div>
+            <div class="controls">
+                <label class="field">
+                    <span class="field-label">NPC profile</span>
+                    <select id="profile-select"></select>
+                </label>
+
+                <label class="field">
+                    <span class="field-label">Motion</span>
+                    <select id="clip-select"></select>
+                </label>
+
+                <label class="field">
+                    <span class="field-label">Main hand</span>
+                    <select id="main-hand-select"></select>
+                </label>
+
+                <label class="field">
+                    <span class="field-label">Offhand</span>
+                    <select id="offhand-select"></select>
+                </label>
+
+                <label class="field">
+                    <span class="field-label">Facing</span>
+                    <select id="facing-select">
+                        <option value="right">Right</option>
+                        <option value="left">Left</option>
+                    </select>
+                </label>
+
+                <label class="field">
+                    <span class="field-label">Frame</span>
+                    <span class="range-row">
+                        <input
+                            id="frame-range"
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="1"
+                            value="0"
+                        >
+                        <output id="frame-output" for="frame-range">
+                            1/2
+                        </output>
+                    </span>
+                </label>
+
+                <label class="field">
+                    <span class="field-label">Playback speed</span>
+                    <span class="range-row">
+                        <input
+                            id="speed-range"
+                            type="range"
+                            min="0.25"
+                            max="2"
+                            step="0.25"
+                            value="1"
+                        >
+                        <output id="speed-output" for="speed-range">
+                            1.00×
+                        </output>
+                    </span>
+                </label>
+
+                <div class="field">
+                    <span class="field-label">Playback</span>
+                    <span class="button-row">
+                        <button
+                            id="playback-button"
+                            type="button"
+                            aria-pressed="true"
+                        >Pause</button>
+                        <button id="restart-button" type="button">
+                            Restart
+                        </button>
+                    </span>
+                </div>
+
+                <div class="field">
+                    <span class="field-label">Inspection</span>
+                    <span class="check-row">
+                        <label>
+                            <input
+                                id="equipment-toggle"
+                                type="checkbox"
+                                checked
+                            >
+                            Equipment
+                        </label>
+                        <label>
+                            <input
+                                id="anchor-toggle"
+                                type="checkbox"
+                            >
+                            Anchors
+                        </label>
+                    </span>
+                </div>
+            </div>
+        </section>
+
+        <div class="workspace">
+            <section
+                class="panel preview-panel"
+                aria-labelledby="selected-preview-title"
+            >
+                <div class="panel-heading">
+                    <h2 id="selected-preview-title">Selected Profile</h2>
+                    <p>Front appearance and active combat facing</p>
+                </div>
+                <div class="preview-grid">
+                    <div class="preview-stage">
+                        <canvas
+                            id="front-preview"
+                            width="256"
+                            height="256"
+                            aria-label="Selected NPC front appearance"
+                        ></canvas>
+                        <div class="preview-caption">
+                            <strong>Front</strong>
+                            <span>world paper-doll</span>
+                        </div>
+                    </div>
+                    <div class="preview-stage">
+                        <canvas
+                            id="side-preview"
+                            width="256"
+                            height="256"
+                            aria-label="Selected NPC side combat animation"
+                        ></canvas>
+                        <div class="preview-caption">
+                            <strong id="side-preview-label">Side · right</strong>
+                            <span id="pose-label">idle_a</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <aside class="panel" aria-labelledby="inspection-title">
+                <div class="panel-heading">
+                    <h2 id="inspection-title">Profile Inspection</h2>
+                    <p>Visual data only</p>
+                </div>
+                <div class="inspection-grid">
+                    <section class="inspection-card">
+                        <h3>Equipment layers</h3>
+                        <dl
+                            id="equipment-inspection"
+                            class="equipment-list"
+                        ></dl>
+                    </section>
+                    <section class="inspection-card">
+                        <h3>Animation &amp; overrides</h3>
+                        <pre
+                            id="override-inspection"
+                            class="inspection-json"
+                        ></pre>
+                    </section>
+                </div>
+            </aside>
+        </div>
+
+        <section class="panel motion-panel" aria-labelledby="motion-title">
+            <div class="panel-heading">
+                <h2 id="motion-title">Motion Strip</h2>
+                <p>Click any authored frame to pause and inspect it</p>
+            </div>
+            <div id="motion-strip" class="motion-strip"></div>
+        </section>
+
+        <section
+            class="panel combat-study"
+            aria-labelledby="combat-study-title"
+        >
+            <div class="panel-heading">
+                <h2 id="combat-study-title">Independent Controller Study</h2>
+                <p id="combat-study-status">
+                    Two advanced actors use isolated runtime state
+                </p>
+            </div>
+            <div class="combat-study-grid">
+                <article class="combat-study-card">
+                    <canvas
+                        id="study-guard-canvas"
+                        width="192"
+                        height="192"
+                        aria-label="Shield guard controller study"
+                    ></canvas>
+                    <div>
+                        <strong>Shield Guard</strong>
+                        <p id="study-guard-state" class="technical">
+                            initializing
+                        </p>
+                        <p>Alternates block and shield-bash timelines.</p>
+                    </div>
+                </article>
+                <article class="combat-study-card">
+                    <canvas
+                        id="study-brute-canvas"
+                        width="192"
+                        height="192"
+                        aria-label="Heavy brute controller study"
+                    ></canvas>
+                    <div>
+                        <strong>Tankard Brute</strong>
+                        <p id="study-brute-state" class="technical">
+                            initializing
+                        </p>
+                        <p>Loops the authored two-handed heavy timeline.</p>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <section class="panel lineup-panel" aria-labelledby="lineup-title">
+            <div class="panel-heading">
+                <h2 id="lineup-title">Standard &amp; Advanced Lineup</h2>
+                <p>
+                    Front, right, and left views share one visual profile
+                    and native 32&times;32 rig
+                </p>
+            </div>
+            <div id="lineup" class="lineup-groups"></div>
+        </section>
+    </main>
+
+    <script src="js/character-creator.js?v=8"></script>
+    <script src="js/items.js?v=4"></script>
+    <script src="js/item-assets.js?v=2"></script>
+    <script src="js/npc-assets.js?v=2"></script>
+    <script src="js/sprite-overhaul.js?v=17"></script>
+    <script src="js/sprite-overhaul-equipment.js?v=41"></script>
+    <script src="js/sprite-overhaul-animation.js?v=36"></script>
+    <script src="js/humanoid-actor-visuals.js?v=8"></script>
+    <script src="js/combat-animation.js?v=8"></script>
+    <script src="js/sprite-overhaul-world.js?v=3"></script>
+    <script>
+        (() => {
+            'use strict';
+
+            const PROFILE_EQUIPMENT_VALUE = '__profile__';
+            const NONE_EQUIPMENT_VALUE = '__none__';
+            const CLIP_IDS = Object.freeze(
+                typeof SidePlayerAnimationClips === 'undefined'
+                    ? []
+                    : Object.keys(SidePlayerAnimationClips)
+            );
+            const PROFILE_IDS = Object.freeze(
+                typeof HUMANOID_NPC_STUDIO_PROFILE_IDS === 'undefined'
+                    ? []
+                    : HUMANOID_NPC_STUDIO_PROFILE_IDS.slice()
+            );
+            const STANDARD_PROFILE_IDS = Object.freeze(
+                typeof STANDARD_HUMANOID_NPC_PROFILE_IDS === 'undefined'
+                    ? []
+                    : STANDARD_HUMANOID_NPC_PROFILE_IDS.slice()
+            );
+            const BASELINE_CLIP_IDS = Object.freeze([
+                'idle',
+                'walk',
+                'slash',
+                'bash',
+                'shoot',
+                'cast',
+                'hit',
+                'defeat'
+            ]);
+            const ADVANCED_CLIP_IDS = Object.freeze([
+                'thrust',
+                'heavy',
+                'dagger',
+                'scythe',
+                'shield_block',
+                'shield_bash',
+                'dual_wield'
+            ]);
+            const EQUIPMENT_SLOTS = Object.freeze([
+                'helmet',
+                'armor',
+                'gloves',
+                'boots',
+                'weapon',
+                'offhand'
+            ]);
+            const state = {
+                profileId: '',
+                clipId: 'idle',
+                frameIndex: 0,
+                facing: 'right',
+                mainHandSelection: PROFILE_EQUIPMENT_VALUE,
+                offhandSelection: PROFILE_EQUIPMENT_VALUE,
+                speed: 1,
+                playing: true,
+                showEquipment: true,
+                showAnchors: false,
+                accumulator: 0,
+                lastTimestamp: 0
+            };
+            const qaErrors = [];
+            const lineupCards = new Map();
+            let renderedFrameCount = 0;
+            let ready = false;
+
+            const elements = {
+                status: document.getElementById('studio-status'),
+                selectionStatus:
+                    document.getElementById('selection-status'),
+                profileSelect:
+                    document.getElementById('profile-select'),
+                clipSelect: document.getElementById('clip-select'),
+                mainHandSelect:
+                    document.getElementById('main-hand-select'),
+                offhandSelect:
+                    document.getElementById('offhand-select'),
+                facingSelect:
+                    document.getElementById('facing-select'),
+                frameRange:
+                    document.getElementById('frame-range'),
+                frameOutput:
+                    document.getElementById('frame-output'),
+                speedRange:
+                    document.getElementById('speed-range'),
+                speedOutput:
+                    document.getElementById('speed-output'),
+                playbackButton:
+                    document.getElementById('playback-button'),
+                restartButton:
+                    document.getElementById('restart-button'),
+                equipmentToggle:
+                    document.getElementById('equipment-toggle'),
+                anchorToggle:
+                    document.getElementById('anchor-toggle'),
+                frontPreview:
+                    document.getElementById('front-preview'),
+                sidePreview:
+                    document.getElementById('side-preview'),
+                sidePreviewLabel:
+                    document.getElementById('side-preview-label'),
+                poseLabel: document.getElementById('pose-label'),
+                equipmentInspection:
+                    document.getElementById('equipment-inspection'),
+                overrideInspection:
+                    document.getElementById('override-inspection'),
+                motionStrip:
+                    document.getElementById('motion-strip'),
+                lineup: document.getElementById('lineup'),
+                combatStudyStatus:
+                    document.getElementById('combat-study-status'),
+                studyGuardCanvas:
+                    document.getElementById('study-guard-canvas'),
+                studyGuardState:
+                    document.getElementById('study-guard-state'),
+                studyBruteCanvas:
+                    document.getElementById('study-brute-canvas'),
+                studyBruteState:
+                    document.getElementById('study-brute-state')
+            };
+            const controllerStudyActors = [
+                {
+                    id: 'guard',
+                    profileId: 'shield_guard_captain',
+                    actor: {
+                        uid: 'studio_guard_controller',
+                        visualProfileId: 'shield_guard_captain',
+                        kind: 'monster',
+                        x: 1,
+                        y: 1,
+                        alive: true
+                    },
+                    clips: ['shield_block', 'shield_bash'],
+                    facing: 'right',
+                    targetX: 5,
+                    canvas: elements.studyGuardCanvas,
+                    status: elements.studyGuardState,
+                    clipCursor: 0,
+                    nextStart: 0,
+                    cycles: 0,
+                    events: 0,
+                    renderState: null
+                },
+                {
+                    id: 'brute',
+                    profileId: 'tankard_brute',
+                    actor: {
+                        uid: 'studio_brute_controller',
+                        visualProfileId: 'tankard_brute',
+                        kind: 'monster',
+                        x: 5,
+                        y: 1,
+                        alive: true
+                    },
+                    clips: ['heavy'],
+                    facing: 'left',
+                    targetX: 1,
+                    canvas: elements.studyBruteCanvas,
+                    status: elements.studyBruteState,
+                    clipCursor: 0,
+                    nextStart: 0,
+                    cycles: 0,
+                    events: 0,
+                    renderState: null
+                }
+            ];
+
+            function assertDependencies() {
+                const missing = [];
+                if (typeof SpriteMatrices === 'undefined') {
+                    missing.push('SpriteMatrices');
+                }
+                if (typeof drawHumanoidActorFront !== 'function') {
+                    missing.push('drawHumanoidActorFront');
+                }
+                if (typeof drawWorldActorSprite !== 'function') {
+                    missing.push('drawWorldActorSprite');
+                }
+                if (typeof drawHumanoidAnimationFrame !== 'function') {
+                    missing.push('drawHumanoidAnimationFrame');
+                }
+                if (
+                    typeof drawHumanoidActorAnimationFrame
+                    !== 'function'
+                ) {
+                    missing.push('drawHumanoidActorAnimationFrame');
+                }
+                if (
+                    typeof resolveHumanoidProfileAnchorOffsets
+                    !== 'function'
+                ) {
+                    missing.push('resolveHumanoidProfileAnchorOffsets');
+                }
+                if (typeof SidePlayerAnimationClips === 'undefined') {
+                    missing.push('SidePlayerAnimationClips');
+                }
+                if (
+                    typeof HUMANOID_NPC_STUDIO_PROFILE_IDS
+                    === 'undefined'
+                ) {
+                    missing.push('HUMANOID_NPC_STUDIO_PROFILE_IDS');
+                }
+                if (
+                    typeof getHumanoidActorVisualProfile
+                    !== 'function'
+                ) {
+                    missing.push('getHumanoidActorVisualProfile');
+                }
+                if (typeof EquipmentOverhaulSpecs === 'undefined') {
+                    missing.push('EquipmentOverhaulSpecs');
+                } else if (!EquipmentOverhaulSpecs.offhand) {
+                    missing.push('EquipmentOverhaulSpecs.offhand');
+                }
+                if (typeof getCombatAnimationTimeline !== 'function') {
+                    missing.push('getCombatAnimationTimeline');
+                }
+                if (
+                    typeof CombatSpriteAnimation === 'undefined'
+                    || typeof CombatSpriteAnimation.startAction
+                    !== 'function'
+                ) {
+                    missing.push('CombatSpriteAnimation');
+                }
+                if (missing.length) {
+                    throw new Error(
+                        `Missing shared studio dependencies: ${
+                            missing.join(', ')
+                        }`
+                    );
+                }
+
+                [
+                    ...BASELINE_CLIP_IDS,
+                    ...ADVANCED_CLIP_IDS
+                ].forEach(clipId => {
+                    if (!SidePlayerAnimationClips[clipId]) {
+                        throw new Error(
+                            `Missing humanoid animation clip: ${clipId}`
+                        );
+                    }
+                });
+            }
+
+            function getProfile(profileId = state.profileId) {
+                return getHumanoidActorVisualProfile(profileId);
+            }
+
+            function getClip(clipId = state.clipId) {
+                return SidePlayerAnimationClips[clipId];
+            }
+
+            function getFramePhaseLabels(
+                clip,
+                frameIndex
+            ) {
+                if (!clip || !clip.phases) return [];
+                return Object.entries(clip.phases)
+                    .filter(([, phaseFrame]) => (
+                        Number(phaseFrame) === Number(frameIndex)
+                    ))
+                    .map(([phaseId]) => phaseId);
+            }
+
+            function getClipEventMetadata(
+                clipId = state.clipId,
+                frameIndex = state.frameIndex
+            ) {
+                const clip = getClip(clipId);
+                const timeline = getCombatAnimationTimeline(clipId);
+                return {
+                    eventType: timeline.eventType,
+                    actionFrame: timeline.actionFrame,
+                    powerful: timeline.powerful,
+                    phases: { ...timeline.phases },
+                    currentFramePhases: getFramePhaseLabels(
+                        clip,
+                        frameIndex
+                    ),
+                    isEventFrame:
+                        timeline.actionFrame === frameIndex
+                };
+            }
+
+            function getMainHandSpec(spriteId) {
+                return (
+                    spriteId
+                    && EquipmentOverhaulSpecs.weapon
+                    && EquipmentOverhaulSpecs.weapon[spriteId]
+                ) || null;
+            }
+
+            function getOffhandSpec(spriteId) {
+                return (
+                    spriteId
+                    && EquipmentOverhaulSpecs.offhand
+                    && EquipmentOverhaulSpecs.offhand[spriteId]
+                ) || null;
+            }
+
+            function getSelectedEquipmentDescriptor(
+                profile,
+                slot,
+                selection,
+                registry
+            ) {
+                if (selection === PROFILE_EQUIPMENT_VALUE) {
+                    return profile.equipment[slot] || null;
+                }
+                if (selection === NONE_EQUIPMENT_VALUE) return null;
+                return registry && registry[selection]
+                    ? { spriteId: selection }
+                    : (profile.equipment[slot] || null);
+            }
+
+            function resolveDisplayEquipment(
+                profile,
+                {
+                    useLocalOverrides = true,
+                    respectVisibility = true
+                } = {}
+            ) {
+                const equipment = { ...profile.equipment };
+                if (useLocalOverrides) {
+                    equipment.weapon = getSelectedEquipmentDescriptor(
+                        profile,
+                        'weapon',
+                        state.mainHandSelection,
+                        EquipmentOverhaulSpecs.weapon
+                    );
+                    equipment.offhand = getSelectedEquipmentDescriptor(
+                        profile,
+                        'offhand',
+                        state.offhandSelection,
+                        EquipmentOverhaulSpecs.offhand
+                    );
+                }
+
+                const mainHandId = equipment.weapon
+                    ? equipment.weapon.spriteId
+                    : null;
+                const mainHandSpec = getMainHandSpec(mainHandId);
+                const handedness = mainHandSpec
+                    ? (
+                        mainHandSpec.handedness
+                        || (mainHandSpec.twoHanded ? 'two' : 'one')
+                    )
+                    : 'unarmed';
+                const requestedOffhand = equipment.offhand;
+                const offhandSuppressed = Boolean(
+                    requestedOffhand && handedness === 'two'
+                );
+                if (offhandSuppressed) equipment.offhand = null;
+
+                const metadata = {
+                    mainHandId,
+                    handedness,
+                    animationFamily: mainHandSpec
+                        ? mainHandSpec.animationFamily || null
+                        : null,
+                    requestedOffhandId: requestedOffhand
+                        ? requestedOffhand.spriteId
+                        : null,
+                    offhandId: equipment.offhand
+                        ? equipment.offhand.spriteId
+                        : null,
+                    offhandType: equipment.offhand
+                        ? (
+                            getOffhandSpec(equipment.offhand.spriteId)
+                            || {}
+                        ).offhandType || null
+                        : null,
+                    offhandSuppressed
+                };
+
+                if (respectVisibility && !state.showEquipment) {
+                    EQUIPMENT_SLOTS.forEach(slot => {
+                        equipment[slot] = null;
+                    });
+                }
+
+                return { equipment, metadata };
+            }
+
+            function makeDisplayProfile(profile, options = {}) {
+                const resolved = resolveDisplayEquipment(profile, options);
+                return {
+                    ...profile,
+                    equipment: resolved.equipment
+                };
+            }
+
+            function getSideDrawOptions(
+                profile,
+                facing,
+                clipId = state.clipId,
+                showAnchors = state.showAnchors,
+                options = {}
+            ) {
+                const displayProfile = makeDisplayProfile(
+                    profile,
+                    options
+                );
+                const equipment = displayProfile.equipment;
+                return {
+                    facing,
+                    appearance: displayProfile.appearance,
+                    hairStyle: displayProfile.appearance.hairStyle,
+                    helmetItem: equipment.helmet,
+                    armorItem: equipment.armor,
+                    gloveItem: equipment.gloves,
+                    bootItem: equipment.boots,
+                    weaponItem: equipment.weapon,
+                    offhandItem: equipment.offhand,
+                    showAnchors,
+                    anchorOffsets:
+                        resolveHumanoidProfileAnchorOffsets(
+                            profile,
+                            clipId
+                        ),
+                    layerOverrides: profile.overrides.layers
+                };
+            }
+
+            function prepareCanvas(canvas) {
+                const context = canvas.getContext('2d', { alpha: true });
+                context.clearRect(0, 0, canvas.width, canvas.height);
+                context.imageSmoothingEnabled = false;
+                return context;
+            }
+
+            function drawFront(
+                canvas,
+                profile,
+                showAnchors = false,
+                options = {}
+            ) {
+                const context = prepareCanvas(canvas);
+                drawWorldActorSprite(
+                    context,
+                    makeDisplayProfile(profile, options),
+                    0,
+                    0,
+                    canvas.width,
+                    {
+                        clipId: state.clipId,
+                        showAnchors
+                    }
+                );
+            }
+
+            function drawSide(
+                canvas,
+                profile,
+                clipId,
+                frameIndex,
+                facing,
+                showAnchors = false,
+                options = {}
+            ) {
+                const context = prepareCanvas(canvas);
+                drawHumanoidActorAnimationFrame(
+                    context,
+                    profile,
+                    clipId,
+                    frameIndex,
+                    canvas.width,
+                    getSideDrawOptions(
+                        profile,
+                        facing,
+                        clipId,
+                        showAnchors,
+                        options
+                    )
+                );
+            }
+
+            function setPlaying(playing) {
+                state.playing = Boolean(playing);
+                state.accumulator = 0;
+                elements.playbackButton.textContent = state.playing
+                    ? 'Pause'
+                    : 'Play';
+                elements.playbackButton.setAttribute(
+                    'aria-pressed',
+                    String(state.playing)
+                );
+            }
+
+            function clampFrame(frameIndex) {
+                const clip = getClip();
+                const parsed = Number(frameIndex);
+                if (!Number.isFinite(parsed)) return 0;
+                return Math.max(
+                    0,
+                    Math.min(
+                        clip.frames.length - 1,
+                        Math.trunc(parsed)
+                    )
+                );
+            }
+
+            function syncControlValues() {
+                const clip = getClip();
+                state.frameIndex = clampFrame(state.frameIndex);
+                elements.profileSelect.value = state.profileId;
+                elements.clipSelect.value = state.clipId;
+                elements.mainHandSelect.value =
+                    state.mainHandSelection;
+                elements.offhandSelect.value =
+                    state.offhandSelection;
+                elements.facingSelect.value = state.facing;
+                elements.frameRange.max = String(
+                    clip.frames.length - 1
+                );
+                elements.frameRange.value = String(state.frameIndex);
+                elements.frameOutput.value = (
+                    `${state.frameIndex + 1}/${clip.frames.length}`
+                );
+                elements.frameOutput.textContent =
+                    elements.frameOutput.value;
+                elements.speedRange.value = String(state.speed);
+                elements.speedOutput.value =
+                    `${state.speed.toFixed(2)}×`;
+                elements.speedOutput.textContent =
+                    elements.speedOutput.value;
+                elements.equipmentToggle.checked =
+                    state.showEquipment;
+                elements.anchorToggle.checked = state.showAnchors;
+                setPlaying(state.playing);
+            }
+
+            function renderSelectedPreviews() {
+                const profile = getProfile();
+                const clip = getClip();
+                if (!profile || !clip) return;
+                const equipment = resolveDisplayEquipment(
+                    profile,
+                    { respectVisibility: false }
+                );
+                const eventMetadata = getClipEventMetadata();
+
+                drawFront(
+                    elements.frontPreview,
+                    profile,
+                    state.showAnchors
+                );
+                drawSide(
+                    elements.sidePreview,
+                    profile,
+                    state.clipId,
+                    state.frameIndex,
+                    state.facing,
+                    state.showAnchors
+                );
+                elements.sidePreviewLabel.textContent =
+                    `Side · ${state.facing}`;
+                elements.poseLabel.textContent =
+                    clip.frames[state.frameIndex];
+                const phaseText = eventMetadata.currentFramePhases.length
+                    ? ` | ${eventMetadata.currentFramePhases.join(' + ')}`
+                    : (
+                        eventMetadata.isEventFrame
+                            ? ` | ${eventMetadata.eventType || 'event'}`
+                            : ''
+                    );
+                elements.selectionStatus.textContent = [
+                    profile.label,
+                    profile.profileGroup,
+                    profile.stanceProfileId,
+                    clip.label,
+                    `frame ${state.frameIndex + 1}/${clip.frames.length}`,
+                    state.facing,
+                    `${equipment.metadata.handedness}-hand`
+                ].join(' | ') + phaseText;
+            }
+
+            function renderInspection() {
+                const profile = getProfile();
+                const clip = getClip();
+                const resolvedEquipment = resolveDisplayEquipment(
+                    profile,
+                    { respectVisibility: false }
+                );
+                const eventMetadata = getClipEventMetadata();
+                const offsets = resolveHumanoidProfileAnchorOffsets(
+                    profile,
+                    state.clipId
+                );
+                elements.equipmentInspection.replaceChildren();
+
+                EQUIPMENT_SLOTS.forEach(slot => {
+                    const term = document.createElement('dt');
+                    const value = document.createElement('dd');
+                    const item = resolvedEquipment.equipment[slot];
+                    term.textContent = slot === 'weapon'
+                        ? 'main hand'
+                        : slot;
+                    value.textContent = item
+                        ? item.spriteId
+                        : (
+                            slot === 'offhand'
+                            && resolvedEquipment.metadata.offhandSuppressed
+                                ? 'none (two-handed main hand)'
+                                : 'none'
+                        );
+                    value.className = 'technical';
+                    elements.equipmentInspection.append(term, value);
+                });
+
+                const detail = {
+                    profileId: state.profileId,
+                    profileGroup: profile.profileGroup,
+                    stanceProfile: profile.stanceProfileId,
+                    body: profile.body,
+                    hair: profile.hair,
+                    palette: profile.palette,
+                    animationSet: profile.animationSet,
+                    authoredAttack: profile.attackClip,
+                    authoredDefense: profile.defensiveClip,
+                    equipmentContract: resolvedEquipment.metadata,
+                    activeClip: {
+                        id: state.clipId,
+                        fps: clip.fps,
+                        loop: clip.loop,
+                        actionFrame: clip.actionFrame,
+                        eventType: eventMetadata.eventType,
+                        phases: eventMetadata.phases,
+                        currentFramePhases:
+                            eventMetadata.currentFramePhases,
+                        powerful: eventMetadata.powerful,
+                        terminal: Boolean(clip.terminal),
+                        holdLastFrame: Boolean(clip.holdLastFrame)
+                    },
+                    activeAnchorOffsets: offsets,
+                    layerOverrides: profile.overrides.layers
+                };
+                elements.overrideInspection.textContent =
+                    JSON.stringify(detail, null, 2);
+            }
+
+            function buildMotionStrip() {
+                const profile = getProfile();
+                const clip = getClip();
+                const fragment = document.createDocumentFragment();
+
+                clip.frames.forEach((poseId, frameIndex) => {
+                    const button = document.createElement('button');
+                    const canvas = document.createElement('canvas');
+                    const label = document.createElement('span');
+                    const phase = document.createElement('small');
+                    const frameMetadata = getClipEventMetadata(
+                        state.clipId,
+                        frameIndex
+                    );
+
+                    button.type = 'button';
+                    button.className = 'motion-frame';
+                    button.dataset.frameIndex = String(frameIndex);
+                    button.dataset.eventFrame = String(
+                        frameMetadata.isEventFrame
+                    );
+                    button.dataset.eventType =
+                        frameMetadata.eventType || '';
+                    button.dataset.phase =
+                        frameMetadata.currentFramePhases.join(',');
+                    button.setAttribute(
+                        'aria-current',
+                        String(state.frameIndex === frameIndex)
+                    );
+                    button.setAttribute(
+                        'aria-label',
+                        `${profile.label}, ${clip.label}, `
+                        + `frame ${frameIndex + 1}, ${poseId}, `
+                        + (
+                            frameMetadata.currentFramePhases.join(', ')
+                            || 'unmarked phase'
+                        )
+                    );
+                    canvas.width = 128;
+                    canvas.height = 128;
+                    label.textContent = `${frameIndex + 1}. ${poseId}`;
+                    phase.textContent = [
+                        ...frameMetadata.currentFramePhases,
+                        frameMetadata.isEventFrame
+                            ? frameMetadata.eventType
+                            : null
+                    ].filter(Boolean).join(' · ');
+                    drawSide(
+                        canvas,
+                        profile,
+                        state.clipId,
+                        frameIndex,
+                        state.facing,
+                        state.showAnchors
+                    );
+                    button.append(canvas, label, phase);
+                    button.addEventListener('click', () => {
+                        state.frameIndex = frameIndex;
+                        setPlaying(false);
+                        renderAll();
+                    });
+                    fragment.appendChild(button);
+                });
+
+                elements.motionStrip.replaceChildren(fragment);
+            }
+
+            function makeLineupCard(profileId) {
+                const profile = getProfile(profileId);
+                const card = document.createElement('article');
+                const title = document.createElement('div');
+                const name = document.createElement('strong');
+                const id = document.createElement('code');
+                const views = document.createElement('div');
+                const canvases = {};
+
+                card.className = 'lineup-card';
+                card.dataset.profileId = profileId;
+                card.dataset.profileGroup = profile.profileGroup;
+                card.dataset.stance = profile.stanceProfileId;
+                title.className = 'lineup-title';
+                name.textContent = profile.label;
+                id.textContent =
+                    `${profileId} · ${profile.stanceProfileId}`;
+                title.append(name, id);
+                views.className = 'lineup-views';
+
+                ['front', 'right', 'left'].forEach(viewId => {
+                    const view = document.createElement('div');
+                    const canvas = document.createElement('canvas');
+                    const label = document.createElement('span');
+                    view.className = 'lineup-view';
+                    canvas.width = 128;
+                    canvas.height = 128;
+                    canvas.setAttribute(
+                        'aria-label',
+                        `${profile.label}, ${viewId} view`
+                    );
+                    label.textContent = viewId;
+                    view.append(canvas, label);
+                    views.appendChild(view);
+                    canvases[viewId] = canvas;
+                });
+
+                card.append(title, views);
+                card.addEventListener('click', event => {
+                    if (event.target.closest('button, a, input, select')) {
+                        return;
+                    }
+                    state.profileId = profileId;
+                    state.frameIndex = 0;
+                    state.mainHandSelection =
+                        PROFILE_EQUIPMENT_VALUE;
+                    state.offhandSelection =
+                        PROFILE_EQUIPMENT_VALUE;
+                    state.accumulator = 0;
+                    renderAll();
+                });
+                return { card, canvases };
+            }
+
+            function buildLineup() {
+                const fragment = document.createDocumentFragment();
+                const groups = [
+                    {
+                        id: 'standard',
+                        label: 'Standard Humanoids',
+                        accepts: (profile, profileId) => (
+                            STANDARD_PROFILE_IDS.includes(profileId)
+                            || profile.profileGroup === 'standard'
+                        )
+                    },
+                    {
+                        id: 'advanced-special',
+                        label: 'Advanced & Special Humanoids',
+                        accepts: (profile, profileId) => (
+                            !STANDARD_PROFILE_IDS.includes(profileId)
+                            && profile.profileGroup !== 'standard'
+                        )
+                    }
+                ];
+                lineupCards.clear();
+
+                groups.forEach(group => {
+                    const section = document.createElement('section');
+                    const heading = document.createElement('h3');
+                    const grid = document.createElement('div');
+                    section.className = 'lineup-group';
+                    section.dataset.lineupGroup = group.id;
+                    heading.textContent = group.label;
+                    grid.className = 'lineup-group-grid';
+
+                    PROFILE_IDS.forEach(profileId => {
+                        const profile = getProfile(profileId);
+                        if (
+                            !profile
+                            || !group.accepts(profile, profileId)
+                        ) {
+                            return;
+                        }
+                        const entry = makeLineupCard(profileId);
+                        lineupCards.set(profileId, entry);
+                        grid.appendChild(entry.card);
+                    });
+                    section.append(heading, grid);
+                    fragment.appendChild(section);
+                });
+                elements.lineup.replaceChildren(fragment);
+            }
+
+            function renderLineup() {
+                const clip = getClip();
+                PROFILE_IDS.forEach(profileId => {
+                    const profile = getProfile(profileId);
+                    const entry = lineupCards.get(profileId);
+                    if (!profile || !entry) return;
+
+                    entry.card.dataset.selected = String(
+                        profileId === state.profileId
+                    );
+                    drawFront(
+                        entry.canvases.front,
+                        profile,
+                        false,
+                        { useLocalOverrides: false }
+                    );
+                    drawSide(
+                        entry.canvases.right,
+                        profile,
+                        state.clipId,
+                        state.frameIndex % clip.frames.length,
+                        'right',
+                        false,
+                        { useLocalOverrides: false }
+                    );
+                    drawSide(
+                        entry.canvases.left,
+                        profile,
+                        state.clipId,
+                        state.frameIndex % clip.frames.length,
+                        'left',
+                        false,
+                        { useLocalOverrides: false }
+                    );
+                });
+            }
+
+            function renderAll() {
+                syncControlValues();
+                renderSelectedPreviews();
+                renderInspection();
+                buildMotionStrip();
+                renderLineup();
+                renderedFrameCount += 1;
+                publishQaSnapshot();
+            }
+
+            function populateControls() {
+                PROFILE_IDS.forEach(profileId => {
+                    const profile = getProfile(profileId);
+                    if (!profile) {
+                        throw new Error(
+                            `Unknown humanoid studio profile: ${profileId}`
+                        );
+                    }
+                    const option = document.createElement('option');
+                    option.value = profileId;
+                    option.textContent = (
+                        `${profile.label} · ${profile.profileGroup} · `
+                        + `${profile.stanceProfileId}`
+                    );
+                    elements.profileSelect.appendChild(option);
+                });
+
+                CLIP_IDS.forEach(clipId => {
+                    const clip = getClip(clipId);
+                    const option = document.createElement('option');
+                    option.value = clipId;
+                    option.textContent = `${clip.label} · ${clipId}`;
+                    elements.clipSelect.appendChild(option);
+                });
+
+                [
+                    [elements.mainHandSelect, 'Profile main hand',
+                        EquipmentOverhaulSpecs.weapon, 'weapon'],
+                    [elements.offhandSelect, 'Profile offhand',
+                        EquipmentOverhaulSpecs.offhand, 'offhand']
+                ].forEach(([select, profileLabel, registry, slot]) => {
+                    const profileOption =
+                        document.createElement('option');
+                    profileOption.value = PROFILE_EQUIPMENT_VALUE;
+                    profileOption.textContent = profileLabel;
+                    const noneOption = document.createElement('option');
+                    noneOption.value = NONE_EQUIPMENT_VALUE;
+                    noneOption.textContent = 'None';
+                    select.append(profileOption, noneOption);
+
+                    Object.entries(registry || {})
+                        .sort(([left], [right]) => (
+                            left.localeCompare(right)
+                        ))
+                        .forEach(([spriteId, spec]) => {
+                            const option =
+                                document.createElement('option');
+                            option.value = spriteId;
+                            if (slot === 'weapon') {
+                                const handedness = spec.handedness
+                                    || (spec.twoHanded ? 'two' : 'one');
+                                option.textContent = (
+                                    `${spriteId} · `
+                                    + `${spec.animationFamily || spec.style}`
+                                    + ` · ${handedness}-hand`
+                                );
+                            } else {
+                                option.textContent = (
+                                    `${spriteId} · `
+                                    + `${spec.offhandType || spec.style}`
+                                );
+                            }
+                            select.appendChild(option);
+                        });
+                });
+            }
+
+            function bindControls() {
+                elements.profileSelect.addEventListener(
+                    'change',
+                    event => {
+                        state.profileId = event.target.value;
+                        state.frameIndex = 0;
+                        state.mainHandSelection =
+                            PROFILE_EQUIPMENT_VALUE;
+                        state.offhandSelection =
+                            PROFILE_EQUIPMENT_VALUE;
+                        state.accumulator = 0;
+                        renderAll();
+                    }
+                );
+                elements.clipSelect.addEventListener(
+                    'change',
+                    event => {
+                        state.clipId = event.target.value;
+                        state.frameIndex = 0;
+                        state.accumulator = 0;
+                        renderAll();
+                    }
+                );
+                elements.mainHandSelect.addEventListener(
+                    'change',
+                    event => {
+                        state.mainHandSelection = event.target.value;
+                        state.frameIndex = 0;
+                        state.accumulator = 0;
+                        renderAll();
+                    }
+                );
+                elements.offhandSelect.addEventListener(
+                    'change',
+                    event => {
+                        state.offhandSelection = event.target.value;
+                        state.frameIndex = 0;
+                        state.accumulator = 0;
+                        renderAll();
+                    }
+                );
+                elements.facingSelect.addEventListener(
+                    'change',
+                    event => {
+                        state.facing = event.target.value === 'left'
+                            ? 'left'
+                            : 'right';
+                        renderAll();
+                    }
+                );
+                elements.frameRange.addEventListener(
+                    'input',
+                    event => {
+                        state.frameIndex = clampFrame(event.target.value);
+                        setPlaying(false);
+                        renderAll();
+                    }
+                );
+                elements.speedRange.addEventListener(
+                    'input',
+                    event => {
+                        state.speed = Number(event.target.value) || 1;
+                        state.accumulator = 0;
+                        renderAll();
+                    }
+                );
+                elements.playbackButton.addEventListener('click', () => {
+                    setPlaying(!state.playing);
+                    renderAll();
+                });
+                elements.restartButton.addEventListener('click', () => {
+                    state.frameIndex = 0;
+                    state.accumulator = 0;
+                    setPlaying(true);
+                    renderAll();
+                });
+                elements.equipmentToggle.addEventListener(
+                    'change',
+                    event => {
+                        state.showEquipment = event.target.checked;
+                        renderAll();
+                    }
+                );
+                elements.anchorToggle.addEventListener(
+                    'change',
+                    event => {
+                        state.showAnchors = event.target.checked;
+                        renderAll();
+                    }
+                );
+            }
+
+            function getControllerStudySnapshot() {
+                return controllerStudyActors.map(entry => ({
+                    id: entry.id,
+                    uid: entry.actor.uid,
+                    profileId: entry.profileId,
+                    clipId: entry.renderState
+                        ? entry.renderState.clipId
+                        : null,
+                    frameIndex: entry.renderState
+                        ? entry.renderState.frameIndex
+                        : null,
+                    facing: entry.renderState
+                        ? entry.renderState.facing
+                        : entry.facing,
+                    actionLocked:
+                        CombatSpriteAnimation.isActionLocked(entry.actor),
+                    cycles: entry.cycles,
+                    events: entry.events
+                }));
+            }
+
+            function startControllerStudyAction(entry, timestamp) {
+                if (
+                    timestamp < entry.nextStart
+                    || CombatSpriteAnimation.isActionLocked(entry.actor)
+                ) {
+                    return;
+                }
+                const clipId = entry.clips[
+                    entry.clipCursor % entry.clips.length
+                ];
+                entry.clipCursor += 1;
+                const action = CombatSpriteAnimation.startAction(
+                    entry.actor,
+                    {
+                        clipId,
+                        facing: entry.facing,
+                        targetX: entry.targetX,
+                        targetY: entry.actor.y,
+                        startTime: timestamp,
+                        onEvent() {
+                            entry.events += 1;
+                        },
+                        onComplete() {
+                            entry.nextStart = performance.now() + 260;
+                        }
+                    }
+                );
+                if (action) entry.cycles += 1;
+            }
+
+            function renderControllerStudy(timestamp) {
+                CombatSpriteAnimation.update(timestamp);
+                controllerStudyActors.forEach(entry => {
+                    startControllerStudyAction(entry, timestamp);
+                    const renderState =
+                        CombatSpriteAnimation.getRenderState(
+                            entry.actor,
+                            { now: timestamp }
+                        );
+                    entry.renderState = renderState;
+                    const profile = getProfile(entry.profileId);
+                    if (!profile || !renderState) return;
+                    drawSide(
+                        entry.canvas,
+                        profile,
+                        renderState.clipId,
+                        renderState.frameIndex,
+                        renderState.facing,
+                        false,
+                        {
+                            useLocalOverrides: false,
+                            respectVisibility: false
+                        }
+                    );
+                    entry.status.textContent = (
+                        `${entry.actor.uid} | ${renderState.clipId} `
+                        + `f${renderState.frameIndex + 1} | `
+                        + `${renderState.facing} | cycles `
+                        + `${entry.cycles} | events ${entry.events}`
+                    );
+                });
+
+                const snapshots = getControllerStudySnapshot();
+                const independentlyLocked = (
+                    snapshots.length === 2
+                    && snapshots[0].uid !== snapshots[1].uid
+                    && snapshots.every(snapshot => snapshot.actionLocked)
+                );
+                elements.combatStudyStatus.textContent = (
+                    independentlyLocked
+                        ? 'Independent action locks active'
+                        : 'Independent controllers cycling'
+                );
+            }
+
+            function tick(timestamp) {
+                if (!state.lastTimestamp) {
+                    state.lastTimestamp = timestamp;
+                }
+                const elapsed = Math.min(
+                    100,
+                    timestamp - state.lastTimestamp
+                );
+                state.lastTimestamp = timestamp;
+
+                if (ready && state.playing) {
+                    const clip = getClip();
+                    const frameDuration =
+                        1000 / (clip.fps * state.speed);
+                    state.accumulator += elapsed;
+                    if (state.accumulator >= frameDuration) {
+                        const steps = Math.floor(
+                            state.accumulator / frameDuration
+                        );
+                        state.accumulator %= frameDuration;
+                        state.frameIndex = (
+                            state.frameIndex + steps
+                        ) % clip.frames.length;
+                        renderAll();
+                    }
+                }
+
+                if (ready) renderControllerStudy(timestamp);
+                window.requestAnimationFrame(tick);
+            }
+
+            function canvasPixelStats(canvas) {
+                const context = canvas.getContext('2d');
+                const data = context.getImageData(
+                    0,
+                    0,
+                    canvas.width,
+                    canvas.height
+                ).data;
+                let opaquePixels = 0;
+                let leftEdgePixels = 0;
+                let rightEdgePixels = 0;
+                let topEdgePixels = 0;
+                let bottomEdgePixels = 0;
+                let visibleLeftEdgePixels = 0;
+                let visibleRightEdgePixels = 0;
+                let visibleTopEdgePixels = 0;
+                let visibleBottomEdgePixels = 0;
+                let hash = 2166136261;
+                let mirroredHash = 2166136261;
+
+                function mixHash(value, accumulator) {
+                    return Math.imul(
+                        accumulator ^ value,
+                        16777619
+                    ) >>> 0;
+                }
+
+                for (let y = 0; y < canvas.height; y += 1) {
+                    for (let x = 0; x < canvas.width; x += 1) {
+                        const index = (y * canvas.width + x) * 4;
+                        const mirroredIndex = (
+                            y * canvas.width
+                            + canvas.width - 1 - x
+                        ) * 4;
+                        const alpha = data[index + 3];
+                        if (alpha) {
+                            opaquePixels += 1;
+                            if (x === 0) leftEdgePixels += 1;
+                            if (x === canvas.width - 1) {
+                                rightEdgePixels += 1;
+                            }
+                            if (y === 0) topEdgePixels += 1;
+                            if (y === canvas.height - 1) {
+                                bottomEdgePixels += 1;
+                            }
+                            if (alpha >= 32) {
+                                if (x === 0) {
+                                    visibleLeftEdgePixels += 1;
+                                }
+                                if (x === canvas.width - 1) {
+                                    visibleRightEdgePixels += 1;
+                                }
+                                if (y === 0) {
+                                    visibleTopEdgePixels += 1;
+                                }
+                                if (y === canvas.height - 1) {
+                                    visibleBottomEdgePixels += 1;
+                                }
+                            }
+                        }
+                        for (let channel = 0; channel < 4; channel += 1) {
+                            hash = mixHash(
+                                data[index + channel],
+                                hash
+                            );
+                            mirroredHash = mixHash(
+                                data[mirroredIndex + channel],
+                                mirroredHash
+                            );
+                        }
+                    }
+                }
+
+                return {
+                    width: canvas.width,
+                    height: canvas.height,
+                    opaquePixels,
+                    hash,
+                    mirroredHash,
+                    edges: {
+                        left: leftEdgePixels,
+                        right: rightEdgePixels,
+                        top: topEdgePixels,
+                        bottom: bottomEdgePixels
+                    },
+                    visibleEdges: {
+                        left: visibleLeftEdgePixels,
+                        right: visibleRightEdgePixels,
+                        top: visibleTopEdgePixels,
+                        bottom: visibleBottomEdgePixels
+                    }
+                };
+            }
+
+            function canvasOpaquePixelCount(canvas) {
+                return canvasPixelStats(canvas).opaquePixels;
+            }
+
+            function compareMirroredCanvases(rightCanvas, leftCanvas) {
+                const rightData = rightCanvas.getContext('2d').getImageData(
+                    0,
+                    0,
+                    rightCanvas.width,
+                    rightCanvas.height
+                ).data;
+                const leftData = leftCanvas.getContext('2d').getImageData(
+                    0,
+                    0,
+                    leftCanvas.width,
+                    leftCanvas.height
+                ).data;
+                let exactMismatchPixels = 0;
+                let silhouetteMismatchPixels = 0;
+                let visibleMismatchPixels = 0;
+                let maximumChannelDelta = 0;
+
+                for (let y = 0; y < rightCanvas.height; y += 1) {
+                    for (let x = 0; x < rightCanvas.width; x += 1) {
+                        const rightIndex = (
+                            y * rightCanvas.width + x
+                        ) * 4;
+                        const leftIndex = (
+                            y * leftCanvas.width
+                            + leftCanvas.width - 1 - x
+                        ) * 4;
+                        let exactMismatch = false;
+                        let visibleMismatch = false;
+                        for (
+                            let channel = 0;
+                            channel < 4;
+                            channel += 1
+                        ) {
+                            const delta = Math.abs(
+                                rightData[rightIndex + channel]
+                                - leftData[leftIndex + channel]
+                            );
+                            maximumChannelDelta = Math.max(
+                                maximumChannelDelta,
+                                delta
+                            );
+                            if (delta) exactMismatch = true;
+                            if (delta > 24) visibleMismatch = true;
+                        }
+                        if (exactMismatch) exactMismatchPixels += 1;
+                        if (visibleMismatch) visibleMismatchPixels += 1;
+                        if (
+                            Boolean(rightData[rightIndex + 3])
+                            !== Boolean(leftData[leftIndex + 3])
+                        ) {
+                            silhouetteMismatchPixels += 1;
+                        }
+                    }
+                }
+
+                return {
+                    exactMismatchPixels,
+                    visibleMismatchPixels,
+                    silhouetteMismatchPixels,
+                    maximumChannelDelta
+                };
+            }
+
+            function publishQaSnapshot() {
+                const motionFrames = Array.from(
+                    elements.motionStrip.querySelectorAll('canvas')
+                ).map(canvasPixelStats);
+                const selectedLineup = lineupCards.get(state.profileId);
+                const profile = getProfile();
+                const resolvedEquipment = resolveDisplayEquipment(
+                    profile,
+                    { respectVisibility: false }
+                );
+                const eventMetadata = getClipEventMetadata();
+                document.body.dataset.qaSnapshot = JSON.stringify({
+                    ready,
+                    errors: qaErrors.slice(),
+                    profileId: state.profileId,
+                    profileGroup: profile.profileGroup,
+                    stanceProfileId: profile.stanceProfileId,
+                    clipId: state.clipId,
+                    facing: state.facing,
+                    frameIndex: state.frameIndex,
+                    mainHand: resolvedEquipment.metadata.mainHandId,
+                    offhand: resolvedEquipment.metadata.offhandId,
+                    handedness: resolvedEquipment.metadata.handedness,
+                    eventMetadata,
+                    pose: elements.poseLabel.textContent,
+                    renderedFrameCount,
+                    front: canvasPixelStats(elements.frontPreview),
+                    side: canvasPixelStats(elements.sidePreview),
+                    motionFrames,
+                    lineupMirror: selectedLineup
+                        ? compareMirroredCanvases(
+                            selectedLineup.canvases.right,
+                            selectedLineup.canvases.left
+                        )
+                        : null
+                });
+            }
+
+            function getQaSummary() {
+                const profile = getProfile();
+                const resolvedEquipment = resolveDisplayEquipment(
+                    profile,
+                    { respectVisibility: false }
+                );
+                return {
+                    ready,
+                    errors: qaErrors.slice(),
+                    profileIds: PROFILE_IDS.slice(),
+                    clipIds: CLIP_IDS.slice(),
+                    expectedCombinationCount:
+                        PROFILE_IDS.length
+                        * CLIP_IDS.length
+                        * 2,
+                    state: { ...state },
+                    selection: {
+                        profileId: state.profileId,
+                        profileGroup: profile.profileGroup,
+                        stanceProfileId: profile.stanceProfileId,
+                        attackClip: profile.attackClip,
+                        defensiveClip: profile.defensiveClip,
+                        mainHand:
+                            resolvedEquipment.metadata.mainHandId,
+                        offhand: resolvedEquipment.metadata.offhandId,
+                        requestedOffhand:
+                            resolvedEquipment.metadata
+                                .requestedOffhandId,
+                        offhandSuppressed:
+                            resolvedEquipment.metadata
+                                .offhandSuppressed,
+                        handedness:
+                            resolvedEquipment.metadata.handedness,
+                        animationFamily:
+                            resolvedEquipment.metadata
+                                .animationFamily,
+                        offhandType:
+                            resolvedEquipment.metadata.offhandType
+                    },
+                    eventMetadata: getClipEventMetadata(),
+                    controllerStudy: getControllerStudySnapshot(),
+                    renderedFrameCount,
+                    selectedCanvasPixels: {
+                        front: canvasOpaquePixelCount(
+                            elements.frontPreview
+                        ),
+                        side: canvasOpaquePixelCount(
+                            elements.sidePreview
+                        )
+                    },
+                    lineupCardCount: lineupCards.size,
+                    motionFrameCount:
+                        elements.motionStrip.children.length
+                };
+            }
+
+            function getProfileAttackEventMetadata(profile) {
+                const timeline = getCombatAnimationTimeline(
+                    profile.attackClip
+                );
+                return {
+                    clipId: profile.attackClip,
+                    eventType: timeline.eventType,
+                    actionFrame: timeline.actionFrame,
+                    powerful: timeline.powerful,
+                    phases: { ...timeline.phases }
+                };
+            }
+
+            function normalizeEquipmentSelection(value, registry) {
+                const spriteId = value && typeof value === 'object'
+                    ? value.spriteId
+                    : value;
+                if (
+                    spriteId === PROFILE_EQUIPMENT_VALUE
+                    || spriteId === 'profile'
+                ) {
+                    return PROFILE_EQUIPMENT_VALUE;
+                }
+                if (
+                    spriteId === null
+                    || spriteId === NONE_EQUIPMENT_VALUE
+                    || spriteId === 'none'
+                    || spriteId === ''
+                ) {
+                    return NONE_EQUIPMENT_VALUE;
+                }
+                return (
+                    typeof spriteId === 'string'
+                    && registry
+                    && registry[spriteId]
+                )
+                    ? spriteId
+                    : undefined;
+            }
+
+            function getRequestedOption(options, keys) {
+                const key = keys.find(candidate => (
+                    Object.prototype.hasOwnProperty.call(
+                        options,
+                        candidate
+                    )
+                ));
+                return key ? options[key] : undefined;
+            }
+
+            window.NpcStudioQA = {
+                get ready() {
+                    return ready;
+                },
+                getSummary: getQaSummary,
+                listProfiles() {
+                    return PROFILE_IDS.map(
+                        profileId => {
+                            const profile = getProfile(profileId);
+                            const resolvedEquipment =
+                                resolveDisplayEquipment(
+                                    profile,
+                                    {
+                                        useLocalOverrides: false,
+                                        respectVisibility: false
+                                    }
+                                );
+                            return {
+                                profileId,
+                                label: profile.label,
+                                gender: profile.body.gender,
+                                profileGroup: profile.profileGroup,
+                                stanceProfileId:
+                                    profile.stanceProfileId,
+                                attackClip: profile.attackClip,
+                                defensiveClip:
+                                    profile.defensiveClip,
+                                mainHand:
+                                    resolvedEquipment.metadata
+                                        .mainHandId,
+                                offhand:
+                                    resolvedEquipment.metadata
+                                        .offhandId,
+                                handedness:
+                                    resolvedEquipment.metadata
+                                        .handedness,
+                                animationFamily:
+                                    resolvedEquipment.metadata
+                                        .animationFamily,
+                                offhandType:
+                                    resolvedEquipment.metadata
+                                        .offhandType,
+                                attackEvent:
+                                    getProfileAttackEventMetadata(
+                                        profile
+                                    ),
+                                equipment: Object.fromEntries(
+                                    EQUIPMENT_SLOTS.map(slot => [
+                                        slot,
+                                        profile.equipment[slot]
+                                            ? profile.equipment[slot]
+                                                .spriteId
+                                            : null
+                                    ])
+                                )
+                            };
+                        }
+                    );
+                },
+                setSelection(options = {}) {
+                    let profileChanged = false;
+                    if (
+                        options.profileId
+                        && PROFILE_IDS.includes(
+                            options.profileId
+                        )
+                    ) {
+                        profileChanged =
+                            state.profileId !== options.profileId;
+                        state.profileId = options.profileId;
+                    } else if (options.stanceProfileId) {
+                        const stanceProfileId =
+                            String(options.stanceProfileId);
+                        const stanceMatch = PROFILE_IDS.find(
+                            profileId => (
+                                getProfile(profileId)
+                                    .stanceProfileId
+                                === stanceProfileId
+                            )
+                        );
+                        if (stanceMatch) {
+                            profileChanged =
+                                state.profileId !== stanceMatch;
+                            state.profileId = stanceMatch;
+                        }
+                    }
+                    if (profileChanged) {
+                        state.mainHandSelection =
+                            PROFILE_EQUIPMENT_VALUE;
+                        state.offhandSelection =
+                            PROFILE_EQUIPMENT_VALUE;
+                    }
+                    if (
+                        options.clipId
+                        && CLIP_IDS.includes(options.clipId)
+                    ) {
+                        state.clipId = options.clipId;
+                    }
+                    if (options.facing) {
+                        state.facing = options.facing === 'left'
+                            ? 'left'
+                            : 'right';
+                    }
+
+                    const requestedMainHand = getRequestedOption(
+                        options,
+                        [
+                            'mainHand',
+                            'mainHandSpriteId',
+                            'weapon'
+                        ]
+                    );
+                    const mainHandSelection =
+                        normalizeEquipmentSelection(
+                            requestedMainHand,
+                            EquipmentOverhaulSpecs.weapon
+                        );
+                    if (mainHandSelection !== undefined) {
+                        state.mainHandSelection =
+                            mainHandSelection;
+                    }
+
+                    const requestedOffhand = getRequestedOption(
+                        options,
+                        ['offhand', 'offhandSpriteId']
+                    );
+                    const offhandSelection =
+                        normalizeEquipmentSelection(
+                            requestedOffhand,
+                            EquipmentOverhaulSpecs.offhand
+                        );
+                    if (offhandSelection !== undefined) {
+                        state.offhandSelection =
+                            offhandSelection;
+                    }
+
+                    if (Object.prototype.hasOwnProperty.call(
+                        options,
+                        'frameIndex'
+                    )) {
+                        state.frameIndex = Number(options.frameIndex) || 0;
+                    } else if (
+                        Object.prototype.hasOwnProperty.call(
+                            options,
+                            'phaseId'
+                        )
+                        || Object.prototype.hasOwnProperty.call(
+                            options,
+                            'phase'
+                        )
+                    ) {
+                        const phaseId = String(
+                            options.phaseId || options.phase
+                        );
+                        const clip = getClip();
+                        if (
+                            clip.phases
+                            && Number.isInteger(clip.phases[phaseId])
+                        ) {
+                            state.frameIndex = clip.phases[phaseId];
+                        }
+                    } else if (options.eventFrame === true) {
+                        const timeline =
+                            getCombatAnimationTimeline(state.clipId);
+                        if (timeline.actionFrame !== null) {
+                            state.frameIndex = timeline.actionFrame;
+                        }
+                    }
+                    if (Object.prototype.hasOwnProperty.call(
+                        options,
+                        'speed'
+                    )) {
+                        state.speed = Math.max(
+                            0.25,
+                            Math.min(2, Number(options.speed) || 1)
+                        );
+                    }
+                    if (Object.prototype.hasOwnProperty.call(
+                        options,
+                        'showEquipment'
+                    )) {
+                        state.showEquipment =
+                            Boolean(options.showEquipment);
+                    }
+                    if (Object.prototype.hasOwnProperty.call(
+                        options,
+                        'showAnchors'
+                    )) {
+                        state.showAnchors =
+                            Boolean(options.showAnchors);
+                    }
+                    if (Object.prototype.hasOwnProperty.call(
+                        options,
+                        'playing'
+                    )) {
+                        setPlaying(Boolean(options.playing));
+                    }
+                    state.frameIndex = clampFrame(state.frameIndex);
+                    state.accumulator = 0;
+                    renderAll();
+                    return getQaSummary();
+                },
+                renderCombination(
+                    profileId,
+                    clipId,
+                    frameIndex,
+                    facing,
+                    equipment = {}
+                ) {
+                    return this.setSelection({
+                        profileId,
+                        clipId,
+                        frameIndex,
+                        facing,
+                        ...equipment,
+                        playing: false
+                    });
+                },
+                renderAll,
+                getControllerStudy: getControllerStudySnapshot,
+                getOpaquePixelCounts() {
+                    return {
+                        front: canvasOpaquePixelCount(
+                            elements.frontPreview
+                        ),
+                        side: canvasOpaquePixelCount(
+                            elements.sidePreview
+                        )
+                    };
+                }
+            };
+
+            function setError(error) {
+                const message = error instanceof Error
+                    ? error.message
+                    : String(error);
+                qaErrors.push(message);
+                ready = false;
+                document.body.dataset.studioReady = 'false';
+                elements.status.dataset.state = 'error';
+                elements.status.textContent = `Studio error · ${message}`;
+                console.error('[Humanoid NPC Studio]', error);
+            }
+
+            window.addEventListener('error', event => {
+                if (event.error) setError(event.error);
+            });
+
+            try {
+                assertDependencies();
+                populateControls();
+                state.profileId = PROFILE_IDS[0];
+                buildLineup();
+                bindControls();
+                renderAll();
+                ready = true;
+                document.body.dataset.studioReady = 'true';
+                elements.status.dataset.state = 'ready';
+                elements.status.textContent = (
+                    `Ready · ${
+                        PROFILE_IDS.length
+                    } NPC profiles · ${CLIP_IDS.length} clips`
+                );
+                publishQaSnapshot();
+                window.requestAnimationFrame(tick);
+            } catch (error) {
+                setError(error);
+            }
+
+            window.addEventListener('beforeunload', () => {
+                if (typeof CombatSpriteAnimation === 'undefined') return;
+                controllerStudyActors.forEach(entry => {
+                    CombatSpriteAnimation.clear(entry.actor);
+                });
+            });
+        })();
+    </script>
+</body>
+</html>

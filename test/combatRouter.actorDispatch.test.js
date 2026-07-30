@@ -139,6 +139,17 @@ function pinRandom(t) {
     t.after(() => { Math.random = originalRandom; });
 }
 
+function pinRandomSequence(t, values) {
+    const originalRandom = Math.random;
+    const sequence = [...values];
+    Math.random = () => (
+        sequence.length > 0
+            ? sequence.shift()
+            : values[values.length - 1]
+    );
+    t.after(() => { Math.random = originalRandom; });
+}
+
 test('dispatchCombatAction uses the active companion weapon despite a spoofed actor uid', t => {
     pinRandom(t);
     const weapon = makeWeapon({ range: 1, staminaCost: 5, multiplier: 1 });
@@ -231,6 +242,68 @@ test('normal weapon attacks accept line of sight to any tile in a large target f
         assert.equal(harness.player.stamina, 20);
         assert.ok(harness.enemies[0].hp < harness.enemies[0].maxHp);
     });
+});
+
+test('outgoing misses identify their authoritative target and deflect reason', async t => {
+    const weapon = makeWeapon({
+        range: 1,
+        staminaCost: 5,
+        multiplier: 1
+    });
+
+    async function dispatchMiss(activeKind, reason, testContext) {
+        const harness = createHarness({ weapon });
+        const enemy = harness.enemies[0];
+        const playerActor = harness.combat.actors.find(
+            actor => actor.uid === 'player_0'
+        );
+
+        if (activeKind === 'player') {
+            harness.player.equipment.weapon = weapon;
+            harness.companion.atbCharge = 0;
+            playerActor.atbCharge = 100;
+            playerActor.x = 3;
+            playerActor.y = 2;
+            harness.combat.player.x = 3;
+            harness.combat.player.y = 2;
+            harness.combat.player.atbCharge = 100;
+            harness.combat.activeActorUid = playerActor.uid;
+        } else {
+            harness.companion.x = 3;
+            harness.companion.y = 2;
+        }
+
+        if (reason === 'evasion') {
+            enemy.speed = 100;
+            pinRandomSequence(testContext, [0, 0.99]);
+        } else {
+            enemy.speed = 1;
+            enemy.defense = 100;
+            pinRandomSequence(testContext, [0.99, 0, 0, 0.99]);
+        }
+
+        harness.socket.dispatch('dispatchCombatAction', {
+            actionCategory: 'weapon',
+            subType: 'standard',
+            targetEnemy: { uid: enemy.uid }
+        });
+
+        const result = harness.socket.lastPayload('combatResult');
+        assert.equal(result.type, 'miss');
+        assert.equal(result.actorUid, activeKind === 'player'
+            ? 'player_0'
+            : harness.companion.uid);
+        assert.equal(result.targetUid, enemy.uid);
+        assert.equal(result.deflectReason, reason);
+    }
+
+    for (const activeKind of ['companion', 'player']) {
+        for (const reason of ['evasion', 'armor']) {
+            await t.test(`${activeKind} ${reason}`, testContext => (
+                dispatchMiss(activeKind, reason, testContext)
+            ));
+        }
+    }
 });
 
 test('a companion killing blow completes the encounter through the shared resolver', t => {

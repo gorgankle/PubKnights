@@ -19,6 +19,32 @@ const {
 
 const VALID_ZONES = Object.freeze(['WILDERNESS', 'CELLARS', 'ABYSS', 'GORILLA_ARENA']);
 const MAX_STANDARD_PLAYER_ACTORS = 1 + MAX_SELECTED_COMPANIONS;
+const WILDERNESS_STANDARD_ENEMY_ROTATIONS = Object.freeze({
+    early: Object.freeze([
+        'goblin_axeling',
+        'melee_bandit',
+        'bandit_archer'
+    ]),
+    mid: Object.freeze([
+        'goblin_axeling',
+        'melee_bandit',
+        'bandit_archer',
+        'hedge_mage',
+        'peanut_slinger',
+        'wild_ravager',
+        'magic_banana'
+    ]),
+    late: Object.freeze([
+        'melee_bandit',
+        'bandit_archer',
+        'hedge_mage',
+        'alpha_poacher',
+        'goblin_axeling',
+        'wild_ravager',
+        'peanut_slinger',
+        'magic_banana'
+    ])
+});
 const PARTY_FORMATION_OFFSETS = Object.freeze([
     { x: 1, y: 0 },
     { x: 0, y: 1 },
@@ -88,11 +114,36 @@ function addEnemyFromSlot(combatState, slot, prefix = "", statMult = 1) {
 }
 
 function getWildernessEnemyId(runLvl, spawnIndex) {
-    if (runLvl <= 2) return spawnIndex % 3 === 1 ? "peanut_slinger" : "goblin_axeling";
-    if (runLvl < 10) return ["goblin_axeling", "peanut_slinger", "wild_ravager", "magic_banana"][spawnIndex % 4];
-    if (spawnIndex % 5 === 2) return "peanut_slinger";
-    if (spawnIndex % 7 === 3) return "magic_banana";
-    return "wild_ravager";
+    const roster = runLvl <= 2
+        ? WILDERNESS_STANDARD_ENEMY_ROTATIONS.early
+        : (
+            runLvl < 10
+                ? WILDERNESS_STANDARD_ENEMY_ROTATIONS.mid
+                : WILDERNESS_STANDARD_ENEMY_ROTATIONS.late
+        );
+    const index = Math.max(0, Number(spawnIndex) || 0);
+    return roster[index % roster.length];
+}
+
+function getCellarEnemyId(runLvl, spawnIndex, swarmSize) {
+    const indexFromEnd = Math.max(
+        0,
+        (Math.max(1, Number(swarmSize) || 1) - 1)
+            - Math.max(0, Number(spawnIndex) || 0)
+    );
+
+    if (runLvl >= 12) {
+        if (indexFromEnd === 0) return 'shield_guard_captain';
+        if (indexFromEnd === 1) return 'cellar_duelist';
+        if (indexFromEnd === 2) return 'tankard_brute';
+    } else if (runLvl >= 9) {
+        if (indexFromEnd === 0) return 'shield_guard_captain';
+        if (indexFromEnd === 1) return 'cellar_duelist';
+    } else if (runLvl >= 6 && indexFromEnd === 0) {
+        return 'shield_guard_captain';
+    }
+
+    return 'corrupted_cask';
 }
 
 function createCombatEncounter(player, data) {
@@ -142,9 +193,6 @@ function createCombatEncounter(player, data) {
         if (companionTile) addCombatActor(combatState, createCompanionActor(companion, companionTile));
     });
 
-    const baitMultiplier = (zone === 'WILDERNESS' && player.mapBaited) ? 1.4 : 1.0;
-    const prefixLabel = (zone === 'WILDERNESS' && player.mapBaited) ? "Frenzied " : "";
-
     if (zone === 'GORILLA_ARENA') {
         (template.enemySlots || []).forEach((slot, index) => {
             addEnemyFromSlot(combatState, { ...slot, id: "enraged_gorilla", name: `Enraged Gorilla #${index + 1}` });
@@ -159,8 +207,11 @@ function createCombatEncounter(player, data) {
             (template.enemies || []).forEach(slot => addEnemyFromSlot(combatState, slot));
         } else {
             const swarmSize = Math.min(template.enemySlots.length, 1 + Math.floor(runLvl / 2));
-            template.enemySlots.slice(0, swarmSize).forEach(slot => {
-                addEnemyFromSlot(combatState, { ...slot, id: "corrupted_cask" });
+            template.enemySlots.slice(0, swarmSize).forEach((slot, spawnIndex) => {
+                addEnemyFromSlot(combatState, {
+                    ...slot,
+                    id: getCellarEnemyId(runLvl, spawnIndex, swarmSize)
+                });
             });
             if (runLvl >= 5) {
                 (template.mimicEnemies || []).forEach(slot => addEnemyFromSlot(combatState, slot));
@@ -168,7 +219,9 @@ function createCombatEncounter(player, data) {
         }
     } else {
         if (runLvl === 20) {
-            (template.enemies || []).forEach(slot => addEnemyFromSlot(combatState, slot, prefixLabel, baitMultiplier));
+            (template.enemies || []).forEach(slot => {
+                addEnemyFromSlot(combatState, slot);
+            });
         } else {
             const swarmSize = Math.min(template.enemySlots.length, 1 + Math.floor(runLvl / 2));
             let publingsToSpawn = 0;
@@ -178,10 +231,21 @@ function createCombatEncounter(player, data) {
 
             template.enemySlots.slice(0, swarmSize).forEach((slot, spawnIndex) => {
                 if (publingsToSpawn > 0) {
-                    addEnemyFromSlot(combatState, { ...slot, id: "publing" }, prefixLabel, baitMultiplier);
+                    addEnemyFromSlot(
+                        combatState,
+                        { ...slot, id: "publing" }
+                    );
                     publingsToSpawn--;
                 } else {
-                    addEnemyFromSlot(combatState, { ...slot, id: getWildernessEnemyId(runLvl, spawnIndex) }, prefixLabel, baitMultiplier);
+                    addEnemyFromSlot(combatState, {
+                        ...slot,
+                        id: (
+                            runLvl >= 12
+                            && spawnIndex === swarmSize - 1
+                        )
+                            ? 'harvest_champion'
+                            : getWildernessEnemyId(runLvl, spawnIndex)
+                    });
                 }
             });
         }
@@ -216,6 +280,9 @@ module.exports = {
     createCombatEncounter,
     getDeployedCompanions,
     getCompanionFormationTiles,
+    getWildernessEnemyId,
+    getCellarEnemyId,
+    WILDERNESS_STANDARD_ENEMY_ROTATIONS,
     MAX_STANDARD_PLAYER_ACTORS,
     VALID_ZONES
 };

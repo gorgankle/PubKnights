@@ -100,8 +100,6 @@ function hostHappyHour() {
 }
 function tradeHopsForGear() { logMessage('Black market trading has been removed.'); if (typeof playRetroSound === 'function') playRetroSound('error'); }
 
-function baitWildernessMap() { logMessage('Wilds baiting has been retired for now.'); if (typeof playRetroSound === 'function') playRetroSound('error'); }
-
 function exportFishWholesale() { logMessage('Fish exports have been retired in the gold economy.'); }
 
 function chumForbiddenCellars() { logMessage('Cellar chumming has been retired for now.'); if (typeof playRetroSound === 'function') playRetroSound('error'); }

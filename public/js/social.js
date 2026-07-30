@@ -98,53 +98,74 @@ function renderSocialZone() {
         let p = playersInRoom[id];
         let drawX = p.x * 24; 
         let drawY = p.y * 24;
+        const socialActor = (
+            p.kind === 'player'
+            || p.uid === 'player_0'
+        )
+            ? p
+            : {
+                ...p,
+                kind: 'player',
+                uid: p.uid || `social_${id}`
+            };
 
-        // --- CRITICAL PALETTE FIX: Hijack the global appearance for this render cycle! ---
-        player.appearance = p.appearance;
+        const sharedProfile = (
+            typeof drawHumanoidActorFront === 'function'
+        )
+            ? drawHumanoidActorFront(
+                ctx,
+                socialActor,
+                drawX,
+                drawY,
+                24
+            )
+            : null;
 
-        // Base Anatomy
-        let bodySprite = p.appearance.gender === 'female' ? 'body_female' : 'body_male';
-        if (SpriteMatrices[bodySprite]) drawProceduralSprite(ctx, SpriteMatrices[bodySprite], drawX, drawY, 24);
-        if (SpriteMatrices[p.appearance.eyes]) drawProceduralSprite(ctx, SpriteMatrices[p.appearance.eyes], drawX, drawY, 24);
-        
-        let hidesHair = p.equipment.helmet && p.equipment.helmet.hidesHair;
-        if (!hidesHair && SpriteMatrices[p.appearance.hair]) drawProceduralSprite(ctx, SpriteMatrices[p.appearance.hair], drawX, drawY, 24);
+        if (!sharedProfile) {
+            // Legacy fallback for clients that have not loaded the shared rig.
+            player.appearance = p.appearance;
+            let bodySprite = p.appearance.gender === 'female' ? 'body_female' : 'body_male';
+            if (SpriteMatrices[bodySprite]) drawProceduralSprite(ctx, SpriteMatrices[bodySprite], drawX, drawY, 24);
+            if (SpriteMatrices[p.appearance.eyes]) drawProceduralSprite(ctx, SpriteMatrices[p.appearance.eyes], drawX, drawY, 24);
 
-        // Equipment Layers
-        let gSuffix = p.appearance.gender === 'female' ? '_female' : '_male';
-        if (p.equipment.armor && p.equipment.armor.spriteId) {
-            let sId = p.equipment.armor.spriteId + gSuffix;
-            if (SpriteMatrices[sId]) drawProceduralSprite(ctx, SpriteMatrices[sId], drawX, drawY, 24);
-            else if (SpriteMatrices[p.equipment.armor.spriteId]) drawProceduralSprite(ctx, SpriteMatrices[p.equipment.armor.spriteId], drawX, drawY, 24);
-        }
-        
-        if (p.equipment.boots && p.equipment.boots.spriteId) drawProceduralSprite(ctx, SpriteMatrices[p.equipment.boots.spriteId], drawX, drawY, 24);
-        if (p.equipment.gloves && p.equipment.gloves.spriteId) drawProceduralSprite(ctx, SpriteMatrices[p.equipment.gloves.spriteId], drawX, drawY, 24);
-        if (p.equipment.helmet && p.equipment.helmet.spriteId) drawProceduralSprite(ctx, SpriteMatrices[p.equipment.helmet.spriteId], drawX, drawY, 24);
-        
-        if (p.equipment.weapon && p.equipment.weapon.spriteId) {
-            if (typeof drawFrontPaperdollWeapon === 'function') {
-                drawFrontPaperdollWeapon(
-                    ctx,
-                    p.equipment.weapon.spriteId,
-                    drawX,
-                    drawY,
-                    24,
-                    {
-                        scaleMultiplier:
-                            p.equipment.weapon.oversizeScale || 1
-                    }
-                );
-            } else if (
-                SpriteMatrices[p.equipment.weapon.spriteId]
-            ) {
-                drawProceduralSprite(
-                    ctx,
-                    SpriteMatrices[p.equipment.weapon.spriteId],
-                    drawX,
-                    drawY,
-                    24
-                );
+            let hidesHair = p.equipment.helmet && p.equipment.helmet.hidesHair;
+            if (!hidesHair && SpriteMatrices[p.appearance.hair]) drawProceduralSprite(ctx, SpriteMatrices[p.appearance.hair], drawX, drawY, 24);
+
+            let gSuffix = p.appearance.gender === 'female' ? '_female' : '_male';
+            if (p.equipment.armor && p.equipment.armor.spriteId) {
+                let sId = p.equipment.armor.spriteId + gSuffix;
+                if (SpriteMatrices[sId]) drawProceduralSprite(ctx, SpriteMatrices[sId], drawX, drawY, 24);
+                else if (SpriteMatrices[p.equipment.armor.spriteId]) drawProceduralSprite(ctx, SpriteMatrices[p.equipment.armor.spriteId], drawX, drawY, 24);
+            }
+
+            if (p.equipment.boots && p.equipment.boots.spriteId) drawProceduralSprite(ctx, SpriteMatrices[p.equipment.boots.spriteId], drawX, drawY, 24);
+            if (p.equipment.gloves && p.equipment.gloves.spriteId) drawProceduralSprite(ctx, SpriteMatrices[p.equipment.gloves.spriteId], drawX, drawY, 24);
+            if (p.equipment.helmet && p.equipment.helmet.spriteId) drawProceduralSprite(ctx, SpriteMatrices[p.equipment.helmet.spriteId], drawX, drawY, 24);
+
+            if (p.equipment.weapon && p.equipment.weapon.spriteId) {
+                if (typeof drawFrontPaperdollWeapon === 'function') {
+                    drawFrontPaperdollWeapon(
+                        ctx,
+                        p.equipment.weapon.spriteId,
+                        drawX,
+                        drawY,
+                        24,
+                        {
+                            scaleMultiplier:
+                                p.equipment.weapon.oversizeScale || 1
+                        }
+                    );
+                } else if (
+                    SpriteMatrices[p.equipment.weapon.spriteId]
+                ) {
+                    drawProceduralSprite(
+                        ctx,
+                        SpriteMatrices[p.equipment.weapon.spriteId],
+                        drawX,
+                        drawY,
+                        24
+                    );
+                }
             }
         }
 
@@ -203,7 +224,14 @@ function forceInspect(playerId) {
     document.getElementById('inspect-name').innerText = p.name;
     
     let html = "";
-    const slots = ['weapon', 'helmet', 'armor', 'gloves', 'boots'];
+    const slots = [
+        'weapon',
+        'offhand',
+        'helmet',
+        'armor',
+        'gloves',
+        'boots'
+    ];
     slots.forEach(slot => {
         let item = p.equipment[slot];
         if (item) {

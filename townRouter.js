@@ -26,6 +26,10 @@ const {
     getMercenaryTrainingQuote,
     trainMercenaryOneLevel
 } = require('./mercenaryProgression.js');
+const {
+    EQUIPMENT_SLOTS,
+    equipItemWithHandRules
+} = require('./equipmentHandRules.js');
 
 // 2. Bring over the secure unboxing math from server.js
 function rollSecureCrateLoot(crateId) {
@@ -82,6 +86,7 @@ function createStarterCompanion(name = 'Hired Mercenary') {
         stats: { vitality: 3, offense: 2, defense: 2, speed: 3 },
         equipment: {
             weapon: cloneItem('rusty_mace'),
+            offhand: null,
             helmet: cloneItem('rusty_coif'),
             armor: cloneItem('leather_tunic'),
             gloves: null,
@@ -240,12 +245,29 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                     return socket.emit('inventoryReceipt', { success: false, message: 'That item cannot be equipped by a mercenary.' });
                 }
 
-                const slotKey = toEquip.slot;
-                const worn = companion.equipment[slotKey];
-                companion.equipment[slotKey] = toEquip;
-                if (worn) p.inventory[idx] = worn;
-                else p.inventory.splice(idx, 1);
-                return socket.emit('inventoryReceipt', { success: true, action: 'equipCompanion', updatedPlayer: p, message: `${companion.name} equipped ${toEquip.name}.` });
+                p.maxInventorySlots = p.maxInventorySlots || 5;
+                const equipResult = equipItemWithHandRules({
+                    equipment: companion.equipment,
+                    inventory: p.inventory,
+                    inventoryIndex: idx,
+                    maxInventorySlots: p.maxInventorySlots,
+                    validSlots: COMPANION_EQUIPMENT_SLOTS
+                });
+                if (!equipResult.success) {
+                    return socket.emit('inventoryReceipt', {
+                        success: false,
+                        message: equipResult.message
+                    });
+                }
+                const handMessage = equipResult.conflictSlot
+                    ? ' Conflicting hand gear was stowed.'
+                    : '';
+                return socket.emit('inventoryReceipt', {
+                    success: true,
+                    action: 'equipCompanion',
+                    updatedPlayer: p,
+                    message: `${companion.name} equipped ${toEquip.name}.${handMessage}`
+                });
             }
 
             if (data.action === 'unequipCompanion') {
@@ -300,25 +322,37 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             if (!toEquip) return;
             
             // STRICT VALIDATION: Only allow proper gear slots!
-            const validSlots = ["weapon", "helmet", "armor", "gloves", "boots"];
-            if (!validSlots.includes(toEquip.slot)) {
+            if (!EQUIPMENT_SLOTS.includes(toEquip.slot)) {
                 return socket.emit('inventoryReceipt', { success: false, message: "\u274C This item cannot be equipped." });
             }
-            
-            let slotKey = toEquip.slot;
-            let worn = p.equipment[slotKey];
-            
-            p.equipment[slotKey] = toEquip; 
-            
-            if (worn) p.inventory[idx] = worn; 
-            else p.inventory.splice(idx, 1);   
-            
-            socket.emit('inventoryReceipt', { success: true, action: 'equip', updatedPlayer: p, message: "\u2699\uFE0F Gear equipped." });
+
+            p.maxInventorySlots = p.maxInventorySlots || 5;
+            const equipResult = equipItemWithHandRules({
+                equipment: p.equipment,
+                inventory: p.inventory,
+                inventoryIndex: idx,
+                maxInventorySlots: p.maxInventorySlots
+            });
+            if (!equipResult.success) {
+                return socket.emit('inventoryReceipt', {
+                    success: false,
+                    message: equipResult.message
+                });
+            }
+
+            const handMessage = equipResult.conflictSlot
+                ? ' Conflicting hand gear was stowed.'
+                : '';
+            socket.emit('inventoryReceipt', {
+                success: true,
+                action: 'equip',
+                updatedPlayer: p,
+                message: `\u2699\uFE0F Gear equipped.${handMessage}`
+            });
         }
         else if (data.action === 'unequip') {
             let slotKey = data.slotKey;
-            const validSlots = ["weapon", "helmet", "armor", "gloves", "boots"];
-            if (!validSlots.includes(slotKey)) return;
+            if (!EQUIPMENT_SLOTS.includes(slotKey)) return;
             let worn = p.equipment[slotKey];
             if (!worn) return;
             
@@ -369,9 +403,8 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             }
         }
         else if (data.action === 'depositEquipment') {
-            const validSlots = ["weapon", "helmet", "armor", "gloves", "boots"];
             const slotKey = sanitizeToken(data.slotKey, '');
-            if (!validSlots.includes(slotKey)) return;
+            if (!EQUIPMENT_SLOTS.includes(slotKey)) return;
 
             const worn = p.equipment[slotKey];
             if (!worn) return socket.emit('inventoryReceipt', { success: false, message: "No equipped item in that slot." });
@@ -578,10 +611,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         else if (data.action === 'happyHour') {
             socket.emit('townReceipt', { success: false, action: 'happyHour', updatedPlayer: p, message: 'Happy Hour has been retired from this alpha branch.' });
         }
-        // 9. BAIT / CHUM MAPS
-        else if (data.action === 'baitWilds') {
-            socket.emit('townReceipt', { success: false, action: 'baitWilds', updatedPlayer: p, message: 'Wilds baiting has been retired for now.' });
-        }
+        // 9. RETIRED CELLAR CHUM
         else if (data.action === 'chumCellars') {
             socket.emit('townReceipt', { success: false, action: 'chumCellars', updatedPlayer: p, message: 'Cellar chumming has been retired for now.' });
         }

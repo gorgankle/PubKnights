@@ -22,12 +22,12 @@ let player = {
         helmet: null,
         armor: null, 
         weapon: typeof ItemDatabase !== 'undefined' ? JSON.parse(JSON.stringify(ItemDatabase["rusty_mace"])) : null,
+        offhand: null,
         gloves: null, 
         boots: null 
     },
     inventory: [], stash: [],
     roster: { companions: [], activeIds: [] },
-    mapBaited: false,
 maxInventorySlots: 5, backpackUpgrades: 0,
     
 // === MULTI-BUFF ARRAYS ADDED HERE ===
@@ -42,12 +42,36 @@ function normalizeClientPlayerContainers() {
     player.stash = Array.isArray(player.stash) ? player.stash : [];
     player.equipment = player.equipment && typeof player.equipment === 'object' ? player.equipment : {};
 
-    const equipmentSlots = ['helmet', 'armor', 'weapon', 'gloves', 'boots'];
+    const equipmentSlots = [
+        'helmet',
+        'armor',
+        'weapon',
+        'offhand',
+        'gloves',
+        'boots'
+    ];
     const pocketCount = 2;
     const maxSelectedCompanions = 3;
     equipmentSlots.forEach(slot => {
         if (!Object.prototype.hasOwnProperty.call(player.equipment, slot)) player.equipment[slot] = null;
     });
+    const normalizeClientHandLoadout = equipment => {
+        const weapon = equipment && equipment.weapon;
+        const handedness = String(
+            weapon && weapon.handedness || ''
+        ).toLowerCase();
+        const twoHanded = Boolean(
+            weapon
+            && (
+                weapon.twoHanded === true
+                || ['two', 'two-handed', '2h'].includes(handedness)
+            )
+        );
+        if (!twoHanded || !equipment.offhand) return;
+        player.inventory.push(equipment.offhand);
+        equipment.offhand = null;
+    };
+    normalizeClientHandLoadout(player.equipment);
 
     const roster = player.roster && typeof player.roster === 'object' ? player.roster : {};
     const sourceCompanions = Array.isArray(roster.companions) ? roster.companions : [];
@@ -65,6 +89,7 @@ function normalizeClientPlayerContainers() {
         const sourceEquipment = companion.equipment && typeof companion.equipment === 'object' ? companion.equipment : {};
         const equipment = {};
         equipmentSlots.forEach(slot => { equipment[slot] = sourceEquipment[slot] || null; });
+        normalizeClientHandLoadout(equipment);
 
         if (sourceEquipment.accessory) player.inventory.push(sourceEquipment.accessory);
 
@@ -257,7 +282,6 @@ function saveGame(manualNotify = false) {
         appearance: player.appearance, 
         equipment: player.equipment, inventory: player.inventory, stash: player.stash,
         roster: player.roster,
-        mapBaited: player.mapBaited,
 		maxInventorySlots: player.maxInventorySlots, backpackUpgrades: player.backpackUpgrades,
         activeCombatBuff: player.activeCombatBuff, activeBuffs: player.activeBuffs, happyHourTicks: player.happyHourTicks, cellarsChummed: player.cellarsChummed,
         pet: player.pet

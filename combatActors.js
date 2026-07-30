@@ -145,6 +145,7 @@ function createCompanionActor(companion, tile) {
         blocksMovement: true,
         companionInstanceId: companion && companion.instanceId,
         companionTemplateId: companion && companion.templateId,
+        visualProfileId: 'mercenary_default',
         equipment
     };
 }
@@ -179,7 +180,8 @@ function createKregActor(tile) {
         targetableByEnemies: true,
         targetableByPlayer: false,
         rewardsEligible: false,
-        blocksMovement: true
+        blocksMovement: true,
+        visualProfileId: 'npc_kreg'
     };
 }
 
@@ -211,7 +213,8 @@ function createCellarDwellerActor(tile) {
         targetableByPlayer: true,
         rewardsEligible: false,
         blocksMovement: true,
-        stealsBossLoot: true
+        stealsBossLoot: true,
+        visualProfileId: 'cellar_dweller'
     };
 }
 

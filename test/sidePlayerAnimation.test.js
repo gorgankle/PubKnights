@@ -86,18 +86,298 @@ test('side animation registry provides every approved motion as native palette-s
 
     assert.deepEqual(
         Array.from(result.clipIds),
-        ['idle', 'walk', 'slash', 'bash', 'shoot', 'cast']
+        [
+            'idle',
+            'walk',
+            'slash',
+            'bash',
+            'shoot',
+            'cast',
+            'thrust',
+            'heavy',
+            'dagger',
+            'scythe',
+            'shield_block',
+            'shield_bash',
+            'dual_wield',
+            'hit',
+            'defeat'
+        ]
     );
-    assert.equal(result.poseCount, 22);
-    assert.equal(result.bodyCount, 44);
-    assert.equal(result.weaponCount, 22);
+    assert.equal(result.poseCount, 66);
+    assert.equal(result.bodyCount, 132);
+    assert.equal(result.weaponCount, 66);
     assert.deepEqual(Array.from(result.loopingClips), ['idle', 'walk']);
     assert.deepEqual(
         Object.fromEntries(Object.entries(result.actionFrames)),
-        { slash: 2, bash: 2, shoot: 3, cast: 3 }
+        {
+            slash: 2,
+            bash: 2,
+            shoot: 3,
+            cast: 3,
+            thrust: 2,
+            heavy: 3,
+            dagger: 2,
+            scythe: 3,
+            shield_block: 1,
+            shield_bash: 2,
+            dual_wield: 2
+        }
     );
     assert.equal(result.allNative, true);
     assert.deepEqual(Array.from(result.missingPaletteKeys), []);
+});
+
+test('humanoid aliases expose reusable hit reactions and a terminal defeat clip', () => {
+    const context = loadSideAnimationContext();
+    const result = vm.runInContext(`(() => {
+        const hit = HumanoidAnimationClips.hit;
+        const defeat = HumanoidAnimationClips.defeat;
+        const reactionPoseIds = [...hit.frames, ...defeat.frames];
+        const matrices = reactionPoseIds.flatMap(poseId => [
+            SidePlayerAnimationMatrices[\`male_\${poseId}\`],
+            SidePlayerAnimationMatrices[\`female_\${poseId}\`]
+        ]);
+        const rotations = defeat.frames.map(poseId =>
+            getSidePlayerRigTransform(
+                SidePlayerPoseDefinitions[poseId]
+            ).rotateDegrees
+        );
+        const mirrored = getMirroredHumanoidAnchor([7, 11], 'left');
+
+        return {
+            sizeAlias:
+                HUMANOID_ANIMATION_SIZE === SIDE_PLAYER_ANIMATION_SIZE,
+            clipsAlias: HumanoidAnimationClips === SidePlayerAnimationClips,
+            frameAlias:
+                getHumanoidAnimationFrame === getSidePlayerAnimationFrame,
+            drawAlias:
+                drawHumanoidAnimationFrame === drawSidePlayerAnimationFrame,
+            mirrorAlias:
+                getMirroredHumanoidAnchor === getMirroredSidePlayerAnchor,
+            hit: {
+                fps: hit.fps,
+                loop: hit.loop,
+                actionFrame: hit.actionFrame,
+                frames: [...hit.frames]
+            },
+            defeat: {
+                fps: defeat.fps,
+                loop: defeat.loop,
+                actionFrame: defeat.actionFrame,
+                terminal: defeat.terminal,
+                holdLastFrame: defeat.holdLastFrame,
+                frames: [...defeat.frames]
+            },
+            rotations,
+            mirrored,
+            nativeBodies: matrices.every(matrix =>
+                matrix.length === HUMANOID_ANIMATION_SIZE
+                && matrix.every(row =>
+                    row.length === HUMANOID_ANIMATION_SIZE
+                )
+            )
+        };
+    })()`, context);
+
+    assert.equal(result.sizeAlias, true);
+    assert.equal(result.clipsAlias, true);
+    assert.equal(result.frameAlias, true);
+    assert.equal(result.drawAlias, true);
+    assert.equal(result.mirrorAlias, true);
+    assert.deepEqual(
+        {
+            ...result.hit,
+            frames: Array.from(result.hit.frames)
+        },
+        {
+            fps: 10,
+            loop: false,
+            actionFrame: null,
+            frames: ['hit_a', 'hit_b', 'hit_c']
+        }
+    );
+    assert.deepEqual(
+        {
+            ...result.defeat,
+            frames: Array.from(result.defeat.frames)
+        },
+        {
+            fps: 6,
+            loop: false,
+            actionFrame: null,
+            terminal: true,
+            holdLastFrame: true,
+            frames: ['defeat_a', 'defeat_b', 'defeat_c', 'defeat_d']
+        }
+    );
+    assert.deepEqual(Array.from(result.rotations), [-12, -30, -58, -90]);
+    assert.deepEqual(
+        { x: result.mirrored.x, y: result.mirrored.y },
+        { x: 24, y: 11 }
+    );
+    assert.equal(result.nativeBodies, true);
+});
+
+test('full appearance overrides color side actors without mutating the Knight', () => {
+    const context = loadSideAnimationContext();
+    const result = vm.runInContext(`(() => {
+        const originalAppearance = JSON.stringify(player.appearance);
+        const makeContext = () => {
+            let currentFill = null;
+            const colors = [];
+            return {
+                colors,
+                imageSmoothingEnabled: true,
+                save() {},
+                restore() {},
+                translate() {},
+                scale() {},
+                rotate() {},
+                set fillStyle(value) {
+                    currentFill = value;
+                },
+                get fillStyle() {
+                    return currentFill;
+                },
+                fillRect() {
+                    colors.push(currentFill);
+                },
+                clearRect() {}
+            };
+        };
+        const bandit = {
+            gender: 'male',
+            skin: 'orc',
+            hair: 'hair_mohawk',
+            hairColor: 'pink',
+            eyes: 'eyes_red',
+            shirtColor: 'red',
+            pantsColor: 'brown',
+            bootsColor: 'black'
+        };
+        const mage = {
+            gender: 'female',
+            skin: 'deep',
+            hairStyle: 'hair_topknot',
+            hairColor: 'silver',
+            eyes: 'eyes_purple',
+            shirtColor: 'teal',
+            pantsColor: 'navy',
+            bootsColor: 'oxblood'
+        };
+        const banditContext = makeContext();
+        const mageContext = makeContext();
+
+        drawHumanoidAnimationFrame(
+            banditContext,
+            bandit.gender,
+            'hit',
+            0,
+            HUMANOID_ANIMATION_SIZE,
+            { appearance: bandit, weaponItem: null }
+        );
+        drawHumanoidAnimationFrame(
+            mageContext,
+            mage.gender,
+            'hit',
+            0,
+            HUMANOID_ANIMATION_SIZE,
+            { appearance: mage, weaponItem: null }
+        );
+
+        return {
+            banditHasSkin: banditContext.colors.includes(SkinTones.orc),
+            banditHasHair: banditContext.colors.includes(HairTones.pink),
+            banditHasShirt: banditContext.colors.includes(ShirtTones.red),
+            mageHasSkin: mageContext.colors.includes(SkinTones.deep),
+            mageHasHair: mageContext.colors.includes(HairTones.silver),
+            mageHasShirt: mageContext.colors.includes(ShirtTones.teal),
+            palettesDiffer:
+                JSON.stringify([...new Set(banditContext.colors)].sort())
+                !== JSON.stringify([...new Set(mageContext.colors)].sort()),
+            knightUnchanged:
+                JSON.stringify(player.appearance) === originalAppearance
+        };
+    })()`, context);
+
+    Object.entries(result).forEach(([key, value]) => {
+        assert.equal(value, true, key);
+    });
+});
+
+test('appearance-aware weapon bitmaps cache each humanoid palette separately', () => {
+    const context = loadSideAnimationContext({ includeEquipment: true });
+    const result = vm.runInContext(`(() => {
+        const canvases = [];
+        globalThis.document = {
+            createElement() {
+                let currentFill = null;
+                const canvas = {
+                    width: 0,
+                    height: 0,
+                    colors: [],
+                    getContext() {
+                        return {
+                            imageSmoothingEnabled: true,
+                            set fillStyle(value) {
+                                currentFill = value;
+                            },
+                            get fillStyle() {
+                                return currentFill;
+                            },
+                            fillRect() {
+                                canvas.colors.push(currentFill);
+                            }
+                        };
+                    }
+                };
+                canvases.push(canvas);
+                return canvas;
+            }
+        };
+        const matrix = Array.from(
+            { length: HUMANOID_ANIMATION_SIZE },
+            () => Array(HUMANOID_ANIMATION_SIZE).fill('.')
+        );
+        matrix[0][0] = 'S';
+        const orc = { skin: 'orc' };
+        const deep = { skin: 'deep' };
+        const firstOrc = getFrontPaperdollWeaponBitmap(
+            'humanoid_palette_probe',
+            matrix,
+            HUMANOID_ANIMATION_SIZE,
+            orc
+        );
+        const secondOrc = getFrontPaperdollWeaponBitmap(
+            'humanoid_palette_probe',
+            matrix,
+            HUMANOID_ANIMATION_SIZE,
+            orc
+        );
+        const firstDeep = getFrontPaperdollWeaponBitmap(
+            'humanoid_palette_probe',
+            matrix,
+            HUMANOID_ANIMATION_SIZE,
+            deep
+        );
+
+        return {
+            orcCacheHit: firstOrc === secondOrc,
+            palettesSeparate: firstOrc !== firstDeep,
+            canvasCount: canvases.length,
+            orcColor: firstOrc.colors[0],
+            deepColor: firstDeep.colors[0],
+            expectedOrc: SkinTones.orc,
+            expectedDeep: SkinTones.deep
+        };
+    })()`, context);
+
+    assert.equal(result.orcCacheHit, true);
+    assert.equal(result.palettesSeparate, true);
+    assert.equal(result.canvasCount, 2);
+    assert.equal(result.orcColor, result.expectedOrc);
+    assert.equal(result.deepColor, result.expectedDeep);
 });
 
 test('side hair registry covers every selectable style with native palette-safe layers', () => {
@@ -815,6 +1095,148 @@ test('each clip has distinct readable keyframes and exact horizontal mirroring',
     assert.equal(result.mirrorRoundTrips, true);
 });
 
+test('defeat fall transforms the complete paper doll and mirrors visual anchors exactly', () => {
+    const context = loadSideAnimationContext();
+    const result = vm.runInContext(`(() => {
+        const appearance = {
+            gender: 'female',
+            skin: 'tan',
+            hair: 'hair_braid',
+            hairColor: 'auburn',
+            eyes: 'eyes_green',
+            shirtColor: 'claret',
+            pantsColor: 'charcoal',
+            bootsColor: 'leather'
+        };
+        const render = facing => {
+            const operations = [];
+            const context = {
+                imageSmoothingEnabled: true,
+                fillStyle: null,
+                save() { operations.push(['save']); },
+                restore() { operations.push(['restore']); },
+                translate(x, y) {
+                    operations.push(['translate', x, y]);
+                },
+                scale(x, y) {
+                    operations.push(['scale', x, y]);
+                },
+                rotate(radians) {
+                    operations.push(['rotate', radians]);
+                },
+                fillRect() {
+                    operations.push(['fill']);
+                },
+                clearRect() {}
+            };
+            drawHumanoidAnimationFrame(
+                context,
+                appearance.gender,
+                'defeat',
+                3,
+                HUMANOID_ANIMATION_SIZE,
+                {
+                    appearance,
+                    facing,
+                    showAnchors: true,
+                    weaponItem: null
+                }
+            );
+            return operations;
+        };
+        const rightOperations = render('right');
+        const leftOperations = render('left');
+        const frame = getHumanoidAnimationFrame('female', 'defeat', 3);
+        const rawAnchors = Object.values(frame.anchors);
+        const mirroredAnchors = rawAnchors.map(anchor => {
+            const right = getTransformedSidePlayerAnchor(
+                anchor,
+                frame.pose,
+                'right'
+            );
+            const left = getTransformedSidePlayerAnchor(
+                anchor,
+                frame.pose,
+                'left'
+            );
+            return {
+                horizontalSum: right.x + left.x,
+                sameY: Math.abs(right.y - left.y) < 1e-9
+            };
+        });
+        const operationAudit = operations => {
+            const rotateIndex = operations.findIndex(
+                operation => operation[0] === 'rotate'
+            );
+            const fillIndexes = operations
+                .map((operation, index) =>
+                    operation[0] === 'fill' ? index : -1
+                )
+                .filter(index => index >= 0);
+            const restoreIndexes = operations
+                .map((operation, index) =>
+                    operation[0] === 'restore' ? index : -1
+                )
+                .filter(index => index >= 0);
+            const restoreIndex = restoreIndexes[
+                restoreIndexes.length - 1
+            ];
+            return {
+                rotateIndex,
+                rotateRadians:
+                    rotateIndex >= 0
+                        ? operations[rotateIndex][1]
+                        : null,
+                everyLayerAfterRotation:
+                    fillIndexes.length > 0
+                    && fillIndexes.every(index => index > rotateIndex),
+                everyLayerBeforeRestore:
+                    fillIndexes.every(index => index < restoreIndex),
+                restoreIsLast: restoreIndex === operations.length - 1
+            };
+        };
+
+        return {
+            transform: frame.rigTransform,
+            right: operationAudit(rightOperations),
+            left: operationAudit(leftOperations),
+            leftMirrorApplied:
+                leftOperations.some(operation =>
+                    operation[0] === 'scale'
+                    && operation[1] === -1
+                    && operation[2] === 1
+                ),
+            mirroredAnchors
+        };
+    })()`, context);
+
+    assert.deepEqual(
+        {
+            pivot: Array.from(result.transform.pivot),
+            translate: Array.from(result.transform.translate),
+            rotateDegrees: result.transform.rotateDegrees,
+            scale: result.transform.scale
+        },
+        {
+            pivot: [16, 16],
+            translate: [0, 3],
+            rotateDegrees: -90,
+            scale: 0.82
+        }
+    );
+    [result.right, result.left].forEach(audit => {
+        assert.equal(audit.rotateRadians, -Math.PI / 2);
+        assert.equal(audit.everyLayerAfterRotation, true);
+        assert.equal(audit.everyLayerBeforeRestore, true);
+        assert.equal(audit.restoreIsLast, true);
+    });
+    assert.equal(result.leftMirrorApplied, true);
+    result.mirroredAnchors.forEach(anchor => {
+        assert.ok(Math.abs(anchor.horizontalSum - 31) < 1e-9);
+        assert.equal(anchor.sameY, true);
+    });
+});
+
 test('side studies transform the genuinely equipped weapon and preserve empty hands', () => {
     const context = loadSideAnimationContext({ includeEquipment: true });
     const result = vm.runInContext(`(() => {
@@ -973,9 +1395,9 @@ test('every front armor design adapts to both heroes across all approved side po
         };
     })()`, context);
 
-    assert.equal(result.poseCount, 22);
-    assert.equal(result.armorCount, 14);
-    assert.equal(result.audits.length, 14 * 2 * 22);
+    assert.equal(result.poseCount, 66);
+    assert.equal(result.armorCount, 15);
+    assert.equal(result.audits.length, 15 * 2 * 66);
     assert.equal(result.uniqueIdleCount, result.armorCount);
     assert.equal(result.emptyArmor, null);
     assert.equal(result.unknownArmor, null);
@@ -1192,9 +1614,9 @@ test('every glove and boot follows both side limbs across every approved pose', 
         };
     })()`, context);
 
-    assert.equal(result.poseCount, 22);
-    assert.equal(result.gloveAudits.length, result.gloveIds.length * 2 * 22);
-    assert.equal(result.bootAudits.length, result.bootIds.length * 2 * 22);
+    assert.equal(result.poseCount, 66);
+    assert.equal(result.gloveAudits.length, result.gloveIds.length * 2 * 66);
+    assert.equal(result.bootAudits.length, result.bootIds.length * 2 * 66);
     assert.equal(result.uniqueIdleGloves, result.gloveIds.length);
     assert.equal(result.uniqueIdleBoots, result.bootIds.length);
     assert.equal(result.emptyGloves, null);
@@ -1215,6 +1637,10 @@ test('every glove and boot follows both side limbs across every approved pose', 
 test('side helmet registry matches every front helmet with native distinct palette-safe layers', () => {
     const context = loadSideAnimationContext({ includeEquipment: true });
     const result = vm.runInContext(`(() => {
+        const visualOnlyHelmetIds = new Set([
+            'helm_goblin_ears',
+            'helm_innkeeper'
+        ]);
         const audits = Object.entries(EquipmentOverhaulSpecs.helmet)
             .map(([spriteId, spec]) => {
                 const profile = SidePlayerHelmetProfiles[spriteId];
@@ -1234,7 +1660,10 @@ test('side helmet registry matches every front helmet with native distinct palet
 
                 return {
                     spriteId,
-                    present: Boolean(profile && layers && item),
+                    present: Boolean(profile && layers),
+                    itemPolicyValid: visualOnlyHelmetIds.has(spriteId)
+                        ? !item
+                        : Boolean(item),
                     styleMatches: profile?.style === spec.style,
                     maskMatches:
                         (profile?.hairMask || null) === (spec.hairMask || null),
@@ -1270,13 +1699,18 @@ test('side helmet registry matches every front helmet with native distinct palet
         };
     })()`, context);
 
-    assert.equal(result.specCount, 15);
+    assert.equal(result.specCount, 17);
     assert.equal(result.profileCount, result.specCount);
     assert.equal(result.matrixCount, result.specCount);
     assert.equal(result.uniqueCount, result.specCount);
 
     result.audits.forEach(audit => {
         assert.equal(audit.present, true, `${audit.spriteId} is missing side art`);
+        assert.equal(
+            audit.itemPolicyValid,
+            true,
+            `${audit.spriteId} has the wrong gameplay-item registration policy`
+        );
         assert.equal(
             audit.styleMatches,
             true,
@@ -1410,7 +1844,7 @@ test('side helmet masks remove only covered hair and preserve tied tails', () =>
         };
     })()`, context);
 
-    assert.equal(result.audits.length, 11);
+    assert.equal(result.audits.length, 12);
     assert.equal(result.openAccessoriesReuseHair, true);
     assert.equal(result.bodyUnchanged, true);
 
@@ -1451,6 +1885,7 @@ test('side helmet openings preserve the intended profile face and mirror cleanly
     const context = loadSideAnimationContext({ includeEquipment: true });
     const result = vm.runInContext(`(() => {
         const openStyles = new Set([
+            'goblin_ears',
             'collar',
             'coif',
             'hood',
@@ -1538,6 +1973,53 @@ test('side helmet openings preserve the intended profile face and mirror cleanly
     });
 });
 
+test('goblin side ears sweep backward without covering the profile eye', () => {
+    const context = loadSideAnimationContext({ includeEquipment: true });
+    const result = vm.runInContext(`(() => {
+        const body = SidePlayerAnimationMatrices.male_idle_a;
+        const layers = getSidePlayerHelmetLayers({
+            spriteId: 'helm_goblin_ears'
+        });
+        const nearEarPixels = layers.front.flatMap((row, y) =>
+            row.flatMap((key, x) => key === '.' ? [] : [{ x, y, key }])
+        );
+        const forwardFacePixels = nearEarPixels.filter(pixel =>
+            pixel.x >= 19
+            && pixel.y >= 4
+            && pixel.y <= 10
+        );
+        const rearwardPixels = nearEarPixels.filter(pixel =>
+            pixel.x <= 10
+            && pixel.y >= 3
+            && pixel.y <= 9
+        );
+        const attachmentPixels = nearEarPixels.filter(pixel =>
+            pixel.x >= 14
+            && pixel.x <= 18
+            && pixel.y >= 5
+            && pixel.y <= 9
+        );
+
+        return {
+            bodyEye: body[6][19],
+            helmetAtEye: layers.front[6][19],
+            maximumNearEarX: Math.max(
+                ...nearEarPixels.map(pixel => pixel.x)
+            ),
+            rearwardPixelCount: rearwardPixels.length,
+            attachmentPixelCount: attachmentPixels.length,
+            forwardFacePixelCount: forwardFacePixels.length
+        };
+    })()`, context);
+
+    assert.equal(result.bodyEye, 'Z');
+    assert.equal(result.helmetAtEye, '.');
+    assert.ok(result.maximumNearEarX <= 18);
+    assert.ok(result.rearwardPixelCount > 0);
+    assert.ok(result.attachmentPixelCount > 0);
+    assert.equal(result.forwardFacePixelCount, 0);
+});
+
 test('Sprite Tester exposes side hair, animation, mirroring, anchors, and motion sheets', () => {
     [
         'id="side-study-male"',
@@ -1547,8 +2029,8 @@ test('Sprite Tester exposes side hair, animation, mirroring, anchors, and motion
         'id="side-study-facing"',
         'id="side-study-anchors"',
         'id="side-motion-sheet"',
-        'sprite-overhaul-equipment.js?v=38',
-        'sprite-overhaul-animation.js?v=26',
+        'sprite-overhaul-equipment.js?v=',
+        'sprite-overhaul-animation.js?v=',
         'CorePlayerHairStyleOptions.forEach',
         'hairStyle: player.appearance.hair',
         'helmetItem: player.equipment.helmet || null',

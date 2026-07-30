@@ -22,6 +22,9 @@ const {
 const { applyLifetimeXpLevelUps } = require('./playerProgression.js');
 const { normalizeRosterState } = require('./companionRoster.js');
 const {
+    normalizeEquipmentLoadoutState
+} = require('./equipmentHandRules.js');
+const {
     DEFAULT_APPEARANCE,
     normalizeUsername,
     validatePassword,
@@ -189,6 +192,7 @@ function createDefaultSaveData(username) {
         appearance: { ...DEFAULT_APPEARANCE },
         equipment: {
             weapon: JSON.parse(JSON.stringify(ItemDatabase["rusty_mace"])),
+            offhand: null,
         },
         inventory: [], stash: [],
         roster: { companions: [], activeIds: [] },
@@ -227,20 +231,22 @@ function hydratePlayerData(playerDoc) {
     delete pd.fish;
     delete pd.hops;
 
-    if (pd.equipment) {
-        for (let slot in pd.equipment) {
+    if (!pd.equipment || typeof pd.equipment !== 'object') {
+        pd.equipment = {};
+    }
+    for (let slot in pd.equipment) {
             pd.equipment[slot] = sanitizeItemSchema(pd.equipment[slot]);
-        }
     }
 
-    if (pd.inventory) {
-        pd.inventory = pd.inventory.map(item => sanitizeItemSchema(item)).filter(Boolean);
-    }
+    pd.inventory = Array.isArray(pd.inventory)
+        ? pd.inventory.map(item => sanitizeItemSchema(item)).filter(Boolean)
+        : [];
 
     if (pd.stash) {
         pd.stash = pd.stash.map(item => sanitizeItemSchema(item)).filter(Boolean);
     }
 
+    normalizeEquipmentLoadoutState(pd);
     normalizeSavedRoster(pd);
     pd.activeBuffs = [];
     pd.activeCombatBuff = null;

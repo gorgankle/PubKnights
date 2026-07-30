@@ -243,6 +243,62 @@
             font-size: 10px;
         }
 
+        .humanoid-wave-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .humanoid-wave-card {
+            min-width: 0;
+            padding: 12px;
+            border: 1px solid #634e3d;
+            border-radius: 4px;
+            background: #1a1512;
+        }
+
+        .humanoid-wave-card h3 {
+            margin: 0 0 10px;
+            color: #ffcc66;
+            font-size: 13px;
+            text-align: left;
+        }
+
+        .humanoid-wave-facings {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .humanoid-wave-facing {
+            min-width: 0;
+        }
+
+        .humanoid-wave-facing canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            aspect-ratio: 1;
+            background: #241d19;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
+        .humanoid-wave-facing span {
+            display: block;
+            margin-top: 5px;
+            color: #bbaaa0;
+            font-size: 10px;
+        }
+
+        .humanoid-wave-note {
+            margin: 0 0 14px;
+            color: #bbaaa0;
+            font-size: 12px;
+            line-height: 1.45;
+            text-align: left;
+        }
+
         @media (max-width: 760px) {
             body {
                 padding: 22px 14px;
@@ -254,6 +310,10 @@
 
             .side-study-controls {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .humanoid-wave-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -272,6 +332,12 @@
 <body>
 
     <h1>🛠️ Procedural Matrix Inspector</h1>
+    <p style="margin:-8px 0 22px;">
+        <a
+            href="humanoid-npc-studio.html"
+            style="color:#ffcc66;"
+        >Open the Humanoid NPC Studio</a>
+    </p>
 
     <div style="text-align: center; margin-bottom: 20px;">
         <div id="char-creation-screen" style="display:none;"></div>
@@ -330,6 +396,8 @@
                         <button type="button" data-side-clip="bash">Mace</button>
                         <button type="button" data-side-clip="shoot">Bow</button>
                         <button type="button" data-side-clip="cast">Cast</button>
+                        <button type="button" data-side-clip="hit">Hit</button>
+                        <button type="button" data-side-clip="defeat">Defeat</button>
                     </div>
                 </div>
 
@@ -372,6 +440,28 @@
             </div>
         </div>
         <div class="side-motion-sheet" id="side-motion-sheet"></div>
+    </section>
+
+    <section
+        class="panel side-study"
+        aria-labelledby="humanoid-wave1-title"
+        data-humanoid-wave="1"
+    >
+        <h2
+            class="section-title"
+            id="humanoid-wave1-title"
+            style="color: #ffcc66;"
+        >Wave 1 Shared Humanoid Contract</h2>
+        <p class="humanoid-wave-note">
+            The selected motion above is rendered for every prototype in both
+            facings. During playback the cards use the shared combat animation
+            controller; pause or select a frame for direct pose inspection.
+            Stats are not loaded here; these cards consume visual profiles only.
+        </p>
+        <div
+            class="humanoid-wave-grid"
+            id="humanoid-wave1-grid"
+        ></div>
     </section>
 
     <div class="panel" style="max-width: 900px; margin: 0 auto 20px auto;">
@@ -438,16 +528,18 @@
         };
     </script>
 
-    <script src="js/character-creator.js?v=6"></script>
-    <script src="js/items.js"></script>
+    <script src="js/character-creator.js?v=8"></script>
+    <script src="js/items.js?v=4"></script>
     <script src="js/item-assets.js?v=2"></script>
     <script src="js/icon-assets.js?v=2"></script>
     <script src="js/npc-assets.js?v=2"></script>
     <script src="js/map-assets.js?v=2"></script>
     <script src="js/sprite-overhaul.js?v=17"></script>
-    <script src="js/sprite-overhaul-animation.js?v=26"></script>
-    <script src="js/sprite-overhaul-equipment.js?v=38"></script>
-    <script src="js/sprite-overhaul-world.js?v=1"></script>
+    <script src="js/sprite-overhaul-equipment.js?v=41"></script>
+    <script src="js/sprite-overhaul-animation.js?v=36"></script>
+    <script src="js/humanoid-actor-visuals.js?v=8"></script>
+    <script src="js/combat-animation.js?v=8"></script>
+    <script src="js/sprite-overhaul-world.js?v=3"></script>
     <script src="js/sprite-overhaul-icons.js?v=2"></script>
 
    <script>
@@ -482,6 +574,39 @@
         });
         const sideMotionSheet = document.getElementById('side-motion-sheet');
         let sideMotionFrames = [];
+        const humanoidWave1Actors = [
+            {
+                uid: 'study_mercenary',
+                kind: 'companion',
+                visualProfileId: 'mercenary_default',
+                equipment: {}
+            },
+            {
+                uid: 'study_melee_bandit',
+                kind: 'monster',
+                visualProfileId: 'melee_bandit'
+            },
+            {
+                uid: 'study_bandit_archer',
+                kind: 'monster',
+                visualProfileId: 'bandit_archer'
+            },
+            {
+                uid: 'study_hedge_mage',
+                kind: 'monster',
+                visualProfileId: 'hedge_mage'
+            }
+        ];
+        const humanoidWave1Grid = document.getElementById(
+            'humanoid-wave1-grid'
+        );
+        const humanoidWave1Stages = [];
+        const humanoidWave1ActionClips = new Set([
+            'slash',
+            'bash',
+            'shoot',
+            'cast'
+        ]);
 
         function setSideStudyPlaying(playing) {
             sideStudyState.playing = playing;
@@ -489,6 +614,204 @@
             document.getElementById('side-study-playback').textContent = playing
                 ? 'Pause'
                 : 'Play';
+        }
+
+        function getHumanoidWave1Now() {
+            return (
+                typeof performance !== 'undefined'
+                && typeof performance.now === 'function'
+            )
+                ? performance.now()
+                : Date.now();
+        }
+
+        function startHumanoidWave1ActorClip(
+            actor,
+            facing,
+            now = getHumanoidWave1Now()
+        ) {
+            if (typeof CombatSpriteAnimation === 'undefined') return null;
+
+            CombatSpriteAnimation.clear(actor);
+            actor.alive = true;
+            actor.defeated = false;
+            actor.combatFacing = facing;
+            const targetX = actor.x + (facing === 'left' ? -1 : 1);
+            const playbackOptions = {
+                facing,
+                targetX,
+                targetY: actor.y,
+                startTime: now,
+                playbackRate: sideStudyState.speed
+            };
+
+            if (humanoidWave1ActionClips.has(sideStudyState.clipId)) {
+                return CombatSpriteAnimation.startAction(actor, {
+                    ...playbackOptions,
+                    clipId: sideStudyState.clipId
+                });
+            }
+            if (sideStudyState.clipId === 'hit') {
+                return CombatSpriteAnimation.startHitReaction(
+                    actor,
+                    playbackOptions
+                );
+            }
+            if (sideStudyState.clipId === 'defeat') {
+                return CombatSpriteAnimation.startDefeat(
+                    actor,
+                    playbackOptions
+                );
+            }
+
+            CombatSpriteAnimation.faceActorToward(actor, targetX);
+            return null;
+        }
+
+        function resetHumanoidWave1Playback(
+            now = getHumanoidWave1Now()
+        ) {
+            if (typeof CombatSpriteAnimation === 'undefined') return;
+            humanoidWave1Stages.forEach(({ actors }) => {
+                Object.entries(actors).forEach(([facing, actor]) => {
+                    startHumanoidWave1ActorClip(actor, facing, now);
+                });
+            });
+            document.documentElement.dataset.humanoidControllerStudy =
+                'ready';
+        }
+
+        function getHumanoidWave1RenderState(actor, facing, now) {
+            if (
+                !sideStudyState.playing
+                || typeof CombatSpriteAnimation === 'undefined'
+            ) {
+                return {
+                    clipId: sideStudyState.clipId,
+                    frameIndex: sideStudyState.frameIndex,
+                    facing
+                };
+            }
+
+            const targetX = actor.x + (facing === 'left' ? -1 : 1);
+            let renderState = CombatSpriteAnimation.getRenderState(actor, {
+                now,
+                isMoving: sideStudyState.clipId === 'walk',
+                deltaX: facing === 'left' ? -1 : 1
+            });
+
+            if (
+                sideStudyState.clipId !== 'idle'
+                && sideStudyState.clipId !== 'walk'
+                && sideStudyState.clipId !== 'defeat'
+                && renderState.clipId !== sideStudyState.clipId
+            ) {
+                startHumanoidWave1ActorClip(actor, facing, now);
+                renderState = CombatSpriteAnimation.getRenderState(actor, {
+                    now,
+                    isMoving: false,
+                    deltaX: 0
+                });
+            } else if (
+                sideStudyState.clipId === 'idle'
+                || sideStudyState.clipId === 'walk'
+            ) {
+                CombatSpriteAnimation.faceActorToward(actor, targetX);
+                renderState.facing = facing;
+            }
+
+            return renderState;
+        }
+
+        function initializeHumanoidWave1Study() {
+            const previewSize = SIDE_STUDY_PREVIEW_SIZE;
+            humanoidWave1Actors.forEach(actor => {
+                const visual = resolveHumanoidActorVisualProfile(actor);
+                const card = document.createElement('article');
+                const title = document.createElement('h3');
+                const facings = document.createElement('div');
+
+                card.className = 'humanoid-wave-card';
+                card.dataset.humanoidProfile = actor.visualProfileId;
+                title.textContent = visual.label;
+                facings.className = 'humanoid-wave-facings';
+                const canvases = {};
+                const actors = {};
+
+                ['right', 'left'].forEach(facing => {
+                    const stage = document.createElement('div');
+                    const canvas = document.createElement('canvas');
+                    const label = document.createElement('span');
+                    const controllerActor = {
+                        ...actor,
+                        uid: `${actor.uid}_${facing}`,
+                        x: 0,
+                        y: 0,
+                        size: 1,
+                        alive: true
+                    };
+                    stage.className = 'humanoid-wave-facing';
+                    canvas.width = previewSize;
+                    canvas.height = previewSize;
+                    canvas.setAttribute(
+                        'aria-label',
+                        `${visual.label}, ${facing} facing`
+                    );
+                    label.textContent = facing === 'right'
+                        ? 'Facing right'
+                        : 'Facing left';
+                    stage.append(canvas, label);
+                    facings.appendChild(stage);
+                    canvases[facing] = canvas;
+                    actors[facing] = controllerActor;
+                });
+
+                card.append(title, facings);
+                humanoidWave1Grid.appendChild(card);
+                humanoidWave1Stages.push({
+                    actor,
+                    visual,
+                    actors,
+                    canvases
+                });
+            });
+            resetHumanoidWave1Playback();
+        }
+
+        function renderHumanoidWave1Study() {
+            const now = getHumanoidWave1Now();
+            const drawFrame = typeof drawHumanoidAnimationFrame === 'function'
+                ? drawHumanoidAnimationFrame
+                : drawSidePlayerAnimationFrame;
+
+            humanoidWave1Stages.forEach(({ visual, actors, canvases }) => {
+                Object.entries(canvases).forEach(([facing, canvas]) => {
+                    const context = canvas.getContext('2d', { alpha: true });
+                    const renderState = getHumanoidWave1RenderState(
+                        actors[facing],
+                        facing,
+                        now
+                    );
+                    context.clearRect(0, 0, canvas.width, canvas.height);
+                    drawFrame(
+                        context,
+                        visual.appearance.gender,
+                        renderState.clipId,
+                        renderState.frameIndex,
+                        canvas.width,
+                        {
+                            facing: renderState.facing,
+                            appearance: visual.appearance,
+                            hairStyle: visual.appearance.hairStyle,
+                            helmetItem: visual.equipment.helmet,
+                            armorItem: visual.equipment.armor,
+                            gloveItem: visual.equipment.gloves,
+                            bootItem: visual.equipment.boots,
+                            weaponItem: visual.equipment.weapon
+                        }
+                    );
+                });
+            });
         }
 
         function buildSideMotionSheet() {
@@ -530,6 +853,10 @@
                 {
                     facing: sideStudyState.facing,
                     showAnchors: sideStudyState.showAnchors,
+                    appearance: {
+                        ...player.appearance,
+                        hairStyle: player.appearance.hair
+                    },
                     hairStyle: player.appearance.hair,
                     helmetItem: player.equipment.helmet || null,
                     armorItem: player.equipment.armor || null,
@@ -585,9 +912,11 @@
                     String(frameIndex === sideStudyState.frameIndex)
                 );
             });
+            renderHumanoidWave1Study();
         }
 
         function initializeSideStudy() {
+            initializeHumanoidWave1Study();
             buildSideMotionSheet();
 
             const hairSelect = document.getElementById('side-study-hair');
@@ -611,6 +940,7 @@
                 sideStudyState.frameIndex = 0;
                 sideStudyState.frameAccumulator = 0;
                 buildSideMotionSheet();
+                resetHumanoidWave1Playback();
                 renderSideStudy();
             });
 
@@ -631,6 +961,7 @@
             document.getElementById('side-study-speed').addEventListener('input', event => {
                 sideStudyState.speed = Number(event.target.value) || 1;
                 sideStudyState.frameAccumulator = 0;
+                resetHumanoidWave1Playback();
             });
 
             document.getElementById('side-study-anchors').addEventListener('change', event => {
@@ -640,6 +971,9 @@
 
             document.getElementById('side-study-playback').addEventListener('click', () => {
                 setSideStudyPlaying(!sideStudyState.playing);
+                if (sideStudyState.playing) {
+                    resetHumanoidWave1Playback();
+                }
                 renderSideStudy();
             });
 
@@ -653,6 +987,9 @@
             sideStudyState.lastTimestamp = timestamp;
 
             if (sideStudyState.playing) {
+                if (typeof CombatSpriteAnimation !== 'undefined') {
+                    CombatSpriteAnimation.update(timestamp);
+                }
                 const clip = SidePlayerAnimationClips[sideStudyState.clipId];
                 const frameDuration = 1000 / (clip.fps * sideStudyState.speed);
                 sideStudyState.frameAccumulator += elapsed;

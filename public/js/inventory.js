@@ -1,6 +1,13 @@
 // --- LOGIC: INVENTORY & VAULT ---
 
-const EQUIPPABLE_ITEM_SLOTS = ['weapon', 'helmet', 'armor', 'gloves', 'boots'];
+const EQUIPPABLE_ITEM_SLOTS = [
+    'weapon',
+    'offhand',
+    'helmet',
+    'armor',
+    'gloves',
+    'boots'
+];
 
 function isLootCrate(item) {
     return !!(item && (item.type === 'crate' || (item.id && item.id.includes('crate'))));

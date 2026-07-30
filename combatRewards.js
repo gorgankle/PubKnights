@@ -56,8 +56,7 @@ function grantActorDefeatRewards(socketId, defeatedActor, context) {
     defeatedActor.rewardResolved = true;
 
     const isGorilla = combat.zone === 'GORILLA_ARENA';
-    const isBaited = combat.zone === 'WILDERNESS' && player.mapBaited;
-    const goldReward = isGorilla ? 500 : (isBaited ? 60 : 25);
+    const goldReward = isGorilla ? 500 : 25;
     const table = LootTables[defeatedActor.id];
     const xpReward = table ? (table.xpDrop || 0) : 0;
     const droppedItem = rollLootFromTable(table);
@@ -160,7 +159,6 @@ function claimCombatRewards(player) {
     player.pendingLoot = [];
     player.activeBuffs = [];
     player.activeCombatBuff = null;
-    player.mapBaited = false;
     player.cellarsChummed = false;
 
     return player;

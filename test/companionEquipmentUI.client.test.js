@@ -105,6 +105,7 @@ function createCompanion() {
         stats: { vitality: 3, offense: 2, defense: 2, speed: 3 },
         equipment: {
             weapon: gear('weapon', 'Rusty Sword'),
+            offhand: null,
             helmet: null,
             armor: null,
             gloves: null,
@@ -187,7 +188,7 @@ test('mercenary equipment renders as the Knight-style 3x3 grid with two pockets 
 
     const equipmentSlots = findAll(panel, element => element.dataset.companionSlot !== undefined);
     const pocketSlots = findAll(panel, element => element.dataset.companionPocketIndex !== undefined);
-    assert.deepEqual(equipmentSlots.map(slot => slot.dataset.companionSlot).sort(), ['armor', 'boots', 'gloves', 'helmet', 'weapon']);
+    assert.deepEqual(equipmentSlots.map(slot => slot.dataset.companionSlot).sort(), ['armor', 'boots', 'gloves', 'helmet', 'offhand', 'weapon']);
     assert.deepEqual(pocketSlots.map(slot => slot.dataset.companionPocketIndex), ['0', '1']);
     assert.equal(equipmentSlots.concat(pocketSlots).every(slot => hasClass(slot, 'equip-slot')), true);
 

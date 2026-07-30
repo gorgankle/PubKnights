@@ -518,6 +518,9 @@ function isValidPlayerMovePath(targetX, targetY) {
 }
 // === RESTORED TRANSITION FUNCTION ===
 window.transitionToTown = function() {
+    if (typeof cancelPendingCombatSpriteActions === 'function') {
+        cancelPendingCombatSpriteActions();
+    }
     if (typeof CombatSpriteAnimation !== 'undefined') {
         CombatSpriteAnimation.clear();
     }

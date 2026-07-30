@@ -92,15 +92,25 @@ function advanceDialogue() {
 
 function renderDialoguePortrait(portraitId) {
     const pCanvas = document.getElementById('dialogue-portrait-canvas');
-    if (!pCanvas || typeof drawOptimizedSprite !== 'function') return;
+    if (!pCanvas) return;
     const pCtx = pCanvas.getContext('2d');
     pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
     
     if (portraitId === 'player') {
-        // --- THE FIX: BETTER ZOOM & CENTERING ---
         const zoomSize = 180; // Enlarged crop of the canonical 32x32 sprite.
-        const ox = -30;       // Perfect horizontal center
-        const oy = -20;       // Crops just the legs out, keeping shoulders and head
+        const ox = -30;
+        const oy = -20;
+        if (typeof drawHumanoidActorFront === 'function') {
+            const renderedProfile = drawHumanoidActorFront(
+                pCtx,
+                player,
+                ox,
+                oy,
+                zoomSize
+            );
+            if (renderedProfile) return;
+        }
+        if (typeof drawOptimizedSprite !== 'function') return;
         
         let bodySprite = player.appearance.gender === 'female' ? 'body_female' : 'body_male';
         if (SpriteMatrices[bodySprite]) drawOptimizedSprite(pCtx, bodySprite, SpriteMatrices[bodySprite], ox, oy, zoomSize);
@@ -131,6 +141,7 @@ function renderDialoguePortrait(portraitId) {
         }
         
     } else if (portraitId) {
+        if (typeof drawOptimizedSprite !== 'function') return;
         if (SpriteMatrices[portraitId]) {
             // === THE FIX: ZOOM IN ON NPCs ===
             if (portraitId.startsWith('npc_')) {

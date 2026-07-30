@@ -16,6 +16,41 @@ const LootTables = {
             { itemId: "clearwater_tonic", weight: 3 }
         ]
     },
+    "melee_bandit": {
+        xpDrop: 16,
+        dropChance: 0.72,
+        pools: [
+            { itemId: "scavenged_machete", weight: 18 },
+            { itemId: "round_shield", weight: 8 },
+            { itemId: "leather_tunic", weight: 24 },
+            { itemId: "leather_mitts", weight: 22 },
+            { itemId: "hide_boots", weight: 22 },
+            { itemId: "stout", weight: 8 }
+        ]
+    },
+    "bandit_archer": {
+        xpDrop: 18,
+        dropChance: 0.72,
+        pools: [
+            { itemId: "hunter_bow", weight: 18 },
+            { itemId: "wilderness_cloak", weight: 12 },
+            { itemId: "poachers_grips", weight: 12 },
+            { itemId: "sturdy_boots", weight: 20 },
+            { itemId: "leather_tunic", weight: 24 }
+        ]
+    },
+    "hedge_mage": {
+        xpDrop: 24,
+        dropChance: 0.78,
+        pools: [
+            { itemId: "apprentice_staff", weight: 18 },
+            { itemId: "bogwood_staff", weight: 4 },
+            { itemId: "flannel_shirt", weight: 20 },
+            { itemId: "work_gloves", weight: 18 },
+            { itemId: "muddy_boots", weight: 20 },
+            { itemId: "clearwater_tonic", weight: 8 }
+        ]
+    },
     "peanut_slinger": {
         xpDrop: 14,
         dropChance: 0.75,
@@ -81,6 +116,19 @@ const LootTables = {
 			{ itemId: "hunter_bow", weight: 25 }
         ]
     },
+    "harvest_champion": {
+        xpDrop: 55,
+        dropChance: 0.75,
+        pools: [
+            { itemId: "pitchfork_spear", weight: 20 },
+            { itemId: "denim_overalls", weight: 18 },
+            { itemId: "straw_hat", weight: 15 },
+            { itemId: "work_gloves", weight: 18 },
+            { itemId: "muddy_boots", weight: 18 },
+            { itemId: "clearwater_tonic", weight: 6 },
+            { itemId: "stout", weight: 5 }
+        ]
+    },
     "wilderness_overlord": {
         xpDrop: 300,
         dropChance: 1.0, 
@@ -127,6 +175,51 @@ const LootTables = {
             { itemId: "tankard_gauntlets", weight: 10 },
             // Ultimate healing brew
             { itemId: "reserve", weight: 2 },
+            { itemId: "staunching_bitter", weight: 5 }
+        ]
+    },
+    "shield_guard_captain": {
+        xpDrop: 75,
+        dropChance: 0.76,
+        pools: [
+            { itemId: "captains_shield", weight: 20 },
+            { itemId: "round_shield", weight: 12 },
+            { itemId: "tower_shield", weight: 4 },
+            { itemId: "scavenged_machete", weight: 14 },
+            { itemId: "tankard_helm", weight: 10 },
+            { itemId: "tankard_plating", weight: 10 },
+            { itemId: "tankard_gauntlets", weight: 10 },
+            { itemId: "tankard_sabatons", weight: 8 },
+            { itemId: "ironwall_porter", weight: 8 },
+            { itemId: "staunching_bitter", weight: 4 }
+        ]
+    },
+    "cellar_duelist": {
+        xpDrop: 70,
+        dropChance: 0.78,
+        pools: [
+            { itemId: "parrying_dagger", weight: 18 },
+            { itemId: "mimic_fang_dagger", weight: 20 },
+            { itemId: "beerglass_shiv", weight: 12 },
+            { itemId: "beerglass_visor", weight: 10 },
+            { itemId: "beerglass_cuirass", weight: 10 },
+            { itemId: "beerglass_gloves", weight: 10 },
+            { itemId: "beerglass_cleats", weight: 10 },
+            { itemId: "ipa", weight: 5 },
+            { itemId: "lager", weight: 5 }
+        ]
+    },
+    "tankard_brute": {
+        xpDrop: 90,
+        dropChance: 0.72,
+        pools: [
+            { itemId: "tankard_maul", weight: 25 },
+            { itemId: "oak_barrel_cuirass", weight: 15 },
+            { itemId: "tankard_plating", weight: 18 },
+            { itemId: "tankard_gauntlets", weight: 12 },
+            { itemId: "tankard_sabatons", weight: 12 },
+            { itemId: "tower_shield", weight: 5 },
+            { itemId: "ironwall_porter", weight: 8 },
             { itemId: "staunching_bitter", weight: 5 }
         ]
     },
@@ -211,6 +304,22 @@ const LootTables = {
             { itemId: "staunching_bitter", weight: 10 },
             { itemId: "blackout_trench", weight: 2 },
             { itemId: "blackout_axe", weight: 2 } 
+        ]
+    },
+    "cult_champion": {
+        xpDrop: 170,
+        dropChance: 0.70,
+        pools: [
+            { itemId: "scythe_of_reaping", weight: 4 },
+            { itemId: "burlap_sack_mask", weight: 18 },
+            { itemId: "bogwood_staff", weight: 20 },
+            { itemId: "stormcaller_staff", weight: 10 },
+            { itemId: "blackout_trench", weight: 2 },
+            { itemId: "blackout_wraps", weight: 2 },
+            { itemId: "blackout_staggers", weight: 2 },
+            { itemId: "reserve", weight: 12 },
+            { itemId: "staunching_bitter", weight: 15 },
+            { itemId: "ironwall_porter", weight: 15 }
         ]
     },
 

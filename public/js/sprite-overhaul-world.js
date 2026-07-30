@@ -495,6 +495,82 @@ Object.assign(WorldOverhaulMatrices, {
 
 Object.assign(SpriteMatrices, WorldOverhaulMatrices);
 
+function drawWorldActorSprite(
+    context,
+    actorOrProfile,
+    startX,
+    startY,
+    size,
+    options = {}
+) {
+    const directProfile = (
+        actorOrProfile
+        && actorOrProfile.body
+        && actorOrProfile.appearance
+        && actorOrProfile.equipment
+    ) ? actorOrProfile : null;
+    let profile = directProfile;
+    if (
+        !profile
+        && typeof actorOrProfile === 'object'
+        && typeof resolveHumanoidActorVisualProfile === 'function'
+    ) {
+        profile = resolveHumanoidActorVisualProfile(actorOrProfile);
+    }
+    if (!profile && typeof getHumanoidActorVisualProfile === 'function') {
+        if (typeof actorOrProfile === 'string') {
+            profile = getHumanoidActorVisualProfile(actorOrProfile);
+        } else if (
+            actorOrProfile
+            && actorOrProfile.visualProfileId
+        ) {
+            profile = getHumanoidActorVisualProfile(
+                actorOrProfile.visualProfileId
+            );
+        }
+    }
+    if (
+        profile
+        && typeof drawHumanoidActorWorld === 'function'
+    ) {
+        drawHumanoidActorWorld(
+            context,
+            profile,
+            startX,
+            startY,
+            size,
+            options
+        );
+        return 'humanoid-paperdoll';
+    }
+
+    const spriteId = typeof actorOrProfile === 'string'
+        ? actorOrProfile
+        : actorOrProfile && (
+            actorOrProfile.spriteId
+            || actorOrProfile.id
+        );
+    const matrix = spriteId && SpriteMatrices[spriteId];
+    if (
+        matrix
+        && typeof drawProceduralSprite === 'function'
+    ) {
+        drawProceduralSprite(
+            context,
+            matrix,
+            startX,
+            startY,
+            size
+        );
+        return 'legacy-matrix';
+    }
+    return null;
+}
+
+if (typeof window !== 'undefined') {
+    window.drawWorldActorSprite = drawWorldActorSprite;
+}
+
 function makePetOverhaulSprite(type) {
     return createNativeOverhaulSprite(painter => {
         const { set, rect, frame, line, points, ellipse } = painter;
@@ -554,6 +630,7 @@ if (typeof module !== 'undefined' && module.exports) {
         makeCaskWorldSprite,
         makeMimicWorldSprite,
         makeBeastWorldSprite,
+        drawWorldActorSprite,
         makeGroundOverhaulTile,
         makeMapObstacleWorldSprite
     };

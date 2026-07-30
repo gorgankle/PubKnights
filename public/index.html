@@ -209,11 +209,11 @@
         <div class="dashboard-panel" style="margin-bottom: 0; display: flex; flex-direction: column; align-items: center;">
             <h3 style="color: #2ecc71; border-bottom: 1px dashed #27ae60; width: 100%; text-align: left;">🛡️ Active Loadout</h3>
             <div class="paper-doll-grid">
-                <div class="equip-slot empty-cell"></div>
+                <div class="equip-slot" id="vault-slot-gloves">G</div>
                 <div class="equip-slot" id="vault-slot-helmet">H</div>
                 <div class="equip-slot empty-cell"></div>
 
-                <div class="equip-slot" id="vault-slot-gloves">G</div>
+                <div class="equip-slot" id="vault-slot-offhand" title="Offhand">O</div>
                 <div class="equip-slot" id="vault-slot-armor">A</div>
                 <div class="equip-slot" id="vault-slot-weapon">W</div>
 
@@ -350,11 +350,11 @@
 
                 <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
                     <div class="paper-doll-grid">
-                        <div class="equip-slot empty-cell"></div>
+                        <div class="equip-slot" id="slot-gloves">G</div>
                         <div class="equip-slot" id="slot-helmet">H</div>
                         <div class="equip-slot empty-cell"></div>
 
-                        <div class="equip-slot" id="slot-gloves">G</div>
+                        <div class="equip-slot" id="slot-offhand" title="Offhand">O</div>
                         <div class="equip-slot" id="slot-armor">A</div>
                         <div class="equip-slot" id="slot-weapon">W</div>
 
@@ -767,46 +767,47 @@
     <!-- Data-Driven Loot & Economy Layer -->
 	<script src="js/spells.js"></script>
 	<script src="js/aura-assets.js"></script>
-    <script src="js/items.js"></script>
-	<script src="js/npc-database.js?v=2"></script>
-    <script src="js/lootTables.js"></script>
+    <script src="js/items.js?v=4"></script>
+	<script src="js/npc-database.js?v=5"></script>
+	<script src="js/lootTables.js?v=3"></script>
 
 
 
 <!-- Core State & Player Data -->
-    <script src="js/player.js?v=4"></script>
-    <script src="js/character-creator.js?v=6"></script> <!-- ESTABLISHES ARRAYS -->
+    <script src="js/player.js?v=7"></script>
+    <script src="js/character-creator.js?v=8"></script> <!-- ESTABLISHES ARRAYS -->
 	<script src="js/item-assets.js?v=2"></script>       <!-- NEW: EQUIPMENT ARRAYS -->
 	<script src="js/pet-assets.js?v=2"></script>
     <script src="js/npc-assets.js?v=2"></script>      <!-- MODIFIES ARRAYS WITH NPC DATA -->
 	<script src="js/map-assets.js?v=2"></script>
 	<script src="js/icon-assets.js?v=2"></script>
 <script src="js/sprite-overhaul.js?v=17"></script>
-<script src="js/sprite-overhaul-equipment.js?v=38"></script>
-<script src="js/sprite-overhaul-animation.js?v=27"></script>
-<script src="js/combat-animation.js?v=4"></script>
-    <script src="js/sprite-overhaul-world.js?v=1"></script>
+<script src="js/sprite-overhaul-equipment.js?v=41"></script>
+<script src="js/sprite-overhaul-animation.js?v=36"></script>
+<script src="js/humanoid-actor-visuals.js?v=8"></script>
+<script src="js/combat-animation.js?v=8"></script>
+    <script src="js/sprite-overhaul-world.js?v=3"></script>
     <script src="js/sprite-overhaul-icons.js?v=2"></script>
 	<script src="/socket.io/socket.io.js"></script>
 
-    <script src="js/main.js?v=11"></script>
-    <script src="js/inventory.js?v=5"></script>
+    <script src="js/main.js?v=15"></script>
+    <script src="js/inventory.js?v=6"></script>
 
 <!-- UI, Tooltips & Graphics Output -->
-    <script src="js/ui-tooltips.js?v=3"></script>
-    <script src="js/companion-ui.js?v=3"></script>
-    <script src="js/ui-render.js?v=7"></script>
-    <script src="js/renderer.js?v=8"></script>       <!-- RENDERS DATA -->
+    <script src="js/ui-tooltips.js?v=5"></script>
+    <script src="js/companion-ui.js?v=5"></script>
+    <script src="js/ui-render.js?v=11"></script>
+    <script src="js/renderer.js?v=12"></script>       <!-- RENDERS DATA -->
 	<script src="js/fx-engine.js?v=2"></script>
-	<script src="js/dialogue.js?v=3"></script>
-	<script src="js/social.js?v=3"></script>
+	<script src="js/dialogue.js?v=4"></script>
+	<script src="js/social.js?v=4"></script>
 
 
 <!-- Game Systems & Logic -->
     <script src="js/login.js"></script>
     <script src="js/combat-maps.js"></script>
-    <script src="js/combat-mechanics.js?v=8"></script>
-    <script src="js/town-actions.js?v=2"></script>
+    <script src="js/combat-mechanics.js?v=9"></script>
+    <script src="js/town-actions.js?v=3"></script>
 	<script src="js/minigames.js"></script>
 	<script src="js/spellbook.js"></script> 
 	

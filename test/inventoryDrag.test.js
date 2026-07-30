@@ -93,6 +93,24 @@ test('companion equipment drag keeps its owner metadata and returns gear to the 
     assert.deepEqual(emitted, []);
 });
 
+test('companion offhand drag is accepted as equipment and returns it to the backpack', () => {
+    const { context, companionActions, emitted } = loadInventoryScript();
+    const dataTransfer = createDataTransfer();
+
+    context.handleItemDragStart(
+        { dataTransfer },
+        'offhand',
+        'companion-equipment',
+        { instanceId: 'merc_1', slotKey: 'offhand' }
+    );
+    context.handleItemDrop({ preventDefault: () => {}, dataTransfer }, 0, 'backpack');
+
+    assert.deepEqual(companionActions, [
+        { action: 'unequip', instanceId: 'merc_1', slotKey: 'offhand' }
+    ]);
+    assert.deepEqual(emitted, []);
+});
+
 test('companion pocket drag returns the selected pocket item to the backpack', () => {
     const { context, companionActions, emitted } = loadInventoryScript();
     const dataTransfer = createDataTransfer();

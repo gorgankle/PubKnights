@@ -127,6 +127,7 @@ function refreshCombatSidebar() {
     const helmetDesc = describeItem(actorEquipment.helmet, 'Bare Headed');
     const armorDesc = describeItem(actorEquipment.armor, 'Bare Torso');
     const weaponDesc = describeItem(actorEquipment.weapon, 'Unarmed');
+    const offhandDesc = describeItem(actorEquipment.offhand, 'Empty Offhand');
     const glovesDesc = describeItem(actorEquipment.gloves, 'Bare Hands');
     const bootsDesc = describeItem(actorEquipment.boots, 'Bare Feet');
     const tooltipItem = slot => `onmouseenter="showTooltip(getItemTooltip((getActiveCombatant().equipment || {}).${slot}), event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"`;
@@ -167,6 +168,7 @@ function refreshCombatSidebar() {
                 <div style="cursor:help;width:max-content;" ${tooltipItem('helmet')}><b>Helmet:</b> ${helmetDesc}</div>
                 <div style="cursor:help;width:max-content;" ${tooltipItem('armor')}><b>Armor:</b> ${armorDesc}</div>
                 <div style="cursor:help;width:max-content;" ${tooltipItem('weapon')}><b>Weapon:</b> ${weaponDesc}</div>
+                <div style="cursor:help;width:max-content;" ${tooltipItem('offhand')}><b>Offhand:</b> ${offhandDesc}</div>
                 <div style="cursor:help;width:max-content;" ${tooltipItem('gloves')}><b>Gloves:</b> ${glovesDesc}</div>
                 <div style="cursor:help;width:max-content;" ${tooltipItem('boots')}><b>Boots:</b> ${bootsDesc}</div>
             </div>
@@ -468,13 +470,21 @@ if (hopsScreen) hopsScreen.style.display = "none";
                     </div>`;
             }
 
-            const slots = ['helmet', 'armor', 'weapon', 'gloves', 'boots'];
+            const slots = [
+                'helmet',
+                'armor',
+                'weapon',
+                'offhand',
+                'gloves',
+                'boots'
+            ];
             
             // Dictionary mapping slots to their designated placeholder letters
             const slotPlaceholders = {
                 'helmet': 'H',
                 'armor': 'A',
                 'weapon': 'W',
+                'offhand': 'O',
                 'gloves': 'G',
                 'boots': 'B'
             };
@@ -518,7 +528,7 @@ if (hopsScreen) hopsScreen.style.display = "none";
                             el.draggable = false;
                             el.ondragstart = null;
                             el.className = 'equip-slot'; 
-                            el.innerHTML = slotPlaceholders[slotKey]; // Injects H, A, W, G, or B
+                            el.innerHTML = slotPlaceholders[slotKey];
                             el.onmouseenter = null;
                             el.onmouseleave = null;
                             bindInventoryDoubleClick(el, null);
@@ -541,20 +551,6 @@ if (hopsScreen) hopsScreen.style.display = "none";
                 }
             }
             
-            const statusBanner = document.getElementById("bait-status-banner");
-            if (statusBanner) {
-                if (player.mapBaited) {
-                    statusBanner.innerText = "% PLACEMENT LAYER BUFFER ACTIVATED: SCALED RARITIES INDUCTION VECTORS";
-                    statusBanner.style.color = "#ff9f43"; statusBanner.style.borderColor = "#d35400";
-                } else if (player.cellarsChummed) {
-                    statusBanner.innerText = "CELLAR ALERT: SEAFOOD DISCHARGE DETECTED. HIGH DENSITY MIMIC ARRAYS ACTIVE";
-                    statusBanner.style.color = "#1abc9c"; statusBanner.style.borderColor = "#16a085";
-                } else {
-                    statusBanner.innerText = "TRACKING SIGNAL: NORMAL SURFACE RADAR";
-                    statusBanner.style.color = "#bbaaa0"; statusBanner.style.borderColor = "#443a32";
-                }
-            }
-
             let packCost = getBackpackUpgradeCost();
 
                    
@@ -810,45 +806,59 @@ function renderMainScreenSprites() {
     if (pCanvas && typeof drawProceduralSprite === 'function') {
         const pCtx = pCanvas.getContext('2d');
         pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
-        
-        let bodySprite = player.appearance.gender === 'female' ? 'body_female' : 'body_male';
-        if (SpriteMatrices[bodySprite]) drawProceduralSprite(pCtx, SpriteMatrices[bodySprite], 0, 0, pCanvas.width);
-        if (SpriteMatrices[player.appearance.eyes]) drawProceduralSprite(pCtx, SpriteMatrices[player.appearance.eyes], 0, 0, pCanvas.width);
-        
-        const hidesHair = player.equipment.helmet && player.equipment.helmet.hidesHair;
-        if (!hidesHair && SpriteMatrices[player.appearance.hair]) {
-            drawProceduralSprite(pCtx, SpriteMatrices[player.appearance.hair], 0, 0, pCanvas.width);
-        }
 
-        const eq = player.equipment;
-        let gSuffix = player.appearance.gender === 'female' ? '_female' : '_male';
-        
-        if (eq.armor && eq.armor.spriteId) {
-            let sId = eq.armor.spriteId + gSuffix;
-            if (SpriteMatrices[sId]) drawProceduralSprite(pCtx, SpriteMatrices[sId], 0, 0, pCanvas.width);
-            else if (SpriteMatrices[eq.armor.spriteId]) drawProceduralSprite(pCtx, SpriteMatrices[eq.armor.spriteId], 0, 0, pCanvas.width);
-        }
-        
-        if (eq.boots && eq.boots.spriteId && SpriteMatrices[eq.boots.spriteId]) drawProceduralSprite(pCtx, SpriteMatrices[eq.boots.spriteId], 0, 0, pCanvas.width);
-        if (eq.gloves && eq.gloves.spriteId && SpriteMatrices[eq.gloves.spriteId]) drawProceduralSprite(pCtx, SpriteMatrices[eq.gloves.spriteId], 0, 0, pCanvas.width);
-        if (eq.helmet && eq.helmet.spriteId && SpriteMatrices[eq.helmet.spriteId]) drawProceduralSprite(pCtx, SpriteMatrices[eq.helmet.spriteId], 0, 0, pCanvas.width);
-        if (eq.weapon && eq.weapon.spriteId) {
-            if (typeof drawFrontPaperdollWeapon === 'function') {
-                drawFrontPaperdollWeapon(
-                    pCtx,
-                    eq.weapon.spriteId,
-                    0,
-                    0,
-                    pCanvas.width
-                );
-            } else if (SpriteMatrices[eq.weapon.spriteId]) {
-                drawProceduralSprite(
-                    pCtx,
-                    SpriteMatrices[eq.weapon.spriteId],
-                    0,
-                    0,
-                    pCanvas.width
-                );
+        const sharedProfile = (
+            typeof drawHumanoidActorFront === 'function'
+        )
+            ? drawHumanoidActorFront(
+                pCtx,
+                player,
+                0,
+                0,
+                pCanvas.width
+            )
+            : null;
+
+        if (!sharedProfile) {
+            let bodySprite = player.appearance.gender === 'female' ? 'body_female' : 'body_male';
+            if (SpriteMatrices[bodySprite]) drawProceduralSprite(pCtx, SpriteMatrices[bodySprite], 0, 0, pCanvas.width);
+            if (SpriteMatrices[player.appearance.eyes]) drawProceduralSprite(pCtx, SpriteMatrices[player.appearance.eyes], 0, 0, pCanvas.width);
+
+            const hidesHair = player.equipment.helmet && player.equipment.helmet.hidesHair;
+            if (!hidesHair && SpriteMatrices[player.appearance.hair]) {
+                drawProceduralSprite(pCtx, SpriteMatrices[player.appearance.hair], 0, 0, pCanvas.width);
+            }
+
+            const eq = player.equipment;
+            let gSuffix = player.appearance.gender === 'female' ? '_female' : '_male';
+
+            if (eq.armor && eq.armor.spriteId) {
+                let sId = eq.armor.spriteId + gSuffix;
+                if (SpriteMatrices[sId]) drawProceduralSprite(pCtx, SpriteMatrices[sId], 0, 0, pCanvas.width);
+                else if (SpriteMatrices[eq.armor.spriteId]) drawProceduralSprite(pCtx, SpriteMatrices[eq.armor.spriteId], 0, 0, pCanvas.width);
+            }
+
+            if (eq.boots && eq.boots.spriteId && SpriteMatrices[eq.boots.spriteId]) drawProceduralSprite(pCtx, SpriteMatrices[eq.boots.spriteId], 0, 0, pCanvas.width);
+            if (eq.gloves && eq.gloves.spriteId && SpriteMatrices[eq.gloves.spriteId]) drawProceduralSprite(pCtx, SpriteMatrices[eq.gloves.spriteId], 0, 0, pCanvas.width);
+            if (eq.helmet && eq.helmet.spriteId && SpriteMatrices[eq.helmet.spriteId]) drawProceduralSprite(pCtx, SpriteMatrices[eq.helmet.spriteId], 0, 0, pCanvas.width);
+            if (eq.weapon && eq.weapon.spriteId) {
+                if (typeof drawFrontPaperdollWeapon === 'function') {
+                    drawFrontPaperdollWeapon(
+                        pCtx,
+                        eq.weapon.spriteId,
+                        0,
+                        0,
+                        pCanvas.width
+                    );
+                } else if (SpriteMatrices[eq.weapon.spriteId]) {
+                    drawProceduralSprite(
+                        pCtx,
+                        SpriteMatrices[eq.weapon.spriteId],
+                        0,
+                        0,
+                        pCanvas.width
+                    );
+                }
             }
         }
     }

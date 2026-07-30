@@ -42,8 +42,8 @@ class FakeSocket {
     }
 }
 
-function gear(id, slot) {
-    return { id, name: id, slot, rarity: 'Common' };
+function gear(id, slot, extra = {}) {
+    return { id, name: id, slot, rarity: 'Common', ...extra };
 }
 
 function makeCompanion(instanceId = 'merc_test_1') {
@@ -58,6 +58,7 @@ function makeCompanion(instanceId = 'merc_test_1') {
         pockets: [null, null],
         equipment: {
             weapon: gear('old_mace', 'weapon'),
+            offhand: null,
             helmet: null,
             armor: null,
             gloves: null,
@@ -93,6 +94,7 @@ test('party limits expose six roster slots, three selections, and two pockets', 
     assert.equal(MAX_ROSTER_COMPANIONS, 6);
     assert.equal(MAX_SELECTED_COMPANIONS, 3);
     assert.equal(COMPANION_POCKET_COUNT, 2);
+    assert.equal(COMPANION_EQUIPMENT_SLOTS.includes('offhand'), true);
 });
 
 test('legacy companion ids migrate without losing active state or gear', () => {
@@ -123,6 +125,7 @@ test('legacy companion ids migrate without losing active state or gear', () => {
     assert.equal(Object.hasOwn(companion, 'id'), false);
     assert.deepEqual(Object.keys(companion.equipment), COMPANION_EQUIPMENT_SLOTS);
     assert.equal(companion.equipment.weapon.id, 'old_mace');
+    assert.equal(companion.equipment.offhand, null);
     assert.equal(companion.equipment.gloves, null);
     assert.equal(companion.xp, 0);
     assert.deepEqual(companion.pockets, [null, null]);
@@ -167,6 +170,28 @@ test('companion xp and exactly two pockets survive normalization without losing 
     assert.equal(companion.pockets[0].id, 'potion');
     assert.equal(companion.pockets[1], null);
     assert.deepEqual(player.inventory.map(item => item.id), ['spare_boots']);
+});
+
+test('companion hydration stows an offhand that conflicts with a two-handed weapon', () => {
+    const player = makePlayer();
+    const savedShield = gear('saved_shield', 'offhand');
+    const savedCompanion = makeCompanion('merc_saved_hands');
+    savedCompanion.equipment.weapon = gear(
+        'saved_maul',
+        'weapon',
+        { handedness: 'two', twoHanded: true }
+    );
+    savedCompanion.equipment.offhand = savedShield;
+    player.roster.companions = [savedCompanion];
+
+    normalizeRosterState(player);
+
+    const companion = player.roster.companions[0];
+    assert.equal(companion.equipment.weapon.id, 'saved_maul');
+    assert.equal(companion.equipment.offhand, null);
+    assert.deepEqual(player.inventory.map(item => item.id), [
+        'saved_shield'
+    ]);
 });
 
 test('roster policies enforce capacity and combat locks', () => {
