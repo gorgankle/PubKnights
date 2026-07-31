@@ -164,6 +164,25 @@ function syncCombatCollectionsFromState(
         player.x = serverCombatState.player.x;
         player.y = serverCombatState.player.y;
     }
+    const playerActorSnapshot = Array.isArray(serverCombatState.actors)
+        ? serverCombatState.actors.find(actor => actor && (
+            actor.uid === 'player_0'
+            || actor.kind === 'player'
+        )) || null
+        : null;
+    if (applyCombatControls && playerActorSnapshot) {
+        if (
+            playerActorSnapshot.guardState
+            && typeof playerActorSnapshot.guardState === 'object'
+        ) {
+            // Combat-only actor state; saveGame deliberately omits it.
+            player.guardState = {
+                ...playerActorSnapshot.guardState
+            };
+        } else {
+            delete player.guardState;
+        }
+    }
     enemies = serverCombatState.enemies || [];
     allies = serverCombatState.allies || [];
     rogues = serverCombatState.rogues || [];
@@ -235,6 +254,11 @@ function getCombatActorByUid(uid) {
     return [...(enemies || []), ...(allies || []), ...(rogues || [])].find(actor => actor.uid === uid) || null;
 }
 
+function clearExpiredGuardForActivatedActor(actorUid) {
+    const actor = getCombatActorByUid(actorUid);
+    if (actor) delete actor.guardState;
+}
+
 function getPlayerAttackables() {
     return [...(enemies || []), ...(rogues || [])].filter(actor => actor && actor.alive);
 }
@@ -250,6 +274,9 @@ function presentCombatVictory() {
     combatActionsRemaining = 0;
     selectedEnemy = null;
     pendingMove = null;
+    if (typeof resetEquipmentAttackUiState === 'function') {
+        resetEquipmentAttackUiState();
+    }
 
     logMessage("🏆 VICTORY Conditions verified.");
     if (typeof playRetroSound === "function") playRetroSound("victory");
@@ -271,14 +298,30 @@ function getCombatEventActorUid(event) {
     return null;
 }
 
-function getCombatResultWeapon(sourceActor) {
+function getCombatResultEquipment(sourceActor) {
     if (
         sourceActor
         && sourceActor.equipment
-        && sourceActor.equipment.weapon
+        && typeof sourceActor.equipment === 'object'
     ) {
-        return sourceActor.equipment.weapon;
+        return sourceActor.equipment;
     }
+    if (
+        sourceActor
+        && (
+            sourceActor.kind === 'player'
+            || sourceActor.uid === 'player_0'
+            || sourceActor === player
+        )
+    ) {
+        return player && player.equipment ? player.equipment : {};
+    }
+    return {};
+}
+
+function getCombatResultWeapon(sourceActor) {
+    const equipment = getCombatResultEquipment(sourceActor);
+    if (equipment.weapon) return equipment.weapon;
     if (
         sourceActor
         && typeof getHumanoidActorWeapon === 'function'
@@ -298,6 +341,16 @@ function getCombatResultWeapon(sourceActor) {
             : null;
     }
     return null;
+}
+
+function getCombatResultActionItem(result, sourceActor) {
+    const equipment = getCombatResultEquipment(sourceActor);
+    const equipmentSlot = result
+        && result.action
+        && result.action.equipmentSlot;
+    return equipmentSlot && equipment[equipmentSlot]
+        ? equipment[equipmentSlot]
+        : getCombatResultWeapon(sourceActor);
 }
 
 function playHumanoidImpactReaction(
@@ -489,6 +542,9 @@ function recoverDiscardedSocketSession() {
     pendingMove = null;
     selectedEnemy = null;
     reachableTiles = null;
+    if (typeof resetEquipmentAttackUiState === 'function') {
+        resetEquipmentAttackUiState();
+    }
 
     cancelPendingCombatPlaybacks();
     cancelPendingCombatSpriteActions();
@@ -677,29 +733,31 @@ function getCombatResultAnimationProfile(
     const profileKey = result.actionName === 'special'
         ? 'special'
         : 'standard';
-    const profile = (
-        weapon
-        && weapon.combat
-        && weapon.combat[profileKey]
+    const authoritativeAction = result.action && typeof result.action === 'object'
+        ? result.action
+        : null;
+    const profile = authoritativeAction || (
+        weapon && weapon.combat && weapon.combat[profileKey]
     ) || {};
+    const equipment = getCombatResultEquipment(sourceActor);
+    const actionItem = authoritativeAction
+        ? getCombatResultActionItem(result, sourceActor)
+        : weapon;
     const fx = result.fx || {};
-    const clipId = typeof resolveCombatAnimationClip === 'function'
+    const clipId = profile.clipId || (typeof resolveCombatAnimationClip === 'function'
         ? resolveCombatAnimationClip({
             source: result.source,
             actionType: profile.actionType,
             isProjectile: fx.isProjectile,
             animType: profile.animType,
-            weapon,
-            offhand: sourceActor
-                && sourceActor.equipment
-                ? sourceActor.equipment.offhand
-                : null
+            weapon: actionItem,
+            offhand: equipment.offhand || null
         })
         : (
             result.source === 'spell'
                 ? 'cast'
                 : (fx.isProjectile ? 'shoot' : 'slash')
-        );
+        ));
 
     return {
         clipId,
@@ -745,6 +803,9 @@ function getCombatResultTarget(result, sourceActor) {
 
 function applyOutgoingCombatImpact(result) {
     const targets = Array.isArray(result.targets) ? result.targets : [];
+    const actionLabel = result.action && result.action.name
+        ? result.action.name
+        : (result.actionName || 'Attack');
 
     if (result.source === 'spell') {
         if (typeof playRetroSound === 'function') playRetroSound('explosion');
@@ -757,7 +818,19 @@ function applyOutgoingCombatImpact(result) {
             playRetroSound(
                 isCrit
                     ? 'playerCrit'
-                    : (result.actionName === 'special' ? 'heavyAttack' : 'attack')
+                    : (
+                        result.actionName === 'special'
+                        || (
+                            result.action
+                            && (
+                                result.action.id === 'special'
+                                || result.action.id === 'shield_bash'
+                                || result.action.clipId === 'shield_bash'
+                            )
+                        )
+                            ? 'heavyAttack'
+                            : 'attack'
+                    )
             );
         }
     }
@@ -788,7 +861,7 @@ function applyOutgoingCombatImpact(result) {
             );
         } else if (targetData.isCrit) {
             logMessage(
-                `💥 CRITICAL STRIKE! Executed ${result.actionName.toUpperCase()} onto ${target.name} for ${targetData.damage} DMG!`
+                `💥 CRITICAL STRIKE! Executed ${actionLabel.toUpperCase()} onto ${target.name} for ${targetData.damage} DMG!`
             );
             FXEngine.spawnText(
                 target.x,
@@ -798,7 +871,7 @@ function applyOutgoingCombatImpact(result) {
             );
         } else {
             logMessage(
-                `⚔️ Executed ${result.actionName.toUpperCase()} strike onto ${target.name} for ${targetData.damage} DMG!`
+                `⚔️ Executed ${actionLabel.toUpperCase()} onto ${target.name} for ${targetData.damage} DMG!`
             );
             FXEngine.spawnText(
                 target.x,
@@ -969,12 +1042,18 @@ function playOutgoingCombatMiss(
 ) {
     trackCombatPlayback(result.playbackId);
     const weapon = getCombatResultWeapon(sourceActor);
-    const isProjectile = Boolean(weapon && weapon.projectileSprite);
+    const actionItem = typeof getCombatResultActionItem === 'function'
+        ? getCombatResultActionItem(result, sourceActor)
+        : weapon;
+    const isProjectile = Boolean(
+        (result.fx && result.fx.isProjectile)
+        || (actionItem && actionItem.projectileSprite)
+    );
     const animation = getCombatResultAnimationProfile(
         {
             ...result,
-            source: 'weapon',
-            fx: { isProjectile }
+            source: result.source || 'weapon',
+            fx: { ...(result.fx || {}), isProjectile }
         },
         weapon,
         sourceActor
@@ -1149,7 +1228,7 @@ function playOutgoingCombatMiss(
             releaseOrigin.y,
             targetX,
             targetY,
-            weapon.projectileSprite,
+            actionItem && actionItem.projectileSprite,
             {
                 arc: 0,
                 spin: false,
@@ -1175,6 +1254,56 @@ function playOutgoingCombatMiss(
             markSourceComplete();
         },
         startTargetDefense
+    );
+}
+
+function playOutgoingCombatGuard(
+    result,
+    sourceActor,
+    resultCombatState,
+    authority = null
+) {
+    trackCombatPlayback(result.playbackId);
+    const weapon = getCombatResultWeapon(sourceActor);
+    const animation = getCombatResultAnimationProfile(
+        result,
+        weapon,
+        sourceActor
+    );
+    const facingTarget = selectedEnemy && selectedEnemy.alive
+        ? selectedEnemy
+        : null;
+    let settled = false;
+
+    function settleGuard() {
+        if (settled) return;
+        settled = true;
+        try {
+            finalizeOutgoingCombatAction(
+                result,
+                resultCombatState,
+                authority
+            );
+        } finally {
+            acknowledgeCombatPlayback(result.playbackId);
+        }
+    }
+
+    logMessage(
+        `${result.actorName || (sourceActor && sourceActor.name) || 'Party member'} readied ${result.action && result.action.name ? result.action.name : 'a shield block'}.`
+    );
+    if (typeof playRetroSound === 'function') playRetroSound('deflect');
+
+    startCombatSpriteActionWhenReady(
+        sourceActor,
+        {
+            clipId: animation.clipId,
+            targetX: facingTarget ? facingTarget.x : undefined,
+            targetY: facingTarget ? facingTarget.y : undefined,
+            onComplete: settleGuard,
+            onCancel: settleGuard
+        },
+        settleGuard
     );
 }
 
@@ -1213,7 +1342,6 @@ socket.on('serverTick', (serverData) => {
 // === SERVER-AUTHORITATIVE COMBAT DISPATCH (UNIFIED ENGINE) ===
 socket.on('combatResult', (result) => {
     if (!result || gameState !== 'COMBAT') return;
-
     const authority = registerCombatAuthority(result);
     const resultCombatState = result.updatedCombatState || null;
     if (authority.stale) {
@@ -1222,6 +1350,9 @@ socket.on('combatResult', (result) => {
         refreshSystemUI();
         if (typeof drawGrid === 'function') drawGrid();
         return;
+    }
+    if (typeof resetEquipmentAttackUiState === 'function') {
+        resetEquipmentAttackUiState();
     }
     if (result.updatedPlayer) Object.assign(player, result.updatedPlayer); // Instantly sync stamina
 
@@ -1242,6 +1373,19 @@ socket.on('combatResult', (result) => {
     if (result.type === 'endTurn') {
         logMessage(`${result.actorName || 'Party member'} ended their turn.`);
         settleCombatActionState(resultCombatState, authority);
+        return;
+    }
+
+    if (result.type === 'guard') {
+        const sourceActor = getCombatActorByUid(
+            result.actorUid || 'player_0'
+        ) || player;
+        playOutgoingCombatGuard(
+            result,
+            sourceActor,
+            resultCombatState,
+            authority
+        );
         return;
     }
 
@@ -1305,6 +1449,9 @@ socket.on('combatItemReceipt', (receipt) => {
         if (typeof drawGrid === 'function') drawGrid();
         return;
     }
+    if (typeof resetEquipmentAttackUiState === 'function') {
+        resetEquipmentAttackUiState();
+    }
     if (!receipt.success) {
         logMessage(receipt.message);
         if (typeof playRetroSound === 'function') playRetroSound('error');
@@ -1360,6 +1507,9 @@ socket.on('moveReceipt', (receipt) => {
         if (typeof drawGrid === 'function') drawGrid();
         return;
     }
+    if (typeof resetEquipmentAttackUiState === 'function') {
+        resetEquipmentAttackUiState();
+    }
     if (receipt.updatedPlayer) Object.assign(player, receipt.updatedPlayer);
     if (!receipt.success) {
         logMessage(receipt.message);
@@ -1386,7 +1536,12 @@ socket.on('ATB_READY', (payload = {}) => {
     if (gameState !== 'COMBAT') return;
     const authority = registerCombatAuthority(payload);
     if (authority.stale) return;
+    if (typeof resetEquipmentAttackUiState === 'function') {
+        resetEquipmentAttackUiState();
+    }
     activeCombatActorUid = payload.actorUid || 'player_0';
+    // The server expires an unused one-hit guard when this actor activates again.
+    clearExpiredGuardForActivatedActor(activeCombatActorUid);
     combatActionsRemaining = Number.isInteger(payload.actionsRemaining) ? payload.actionsRemaining : 2;
     combatPhase = 'ACTION_READY';
     currentTurn = 'PLAYER';
@@ -1594,6 +1749,9 @@ socket.on('combatDeployed', (serverCombatState) => {
     combatVictoryPresentationStarted = false;
     reachableTiles = null;
     hideTooltip();
+    if (typeof resetEquipmentAttackUiState === 'function') {
+        resetEquipmentAttackUiState();
+    }
     cancelPendingCombatSpriteActions();
     if (typeof CombatSpriteAnimation !== 'undefined') {
         CombatSpriteAnimation.clear();
@@ -1999,14 +2157,18 @@ socket.on('enemyTurnReceipt', (receipt) => {
             }
             else if (ev.type === 'deflect') {
                 const attacker = getEnemyEventSourceActor(ev);
+                const shieldBlocked = ev.guarded === true
+                    || ev.deflectReason === 'shield_block';
                 playHumanoidDefensiveReaction(
                     player,
                     attacker,
                     getDeflectPlaybackOptions(ev, attacker, player)
                 );
                 playEnemyAttackFx(ev, () => {
-                    logMessage(`Deflected attack from ${ev.enemyName}!`);
-                    FXEngine.spawnText(player.x, player.y, "DEFLECT", { color: "#3498db" });
+                    logMessage(shieldBlocked
+                        ? `Blocked attack from ${ev.enemyName}!`
+                        : `Deflected attack from ${ev.enemyName}!`);
+                    FXEngine.spawnText(player.x, player.y, shieldBlocked ? "BLOCK" : "DEFLECT", { color: "#3498db" });
                     if (typeof playRetroSound === 'function') playRetroSound('deflect');
                 });
             }
@@ -2066,14 +2228,18 @@ socket.on('enemyTurnReceipt', (receipt) => {
             else if (ev.type === 'actorDeflect') {
                 const target = getCombatActorByUid(ev.targetUid);
                 const attacker = getEnemyEventSourceActor(ev);
+                const shieldBlocked = ev.guarded === true
+                    || ev.deflectReason === 'shield_block';
                 playHumanoidDefensiveReaction(
                     target,
                     attacker,
                     getDeflectPlaybackOptions(ev, attacker, target)
                 );
                 playEnemyAttackFx(ev, () => {
-                    if (target) FXEngine.spawnText(target.x, target.y, "DEFLECT", { color: "#3498db" });
-                    logMessage(`${ev.targetName} deflected ${ev.sourceName}'s attack.`);
+                    if (target) FXEngine.spawnText(target.x, target.y, shieldBlocked ? "BLOCK" : "DEFLECT", { color: "#3498db" });
+                    logMessage(shieldBlocked
+                        ? `${ev.targetName} blocked ${ev.sourceName}'s attack.`
+                        : `${ev.targetName} deflected ${ev.sourceName}'s attack.`);
                     if (typeof playRetroSound === 'function') playRetroSound('deflect');
                 }, target);
             }

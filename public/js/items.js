@@ -1,6 +1,33 @@
 // --- items.js ---
 // A master dictionary of all items in the game. 
 
+const ShieldEquipmentActions = Object.freeze({
+    shield_block: Object.freeze({
+        name: "Shield Block",
+        description: "Brace behind the equipped shield and guard against the next attack.",
+        actionType: "guard",
+        targetType: "self",
+        range: 0,
+        staminaCost: 10,
+        multiplier: 1.0,
+        ignoresDefense: false,
+        animType: "shield_block",
+        clipId: "shield_block"
+    }),
+    shield_bash: Object.freeze({
+        name: "Shield Bash",
+        description: "Drive the equipped shield into an adjacent enemy.",
+        actionType: "attack",
+        targetType: "enemy",
+        range: 1,
+        staminaCost: 12,
+        multiplier: 0.75,
+        ignoresDefense: false,
+        animType: "shield_bash",
+        clipId: "shield_bash"
+    })
+});
+
 const ItemDatabase = {
 	
 	// === THE RANGED ARSENAL ===
@@ -52,26 +79,46 @@ const ItemDatabase = {
     "round_shield": {
         id: "round_shield", name: "Oak-Banded Round Shield", slot: "offhand",
         type: "Shield", offhandType: "shield", rarity: "Uncommon",
-        defense: 3, value: 35, spriteId: "offhand_round_shield"
+        defense: 3, value: 35, spriteId: "offhand_round_shield",
+        equipmentActions: ShieldEquipmentActions
     },
     "captains_shield": {
         id: "captains_shield", name: "Captain's Shield", slot: "offhand",
         type: "Shield", offhandType: "shield", rarity: "Rare",
         defense: 7, value: 90,
-        spriteId: "offhand_captains_shield"
+        spriteId: "offhand_captains_shield",
+        equipmentActions: ShieldEquipmentActions
     },
     "tower_shield": {
         id: "tower_shield", name: "Black-Iron Tower Shield", slot: "offhand",
         type: "Shield", offhandType: "shield", rarity: "Epic",
         defense: 14, speed: -1, value: 180,
-        spriteId: "offhand_tower_shield"
+        spriteId: "offhand_tower_shield",
+        equipmentActions: ShieldEquipmentActions
     },
     "parrying_dagger": {
         id: "parrying_dagger", name: "Parrying Dagger", slot: "offhand",
         type: "Dagger", offhandType: "weapon", rarity: "Epic",
         offense: 5, speed: 1, value: 140,
         spriteId: "offhand_parrying_dagger",
-        handedness: "one", animationFamily: "dual_wield"
+        handedness: "one", animationFamily: "dual_wield",
+        equipmentActions: Object.freeze({
+            offhand_strike: Object.freeze({
+                name: "Offhand Strike",
+                description: "Strike with the parrying dagger alongside a compatible one-handed weapon.",
+                actionType: "attack",
+                targetType: "enemy",
+                range: 1,
+                staminaCost: 12,
+                multiplier: 1.0,
+                ignoresDefense: false,
+                animType: "dual_wield",
+                clipId: "dual_wield",
+                requirements: Object.freeze({
+                    mainHand: "one-handed"
+                })
+            })
+        })
     },
 	
     "behemoth_maw_crusher": { 

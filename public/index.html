@@ -6,7 +6,7 @@
 	<!-- NEW: Mobile Viewport Scaling -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Pub Knights - Beta v0.9(Modular Refactor)</title>
-    <link rel="stylesheet" href="style.css?v=5">
+    <link rel="stylesheet" href="style.css?v=6">
 	
 	<!-- === NEW: MOBILE DRAG & DROP POLYFILL === -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/default.css">
@@ -144,8 +144,10 @@
             
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
                 <button id="slash-btn" onclick="executeCombatAction('slash')" style="padding: 12px; font-size: 15px;" onmouseenter="showSystemTooltip('combat_slash', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Standard Attack</button>
-                <button id="heavy-btn" onclick="executeCombatAction('special')" style="padding: 12px; font-size: 15px;" onmouseenter="showSpecialSkillTooltip(event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Weapon Skill</button>
+                <button id="equipment-attacks-btn" type="button" onclick="toggleEquipmentAttackMenu()" aria-expanded="false" aria-controls="equipment-attack-menu" style="padding: 12px; font-size: 15px;" onmouseenter="showSystemTooltip('combat_equipment_attacks', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Equipment Attacks</button>
             </div>
+
+            <div id="equipment-attack-menu" class="equipment-attack-menu" role="region" aria-label="Available equipment attacks" hidden></div>
             
             <div id="combat-inventory-list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;"></div>
             
@@ -769,13 +771,14 @@
 
 
 
-    <script src="js/audio.js"></script>
+    <script src="js/audio.js?v=2"></script>
 	
 
     <!-- Data-Driven Loot & Economy Layer -->
 	<script src="js/spells.js"></script>
 	<script src="js/aura-assets.js"></script>
-    <script src="js/items.js?v=4"></script>
+	<script src="js/items.js?v=5"></script>
+	<script src="js/equipment-actions.js?v=1"></script>
 	<script src="js/npc-database.js?v=5"></script>
 	<script src="js/lootTables.js?v=3"></script>
 
@@ -798,14 +801,14 @@
     <script src="js/sprite-overhaul-icons.js?v=2"></script>
 	<script src="/socket.io/socket.io.js"></script>
 
-    <script src="js/main.js?v=16"></script>
+    <script src="js/main.js?v=17"></script>
     <script src="js/inventory.js?v=6"></script>
 
 <!-- UI, Tooltips & Graphics Output -->
-    <script src="js/ui-tooltips.js?v=5"></script>
+    <script src="js/ui-tooltips.js?v=6"></script>
     <script src="js/companion-ui.js?v=5"></script>
-    <script src="js/ui-render.js?v=11"></script>
-    <script src="js/renderer.js?v=12"></script>       <!-- RENDERS DATA -->
+    <script src="js/ui-render.js?v=12"></script>
+    <script src="js/renderer.js?v=13"></script>       <!-- RENDERS DATA -->
 	<script src="js/fx-engine.js?v=3"></script>
 	<script src="js/dialogue.js?v=4"></script>
 	<script src="js/social.js?v=4"></script>
@@ -815,7 +818,7 @@
     <script src="js/login.js"></script>
     <script src="js/combat-maps.js"></script>
     <script src="js/expeditions.js?v=1"></script>
-    <script src="js/combat-mechanics.js?v=10"></script>
+    <script src="js/combat-mechanics.js?v=11"></script>
     <script src="js/town-actions.js?v=3"></script>
 	<script src="js/minigames.js"></script>
 	<script src="js/spellbook.js"></script> 

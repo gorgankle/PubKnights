@@ -183,6 +183,78 @@ function refreshCombatSidebar() {
         </div>`;
 }
 
+function renderEquipmentAttackMenu() {
+    const menu = document.getElementById('equipment-attack-menu');
+    const button = document.getElementById('equipment-attacks-btn');
+    if (!menu || !button) return;
+
+    const open = typeof isEquipmentAttackMenuOpen === 'function'
+        && isEquipmentAttackMenuOpen();
+    button.setAttribute('aria-expanded', open ? 'true' : 'false');
+    menu.hidden = !open;
+    if (!open) {
+        menu.innerHTML = '';
+        return;
+    }
+
+    const actor = typeof getActiveCombatant === 'function'
+        ? getActiveCombatant()
+        : player;
+    const actions = typeof listActiveEquipmentAttacks === 'function'
+        ? listActiveEquipmentAttacks()
+        : [];
+
+    menu.innerHTML = '';
+    const heading = document.createElement('div');
+    heading.className = 'equipment-attack-menu-heading';
+    heading.textContent = `${actor && actor.name ? actor.name : 'Knight'} — Equipment Attacks`;
+    menu.appendChild(heading);
+
+    if (actions.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'equipment-attack-menu-empty';
+        empty.textContent = 'No equipped items currently provide an equipment attack.';
+        menu.appendChild(empty);
+        return;
+    }
+
+    actions.forEach(action => {
+        const targetType = String(action.targetType || 'enemy').toLowerCase();
+        const targetLabel = targetType === 'self'
+            ? 'Self'
+            : (['tile', 'aoe', 'area'].includes(targetType)
+                ? `Area · ${action.range} tile range`
+                : `Enemy · ${action.range} tile range`);
+        const disabledReason = typeof getEquipmentAttackDisabledReason === 'function'
+            ? getEquipmentAttackDisabledReason(action)
+            : '';
+        const option = document.createElement('button');
+        option.type = 'button';
+        option.className = 'equipment-attack-option';
+        option.disabled = Boolean(disabledReason);
+        option.title = action.description || '';
+        option.onclick = () => selectEquipmentAttack(
+            action.equipmentSlot,
+            action.id
+        );
+
+        const name = document.createElement('span');
+        name.className = 'equipment-attack-option-name';
+        name.textContent = action.name;
+        const meta = document.createElement('span');
+        meta.className = 'equipment-attack-option-meta';
+        meta.textContent = `${action.itemName || action.equipmentSlot} · ${Math.max(0, Number(action.staminaCost) || 0)} STAM · ${targetLabel}`;
+        option.append(name, meta);
+        if (disabledReason) {
+            const reason = document.createElement('span');
+            reason.className = 'equipment-attack-option-reason';
+            reason.textContent = disabledReason;
+            option.appendChild(reason);
+        }
+        menu.appendChild(option);
+    });
+}
+
 function refreshSystemUI() {
     try {
         if (typeof normalizeClientPlayerContainers === 'function') normalizeClientPlayerContainers();
@@ -282,6 +354,8 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
         const canIssueAction = currentTurn === 'PLAYER' && !!activeUiActor && combatActionsRemaining > 0 && !['WAITING_FOR_SERVER', 'WAITING_FOR_ATB', 'VICTORY'].includes(combatPhase);
         const actionReady = canIssueAction && combatPhase === 'ACTION_READY';
         const targeting = canIssueAction && combatPhase === 'TARGETING';
+        const equipmentMenuOpen = typeof isEquipmentAttackMenuOpen === 'function'
+            && isEquipmentAttackMenuOpen();
 
         if (currentTurn === 'PLAYER') {
             const activeUiPos = typeof getActiveCombatantPosition === 'function' ? getActiveCombatantPosition() : { x: player.x, y: player.y, size: 1 };
@@ -311,14 +385,20 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
                 if (autoEnemy) { selectedEnemy = autoEnemy; hasTarget = true; withinRange = true; losClear = true; }
             }
             if (uiHeader) {
-                if (targeting) { uiHeader.textContent = 'TARGETING: Select a highlighted tile'; uiHeader.style.color = '#e74c3c'; }
+                if (targeting) {
+                    uiHeader.textContent = typeof getPendingEquipmentAttackTargetInstruction === 'function'
+                        ? getPendingEquipmentAttackTargetInstruction()
+                        : 'TARGETING: Select a highlighted tile';
+                    uiHeader.style.color = '#e74c3c';
+                }
                 else if (pendingMove) { uiHeader.textContent = 'CONFIRM MOVE: Click the green tile again'; uiHeader.style.color = '#2ecc71'; }
+                else if (equipmentMenuOpen) { uiHeader.textContent = `${activeUiName}: Choose an equipment attack`; uiHeader.style.color = '#ffcc66'; }
                 else if (selectedEnemy && selectedEnemy.alive) { uiHeader.textContent = `${activeUiName} FOCUS: ${selectedEnemy.name} (${selectedEnemy.hp}/${selectedEnemy.maxHp} HP)`; uiHeader.style.color = '#2ecc71'; }
                 else if (actionReady) { uiHeader.textContent = `${activeUiName}: Choose Move, Attack, Item, Rest, or Pass`; uiHeader.style.color = '#3498db'; }
                 else { uiHeader.textContent = 'WAITING FOR SERVER'; uiHeader.style.color = '#bbaaa0'; }
             }
             const slashBtn = document.getElementById('slash-btn');
-            const heavyBtn = document.getElementById('heavy-btn');
+            const equipmentAttacksBtn = document.getElementById('equipment-attacks-btn');
             const endBtn = document.getElementById('end-btn');
             const fleeBtn = document.getElementById('flee-btn');
             const attackEnabled = actionReady && hasTarget && withinRange && losClear;
@@ -327,9 +407,12 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
                 const cost = activeUiWeapon && activeUiWeapon.combat && activeUiWeapon.combat.standard ? activeUiWeapon.combat.standard.staminaCost : 5;
                 slashBtn.innerText = activeUiWeapon ? `Attack (${cost} STAM)` : `Unarmed Strike (${cost} STAM)`;
             }
-            if (heavyBtn) {
-                heavyBtn.disabled = !attackEnabled;
-                heavyBtn.innerText = activeUiWeapon && activeUiWeapon.combat && activeUiWeapon.combat.special ? `${activeUiWeapon.combat.special.name} (${activeUiWeapon.combat.special.staminaCost} STAM)` : 'Weapon Skill';
+            if (equipmentAttacksBtn) {
+                const equipmentAttacks = typeof listActiveEquipmentAttacks === 'function'
+                    ? listActiveEquipmentAttacks()
+                    : [];
+                equipmentAttacksBtn.disabled = !actionReady || equipmentAttacks.length === 0;
+                equipmentAttacksBtn.innerText = 'Equipment Attacks';
             }
             if (endBtn) {
                 const passRecovery = Math.max(0, Math.min(2, combatActionsRemaining || 0)) * 15;
@@ -340,12 +423,13 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
             if (fleeBtn) { fleeBtn.disabled = !actionReady; fleeBtn.style.opacity = '1.0'; }
         } else {
             if (uiHeader) { uiHeader.textContent = activeUiActor ? `${activeUiName} EXECUTING TURN` : 'ATB GAUGES CHARGING'; uiHeader.style.color = '#e74c3c'; }
-            ['slash-btn', 'heavy-btn', 'end-btn', 'flee-btn'].forEach(id => {
+            ['slash-btn', 'equipment-attacks-btn', 'end-btn', 'flee-btn'].forEach(id => {
                 const button = document.getElementById(id);
                 if (button) { button.disabled = true; button.style.opacity = '1.0'; }
             });
         }
 
+        renderEquipmentAttackMenu();
         refreshCombatSidebar();
 
 const combatInvList = document.getElementById("combat-inventory-list");
@@ -1122,7 +1206,9 @@ function renderCombatModal(filter = 'DRINK') {
             slotDiv.appendChild(fallback);
         }
         const badge = document.createElement('span');
-        badge.textContent = entry.sourceLabel;
+        badge.textContent = filter === 'EQUIP'
+            ? `${entry.sourceLabel} · 1 Action`
+            : entry.sourceLabel;
         badge.style.cssText = 'position:absolute;left:2px;right:2px;bottom:1px;font-size:7px;background:rgba(0,0,0,.8);color:#fff;pointer-events:none;';
         slotDiv.appendChild(badge);
         grid.appendChild(slotDiv);

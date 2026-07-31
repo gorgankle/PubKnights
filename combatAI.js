@@ -312,9 +312,15 @@ function buildAttackFx(actor) {
     };
 }
 
-function pushDeflectEvent(actor, target, turnEvents, attackFx) {
+function pushDeflectEvent(actor, target, turnEvents, attackFx, details = {}) {
     if (isPlayerActor(target)) {
-        turnEvents.push({ type: 'deflect', uid: actor.uid, enemyName: actor.name, ...attackFx });
+        turnEvents.push({
+            type: 'deflect',
+            uid: actor.uid,
+            enemyName: actor.name,
+            ...attackFx,
+            ...details
+        });
     } else {
         turnEvents.push({
             type: 'actorDeflect',
@@ -324,9 +330,24 @@ function pushDeflectEvent(actor, target, turnEvents, attackFx) {
             targetName: target.name,
             tx: target.x,
             ty: target.y,
-            ...attackFx
+            ...attackFx,
+            ...details
         });
     }
+}
+
+function consumeActorGuard(target) {
+    const guardState = target && target.guardState;
+    if (
+        !guardState
+        || guardState.type !== 'shield_block'
+        || Math.max(0, Math.trunc(Number(guardState.charges) || 0)) < 1
+    ) {
+        return null;
+    }
+
+    delete target.guardState;
+    return guardState;
 }
 
 function pushHitEvent(actor, target, player, damage, isCrit, poisonApplied, killed, turnEvents, attackFx) {
@@ -374,6 +395,18 @@ function attackTarget(socketId, combat, player, actor, target, activeCombats, on
         stamina: getActorStamina(actor, player),
         maxStamina: getActorMaxStamina(actor, player)
     };
+    const consumedGuard = consumeActorGuard(target);
+    if (consumedGuard) {
+        pushDeflectEvent(actor, target, turnEvents, attackFx, {
+            deflectReason: 'shield_block',
+            guarded: true,
+            guardActionId: consumedGuard.actionId || 'shield_block',
+            guardEquipmentSlot: consumedGuard.equipmentSlot || 'offhand',
+            guardItemId: consumedGuard.itemId || null
+        });
+        return true;
+    }
+
     const offense = Math.max(1, getActorStat(actor, player, 'offense')) * 10;
     const defenderSpeed = Math.max(1, getActorStat(target, player, 'speed')) * 10;
     const defenderDefense = Math.max(0, getActorStat(target, player, 'defense')) * 10;

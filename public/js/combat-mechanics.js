@@ -3,7 +3,10 @@
 // Make sure these three lines only appear ONCE at the top of the file!
 let activeTargetIndex   = -1;
 let previousCombatPhase = 'ACTION_READY';
-let pendingLoot = []; 
+let pendingLoot = [];
+let equipmentAttackMenuOpen = false;
+let equipmentAttackMenuActorUid = null;
+
 function getActiveCombatant() {
     const activeUid = activeCombatActorUid || 'player_0';
     if (typeof getCombatActorByUid === 'function') {
@@ -13,14 +16,33 @@ function getActiveCombatant() {
     return { uid: 'player_0', kind: 'player', name: player.username || 'Knight', x: player.x, y: player.y, stamina: player.stamina, equipment: player.equipment, speed: getPlayerSwiftness() };
 }
 
+function getActiveCombatantEquipment() {
+    const actor = getActiveCombatant();
+    if (actor && actor.equipment && typeof actor.equipment === 'object') {
+        return actor.equipment;
+    }
+    if (
+        !actor
+        || actor.uid === 'player_0'
+        || actor.kind === 'player'
+        || actor === player
+    ) {
+        return player && player.equipment ? player.equipment : {};
+    }
+    return {};
+}
+
 function getActiveCombatantPosition() {
     const actor = getActiveCombatant();
     return { x: actor.x, y: actor.y, size: actor.size || 1 };
 }
 
 function getActiveCombatantWeapon() {
-    const actor = getActiveCombatant();
-    return actor && actor.equipment ? actor.equipment.weapon : player.equipment.weapon;
+    return getActiveCombatantEquipment().weapon || null;
+}
+
+function getActiveCombatantOffhand() {
+    return getActiveCombatantEquipment().offhand || null;
 }
 
 function getActiveCombatantStamina() {
@@ -58,6 +80,13 @@ function normalizeCombatItemReference(reference) {
 
 function getActiveCombatantItem(activeIndex) {
     if (activeIndex === 'weapon') return getActiveCombatantWeapon();
+    if (
+        activeIndex
+        && typeof activeIndex === 'object'
+        && activeIndex.kind === 'equipmentAttack'
+    ) {
+        return getActiveCombatantEquipment()[activeIndex.equipmentSlot] || null;
+    }
     const reference = normalizeCombatItemReference(activeIndex);
     if (reference.source === 'pocket') {
         const companion = getActiveCompanionRosterEntry();
@@ -76,7 +105,7 @@ function getCombatItemDispatchPayload(reference) {
 function selectCombatItem(reference) {
     const item = getActiveCombatantItem(reference);
     if (!item) return;
-    if (!item.combat) {
+    if (['weapon', 'offhand', 'helmet', 'armor', 'gloves', 'boots'].includes(item.slot)) {
         const normalized = normalizeCombatItemReference(reference);
         const actor = getActiveCombatant();
         if (normalized.source === 'backpack' && actor && (actor.uid === 'player_0' || actor.kind === 'player')) {
@@ -87,6 +116,7 @@ function selectCombatItem(reference) {
         }
         return;
     }
+    if (!item.combat) return;
 
     const targetType = item.combat.targetType || 'self';
     if (['single', 'enemy', 'tile', 'aoe'].includes(targetType)) {
@@ -116,6 +146,297 @@ function getWeaponSpecialDesc(item) {
     return `<b>[${item.combat.special.name}]:</b> ${item.combat.special.desc}`;
 }
 
+function listActiveEquipmentAttacks() {
+    if (
+        typeof EquipmentActionContract === 'undefined'
+        || typeof EquipmentActionContract.listEquipmentAttacks !== 'function'
+    ) {
+        return [];
+    }
+    const attacks = EquipmentActionContract.listEquipmentAttacks(
+        getActiveCombatantEquipment()
+    );
+    return Array.isArray(attacks) ? attacks : [];
+}
+
+function resolveActiveEquipmentAttack(equipmentSlot, actionId) {
+    if (
+        typeof EquipmentActionContract === 'undefined'
+        || typeof EquipmentActionContract.resolveEquipmentAttack !== 'function'
+    ) {
+        return null;
+    }
+    return EquipmentActionContract.resolveEquipmentAttack(
+        getActiveCombatantEquipment(),
+        equipmentSlot,
+        actionId
+    );
+}
+
+function isEquipmentAttackTargetReference(reference = activeTargetIndex) {
+    return Boolean(
+        reference
+        && typeof reference === 'object'
+        && reference.kind === 'equipmentAttack'
+        && reference.equipmentSlot
+        && reference.actionId
+    );
+}
+
+function resolvePendingEquipmentAttack() {
+    if (!isEquipmentAttackTargetReference()) return null;
+    const action = resolveActiveEquipmentAttack(
+        activeTargetIndex.equipmentSlot,
+        activeTargetIndex.actionId
+    );
+    if (
+        !action
+        || String(action.itemId || '') !== String(activeTargetIndex.itemId || '')
+    ) {
+        return null;
+    }
+    return action;
+}
+
+function getPendingEquipmentAttackTargetInstruction() {
+    const action = resolvePendingEquipmentAttack();
+    if (!action) return 'TARGETING: Select a highlighted tile';
+    const profile = getEquipmentAttackTargetProfile(action);
+    return ['tile', 'aoe', 'area'].includes(profile.targetType)
+        ? `TARGETING ${action.name}: Select a highlighted tile`
+        : `TARGETING ${action.name}: Select an enemy`;
+}
+
+function getEquipmentAttackTargetProfile(action) {
+    if (!action) return null;
+    const rules = action.rules && typeof action.rules === 'object'
+        ? action.rules
+        : action;
+    const targetType = String(
+        action.targetType || rules.targetType || 'enemy'
+    ).toLowerCase();
+    const isArea = ['tile', 'aoe', 'area'].includes(targetType);
+    return {
+        range: Math.max(0, Number(action.range ?? rules.range) || 0),
+        ignoresLoS: Boolean(action.ignoresLoS ?? rules.ignoresLoS),
+        shape: rules.aoeShape || (isArea ? targetType : 'single'),
+        radius: Math.max(0, Number(rules.aoeRadius) || 0),
+        targetType
+    };
+}
+
+function getEquipmentAttackTargetValidity(action, target) {
+    if (!action || !target || target.alive === false) {
+        return { inRange: false, lineClear: false, valid: false };
+    }
+    const origin = getActiveCombatantPosition();
+    const profile = getEquipmentAttackTargetProfile(action);
+    if (typeof getCombatActorTargetValidity === 'function') {
+        return getCombatActorTargetValidity(target, origin, profile);
+    }
+    const inRange = getGridDistance(
+        origin.x,
+        origin.y,
+        target.x,
+        target.y,
+        target.size || 1
+    ) <= profile.range;
+    let lineClear = profile.ignoresLoS;
+    const targetSize = target.size || 1;
+    for (let x = target.x; x < target.x + targetSize && !lineClear; x++) {
+        for (let y = target.y; y < target.y + targetSize; y++) {
+            if (hasLineOfSight(origin.x, origin.y, x, y)) {
+                lineClear = true;
+                break;
+            }
+        }
+    }
+    return { inRange, lineClear, valid: inRange && lineClear };
+}
+
+function getEquipmentAttackDisabledReason(action, options = {}) {
+    if (!action) return 'Action unavailable.';
+    const validActionPhase = combatPhase === 'ACTION_READY' || (
+        options.allowTargeting === true
+        && combatPhase === 'TARGETING'
+        && isEquipmentAttackTargetReference()
+    );
+    if (
+        gameState !== 'COMBAT'
+        || currentTurn !== 'PLAYER'
+        || !validActionPhase
+        || (combatActionsRemaining || 0) <= 0
+    ) {
+        return 'Awaiting action phase.';
+    }
+    const activeActor = getActiveCombatant();
+    if (
+        action.id === 'shield_block'
+        && activeActor
+        && activeActor.guardState
+        && Math.max(
+            0,
+            Math.trunc(Number(activeActor.guardState.charges) || 0)
+        ) > 0
+    ) {
+        return 'Shield Block is already active.';
+    }
+    const staminaCost = Math.max(0, Number(action.staminaCost) || 0);
+    const stamina = Math.max(0, Number(getActiveCombatantStamina()) || 0);
+    if (stamina < staminaCost) {
+        return `Needs ${staminaCost} STAM; ${Math.floor(stamina)} available.`;
+    }
+    return '';
+}
+
+function updateEquipmentAttackMenuDom(open) {
+    const menu = document.getElementById('equipment-attack-menu');
+    const button = document.getElementById('equipment-attacks-btn');
+    if (menu) menu.hidden = !open;
+    if (button) button.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
+function closeEquipmentAttackMenu() {
+    equipmentAttackMenuOpen = false;
+    equipmentAttackMenuActorUid = null;
+    updateEquipmentAttackMenuDom(false);
+}
+
+function resetEquipmentAttackUiState(options = {}) {
+    closeEquipmentAttackMenu();
+    if (options.clearTarget !== false && isEquipmentAttackTargetReference()) {
+        activeTargetIndex = -1;
+        hoverTile = { x: -1, y: -1 };
+        pendingMove = null;
+        if (options.restorePhase === true && combatPhase === 'TARGETING') {
+            combatPhase = 'ACTION_READY';
+        }
+    }
+}
+
+function isEquipmentAttackMenuOpen() {
+    const actor = getActiveCombatant();
+    const actorUid = actor && actor.uid ? actor.uid : null;
+    if (
+        equipmentAttackMenuOpen
+        && equipmentAttackMenuActorUid !== actorUid
+    ) {
+        closeEquipmentAttackMenu();
+    }
+    return equipmentAttackMenuOpen;
+}
+
+function toggleEquipmentAttackMenu() {
+    if (
+        gameState !== 'COMBAT'
+        || currentTurn !== 'PLAYER'
+        || combatPhase !== 'ACTION_READY'
+        || (combatActionsRemaining || 0) <= 0
+    ) {
+        return;
+    }
+    if (equipmentAttackMenuOpen) {
+        closeEquipmentAttackMenu();
+    } else {
+        const actor = getActiveCombatant();
+        if (listActiveEquipmentAttacks().length === 0) return;
+        equipmentAttackMenuOpen = true;
+        equipmentAttackMenuActorUid = actor && actor.uid ? actor.uid : null;
+        updateEquipmentAttackMenuDom(true);
+        if (typeof playRetroSound === 'function') playRetroSound('menu');
+    }
+    refreshSystemUI();
+}
+
+function beginEquipmentAttackTargeting(action) {
+    if (!action) return false;
+    closeEquipmentAttackMenu();
+    activeTargetIndex = {
+        kind: 'equipmentAttack',
+        equipmentSlot: action.equipmentSlot,
+        actionId: action.id,
+        itemId: action.itemId
+    };
+    selectedEnemy = null;
+    hoverTile = { x: -1, y: -1 };
+    pendingMove = null;
+    combatPhase = 'TARGETING';
+    const profile = getEquipmentAttackTargetProfile(action);
+    logMessage(
+        profile && ['tile', 'aoe', 'area'].includes(profile.targetType)
+            ? `Select a target tile for ${action.name}.`
+            : `Select an enemy for ${action.name}.`
+    );
+    refreshSystemUI();
+    if (typeof drawGrid === 'function') drawGrid();
+    return true;
+}
+
+function dispatchEquipmentAttack(action, target = null, tile = null) {
+    const fromTargeting = (
+        combatPhase === 'TARGETING'
+        && isEquipmentAttackTargetReference()
+    );
+    if (
+        !action
+        || getEquipmentAttackDisabledReason(action, {
+            allowTargeting: fromTargeting
+        })
+    ) {
+        return false;
+    }
+    const payload = {
+        actorUid: activeCombatActorUid,
+        actionCategory: 'equipmentAttack',
+        equipmentSlot: action.equipmentSlot,
+        actionId: action.id,
+        itemId: action.itemId
+    };
+    if (target) {
+        payload.targetEnemy = {
+            id: target.id,
+            uid: target.uid,
+            x: target.x,
+            y: target.y
+        };
+    }
+    if (tile) {
+        payload.tx = tile.x;
+        payload.ty = tile.y;
+    }
+
+    resetEquipmentAttackUiState();
+    combatPhase = 'WAITING_FOR_SERVER';
+    refreshSystemUI();
+    if (typeof drawGrid === 'function') drawGrid();
+    socket.emit('dispatchCombatAction', payload);
+    return true;
+}
+
+function selectEquipmentAttack(equipmentSlot, actionId) {
+    const action = resolveActiveEquipmentAttack(equipmentSlot, actionId);
+    const disabledReason = getEquipmentAttackDisabledReason(action);
+    if (disabledReason) {
+        logMessage(disabledReason);
+        if (typeof playRetroSound === 'function') playRetroSound('error');
+        return false;
+    }
+    const profile = getEquipmentAttackTargetProfile(action);
+    if (profile.targetType === 'self') {
+        return dispatchEquipmentAttack(action);
+    }
+    if (['tile', 'aoe', 'area'].includes(profile.targetType)) {
+        return beginEquipmentAttackTargeting(action);
+    }
+    if (
+        selectedEnemy
+        && getEquipmentAttackTargetValidity(action, selectedEnemy).valid
+    ) {
+        return dispatchEquipmentAttack(action, selectedEnemy);
+    }
+    return beginEquipmentAttackTargeting(action);
+}
+
 // The Unified Client Dispatcher
 function executeCombatAction(actionType) {
     if (gameState !== 'COMBAT' || currentTurn !== 'PLAYER') return;
@@ -125,13 +446,28 @@ function executeCombatAction(actionType) {
         activeTargetIndex = -1;
         hoverTile = {x: -1, y: -1};
         pendingMove = null;
+        closeEquipmentAttackMenu();
     }
     if (actionType !== 'end' && (combatActionsRemaining || 0) <= 0) return;
 
-    if (actionType === 'end' || actionType === 'rest' || actionType === 'slash' || actionType === 'special') {
+    if (actionType === 'special') {
+        const legacyWeaponAction = listActiveEquipmentAttacks().find(
+            action => action && action.equipmentSlot === 'weapon'
+        );
+        if (legacyWeaponAction) {
+            selectEquipmentAttack(
+                legacyWeaponAction.equipmentSlot,
+                legacyWeaponAction.id
+            );
+        }
+        return;
+    }
+
+    if (actionType === 'end' || actionType === 'rest' || actionType === 'slash') {
+        closeEquipmentAttackMenu();
         
         // Client-side UX validation (Server will verify this again)
-        if (actionType === 'slash' || actionType === 'special') {
+        if (actionType === 'slash') {
            if (!selectedEnemy || !selectedEnemy.alive) return;
             
             let weapon = getActiveCombatantWeapon();
@@ -141,30 +477,13 @@ function executeCombatAction(actionType) {
             if (!weapon || !weapon.combat) {
                 weapon = {
                     combat: {
-                        standard: { range: 1, staminaCost: 5 },
-                        special: { name: "Haymaker", range: 1, staminaCost: 15, targetType: 'single' }
+                        standard: { range: 1, staminaCost: 5 }
                     }
                 };
             }
             // ========================================
-
-// === NEW: TACTICAL WEAPON SPECIAL INTERCEPT ===
-        // If it's an AoE weapon skill, stop the normal attack and switch to TARGETING!
-        if (actionType === 'special' && weapon.combat.special && weapon.combat.special.targetType === 'aoe') {
-            selectedEnemy = null;
-            hoverTile = {x: -1, y: -1};
-            activeTargetIndex = 'weapon'; // Flag it as the weapon special
-            combatPhase = 'TARGETING';
-            logMessage("📍 Targeting AoE Special... Select the epicenter.");
-            refreshSystemUI();
-            if (typeof drawGrid === 'function') drawGrid();
-            return; 
-        }
-        // ===============================================
-
-
             // Pull dynamic rules directly from the item schema
-            let combatRules = actionType === 'special' ? weapon.combat.special : weapon.combat.standard;
+            let combatRules = weapon.combat.standard;
             let staminaCost = combatRules.staminaCost;
             let range = combatRules.range;
             
@@ -197,6 +516,7 @@ function executeCombatAction(actionType) {
         }
 
         combatPhase = 'WAITING_FOR_SERVER';
+        refreshSystemUI();
 
         // ONE unified payload to rule them all
         socket.emit('dispatchCombatAction', { 
@@ -221,6 +541,7 @@ function endPlayerTurn() {
 
 function fleeCombat() {
     if (gameState !== 'COMBAT' || currentTurn !== 'PLAYER' || combatPhase !== 'ACTION_READY') return;
+    closeEquipmentAttackMenu();
     
     let confirmFlee = confirm("Are you sure you want to run away? You will forfeit all pending loot and return to town.");
     if (!confirmFlee) return;
@@ -234,6 +555,7 @@ function fleeCombat() {
 
 function handleCombatEquip(idx) {
     if (gameState !== 'COMBAT' || currentTurn !== 'PLAYER' || combatPhase !== 'ACTION_READY' || combatActionsRemaining <= 0) return;
+    resetEquipmentAttackUiState();
     combatPhase = 'WAITING_FOR_SERVER';
     refreshSystemUI();
     socket.emit('dispatchCombatAction', { actorUid: activeCombatActorUid, actionCategory: 'equip', invIndex: idx });
@@ -241,7 +563,9 @@ function handleCombatEquip(idx) {
 
 function consumeCombatItem(reference) {
     if (gameState !== 'COMBAT' || currentTurn !== 'PLAYER' || combatPhase !== 'ACTION_READY' || combatActionsRemaining <= 0) return;
+    resetEquipmentAttackUiState();
     combatPhase = 'WAITING_FOR_SERVER';
+    refreshSystemUI();
     socket.emit('dispatchCombatAction', {
         actorUid: activeCombatActorUid,
         actionCategory: 'consumable',
@@ -263,6 +587,7 @@ window.prepTargetAction = function(idx) {
         return;
     }
 
+    closeEquipmentAttackMenu();
     selectedEnemy = null;
     hoverTile = {x: -1, y: -1};
     activeTargetIndex = idx;         
@@ -272,6 +597,41 @@ window.prepTargetAction = function(idx) {
 };
 window.executeTargetAction = function(tx, ty) {
     if (activeTargetIndex === -1) return;
+
+    if (isEquipmentAttackTargetReference()) {
+        const action = resolvePendingEquipmentAttack();
+        const profile = getEquipmentAttackTargetProfile(action);
+        if (!action || !profile) {
+            resetEquipmentAttackUiState({ restorePhase: true });
+            refreshSystemUI();
+            return;
+        }
+        if (!['tile', 'aoe', 'area'].includes(profile.targetType)) {
+            const target = getPlayerAttackables().find(actor => {
+                const size = actor.size || 1;
+                return actor.alive !== false
+                    && tx >= actor.x
+                    && tx < actor.x + size
+                    && ty >= actor.y
+                    && ty < actor.y + size;
+            });
+            const validity = getEquipmentAttackTargetValidity(action, target);
+            if (!target || !validity.valid) {
+                logMessage(!target
+                    ? `Select an enemy for ${action.name}.`
+                    : (validity.inRange
+                        ? 'Target blocked by obstacles.'
+                        : 'Target outside action range.'));
+                if (typeof playRetroSound === 'function') playRetroSound('error');
+                return;
+            }
+            dispatchEquipmentAttack(action, target);
+            return;
+        }
+        dispatchEquipmentAttack(action, null, { x: tx, y: ty });
+        return;
+    }
+
     hoverTile = {x: -1, y: -1};
     
     combatPhase = 'WAITING_FOR_SERVER'; 
@@ -292,6 +652,7 @@ window.cancelTarget = function() {
     hoverTile = {x: -1, y: -1};
     activeTargetIndex = -1;
     pendingMove = null;
+    closeEquipmentAttackMenu();
     combatPhase = 'ACTION_READY';
     refreshSystemUI();
     if (typeof drawGrid === 'function') drawGrid(); 
@@ -518,6 +879,7 @@ function isValidPlayerMovePath(targetX, targetY) {
 }
 // === RESTORED TRANSITION FUNCTION ===
 window.transitionToTown = function() {
+    resetEquipmentAttackUiState();
     // Invalidate delayed combat callbacks before clearing animation state.
     // A cancelled presentation must not be able to restore combat controls
     // after the player has already returned to town.

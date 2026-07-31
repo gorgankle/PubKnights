@@ -107,7 +107,17 @@ else if (item && item.slot === "consumable") {
     }
     // === NEW: COMBAT ACTIONS ===
     else if (type === 'combat_slash') {
-        html = `<h3>⚔️ Standard Attack</h3>Execute a standard melee strike against your locked target.<br>⚡ Cost: <b>5 Stamina</b>`;
+        const activeWeapon = typeof getActiveCombatantWeapon === 'function'
+            ? getActiveCombatantWeapon()
+            : player.equipment.weapon;
+        const standard = activeWeapon && activeWeapon.combat
+            ? activeWeapon.combat.standard
+            : null;
+        const standardCost = Math.max(0, Number(standard && standard.staminaCost) || 5);
+        html = `<h3>⚔️ Standard Attack</h3>${standard && standard.desc ? standard.desc : 'Execute a standard attack against your locked target.'}<br>⚡ Cost: <b>${standardCost} Stamina</b>`;
+    }
+    else if (type === 'combat_equipment_attacks') {
+        html = `<h3>Equipment Attacks</h3>Open the attacks granted by this actor's equipped weapon and offhand. Opening the menu is free; executing an attack spends its listed stamina and one action.`;
     }
     else if (type === 'combat_brew') {
         html = `<h3>🍺 Chug Brew</h3>Quickly down a Combat Stout to mend wounds during battle.<br>❤️ Restores: <b>10% Max HP</b>`;
@@ -164,8 +174,12 @@ function getItemTooltip(item) {
 }
 
 function showSpecialSkillTooltip(e) {
-    if (player.equipment.weapon) {
-        let text = `<h3>⚔️ Weapon Skill Deployment</h3>` + getWeaponSpecialDesc(player.equipment.weapon) + `<br><br>⚡ Cost: <b>15 Stamina</b>`;
+    const weapon = typeof getActiveCombatantWeapon === 'function'
+        ? getActiveCombatantWeapon()
+        : player.equipment.weapon;
+    if (weapon && weapon.combat && weapon.combat.special) {
+        const cost = Math.max(0, Number(weapon.combat.special.staminaCost) || 0);
+        let text = `<h3>⚔️ Weapon Skill Deployment</h3>` + getWeaponSpecialDesc(weapon) + `<br><br>⚡ Cost: <b>${cost} Stamina</b>`;
         showTooltip(text, e);
     } else {
         showTooltip(`<h3>⚔️ Fists Burst</h3>No weapon profile map locked.<br><br>⚡ Cost: <b>15 Stamina</b>`, e);
@@ -343,7 +357,11 @@ function showItemTooltip(event, item, index, location) {
     if (isCombat) {
         if (location === 'combat') {
             // Ensure phase locks are respected
-            if (currentTurn !== 'PLAYER' || combatPhase === 'TARGETING') {
+            if (
+                currentTurn !== 'PLAYER'
+                || combatPhase !== 'ACTION_READY'
+                || (combatActionsRemaining || 0) <= 0
+            ) {
                 actionsHtml += `<div style="color: #e74c3c; font-size: 10px; font-weight: bold; width: 100%; text-align: center;">Awaiting Action Phase...</div>`;
             } else {
                 // Parse items.js data definitions
@@ -356,7 +374,7 @@ function showItemTooltip(event, item, index, location) {
                 }
 
                 if (!actionAdded && equippableSlots.includes(item.slot)) {
-                    actionsHtml += `<button onclick="closeCombatModal(); handleCombatEquip(${index})" style="background: #27ae60; border-color: #2ecc71; padding: 6px; flex-grow: 1;">Equip</button>`;
+                    actionsHtml += `<button onclick="closeCombatModal(); handleCombatEquip(${index})" style="background: #27ae60; border-color: #2ecc71; padding: 6px; flex-grow: 1;">Equip (1 Action)</button>`;
                 }
             }
         } else {

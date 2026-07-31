@@ -24,14 +24,29 @@ function getCombatTargetProfile() {
         : player.equipment.weapon;
     let actionItem = activeWeapon;
     let rules = activeWeapon && activeWeapon.combat ? activeWeapon.combat.standard : null;
+    let equipmentAction = null;
 
     if (combatPhase === 'TARGETING' && typeof activeTargetIndex !== 'undefined' && activeTargetIndex !== -1) {
-        actionItem = typeof getActiveCombatantItem === 'function'
-            ? getActiveCombatantItem(activeTargetIndex)
-            : (activeTargetIndex === 'weapon' ? activeWeapon : player.inventory[activeTargetIndex]);
-        rules = activeTargetIndex === 'weapon'
-            ? (actionItem && actionItem.combat && actionItem.combat.special)
-            : (actionItem && actionItem.combat);
+        const equipmentTargeting = typeof isEquipmentAttackTargetReference === 'function'
+            && isEquipmentAttackTargetReference(activeTargetIndex);
+        if (equipmentTargeting) {
+            equipmentAction = typeof resolvePendingEquipmentAttack === 'function'
+                ? resolvePendingEquipmentAttack()
+                : null;
+            actionItem = typeof getActiveCombatantItem === 'function'
+                ? getActiveCombatantItem(activeTargetIndex)
+                : null;
+            rules = equipmentAction && equipmentAction.rules
+                ? equipmentAction.rules
+                : equipmentAction;
+        } else {
+            actionItem = typeof getActiveCombatantItem === 'function'
+                ? getActiveCombatantItem(activeTargetIndex)
+                : (activeTargetIndex === 'weapon' ? activeWeapon : player.inventory[activeTargetIndex]);
+            rules = activeTargetIndex === 'weapon'
+                ? (actionItem && actionItem.combat && actionItem.combat.special)
+                : (actionItem && actionItem.combat);
+        }
     }
 
     rules = rules || { range: 1 };
@@ -39,9 +54,9 @@ function getCombatTargetProfile() {
         ? SpellDatabase[rules.spellId]
         : null;
     return {
-        range: Math.max(0, Number(spellData && spellData.range) || Number(rules.range) || 1),
-        ignoresLoS: Boolean(rules.ignoresLoS || (spellData && spellData.ignoresLoS)),
-        shape: (spellData && spellData.type) || rules.aoeShape || rules.targetType || 'single',
+        range: Math.max(0, Number(equipmentAction && equipmentAction.range) || Number(spellData && spellData.range) || Number(rules.range) || 1),
+        ignoresLoS: Boolean((equipmentAction && equipmentAction.ignoresLoS) || rules.ignoresLoS || (spellData && spellData.ignoresLoS)),
+        shape: (spellData && spellData.type) || rules.aoeShape || (equipmentAction && equipmentAction.targetType) || rules.targetType || 'single',
         radius: Math.max(0, Number(rules.aoeRadius ?? (spellData && spellData.aoeRadius)) || 0)
     };
 }
@@ -1300,6 +1315,9 @@ if (isValidPlayerMovePath(tx, ty)) {
                 if (typeof playRetroSound === 'function') playRetroSound('step');
 
                 // === NEW: INSTANT SERVER SYNC ===
+                if (typeof resetEquipmentAttackUiState === 'function') {
+                    resetEquipmentAttackUiState();
+                }
                 combatPhase = 'WAITING_FOR_SERVER';
                 refreshSystemUI();
                 socket.emit('combatMove', { actorUid: (typeof activeCombatActorUid !== 'undefined' ? activeCombatActorUid : 'player_0'), tx: tx, ty: ty });

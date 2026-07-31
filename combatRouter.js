@@ -42,6 +42,9 @@ const {
     equipItemWithHandRules
 } = require('./equipmentHandRules.js');
 const {
+    resolveEquipmentAttack
+} = require('./public/js/equipment-actions.js');
+const {
     syncCombatViews,
     syncPlayerActor,
     getPlayerActor,
@@ -73,6 +76,32 @@ function getCombatTurnActor(combat, player) {
 
 function getActorEquipment(actor, player) {
     return isPlayerActor(actor) ? (player.equipment || {}) : (actor.equipment || {});
+}
+
+function getResolvedEquipmentAction(equipment, equipmentSlot, actionId) {
+    if (!equipment || !EQUIPMENT_SLOTS.includes(equipmentSlot) || !actionId) {
+        return null;
+    }
+
+    const action = resolveEquipmentAttack(equipment, equipmentSlot, actionId);
+    if (!action || action.equipmentSlot !== equipmentSlot || action.id !== actionId) {
+        return null;
+    }
+    return action;
+}
+
+function getEquipmentActionRules(action) {
+    return action && action.rules && typeof action.rules === 'object'
+        ? action.rules
+        : action;
+}
+
+function isShieldBlockAction(action) {
+    return !!action && (
+        action.actionType === 'guard'
+        || action.id === 'shield_block'
+        || action.clipId === 'shield_block'
+    );
 }
 
 function getActorStatValue(actor, player, statKey) {
@@ -147,6 +176,41 @@ function completePlayerControlledAction(combat, player, actor) {
     return actionResult;
 }
 
+function emitCombatResultError(
+    socket,
+    player,
+    combat,
+    actor,
+    message,
+    details = {}
+) {
+    const updatedCombatState = combat && player
+        ? syncCombatViews(combat, player)
+        : null;
+    const activeActor = actor || (
+        updatedCombatState
+        && Array.isArray(updatedCombatState.actors)
+        && updatedCombatState.actors.find(candidate => (
+            candidate
+            && candidate.uid === updatedCombatState.activeActorUid
+        ))
+    ) || null;
+    const newStamina = activeActor && player
+        ? getActorStaminaValue(activeActor, player)
+        : (
+            player && Number.isFinite(Number(player.stamina))
+                ? Number(player.stamina)
+                : 0
+        );
+    return socket.emit('combatResult', {
+        type: 'error',
+        message,
+        newStamina,
+        updatedCombatState,
+        ...details
+    });
+}
+
 module.exports = function(socket, io, activePlayers, activeCombats) {
     const combatContext = { activePlayers, activeCombats, io };
     function resolveDefeat(target, details = {}) {
@@ -157,27 +221,58 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         const p = activePlayers[socket.id];
         const combat = activeCombats[socket.id];
         if (!data || typeof data !== 'object') {
-            return socket.emit('combatResult', {
-                type: 'error',
-                message: 'Server: Invalid combat action payload.',
-                updatedCombatState: combat && p
-                    ? syncCombatViews(combat, p)
-                    : null
-            });
+            return emitCombatResultError(
+                socket,
+                p,
+                combat,
+                null,
+                'Server: Invalid combat action payload.'
+            );
         }
 
         data.actionCategory = sanitizeToken(data.actionCategory, '');
         data.subType = sanitizeToken(data.subType, 'standard');
+        data.equipmentSlot = sanitizeToken(data.equipmentSlot, '');
+        data.actionId = sanitizeToken(data.actionId, '');
+        data.itemId = sanitizeToken(data.itemId, '');
 
         if (combat && data.tx !== undefined && data.ty !== undefined) {
             data.tx = clampInt(data.tx, 0, combat.gridSize.cols - 1, 0);
             data.ty = clampInt(data.ty, 0, combat.gridSize.rows - 1, 0);
         }
 
-        if (!p) return socket.emit('combatResult', { type: 'error', message: 'Server connection lost. Please refresh the page.' });
+        if (!p) {
+            return emitCombatResultError(
+                socket,
+                null,
+                combat,
+                null,
+                'Server connection lost. Please refresh the page.'
+            );
+        }
+
+        if (
+            data.actionCategory !== 'flee'
+            && combat
+            && isCombatPlaybackLocked(combat)
+        ) {
+            return emitCombatResultError(
+                socket,
+                p,
+                combat,
+                null,
+                'Tactical Error: Wait for the current action to finish.'
+            );
+        }
 
         if (data.actionCategory !== 'flee' && (!combat || combat.atbPaused !== true)) {
-            return socket.emit('combatResult', { type: 'error', message: 'Tactical Error: It is not your turn.', newStamina: p.stamina });
+            return emitCombatResultError(
+                socket,
+                p,
+                combat,
+                null,
+                'Tactical Error: It is not your turn.'
+            );
         }
 
         if (data.actionCategory === 'flee') {
@@ -213,12 +308,13 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         const activeActor = getCombatTurnActor(combat, p);
         if (!activeActor) {
             clearActivePartyActor(combat, combat.activeActorUid || null);
-            return socket.emit('combatResult', {
-                type: 'error',
-                message: 'Tactical turn resynchronized. Waiting for the next party member.',
-                newStamina: p.stamina,
-                updatedCombatState: syncCombatViews(combat, p)
-            });
+            return emitCombatResultError(
+                socket,
+                p,
+                combat,
+                null,
+                'Tactical turn resynchronized. Waiting for the next party member.'
+            );
         }
 
         if (data.actionCategory === 'rest') {
@@ -261,6 +357,17 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             return;
         }
 
+        if (data.actionCategory === 'equipmentAttack') {
+            return handleEquipmentAttackAction(
+                socket,
+                p,
+                combat,
+                data,
+                resolveDefeat,
+                activeActor
+            );
+        }
+
         if (data.actionCategory === 'consumable') {
             if (isPlayerActor(activeActor)) handleConsumableAction(socket, p, combat, data, resolveDefeat, activeActor);
             else handleActorConsumableAction(socket, p, combat, data, activeActor);
@@ -268,16 +375,25 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         }
 
         if (data.actionCategory === 'equip') {
-            if (!isPlayerActor(activeActor)) return socket.emit('combatItemReceipt', { success: false, message: `${activeActor.name} cannot swap gear mid-combat yet.` });
+            if (!isPlayerActor(activeActor)) {
+                return emitCombatEquipError(
+                    socket,
+                    p,
+                    combat,
+                    activeActor,
+                    `${activeActor.name} cannot swap gear mid-combat yet.`
+                );
+            }
             return handleCombatEquip(socket, p, combat, data, activeActor);
         }
 
-        return socket.emit('combatResult', {
-            type: 'error',
-            message: 'Server: Unsupported combat action.',
-            updatedCombatState: syncCombatViews(combat, p),
-            newStamina: getActorStaminaValue(activeActor, p)
-        });
+        return emitCombatResultError(
+            socket,
+            p,
+            combat,
+            activeActor,
+            'Server: Unsupported combat action.'
+        );
     });
 
     socket.on('deployToCombat', (data) => {
@@ -314,6 +430,16 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         const combat = activeCombats[socket.id];
         if (!p || !combat) return;
 
+        if (isCombatPlaybackLocked(combat)) {
+            return emitCombatResultError(
+                socket,
+                p,
+                combat,
+                null,
+                'Tactical Error: Wait for the current action to finish.'
+            );
+        }
+
         syncPlayerActor(combat, p);
         const activeActor = getCombatTurnActor(combat, p);
         if (!activeActor) return;
@@ -343,6 +469,16 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         }
 
         if (!p || !combat) return socket.emit('moveReceipt', { success: false, message: 'Server connection lost. Please refresh the page.' });
+
+        if (isCombatPlaybackLocked(combat)) {
+            return socket.emit('moveReceipt', {
+                success: false,
+                message: 'Tactical Error: Wait for the current action to finish.',
+                x: combat.player.x,
+                y: combat.player.y,
+                updatedCombatState: syncCombatViews(combat, p)
+            });
+        }
 
         if (combat.atbPaused !== true) {
             return socket.emit('moveReceipt', { success: false, message: 'Tactical Error: Cannot move out of turn.', x: combat.player.x, y: combat.player.y });
@@ -637,10 +773,204 @@ function getActorEnemyAtTile(combat, actor, tx, ty) {
     });
 }
 
-function handleWeaponSpellAction(socket, p, combat, data, weapon, combatRules, resolveDefeat) {
+function emitEquipmentActionError(socket, p, combat, actor, message) {
+    return emitCombatResultError(
+        socket,
+        p,
+        combat,
+        actor,
+        message,
+        { actorUid: actor && actor.uid }
+    );
+}
+
+function handleEquipmentAttackAction(
+    socket,
+    p,
+    combat,
+    data,
+    resolveDefeat,
+    actor
+) {
+    const equipment = getActorEquipment(actor, p);
+    const item = equipment
+        && EQUIPMENT_SLOTS.includes(data.equipmentSlot)
+        ? equipment[data.equipmentSlot]
+        : null;
+    if (
+        !data.itemId
+        || !item
+        || String(item.id || '') !== data.itemId
+    ) {
+        return emitEquipmentActionError(
+            socket,
+            p,
+            combat,
+            actor,
+            'Server: That equipment attack does not match the active loadout.'
+        );
+    }
+
+    const action = getResolvedEquipmentAction(
+        equipment,
+        data.equipmentSlot,
+        data.actionId
+    );
+    if (!action) {
+        return emitEquipmentActionError(
+            socket,
+            p,
+            combat,
+            actor,
+            'Server: That equipment attack is no longer available.'
+        );
+    }
+
+    if (String(item.id || '') !== action.itemId) {
+        return emitEquipmentActionError(
+            socket,
+            p,
+            combat,
+            actor,
+            'Server: That equipment attack does not match the active loadout.'
+        );
+    }
+
+    const staminaCost = Math.max(
+        0,
+        Math.trunc(Number(action.staminaCost) || 0)
+    );
+    if (getActorStaminaValue(actor, p) < staminaCost) {
+        return emitEquipmentActionError(
+            socket,
+            p,
+            combat,
+            actor,
+            `Server: ${actor.name} lacks stamina (${Math.floor(getActorStaminaValue(actor, p))}/${staminaCost}).`
+        );
+    }
+
+    if (isShieldBlockAction(action)) {
+        if (actor.guardState && actor.guardState.charges > 0) {
+            return emitEquipmentActionError(
+                socket,
+                p,
+                combat,
+                actor,
+                `${actor.name} is already guarding.`
+            );
+        }
+
+        if (!spendActorStamina(actor, p, staminaCost)) {
+            return emitEquipmentActionError(
+                socket,
+                p,
+                combat,
+                actor,
+                `Server: ${actor.name} lacks stamina.`
+            );
+        }
+
+        actor.guardState = {
+            type: 'shield_block',
+            charges: 1,
+            actionId: action.id,
+            equipmentSlot: action.equipmentSlot,
+            itemId: action.itemId,
+            createdTurnSequence: Number.isSafeInteger(combat.turnSequence)
+                ? combat.turnSequence
+                : 0
+        };
+        const actionResult = completePlayerControlledAction(
+            combat,
+            p,
+            actor
+        );
+
+        return emitAnimatedCombatResult(socket, combat, {
+            type: 'guard',
+            source: 'equipment',
+            actionName: action.name,
+            action,
+            actorUid: actor.uid,
+            actorName: actor.name,
+            guarded: true,
+            newStamina: getActorStaminaValue(actor, p),
+            actionsRemaining: actionResult.actionsRemaining,
+            turnComplete: actionResult.turnComplete,
+            fx: {
+                sx: actor.x,
+                sy: actor.y,
+                sourceUid: actor.uid,
+                spriteId: item.spriteId || null,
+                isProjectile: false,
+                isAoE: false
+            },
+            updatedPlayer: p,
+            updatedCombatState: syncCombatViews(combat, p),
+            combatComplete: false
+        });
+    }
+
+    if (!['attack', 'spell'].includes(action.actionType)) {
+        return emitEquipmentActionError(
+            socket,
+            p,
+            combat,
+            actor,
+            'Server: That equipment action is not supported in combat.'
+        );
+    }
+
+    const actionData = {
+        ...data,
+        subType: action.id
+    };
+    const options = { action, item };
+    if (isPlayerActor(actor)) {
+        return handleWeaponAction(
+            socket,
+            p,
+            combat,
+            actionData,
+            resolveDefeat,
+            actor,
+            options
+        );
+    }
+    return handleActorWeaponAction(
+        socket,
+        p,
+        combat,
+        actionData,
+        resolveDefeat,
+        actor,
+        options
+    );
+}
+
+function handleWeaponSpellAction(
+    socket,
+    p,
+    combat,
+    data,
+    weapon,
+    combatRules,
+    resolveDefeat,
+    resolvedAction = null
+) {
+    const actor = getPlayerActor(combat);
+    const reject = message => emitCombatResultError(
+        socket,
+        p,
+        combat,
+        actor,
+        message,
+        { action: resolvedAction || undefined }
+    );
     const spellData = SpellDatabase[combatRules.spellId];
     if (!spellData) {
-        return socket.emit('combatResult', { type: 'error', message: 'Server: Staff spell is not configured.', newStamina: p.stamina });
+        return reject('Server: Staff spell is not configured.');
     }
 
     let serverEnemy = null;
@@ -653,17 +983,17 @@ function handleWeaponSpellAction(socket, p, combat, data, weapon, combatRules, r
     const ty = hasTileTarget ? data.ty : (serverEnemy ? serverEnemy.y : undefined);
 
     if (tx === undefined || ty === undefined) {
-        return socket.emit('combatResult', { type: 'error', message: 'Server: Spell target lost.', newStamina: p.stamina });
+        return reject('Server: Spell target lost.');
     }
 
     const spellRange = combatRules.range || spellData.range || weapon.attackRange || 1;
     const castDist = getGridDistance(combat.player.x, combat.player.y, tx, ty, 1);
     if (castDist > spellRange) {
-        return socket.emit('combatResult', { type: 'error', message: 'Server: Target out of spell range.', newStamina: p.stamina });
+        return reject('Server: Target out of spell range.');
     }
 
     if (!spellData.ignoresLoS && !combatRules.ignoresLoS && !checkLineOfSight(combat.player.x, combat.player.y, tx, ty, combat)) {
-        return socket.emit('combatResult', { type: 'error', message: 'Server: No line of sight for staff spell.', newStamina: p.stamina });
+        return reject('Server: No line of sight for staff spell.');
     }
 
     p.stamina -= combatRules.staminaCost || spellData.cost || 0;
@@ -715,7 +1045,10 @@ function handleWeaponSpellAction(socket, p, combat, data, weapon, combatRules, r
     }
 
     return emitAnimatedCombatResult(socket, combat, {
-        type: 'hit', source: 'spell', actionName: spellData.name, targets: hitTargets,
+        type: 'hit', source: 'spell',
+        actionName: resolvedAction ? resolvedAction.name : spellData.name,
+        action: resolvedAction || undefined,
+        targets: hitTargets,
         fx: {
             type: spellData.fx ? spellData.fx.type : 'beam',
             style: spellData.fx ? spellData.fx.style : 'arcane',
@@ -731,41 +1064,72 @@ function handleWeaponSpellAction(socket, p, combat, data, weapon, combatRules, r
         combatComplete
     });
 }
-function handleActorWeaponAction(socket, p, combat, data, resolveDefeat, actor) {
+function handleActorWeaponAction(
+    socket,
+    p,
+    combat,
+    data,
+    resolveDefeat,
+    actor,
+    options = {}
+) {
     const equipment = getActorEquipment(actor, p);
-    let weapon = equipment.weapon;
-    if (!weapon || !weapon.combat) weapon = buildFallbackWeapon();
+    const resolvedAction = options.action || null;
+    const reject = message => emitCombatResultError(
+        socket,
+        p,
+        combat,
+        actor,
+        message,
+        { action: resolvedAction || undefined }
+    );
+    let weapon = options.item || equipment.weapon;
+    if (!weapon || (!resolvedAction && !weapon.combat)) {
+        weapon = buildFallbackWeapon();
+    }
 
-    const combatRules = data.subType === 'special' ? weapon.combat.special : weapon.combat.standard;
-    if (!combatRules) return socket.emit('combatResult', { type: 'error', message: 'Server: Action not supported by weapon.', newStamina: getActorStaminaValue(actor, p) });
+    const combatRules = resolvedAction
+        ? getEquipmentActionRules(resolvedAction)
+        : (data.subType === 'special' ? weapon.combat.special : weapon.combat.standard);
+    if (!combatRules) return reject('Server: Action not supported by weapon.');
 
     const staminaCost = combatRules.staminaCost || 0;
     if (getActorStaminaValue(actor, p) < staminaCost) {
-        return socket.emit('combatResult', { type: 'error', message: `Server: ${actor.name} lacks stamina (${Math.floor(getActorStaminaValue(actor, p))}/${staminaCost}).`, newStamina: getActorStaminaValue(actor, p) });
+        return reject(`Server: ${actor.name} lacks stamina (${Math.floor(getActorStaminaValue(actor, p))}/${staminaCost}).`);
     }
 
     if (combatRules.actionType === 'spell') {
-        return handleActorSpellAction(socket, p, combat, data, actor, weapon, combatRules, resolveDefeat);
+        return handleActorSpellAction(
+            socket,
+            p,
+            combat,
+            data,
+            actor,
+            weapon,
+            combatRules,
+            resolveDefeat,
+            resolvedAction
+        );
     }
 
-    if (data.subType === 'special' && combatRules.targetType === 'aoe') {
+    if (combatRules.targetType === 'aoe') {
         if (data.tx === undefined || data.ty === undefined) {
-            return socket.emit('combatResult', {
-                type: 'error',
-                message: 'Server: A target tile is required for this area attack.',
-                newStamina: getActorStaminaValue(actor, p),
-                updatedCombatState: syncCombatViews(combat, p)
-            });
+            return reject('Server: A target tile is required for this area attack.');
         }
         const castDist = getGridDistance(actor.x, actor.y, data.tx, data.ty, actor.size || 1);
-        if (castDist > combatRules.range) return socket.emit('combatResult', { type: 'error', message: 'Server: Target out of range.', newStamina: getActorStaminaValue(actor, p) });
+        if (castDist > combatRules.range) return reject('Server: Target out of range.');
         if (!combatRules.ignoresLoS && !checkLineOfSight(actor.x, actor.y, data.tx, data.ty, combat)) {
-            return socket.emit('combatResult', { type: 'error', message: 'Server: No line of sight to target area.', newStamina: getActorStaminaValue(actor, p) });
+            return reject('Server: No line of sight to target area.');
         }
 
         spendActorStamina(actor, p, staminaCost);
         completePlayerControlledAction(combat, p, actor);
-        const finalBaseDmg = Math.floor(getActorStatValue(actor, p, 'offense') * combatRules.multiplier);
+        const resolvedBaseDmg = Math.floor(
+            getActorStatValue(actor, p, 'offense') * combatRules.multiplier
+        );
+        const finalBaseDmg = resolvedAction
+            ? Math.max(1, resolvedBaseDmg)
+            : resolvedBaseDmg;
         const hitTargets = [];
         let combatComplete = false;
         getActorAttackTargets(combat, actor).forEach(enemy => {
@@ -788,7 +1152,10 @@ function handleActorWeaponAction(socket, p, combat, data, resolveDefeat, actor) 
         });
 
         return emitAnimatedCombatResult(socket, combat, {
-            type: 'hit', source: 'weapon', actionName: data.subType, actorUid: actor.uid, actorName: actor.name, targets: hitTargets,
+            type: 'hit', source: 'weapon',
+            actionName: resolvedAction ? resolvedAction.name : data.subType,
+            action: resolvedAction || undefined,
+            actorUid: actor.uid, actorName: actor.name, targets: hitTargets,
             fx: { tx: data.tx, ty: data.ty, sx: actor.x, sy: actor.y, sourceUid: actor.uid, spriteId: weapon.spriteId, isAoE: true, radius: combatRules.aoeRadius || 1 },
             updatedPlayer: p,
             updatedCombatState: combatComplete ? null : syncCombatViews(combat, p),
@@ -800,12 +1167,12 @@ function handleActorWeaponAction(socket, p, combat, data, resolveDefeat, actor) 
     if (combat && data.targetEnemy) {
         serverEnemy = getActorAttackTargets(combat, actor).find(enemy => enemy.uid === data.targetEnemy.uid && isActorAlive(enemy));
     }
-    if (!serverEnemy) return socket.emit('combatResult', { type: 'error', message: 'Server: Target lost or already defeated.', newStamina: getActorStaminaValue(actor, p) });
+    if (!serverEnemy) return reject('Server: Target lost or already defeated.');
 
     const dist = getGridDistance(actor.x, actor.y, serverEnemy.x, serverEnemy.y, serverEnemy.size || 1);
-    if (dist > combatRules.range) return socket.emit('combatResult', { type: 'error', message: 'Server: Target out of confirmed range.', newStamina: getActorStaminaValue(actor, p) });
+    if (dist > combatRules.range) return reject('Server: Target out of confirmed range.');
     if (!combatRules.ignoresLoS && !hasLineOfSightToActorFootprint(actor.x, actor.y, serverEnemy, combat)) {
-        return socket.emit('combatResult', { type: 'error', message: 'Server: Target is obscured by an obstacle.', newStamina: getActorStaminaValue(actor, p) });
+        return reject('Server: Target is obscured by an obstacle.');
     }
 
     spendActorStamina(actor, p, staminaCost);
@@ -819,6 +1186,8 @@ function handleActorWeaponAction(socket, p, combat, data, resolveDefeat, actor) 
     if ((offenseHitPower - speedMitigation) <= 0) {
         return emitAnimatedCombatResult(socket, combat, {
             type: 'miss',
+            actionName: resolvedAction ? resolvedAction.name : data.subType,
+            action: resolvedAction || undefined,
             actorUid: actor.uid,
             actorName: actor.name,
             targetUid: serverEnemy.uid,
@@ -836,6 +1205,8 @@ function handleActorWeaponAction(socket, p, combat, data, resolveDefeat, actor) 
     if (mitigatedDmg <= 0) {
         return emitAnimatedCombatResult(socket, combat, {
             type: 'miss',
+            actionName: resolvedAction ? resolvedAction.name : data.subType,
+            action: resolvedAction || undefined,
             actorUid: actor.uid,
             actorName: actor.name,
             targetUid: serverEnemy.uid,
@@ -847,7 +1218,12 @@ function handleActorWeaponAction(socket, p, combat, data, resolveDefeat, actor) 
     }
 
     const isCrit = mitigatedDmg >= Math.floor(attackerOffense * 0.90);
-    const finalDmg = Math.floor(mitigatedDmg * combatRules.multiplier);
+    const resolvedDamage = Math.floor(
+        mitigatedDmg * combatRules.multiplier
+    );
+    const finalDmg = resolvedAction
+        ? Math.max(1, resolvedDamage)
+        : resolvedDamage;
     serverEnemy.hp -= finalDmg;
     const poisonApplied = applyPoison(serverEnemy, {
         chance: combatRules.poisonChance || 0,
@@ -867,7 +1243,10 @@ function handleActorWeaponAction(socket, p, combat, data, resolveDefeat, actor) 
     const isRanged = !!weapon.projectileSprite;
 
     emitAnimatedCombatResult(socket, combat, {
-        type: 'hit', source: 'weapon', actionName: data.subType, actorUid: actor.uid, actorName: actor.name,
+        type: 'hit', source: 'weapon',
+        actionName: resolvedAction ? resolvedAction.name : data.subType,
+        action: resolvedAction || undefined,
+        actorUid: actor.uid, actorName: actor.name,
         targets: [{ uid: serverEnemy.uid, damage: finalDmg, isCrit, killed, statusApplied: poisonApplied ? 'poison' : null, statusEffects: serverEnemy.statusEffects }],
         newStamina: getActorStaminaValue(actor, p),
         fx: { tx: serverEnemy.x, ty: serverEnemy.y, sx: actor.x, sy: actor.y, sourceUid: actor.uid, spriteId: isRanged ? weapon.projectileSprite : weapon.spriteId, isProjectile: isRanged, isAoE: false },
@@ -877,10 +1256,28 @@ function handleActorWeaponAction(socket, p, combat, data, resolveDefeat, actor) 
     });
 }
 
-function handleActorSpellAction(socket, p, combat, data, actor, weapon, combatRules, resolveDefeat) {
+function handleActorSpellAction(
+    socket,
+    p,
+    combat,
+    data,
+    actor,
+    weapon,
+    combatRules,
+    resolveDefeat,
+    resolvedAction = null
+) {
+    const reject = message => emitCombatResultError(
+        socket,
+        p,
+        combat,
+        actor,
+        message,
+        { action: resolvedAction || undefined }
+    );
     const spellData = SpellDatabase[combatRules.spellId];
     if (!spellData) {
-        return socket.emit('combatResult', { type: 'error', message: 'Server: Staff spell is not configured.', newStamina: getActorStaminaValue(actor, p) });
+        return reject('Server: Staff spell is not configured.');
     }
 
     let serverEnemy = null;
@@ -892,21 +1289,21 @@ function handleActorSpellAction(socket, p, combat, data, actor, weapon, combatRu
     const tx = hasTileTarget ? data.tx : (serverEnemy ? serverEnemy.x : undefined);
     const ty = hasTileTarget ? data.ty : (serverEnemy ? serverEnemy.y : undefined);
     if (tx === undefined || ty === undefined) {
-        return socket.emit('combatResult', { type: 'error', message: 'Server: Spell target lost.', newStamina: getActorStaminaValue(actor, p) });
+        return reject('Server: Spell target lost.');
     }
 
     const spellRange = combatRules.range || spellData.range || weapon.attackRange || 1;
     const castDist = getGridDistance(actor.x, actor.y, tx, ty, actor.size || 1);
     if (castDist > spellRange) {
-        return socket.emit('combatResult', { type: 'error', message: 'Server: Target out of spell range.', newStamina: getActorStaminaValue(actor, p) });
+        return reject('Server: Target out of spell range.');
     }
     if (!spellData.ignoresLoS && !combatRules.ignoresLoS && !checkLineOfSight(actor.x, actor.y, tx, ty, combat)) {
-        return socket.emit('combatResult', { type: 'error', message: 'Server: No line of sight for staff spell.', newStamina: getActorStaminaValue(actor, p) });
+        return reject('Server: No line of sight for staff spell.');
     }
 
     const staminaCost = combatRules.staminaCost || spellData.cost || 0;
     if (getActorStaminaValue(actor, p) < staminaCost) {
-        return socket.emit('combatResult', { type: 'error', message: `Server: ${actor.name} lacks stamina.`, newStamina: getActorStaminaValue(actor, p) });
+        return reject(`Server: ${actor.name} lacks stamina.`);
     }
 
     spendActorStamina(actor, p, staminaCost);
@@ -957,7 +1354,10 @@ function handleActorSpellAction(socket, p, combat, data, actor, weapon, combatRu
     }
 
     return emitAnimatedCombatResult(socket, combat, {
-        type: 'hit', source: 'spell', actionName: spellData.name, actorUid: actor.uid, actorName: actor.name, targets: hitTargets,
+        type: 'hit', source: 'spell',
+        actionName: resolvedAction ? resolvedAction.name : spellData.name,
+        action: resolvedAction || undefined,
+        actorUid: actor.uid, actorName: actor.name, targets: hitTargets,
         newStamina: getActorStaminaValue(actor, p),
         fx: {
             type: spellData.fx ? spellData.fx.type : 'beam',
@@ -974,10 +1374,27 @@ function handleActorSpellAction(socket, p, combat, data, actor, weapon, combatRu
         combatComplete
     });
 }
-function handleWeaponAction(socket, p, combat, data, resolveDefeat) {
-    let weapon = p.equipment.weapon;
+function handleWeaponAction(
+    socket,
+    p,
+    combat,
+    data,
+    resolveDefeat,
+    actor = getPlayerActor(combat),
+    options = {}
+) {
+    const resolvedAction = options.action || null;
+    const reject = message => emitCombatResultError(
+        socket,
+        p,
+        combat,
+        actor,
+        message,
+        { action: resolvedAction || undefined }
+    );
+    let weapon = options.item || p.equipment.weapon;
 
-    if (!weapon || !weapon.combat) {
+    if (!weapon || (!resolvedAction && !weapon.combat)) {
         weapon = {
             spriteId: "icon_punch",
             combat: {
@@ -987,43 +1404,54 @@ function handleWeaponAction(socket, p, combat, data, resolveDefeat) {
         };
     }
 
-    const combatRules = data.subType === 'special' ? weapon.combat.special : weapon.combat.standard;
-    if (!combatRules) return socket.emit('combatResult', { type: 'error', message: 'Server: Action not supported by weapon.', newStamina: p.stamina });
+    const combatRules = resolvedAction
+        ? getEquipmentActionRules(resolvedAction)
+        : (data.subType === 'special' ? weapon.combat.special : weapon.combat.standard);
+    if (!combatRules) return reject('Server: Action not supported by weapon.');
 
     const staminaCost = combatRules.staminaCost;
     if (p.stamina < staminaCost) {
-        return socket.emit('combatResult', { type: 'error', message: `Server: Insufficient stamina (${Math.floor(p.stamina)}/${staminaCost}).`, newStamina: p.stamina });
+        return reject(`Server: Insufficient stamina (${Math.floor(p.stamina)}/${staminaCost}).`);
     }
 
     if (combatRules.actionType === "spell") {
-        return handleWeaponSpellAction(socket, p, combat, data, weapon, combatRules, resolveDefeat);
+        return handleWeaponSpellAction(
+            socket,
+            p,
+            combat,
+            data,
+            weapon,
+            combatRules,
+            resolveDefeat,
+            resolvedAction
+        );
     }
 
 
-    if (data.subType === 'special' && combatRules.targetType === 'aoe') {
+    if (combatRules.targetType === 'aoe') {
         if (data.tx === undefined || data.ty === undefined) {
-            return socket.emit('combatResult', {
-                type: 'error',
-                message: 'Server: A target tile is required for this area attack.',
-                newStamina: p.stamina,
-                updatedCombatState: syncCombatViews(combat, p)
-            });
+            return reject('Server: A target tile is required for this area attack.');
         }
 
         const castDist = getGridDistance(combat.player.x, combat.player.y, data.tx, data.ty, 1);
         if (castDist > combatRules.range) {
-            return socket.emit('combatResult', { type: 'error', message: 'Server: Target out of range.', newStamina: p.stamina });
+            return reject('Server: Target out of range.');
         }
 
         if (!combatRules.ignoresLoS && !checkLineOfSight(combat.player.x, combat.player.y, data.tx, data.ty, combat)) {
-            return socket.emit('combatResult', { type: 'error', message: 'Server: No line of sight to target area.', newStamina: p.stamina });
+            return reject('Server: No line of sight to target area.');
         }
 
         p.stamina -= staminaCost;
         completePlayerControlledAction(combat, p, getPlayerActor(combat));
 
         const serverPower = getEffectiveStat(p, 'offense');
-        const finalBaseDmg = Math.floor(serverPower * combatRules.multiplier);
+        const resolvedBaseDmg = Math.floor(
+            serverPower * combatRules.multiplier
+        );
+        const finalBaseDmg = resolvedAction
+            ? Math.max(1, resolvedBaseDmg)
+            : resolvedBaseDmg;
         const hitTargets = [];
 
         let combatComplete = false;
@@ -1051,7 +1479,12 @@ function handleWeaponAction(socket, p, combat, data, resolveDefeat) {
         });
 
         return emitAnimatedCombatResult(socket, combat, {
-            type: 'hit', source: 'weapon', actionName: data.subType, targets: hitTargets,
+            type: 'hit', source: 'weapon',
+            actionName: resolvedAction ? resolvedAction.name : data.subType,
+            action: resolvedAction || undefined,
+            actorUid: actor && actor.uid,
+            actorName: actor && actor.name,
+            targets: hitTargets,
             fx: { tx: data.tx, ty: data.ty, spriteId: weapon.spriteId, isAoE: true, radius: combatRules.aoeRadius || 1 },
             updatedPlayer: p,
             updatedCombatState: combatComplete ? null : syncCombatViews(combat, p),
@@ -1064,13 +1497,15 @@ function handleWeaponAction(socket, p, combat, data, resolveDefeat) {
         serverEnemy = getPlayerAttackTargets(combat).find(enemy => enemy.uid === data.targetEnemy.uid && isActorAlive(enemy));
     }
 
-    if (!serverEnemy) return socket.emit('combatResult', { type: 'error', message: 'Server: Target lost or already defeated.', newStamina: p.stamina });
+    if (!serverEnemy) return reject('Server: Target lost or already defeated.');
 
     const dist = getGridDistance(combat.player.x, combat.player.y, serverEnemy.x, serverEnemy.y, serverEnemy.size || 1);
-    if (dist > combatRules.range) return socket.emit('combatResult', { type: 'error', message: 'Server: Target out of confirmed range.', newStamina: p.stamina });
+    if (dist > combatRules.range) return reject('Server: Target out of confirmed range.');
 
     if (!combatRules.ignoresLoS) {
-        if (!hasLineOfSightToActorFootprint(combat.player.x, combat.player.y, serverEnemy, combat)) return socket.emit('combatResult', { type: 'error', message: 'Server: Target is obscured by an obstacle.', newStamina: p.stamina });
+        if (!hasLineOfSightToActorFootprint(combat.player.x, combat.player.y, serverEnemy, combat)) {
+            return reject('Server: Target is obscured by an obstacle.');
+        }
     }
 
     p.stamina -= staminaCost;
@@ -1085,6 +1520,8 @@ function handleWeaponAction(socket, p, combat, data, resolveDefeat) {
     if ((offenseHitPower - speedMitigation) <= 0) {
         emitAnimatedCombatResult(socket, combat, {
             type: 'miss',
+            actionName: resolvedAction ? resolvedAction.name : data.subType,
+            action: resolvedAction || undefined,
             actorUid: 'player_0',
             targetUid: serverEnemy.uid,
             deflectReason: 'evasion',
@@ -1102,6 +1539,8 @@ function handleWeaponAction(socket, p, combat, data, resolveDefeat) {
     if (mitigatedDmg <= 0) {
         emitAnimatedCombatResult(socket, combat, {
             type: 'miss',
+            actionName: resolvedAction ? resolvedAction.name : data.subType,
+            action: resolvedAction || undefined,
             actorUid: 'player_0',
             targetUid: serverEnemy.uid,
             deflectReason: 'armor',
@@ -1113,7 +1552,12 @@ function handleWeaponAction(socket, p, combat, data, resolveDefeat) {
     }
 
     const isCrit = mitigatedDmg >= Math.floor(attackerOffense * 0.90);
-    const finalDmg = Math.floor(mitigatedDmg * combatRules.multiplier);
+    const resolvedDamage = Math.floor(
+        mitigatedDmg * combatRules.multiplier
+    );
+    const finalDmg = resolvedAction
+        ? Math.max(1, resolvedDamage)
+        : resolvedDamage;
 
     serverEnemy.hp -= finalDmg;
     const poisonApplied = applyPoison(serverEnemy, {
@@ -1133,7 +1577,11 @@ function handleWeaponAction(socket, p, combat, data, resolveDefeat) {
     const isRanged = !!weapon.projectileSprite;
 
     emitAnimatedCombatResult(socket, combat, {
-        type: 'hit', source: 'weapon', actionName: data.subType,
+        type: 'hit', source: 'weapon',
+        actionName: resolvedAction ? resolvedAction.name : data.subType,
+        action: resolvedAction || undefined,
+        actorUid: actor && actor.uid,
+        actorName: actor && actor.name,
         targets: [{ uid: serverEnemy.uid, damage: finalDmg, isCrit: isCrit, killed: killed, statusApplied: poisonApplied ? "poison" : null, statusEffects: serverEnemy.statusEffects }],
         fx: { tx: serverEnemy.x, ty: serverEnemy.y, spriteId: isRanged ? weapon.projectileSprite : weapon.spriteId, isProjectile: isRanged, isAoE: false },
         updatedPlayer: p,
@@ -1418,22 +1866,47 @@ function handleConsumableAction(socket, p, combat, data, resolveDefeat, actor) {
     }
 }
 
+function emitCombatEquipError(socket, p, combat, actor, message) {
+    return socket.emit('combatItemReceipt', {
+        success: false,
+        message,
+        actorUid: actor && actor.uid,
+        newStamina: actor ? getActorStaminaValue(actor, p) : p.stamina,
+        updatedCombatState: syncCombatViews(combat, p)
+    });
+}
+
 function handleCombatEquip(socket, p, combat, data, actor) {
     const invIndex = getArrayIndex(data.invIndex, p.inventory);
-    if (invIndex < 0) return socket.emit('combatItemReceipt', { success: false, message: "Invalid inventory slot." });
+    if (invIndex < 0) {
+        return emitCombatEquipError(
+            socket,
+            p,
+            combat,
+            actor,
+            'Invalid inventory slot.'
+        );
+    }
 
     const item = p.inventory[invIndex];
     if (!item) {
-        return socket.emit('combatItemReceipt', {
-            success: false,
-            message: 'Invalid item data.',
-            actorUid: actor && actor.uid,
-            updatedCombatState: syncCombatViews(combat, p)
-        });
+        return emitCombatEquipError(
+            socket,
+            p,
+            combat,
+            actor,
+            'Invalid item data.'
+        );
     }
 
     if (!EQUIPMENT_SLOTS.includes(item.slot)) {
-        return socket.emit('combatItemReceipt', { success: false, message: "This item cannot be equipped." });
+        return emitCombatEquipError(
+            socket,
+            p,
+            combat,
+            actor,
+            'This item cannot be equipped.'
+        );
     }
 
     p.maxInventorySlots = p.maxInventorySlots || 5;
@@ -1444,15 +1917,28 @@ function handleCombatEquip(socket, p, combat, data, actor) {
         maxInventorySlots: p.maxInventorySlots
     });
     if (!equipResult.success) {
-        return socket.emit('combatItemReceipt', {
-            success: false,
-            message: equipResult.message
-        });
+        return emitCombatEquipError(
+            socket,
+            p,
+            combat,
+            actor,
+            equipResult.message
+        );
     }
 
     const handMessage = equipResult.conflictSlot
         ? ' Conflicting hand gear was stowed.'
         : '';
+    if (actor && actor.guardState) {
+        const guardedSlot = actor.guardState.equipmentSlot;
+        const guardedItem = guardedSlot && p.equipment[guardedSlot];
+        if (
+            !guardedItem
+            || String(guardedItem.id || '') !== actor.guardState.itemId
+        ) {
+            delete actor.guardState;
+        }
+    }
     return emitPlayerItemReceipt(socket, p, combat, actor, {
         success: true,
         message: `Swapped gear mid-combat.${handMessage}`

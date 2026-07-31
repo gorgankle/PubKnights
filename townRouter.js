@@ -229,11 +229,15 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         if (!data || typeof data !== 'object') return;
         ensurePlayerContainers(p);
 
-        if (['equipCompanion', 'unequipCompanion', 'storeCompanionPocket', 'removeCompanionPocket'].includes(data.action)) {
-            if (activeCombats && activeCombats[socket.id]) {
-                return socket.emit('inventoryReceipt', { success: false, message: 'Mercenary gear and pockets can only be changed outside combat.' });
-            }
+        if (activeCombats && activeCombats[socket.id]) {
+            return socket.emit('inventoryReceipt', {
+                success: false,
+                message: 'Inventory changes are locked during combat and must be made outside combat. Use the combat Backpack to swap gear for one action.',
+                updatedPlayer: p
+            });
+        }
 
+        if (['equipCompanion', 'unequipCompanion', 'storeCompanionPocket', 'removeCompanionPocket'].includes(data.action)) {
             const companion = findCompanionByInstanceId(p, data.instanceId);
             if (!companion) return socket.emit('inventoryReceipt', { success: false, message: 'That mercenary is not on your roster.' });
 

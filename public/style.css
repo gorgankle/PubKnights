@@ -325,6 +325,64 @@ h3 { margin-top: 0; color: #ffcc66; font-size: 13px; border-bottom: 1px solid #6
 canvas { border: 4px solid #8b5a2b; background-color: #1a1512; cursor: pointer; display: block; margin: 0 auto; }
 #action-interface { margin-top: 8px; background: #221a14; padding: 8px; border-radius: 4px; text-align: left; }
 
+.equipment-attack-menu {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0 2px 10px;
+    padding: 10px;
+    background: #17110d;
+    border: 1px solid #8b5a2b;
+    border-radius: 4px;
+}
+
+.equipment-attack-menu[hidden] {
+    display: none;
+}
+
+.equipment-attack-menu-heading,
+.equipment-attack-menu-empty {
+    grid-column: 1 / -1;
+}
+
+.equipment-attack-menu-heading {
+    color: #ffcc66;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.equipment-attack-option {
+    min-width: 0;
+    margin: 0;
+    padding: 9px;
+    text-align: left;
+}
+
+.equipment-attack-option-name,
+.equipment-attack-option-meta,
+.equipment-attack-option-reason {
+    display: block;
+}
+
+.equipment-attack-option-name {
+    color: #fff;
+    font-size: 12px;
+}
+
+.equipment-attack-option-meta {
+    margin-top: 3px;
+    color: #d6b98c;
+    font-size: 9px;
+    font-weight: normal;
+}
+
+.equipment-attack-option-reason {
+    margin-top: 4px;
+    color: #e88b7e;
+    font-size: 9px;
+}
+
 .combat-turn-header {
     display: flex;
     align-items: center;
@@ -528,6 +586,10 @@ button:hover:not(:disabled) { background: #a06d3b; }
 @media (max-width: 600px) {
     #combat-bottom-stats, .combat-grid-2-col {
         grid-template-columns: 1fr !important;
+    }
+
+    .equipment-attack-menu {
+        grid-template-columns: 1fr;
     }
 }
 

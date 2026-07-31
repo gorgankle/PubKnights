@@ -13,8 +13,11 @@ let timerID;
 let currentPhraseIndex = 0; 
 let currentLoopCount = 0;   
 
-let musicVolume = 1.0;
-let sfxVolume = 1.0;
+const audioStartsMuted = typeof window !== 'undefined'
+    && typeof URLSearchParams !== 'undefined'
+    && new URLSearchParams(window.location.search).get('mute') === '1';
+let musicVolume = audioStartsMuted ? 0 : 1.0;
+let sfxVolume = audioStartsMuted ? 0 : 1.0;
 let noiseBuffer = null; 
 
 const NOTES = {
