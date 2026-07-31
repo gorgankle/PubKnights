@@ -90,10 +90,10 @@ function createTownHarness(player = makePlayer(), activeCombat = null) {
     return { socket, player, activeCombats };
 }
 
-test('party limits expose six roster slots, three selections, and two pockets', () => {
+test('party limits expose six roster slots, three selections, and one pocket', () => {
     assert.equal(MAX_ROSTER_COMPANIONS, 6);
     assert.equal(MAX_SELECTED_COMPANIONS, 3);
-    assert.equal(COMPANION_POCKET_COUNT, 2);
+    assert.equal(COMPANION_POCKET_COUNT, 1);
     assert.equal(COMPANION_EQUIPMENT_SLOTS.includes('offhand'), true);
 });
 
@@ -128,7 +128,7 @@ test('legacy companion ids migrate without losing active state or gear', () => {
     assert.equal(companion.equipment.offhand, null);
     assert.equal(companion.equipment.gloves, null);
     assert.equal(companion.xp, 0);
-    assert.deepEqual(companion.pockets, [null, null]);
+    assert.deepEqual(companion.pockets, [null]);
     assert.deepEqual(player.roster.activeIds, [companion.instanceId]);
     assert.equal(companion.active, true);
     assert.equal(player.inventory[0].id, 'legacy_charm');
@@ -154,22 +154,28 @@ test('normalization preserves an explicitly empty bench and caps selected mercen
     assert.deepEqual(player.roster.activeIds, ['merc_0', 'merc_1', 'merc_2']);
 });
 
-test('companion xp and exactly two pockets survive normalization without losing overflow items', () => {
+test('companion xp and one pocket survive normalization without losing overflow items', () => {
     const player = makePlayer();
     player.roster.companions = [{
         ...makeCompanion('merc_pockets'),
         xp: 275.9,
-        pockets: [gear('potion', 'consumable'), null, gear('spare_boots', 'boots')]
+        pockets: [
+            gear('potion', 'consumable'),
+            gear('retired_pocket_gloves', 'gloves'),
+            gear('legacy_overflow_boots', 'boots')
+        ]
     }];
 
     normalizeRosterState(player);
 
     const companion = player.roster.companions[0];
     assert.equal(companion.xp, 275);
-    assert.equal(companion.pockets.length, 2);
+    assert.equal(companion.pockets.length, 1);
     assert.equal(companion.pockets[0].id, 'potion');
-    assert.equal(companion.pockets[1], null);
-    assert.deepEqual(player.inventory.map(item => item.id), ['spare_boots']);
+    assert.deepEqual(
+        player.inventory.map(item => item.id),
+        ['retired_pocket_gloves', 'legacy_overflow_boots']
+    );
 });
 
 test('companion hydration stows an offhand that conflicts with a two-handed weapon', () => {

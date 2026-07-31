@@ -88,6 +88,28 @@ test('client normalization preserves the first three valid selected mercenaries'
     assert.deepEqual(normalized.inventory, []);
 });
 
+test('client normalization returns a retired second pocket item to the shared backpack once', () => {
+    const api = loadPlayerApi();
+    const savedCompanion = companion('merc_pockets');
+    savedCompanion.pockets = [
+        { id: 'kept_draught', slot: 'consumable' },
+        { id: 'returned_shield', slot: 'offhand' }
+    ];
+    api.setPlayer({
+        equipment: {},
+        inventory: [],
+        stash: [],
+        roster: { companions: [savedCompanion], activeIds: [] }
+    });
+
+    api.normalizeClientPlayerContainers();
+    api.normalizeClientPlayerContainers();
+    const normalized = JSON.parse(JSON.stringify(api.getPlayer()));
+
+    assert.deepEqual(normalized.roster.companions[0].pockets.map(item => item && item.id), ['kept_draught']);
+    assert.deepEqual(normalized.inventory.map(item => item.id), ['returned_shield']);
+});
+
 test('roster UI reports selected slots and disables activation when the party is full', () => {
     const partyList = new FakeElement('div');
     const context = vm.createContext({

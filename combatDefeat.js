@@ -2,9 +2,17 @@
 // Shared server-side player defeat cleanup.
 
 const { getMaxHp, getMaxStamina } = require('./combatMath.js');
+const {
+    failActiveExpedition,
+    hasActiveJourney
+} = require('./adventureState.js');
 
 function applyPlayerCombatDefeat(player) {
     if (!player) return player;
+
+    if (hasActiveJourney(player)) {
+        failActiveExpedition(player, 'combat_defeat');
+    }
 
     player.equipment = {
         helmet: null,

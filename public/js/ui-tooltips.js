@@ -26,7 +26,7 @@ else if (item && item.slot === "consumable") {
         }
 	} 	
     else if (type === 'adventures_enter') {
-        html = `<h3>⚔️ Adventure Board</h3>Check the latest local bounties, adjust map difficulty levels, and deploy your Knight into combat zones.`;
+        html = `<h3>⚔️ Adventure Board</h3>Choose a travel route, inspect road danger, manage bounties, and complete safe round trips from the pub.`;
     }
 	else if (type === 'cellars_enter') {
         html = `<h3>🍷 Forbidden Cellars</h3>Descend into the forgotten, mold-covered storage vaults. Enemies here have thicker armor and hit harder than those in the Wilds.<br>⚠️ Danger: Beware of Mimics disguising themselves among the casks!`;

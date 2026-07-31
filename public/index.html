@@ -209,7 +209,7 @@
         <div class="dashboard-panel" style="margin-bottom: 0; display: flex; flex-direction: column; align-items: center;">
             <h3 style="color: #2ecc71; border-bottom: 1px dashed #27ae60; width: 100%; text-align: left;">🛡️ Active Loadout</h3>
             <div class="paper-doll-grid">
-                <div class="equip-slot" id="vault-slot-gloves">G</div>
+                <div class="equip-slot empty-cell"></div>
                 <div class="equip-slot" id="vault-slot-helmet">H</div>
                 <div class="equip-slot empty-cell"></div>
 
@@ -217,7 +217,7 @@
                 <div class="equip-slot" id="vault-slot-armor">A</div>
                 <div class="equip-slot" id="vault-slot-weapon">W</div>
 
-                <div class="equip-slot empty-cell"></div>
+                <div class="equip-slot" id="vault-slot-gloves">G</div>
                 <div class="equip-slot" id="vault-slot-boots">B</div>
                 <div class="equip-slot empty-cell"></div>
             </div>
@@ -350,7 +350,7 @@
 
                 <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
                     <div class="paper-doll-grid">
-                        <div class="equip-slot" id="slot-gloves">G</div>
+                        <div class="equip-slot empty-cell"></div>
                         <div class="equip-slot" id="slot-helmet">H</div>
                         <div class="equip-slot empty-cell"></div>
 
@@ -358,7 +358,7 @@
                         <div class="equip-slot" id="slot-armor">A</div>
                         <div class="equip-slot" id="slot-weapon">W</div>
 
-                        <div class="equip-slot empty-cell"></div>
+                        <div class="equip-slot" id="slot-gloves">G</div>
                         <div class="equip-slot" id="slot-boots">B</div>
                         <div class="equip-slot empty-cell"></div>
                     </div>
@@ -475,56 +475,64 @@
     
     <div class="dashboard-panel" style="background: #1a1512; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; margin-bottom: 5px; border: 1px solid #4a3b2c;">
         <span style="color: #ffcc66; font-weight: bold; font-size:15px;">⚔️ Adventure Board</span>
-        <button onclick="setGameState('TOWN')" style="background: #c0392b; margin:0; padding:6px 14px; font-size: 12px;">↩ Return to Town</button>
+        <button id="adventure-return-town-btn" onclick="setGameState('TOWN')" style="background: #c0392b; margin:0; padding:6px 14px; font-size: 12px;">↩ Return to Town</button>
     </div>
 
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px; align-items: start;">
-        
-        <!-- MODULE 1: Combat Deployments -->
-        <div class="dashboard-panel" style="margin-bottom: 0;">
-            <h3 style="color: #e74c3c; border-bottom: 1px dashed #c0392b;">⚔️ Combat Deployments</h3>
-            
-            <div style="display: grid; grid-template-columns: 30px 1fr 30px; gap: 4px; margin-bottom: 4px;">
-                <button onclick="changeZoneLevel('WILDERNESS', -1)" style="margin: 0; background: #4a3b2c; padding: 6px 0;">◀</button>
-                <button id="gate-btn" onclick="transitionToCombat('WILDERNESS')" style="margin: 0; padding: 6px 0;">Deploy to Wilds (Lvl 1)</button>
-                <button onclick="changeZoneLevel('WILDERNESS', 1)" style="margin: 0; background: #4a3b2c; padding: 6px 0;">▶</button>
-            </div>
+    <div id="adventure-status-banner" class="adventure-status-banner" aria-live="polite">
+        Consulting the road ledger...
+    </div>
 
-            <div style="display: grid; grid-template-columns: 30px 1fr 30px; gap: 4px; margin-bottom: 8px;">
-                <button onclick="changeZoneLevel('CELLARS', -1)" style="margin: 0; background: #4a3b2c; padding: 6px 0;">◀</button>
-                <button id="cellar-gate-btn" onclick="transitionToCombat('CELLARS')" style="margin: 0; padding: 6px 0;">🔒 Forbidden Cellars</button>
-                <button onclick="changeZoneLevel('CELLARS', 1)" style="margin: 0; background: #4a3b2c; padding: 6px 0;">▶</button>
+    <div class="adventure-map-layout">
+        <div class="dashboard-panel adventure-map-panel">
+            <div class="adventure-panel-heading">
+                <h3>Exploration Map</h3>
+                <span id="adventure-safe-returns">0 safe returns</span>
             </div>
+            <div id="exploration-map" class="exploration-map" aria-label="Travel locations"></div>
+        </div>
 
-            <div style="display: grid; grid-template-columns: 1fr; gap: 6px;">
-                <button id="abyss-btn" onclick="transitionToCombat('ABYSS')" style="background: #190a2e; border-color: #5b2c6f; color: #d7bde2; margin: 0; padding: 8px; border-style: dashed;">🌌 Descend into Procedural Abyss (Depth <span id="abyss-depth-indicator">1</span>)</button>
-                <button id="gorilla-btn" onclick="transitionToCombat('GORILLA_ARENA')" style="background: #c0392b; border-color: #ff3333; margin: 0; padding: 8px;">🦍 EVENT: Gorilla Pit</button>
+        <div id="exploration-detail" class="dashboard-panel exploration-detail" aria-live="polite">
+            <h3>Choose a Road</h3>
+            <p>Select an unlocked location to inspect its distance, danger, and possible encounters.</p>
+        </div>
+    </div>
+
+    <div class="adventure-board-grid">
+        <div class="dashboard-panel adventure-bounty-panel">
+            <h3>📜 Bounty Board</h3>
+            <div id="bounty-list" class="bounty-list">
+                <p class="adventure-muted">Checking the latest contracts...</p>
             </div>
         </div>
 
-        <!-- MODULE 2: Guild Expeditions -->
-        <div class="dashboard-panel" style="margin-bottom: 0;">
-            <h3 style="color: #2ecc71; border-bottom: 1px dashed #27ae60;">🪓 Guild Expeditions</h3>
-            <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
-                <button onclick="setGameState('MINIGAME_LUMBER')" style="background: #27ae60; border-color: #2ecc71; padding: 10px; margin: 0;">🌲 Timber Camp (Active Chopping)</button>
-                <button onclick="setGameState('MINIGAME_FISHING')" style="background: #2980b9; border-color: #3498db; padding: 10px; margin: 0;">🐟 The Fishing Pond (Active Angling)</button>
-                <button onclick="setGameState('MINIGAME_HOPS')" style="background: #8e44ad; border-color: #9b59b6; padding: 10px; margin: 0;">🌾 Hops Farm (Active Picking)</button>
+        <div class="dashboard-panel adventure-guild-panel">
+            <h3>🪓 Guild Expeditions</h3>
+            <div class="adventure-guild-actions">
+                <button onclick="setGameState('MINIGAME_LUMBER')">🌲 Timber Camp</button>
+                <button onclick="setGameState('MINIGAME_FISHING')">🐟 Fishing Pond</button>
+                <button onclick="setGameState('MINIGAME_HOPS')">🌾 Hops Farm</button>
             </div>
         </div>
+    </div>
 
-        <!-- MODULE 3: Bounty Board -->
-        <div class="dashboard-panel" style="margin-bottom: 0;">
-            <h3 style="color: #bdc3c7; border-bottom: 1px dashed #7f8c8d;">📜 Bounty Board</h3>
-            <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
-                <button disabled style="background: #34495e; border-color: #7f8c8d; color: #95a5a6; padding: 10px; margin: 0; cursor: not-allowed; text-decoration: line-through;">🐺 Hunt: The Dire Wolf (Coming Soon)</button>
-                <button disabled style="background: #34495e; border-color: #7f8c8d; color: #95a5a6; padding: 10px; margin: 0; cursor: not-allowed; text-decoration: line-through;">👑 Raid: Goblin King's Hoard (Coming Soon)</button>
-            </div>
-            <div style="font-size: 10px; color: #bdc3c7; text-align: center; margin-top: 15px; font-style: italic;">
-                Guild architects are currently constructing this facility.
-            </div>
+    <details id="legacy-deployments" class="dashboard-panel legacy-deployments">
+        <summary>Legacy Level Deployments (fallback)</summary>
+        <p>The former progression remains available while expeditions are being proven.</p>
+        <div class="legacy-deployment-row">
+            <button onclick="changeZoneLevel('WILDERNESS', -1)">◀</button>
+            <button id="gate-btn" onclick="transitionToCombat('WILDERNESS')">Deploy to Wilds (Lvl 1)</button>
+            <button onclick="changeZoneLevel('WILDERNESS', 1)">▶</button>
         </div>
-
-    </div> <!-- End Grid Container -->
+        <div class="legacy-deployment-row">
+            <button onclick="changeZoneLevel('CELLARS', -1)">◀</button>
+            <button id="cellar-gate-btn" onclick="transitionToCombat('CELLARS')">🔒 Forbidden Cellars</button>
+            <button onclick="changeZoneLevel('CELLARS', 1)">▶</button>
+        </div>
+        <div class="legacy-deployment-specials">
+            <button id="abyss-btn" onclick="transitionToCombat('ABYSS')">🌌 Procedural Abyss (Depth <span id="abyss-depth-indicator">1</span>)</button>
+            <button id="gorilla-btn" onclick="transitionToCombat('GORILLA_ARENA')">🦍 EVENT: Gorilla Pit</button>
+        </div>
+    </details>
 </div>
 				
 
@@ -777,7 +785,7 @@
     <script src="js/player.js?v=7"></script>
     <script src="js/character-creator.js?v=8"></script> <!-- ESTABLISHES ARRAYS -->
 	<script src="js/item-assets.js?v=2"></script>       <!-- NEW: EQUIPMENT ARRAYS -->
-	<script src="js/pet-assets.js?v=2"></script>
+	<script src="js/pet-assets.js?v=3"></script>
     <script src="js/npc-assets.js?v=2"></script>      <!-- MODIFIES ARRAYS WITH NPC DATA -->
 	<script src="js/map-assets.js?v=2"></script>
 	<script src="js/icon-assets.js?v=2"></script>
@@ -806,6 +814,7 @@
 <!-- Game Systems & Logic -->
     <script src="js/login.js"></script>
     <script src="js/combat-maps.js"></script>
+    <script src="js/expeditions.js?v=1"></script>
     <script src="js/combat-mechanics.js?v=10"></script>
     <script src="js/town-actions.js?v=3"></script>
 	<script src="js/minigames.js"></script>

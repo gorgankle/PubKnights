@@ -186,6 +186,12 @@ function refreshCombatSidebar() {
 function refreshSystemUI() {
     try {
         if (typeof normalizeClientPlayerContainers === 'function') normalizeClientPlayerContainers();
+        if (typeof updateAdventureNavigation === 'function') {
+            const activeJourney = player
+                && player.adventure
+                && player.adventure.activeJourney;
+            updateAdventureNavigation(activeJourney || null);
+        }
 
         const topNavBar = document.getElementById("top-nav-bar");
         const townVaultView = document.getElementById("town-vault-view");
@@ -421,6 +427,7 @@ if (hopsScreen) hopsScreen.style.display = "none";
             } else if (gameState === 'ADVENTURES') {
                 if (adventuresScreen) adventuresScreen.style.display = "block";
                 document.getElementById('nav-adventures').classList.add('active-tab');
+                if (typeof renderAdventureBoard === 'function') renderAdventureBoard();
             } else if (gameState === 'VAULT') {
                 vaultScreen.style.display = "block";
                 document.getElementById('nav-vault').classList.add('active-tab');
@@ -706,7 +713,9 @@ function renderBackpackList(domContainer, showVaultOption) {
         }
     };
 
-    let maxSlots = player.maxInventorySlots || 5;
+    // Hydration may return retired equipment/pocket items to a full backpack.
+    // Render that temporary overflow so migrated items are never hidden.
+    let maxSlots = Math.max(player.maxInventorySlots || 5, player.inventory.length);
 
     for (let idx = 0; idx < maxSlots; idx++) {
         let item = player.inventory[idx];

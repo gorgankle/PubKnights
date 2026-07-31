@@ -8,6 +8,11 @@ const { getAliveRogueActors, syncCombatViews } = require('./combatActors.js');
 const { sanitizeLifetimeXp } = require('./xpMath.js');
 const { applyLifetimeXpLevelUps } = require('./playerProgression.js');
 const { awardMercenaryEncounterXp } = require('./mercenaryProgression.js');
+const {
+    failActiveExpedition,
+    getAdventureSnapshot,
+    resolveExpeditionCombatVictory
+} = require('./adventureState.js');
 
 const ROGUE_STEAL_RARITIES = new Set(['Epic', 'Unique', 'Relic', 'Gorilla']);
 
@@ -93,8 +98,29 @@ function finalizeCombatVictory(socketId, context) {
     if (combat.victoryRewardsResolved) return { combatComplete: true };
     combat.victoryRewardsResolved = true;
 
+    const isExpeditionCombat = combat.mode === 'EXPEDITION';
+    let adventureOutcome = null;
     let zoneGoldReward = 0;
-    if (combat.zone === 'GORILLA_ARENA') zoneGoldReward += 5000;
+
+    if (isExpeditionCombat) {
+        adventureOutcome = resolveExpeditionCombatVictory(
+            player,
+            combat.expeditionContext || {}
+        );
+        if (!adventureOutcome || adventureOutcome.success !== true) {
+            const resolutionFailure = adventureOutcome;
+            adventureOutcome = {
+                ...failActiveExpedition(player, 'victory_context_mismatch'),
+                code: 'EXPEDITION_CONTEXT_MISMATCH',
+                resolutionFailure
+            };
+        }
+        combat.adventureOutcome = adventureOutcome;
+        io.to(socketId).emit('adventureProgress', {
+            ...adventureOutcome,
+            adventureState: getAdventureSnapshot(player)
+        });
+    } else if (combat.zone === 'GORILLA_ARENA') zoneGoldReward += 5000;
     else if (combat.zone === 'ABYSS') {
         player.abyssDepth = (player.abyssDepth || 1) + 1;
         zoneGoldReward += 50 + (10 * player.abyssDepth);
@@ -137,7 +163,13 @@ function finalizeCombatVictory(socketId, context) {
     };
     syncCombatViews(combat, player);
     delete activeCombats[socketId];
-    return { combatComplete: true, petItem, zoneGoldReward };
+    return {
+        combatComplete: true,
+        petItem,
+        zoneGoldReward,
+        adventureOutcome,
+        adventureState: getAdventureSnapshot(player)
+    };
 }
 
 function claimCombatRewards(player) {

@@ -117,14 +117,30 @@ test('companion pocket drag returns the selected pocket item to the backpack', (
 
     context.handleItemDragStart(
         { dataTransfer },
+        0,
+        'companion-pocket',
+        { instanceId: 'merc_1', pocketIndex: 0 }
+    );
+    context.handleItemDrop({ preventDefault: () => {}, dataTransfer }, 0, 'backpack');
+
+    assert.deepEqual(companionActions, [
+        { action: 'removePocket', instanceId: 'merc_1', pocketIndex: 0 }
+    ]);
+    assert.deepEqual(emitted, []);
+});
+
+test('companion pocket drag rejects the retired second pocket index', () => {
+    const { context, companionActions, emitted } = loadInventoryScript();
+    const dataTransfer = createDataTransfer();
+
+    context.handleItemDragStart(
+        { dataTransfer },
         1,
         'companion-pocket',
         { instanceId: 'merc_1', pocketIndex: 1 }
     );
     context.handleItemDrop({ preventDefault: () => {}, dataTransfer }, 0, 'backpack');
 
-    assert.deepEqual(companionActions, [
-        { action: 'removePocket', instanceId: 'merc_1', pocketIndex: 1 }
-    ]);
+    assert.deepEqual(companionActions, []);
     assert.deepEqual(emitted, []);
 });

@@ -61,6 +61,106 @@ const CombatMapTemplates = Object.freeze({
         enemies: [{ id: "wilderness_overlord", x: 10, y: 4 }],
         obstacles: [{ x: 5, y: 1 }, { x: 5, y: 8 }, { x: 14, y: 1 }, { x: 14, y: 8 }]
     },
+    EXPEDITION_ALLEY: {
+        id: "EXPEDITION_ALLEY",
+        zone: "WILDERNESS",
+        name: "Alley Robbery",
+        gridSize: { cols: 16, rows: 10 },
+        tileSize: DEFAULT_TILE_SIZE,
+        floorSpriteId: "ground_wilderness",
+        playerStart: { x: 1, y: 4 },
+        deploymentZone: [
+            { x: 1, y: 3 }, { x: 1, y: 4 }, { x: 1, y: 5 },
+            { x: 2, y: 3 }, { x: 2, y: 4 }, { x: 2, y: 5 }
+        ],
+        enemySpawns: {
+            bandit_front: { x: 10, y: 4 },
+            bandit_flank: { x: 11, y: 6 },
+            bandit_rear: { x: 13, y: 3 }
+        },
+        obstacles: [
+            { x: 3, y: 1, spriteId: "map_boulder" }, { x: 5, y: 1, spriteId: "map_boulder" },
+            { x: 7, y: 1, spriteId: "map_boulder" }, { x: 9, y: 1, spriteId: "map_boulder" },
+            { x: 11, y: 1, spriteId: "map_boulder" }, { x: 13, y: 1, spriteId: "map_boulder" },
+            { x: 3, y: 8, spriteId: "map_boulder" }, { x: 5, y: 8, spriteId: "map_boulder" },
+            { x: 7, y: 8, spriteId: "map_boulder" }, { x: 9, y: 8, spriteId: "map_boulder" },
+            { x: 11, y: 8, spriteId: "map_boulder" }, { x: 13, y: 8, spriteId: "map_boulder" },
+            { x: 7, y: 3, spriteId: "map_broken_cask" }, { x: 7, y: 6, spriteId: "map_broken_cask" }
+        ]
+    },
+    EXPEDITION_PINE_TRAIL: {
+        id: "EXPEDITION_PINE_TRAIL",
+        zone: "WILDERNESS",
+        name: "Poacher's Trail",
+        gridSize: { cols: 16, rows: 10 },
+        tileSize: DEFAULT_TILE_SIZE,
+        floorSpriteId: "ground_wilderness",
+        playerStart: { x: 1, y: 4 },
+        deploymentZone: [
+            { x: 1, y: 3 }, { x: 1, y: 4 }, { x: 1, y: 5 },
+            { x: 2, y: 3 }, { x: 2, y: 4 }, { x: 2, y: 5 }
+        ],
+        enemySpawns: {
+            archer_ridge: { x: 13, y: 2 },
+            bandit_path: { x: 10, y: 6 },
+            poacher_flank: { x: 13, y: 7 }
+        },
+        obstacles: [
+            { x: 3, y: 1 }, { x: 3, y: 7 }, { x: 5, y: 3 }, { x: 5, y: 8 },
+            { x: 7, y: 1 }, { x: 7, y: 5 }, { x: 9, y: 3 }, { x: 9, y: 8 },
+            { x: 11, y: 1 }, { x: 11, y: 4 }, { x: 12, y: 6 }, { x: 14, y: 4 },
+            { x: 14, y: 8 }
+        ]
+    },
+    EXPEDITION_HEDGE_FIRE: {
+        id: "EXPEDITION_HEDGE_FIRE",
+        zone: "WILDERNESS",
+        name: "Hedge Fire",
+        gridSize: { cols: 16, rows: 10 },
+        tileSize: DEFAULT_TILE_SIZE,
+        floorSpriteId: "ground_wilderness",
+        playerStart: { x: 2, y: 4 },
+        deploymentZone: [
+            { x: 2, y: 3 }, { x: 2, y: 4 }, { x: 2, y: 5 },
+            { x: 3, y: 3 }, { x: 3, y: 4 }, { x: 3, y: 5 }
+        ],
+        enemySpawns: {
+            mage_center: { x: 11, y: 4 },
+            bandit_guard: { x: 9, y: 6 },
+            mage_rear: { x: 13, y: 5 }
+        },
+        obstacles: [
+            { x: 4, y: 1 }, { x: 6, y: 1 }, { x: 8, y: 1 }, { x: 10, y: 1 }, { x: 12, y: 1 },
+            { x: 4, y: 8 }, { x: 6, y: 8 }, { x: 8, y: 8 }, { x: 10, y: 8 }, { x: 12, y: 8 },
+            { x: 5, y: 3 }, { x: 5, y: 6 }, { x: 13, y: 3 }, { x: 13, y: 7 }
+        ]
+    },
+    EXPEDITION_ROAD_TOLL: {
+        id: "EXPEDITION_ROAD_TOLL",
+        zone: "WILDERNESS",
+        name: "Road Toll",
+        gridSize: { cols: 16, rows: 10 },
+        tileSize: DEFAULT_TILE_SIZE,
+        floorSpriteId: "ground_wilderness",
+        playerStart: { x: 1, y: 4 },
+        deploymentZone: [
+            { x: 1, y: 3 }, { x: 1, y: 4 }, { x: 1, y: 5 },
+            { x: 2, y: 3 }, { x: 2, y: 4 }, { x: 2, y: 5 }
+        ],
+        enemySpawns: {
+            bandit_blocker: { x: 10, y: 4 },
+            archer_flank: { x: 12, y: 2 },
+            bandit_rear: { x: 12, y: 7 },
+            toll_rear: { x: 14, y: 5 }
+        },
+        obstacles: [
+            { x: 4, y: 1 }, { x: 5, y: 1 }, { x: 10, y: 1 }, { x: 11, y: 1 },
+            { x: 4, y: 2 }, { x: 11, y: 2 }, { x: 4, y: 7 }, { x: 11, y: 7 },
+            { x: 4, y: 8 }, { x: 5, y: 8 }, { x: 10, y: 8 }, { x: 11, y: 8 },
+            { x: 7, y: 2, spriteId: "map_boulder" }, { x: 8, y: 7, spriteId: "map_boulder" },
+            { x: 13, y: 4, spriteId: "map_broken_cask" }
+        ]
+    },
     CELLARS_STANDARD: {
         id: "CELLARS_STANDARD",
         zone: "CELLARS",
@@ -139,6 +239,12 @@ function cloneMapTemplate(template) {
     return JSON.parse(JSON.stringify(template));
 }
 
+function getCombatMapTemplateById(templateId) {
+    if (typeof templateId !== 'string') return null;
+    const template = CombatMapTemplates[templateId];
+    return template ? cloneMapTemplate(template) : null;
+}
+
 function getTemplateForEncounter(zone, level) {
     if (zone === "WILDERNESS" && level === 20) return cloneMapTemplate(CombatMapTemplates.WILDERNESS_BOSS);
     if (zone === "WILDERNESS") return cloneMapTemplate(CombatMapTemplates.WILDERNESS_STANDARD);
@@ -155,6 +261,7 @@ function obstacleStyleForZone(zone) {
 
 module.exports = {
     CombatMapTemplates,
+    getCombatMapTemplateById,
     getTemplateForEncounter,
     obstacleStyleForZone
 };

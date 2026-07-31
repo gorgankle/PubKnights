@@ -70,6 +70,36 @@ function makeLiveVisualProfile(actor) {
     };
 }
 
+test('Knight and vault paper dolls use the shared lower-left glove layout', () => {
+    const html = readProjectFile('public/index.html');
+    const grids = Array.from(html.matchAll(
+        /<div class="paper-doll-grid">\s*((?:<div class="equip-slot[^>]*>.*?<\/div>\s*){9})<\/div>/gs
+    )).map(match => match[1]);
+
+    function readCells(grid) {
+        return Array.from(grid.matchAll(
+            /<div class="equip-slot([^"]*)"([^>]*)>(.*?)<\/div>/gs
+        )).map(match => {
+            const id = /\bid="([^"]+)"/.exec(match[2]);
+            return id ? id[1] : (match[1].includes('empty-cell') ? 'empty' : match[3].trim());
+        });
+    }
+
+    const knightGrid = grids.find(grid => grid.includes('id="slot-helmet"'));
+    const vaultGrid = grids.find(grid => grid.includes('id="vault-slot-helmet"'));
+
+    assert.deepEqual(readCells(knightGrid), [
+        'empty', 'slot-helmet', 'empty',
+        'slot-offhand', 'slot-armor', 'slot-weapon',
+        'slot-gloves', 'slot-boots', 'empty'
+    ]);
+    assert.deepEqual(readCells(vaultGrid), [
+        'empty', 'vault-slot-helmet', 'empty',
+        'vault-slot-offhand', 'vault-slot-armor', 'vault-slot-weapon',
+        'vault-slot-gloves', 'vault-slot-boots', 'empty'
+    ]);
+});
+
 test('Knight dashboard delegates its live paper doll to the shared front renderer', () => {
     const playerCanvas = makeCanvas();
     const frontCalls = [];

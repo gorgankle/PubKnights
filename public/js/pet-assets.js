@@ -66,9 +66,18 @@ const PetMatrices = {
 function renderPetCanvas(canvasEl) {
     if (!canvasEl) return;
     const ctx = canvasEl.getContext('2d');
+    if (!ctx) return;
     ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
-    
-    let matrix = PetMatrices[player.pet.type];
+
+    const pet = typeof player !== 'undefined'
+        && player
+        && player.pet
+        && typeof player.pet === 'object'
+        ? player.pet
+        : null;
+    if (!pet) return;
+
+    let matrix = PetMatrices[pet.type];
     if (!matrix) return;
 
     const gridCount = PROCEDURAL_SPRITE_GRID_SIZE;
@@ -80,13 +89,13 @@ function renderPetCanvas(canvasEl) {
             let color = 'transparent';
             
             if (colorKey === 'f') {
-                color = PetFurTones[player.pet.furColor] || PetFurTones['gray'];
+                color = PetFurTones[pet.furColor] || PetFurTones['gray'];
             }
-            else if (colorKey === 'c') color = PetCollarTones[player.pet.collarColor];
+            else if (colorKey === 'c') color = PetCollarTones[pet.collarColor];
             else if (colorKey === 'b') color = '#111111'; 
             else if (colorKey === 'o') color = '#111111'; 
             else if (colorKey === 'w') {
-                color = (player.pet.furColor === 'white') ? '#d1ccc0' : '#f4ebd9';
+                color = (pet.furColor === 'white') ? '#d1ccc0' : '#f4ebd9';
             }
 
             // --- THE MISSING LOGIC: ACTUALLY DRAWING THE PIXEL ---

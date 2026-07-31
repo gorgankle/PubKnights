@@ -117,7 +117,7 @@ test('dismissal refuses insufficient backpack space, then returns every paperdol
     assert.deepEqual(harness.player.inventory.map(entry => entry.id), ['stored_sword', 'stored_potion']);
 });
 
-test('two true pockets store equipment or combat consumables and return them to the shared backpack', () => {
+test('one pocket stores equipment or combat consumables and rejects retired pocket indices', () => {
     const companion = mercenary(1);
     const potion = item('healing_draught', 'consumable', { actionType: 'heal', healPercent: 0.4 });
     const junk = item('keepsake_token', 'misc');
@@ -142,7 +142,7 @@ test('two true pockets store equipment or combat consumables and return them to 
         index: 0
     });
     assert.equal(harness.socket.lastPayload('inventoryReceipt').success, false);
-    assert.match(harness.socket.lastPayload('inventoryReceipt').message, /equipment or combat consumables/i);
+    assert.match(harness.socket.lastPayload('inventoryReceipt').message, /invalid mercenary pocket/i);
 
     harness.socket.dispatch('inventoryAction', {
         action: 'removeCompanionPocket',

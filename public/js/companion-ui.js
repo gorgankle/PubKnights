@@ -334,15 +334,15 @@ function renderCompanionEquipmentPanel(companions, activeIds) {
     const slots = document.createElement('div');
     slots.className = 'paper-doll-grid companion-paper-doll-grid';
     slots.append(
-        createCompanionPaperdollSlot(selected, 'gloves'),
+        createCompanionPaperdollEmptyCell(),
         createCompanionPaperdollSlot(selected, 'helmet'),
         createCompanionPaperdollEmptyCell(),
         createCompanionPaperdollSlot(selected, 'offhand'),
         createCompanionPaperdollSlot(selected, 'armor'),
         createCompanionPaperdollSlot(selected, 'weapon'),
-        createCompanionPocketSlot(selected, 0),
+        createCompanionPaperdollSlot(selected, 'gloves'),
         createCompanionPaperdollSlot(selected, 'boots'),
-        createCompanionPocketSlot(selected, 1)
+        createCompanionPocketSlot(selected, 0)
     );
 
     const equipmentHelp = document.createElement('p');

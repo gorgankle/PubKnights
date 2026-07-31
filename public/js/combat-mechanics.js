@@ -522,7 +522,11 @@ window.transitionToTown = function() {
     // A cancelled presentation must not be able to restore combat controls
     // after the player has already returned to town.
     if (typeof setGameState === 'function') {
-        setGameState('KNIGHT');
+        const activeJourney = player
+            && player.adventure
+            && player.adventure.activeJourney;
+        if (activeJourney) setGameState('ADVENTURES');
+        else setGameState('KNIGHT');
     }
     if (typeof combatPlaybackGeneration !== 'undefined') {
         combatPlaybackGeneration += 1;
@@ -553,6 +557,11 @@ window.transitionToTown = function() {
     const mainGameContainer = document.getElementById('main-game-container');
     if (mainGameContainer) mainGameContainer.style.display = 'flex';
     
-    logMessage("Returned safely to the Knight screen.");
+    const activeJourney = player
+        && player.adventure
+        && player.adventure.activeJourney;
+    logMessage(activeJourney
+        ? "The party has reached a travel stop. Choose the next leg from the Adventure Board."
+        : "Returned safely to the Knight screen.");
     if (typeof playRetroSound === 'function') playRetroSound('door');
 }

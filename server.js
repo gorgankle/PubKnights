@@ -9,6 +9,8 @@ const mongoose = require('mongoose');
 const injectTownRouter = require('./townRouter.js');
 const injectCombatRouter = require('./combatRouter.js');
 const injectSocialRouter = require('./socialRouter.js');
+const injectAdventureRouter = require('./adventureRouter.js');
+const { normalizeAdventureState } = require('./adventureState.js');
 const { CombatMapTemplates, obstacleStyleForZone } = require('./combatMapTemplates.js');
 const { ItemDatabase } = require('./public/js/items.js');
 const {
@@ -181,7 +183,7 @@ function migrateLifetimeXp(pd) {
 }
 
 function createDefaultSaveData(username) {
-    return {
+    const saveData = {
         username,
         level: 1, xp: 0, xpToNext: getTotalXpForNextLevel(1), skillPoints: 0,
         vitality: 1, hp: 25, stamina: 25, maxStamina: 1,
@@ -199,6 +201,8 @@ function createDefaultSaveData(username) {
         maxInventorySlots: 5, backpackUpgrades: 0,
         pet: { adopted: false, level: 1 }
     };
+    normalizeAdventureState(saveData, { recoverInterruptedJourney: false });
+    return saveData;
 }
 
 
@@ -248,6 +252,10 @@ function hydratePlayerData(playerDoc) {
 
     normalizeEquipmentLoadoutState(pd);
     normalizeSavedRoster(pd);
+    // An in-progress journey has no durable combat instance after a process
+    // restart or reconnect. Hydration converts it into a failed expedition
+    // while retaining completed routes, discoveries, and bounty progress.
+    normalizeAdventureState(pd, { recoverInterruptedJourney: true });
     pd.activeBuffs = [];
     pd.activeCombatBuff = null;
     pd.hp = (pd.vitality || 1) * 25;
@@ -458,6 +466,7 @@ if (data.saveData) {
         // === RESTORED: MODULAR ROUTER INJECTIONS ===
         // This plugs your other files into the main server connection!
         injectTownRouter(socket, io, activePlayers, activeCombats);
+        injectAdventureRouter(socket, io, activePlayers, activeCombats);
         injectCombatRouter(socket, io, activePlayers, activeCombats);
         injectSocialRouter(socket, io, activePlayers, activeCombats);
 

@@ -78,7 +78,7 @@ function createStarterCompanion(name = 'Hired Mercenary') {
         role: 'Frontliner',
         level: 1,
         xp: 0,
-        pockets: [null, null],
+        pockets: Array(COMPANION_POCKET_COUNT).fill(null),
         hired: true,
         active: false,
         icon: 'M',

@@ -24,6 +24,11 @@ const { findCompanionByInstanceId } = require('./companionRoster.js');
 const { claimCombatRewards } = require('./combatRewards.js');
 const { resolveActorDefeat } = require('./combatResolution.js');
 const { createCombatEncounter } = require('./combatEncounters.js');
+const {
+    getAdventureSnapshot,
+    failActiveExpedition,
+    hasActiveJourney
+} = require('./adventureState.js');
 const { executeActorTurn } = require('./combatAI.js');
 const { applyPoison, tickPoison } = require('./combatStatus.js');
 const { applyPlayerCombatDefeat } = require('./combatDefeat.js');
@@ -176,6 +181,9 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         }
 
         if (data.actionCategory === 'flee') {
+            const adventureOutcome = hasActiveJourney(p)
+                ? failActiveExpedition(p, 'fled_combat')
+                : null;
             p.pendingGold = 0;
             p.pendingXp = 0;
             p.pendingLoot = [];
@@ -187,7 +195,19 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             p.stamina = getMaxStamina(p);
             delete p.pendingMercenaryXpContext;
             delete activeCombats[socket.id];
-            return socket.emit('combatResult', { type: 'flee', updatedPlayer: p });
+            if (adventureOutcome) {
+                socket.emit('adventureProgress', {
+                    ...adventureOutcome,
+                    reason: 'fled_combat',
+                    adventureState: getAdventureSnapshot(p)
+                });
+            }
+            return socket.emit('combatResult', {
+                type: 'flee',
+                updatedPlayer: p,
+                adventureOutcome,
+                adventureState: getAdventureSnapshot(p)
+            });
         }
 
         const activeActor = getCombatTurnActor(combat, p);
@@ -264,6 +284,16 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         const p = activePlayers[socket.id];
         if (!p) return;
         if (!data || typeof data !== 'object') return;
+
+        if (hasActiveJourney(p)) {
+            return socket.emit('adventureReceipt', {
+                action: 'legacyDeploy',
+                success: false,
+                code: 'ACTIVE_JOURNEY',
+                message: 'Finish or abandon the active expedition before using legacy deployments.',
+                adventureState: getAdventureSnapshot(p)
+            });
+        }
 
         p.idleJob = 'NONE';
         p.pendingXp = 0;
@@ -411,7 +441,11 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
 
         claimCombatRewards(p);
         p.statusEffects = {};
-        socket.emit('combatRewardsReceipt', { success: true, updatedPlayer: p });
+        socket.emit('combatRewardsReceipt', {
+            success: true,
+            updatedPlayer: p,
+            adventureState: getAdventureSnapshot(p)
+        });
     });
 
     if (!global.atbEngineStarted) {

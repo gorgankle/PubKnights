@@ -1253,6 +1253,8 @@ socket.on('combatResult', (result) => {
         pendingLoot = [];
         if (player) player.pendingLoot = [];
 
+        if (typeof saveGame === 'function') saveGame();
+
         setTimeout(transitionToTown, 500);
         return;
     }
@@ -2234,6 +2236,24 @@ function logMessage(msg) {
 
 function setGameState(state) {
     hideTooltip();
+
+    const activeJourney = player
+        && player.adventure
+        && player.adventure.activeJourney;
+    const unavailableAwayStates = new Set([
+        'TOWN',
+        'MERCHANT',
+        'VAULT',
+        'MINIGAME_LUMBER',
+        'MINIGAME_FISHING',
+        'MINIGAME_HOPS'
+    ]);
+    if (activeJourney && unavailableAwayStates.has(state)) {
+        if (typeof logMessage === 'function') {
+            logMessage('The party is away from the pub. Finish the return leg or abandon the expedition first.');
+        }
+        state = 'ADVENTURES';
+    }
 
     // Remember where we just came from
     let previousState = gameState;

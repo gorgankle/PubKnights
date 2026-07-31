@@ -172,7 +172,7 @@ function handleItemDrop(event, toIndex, toType) {
                 || !dragData.instanceId
                 || !Number.isInteger(dragData.pocketIndex)
                 || dragData.pocketIndex < 0
-                || dragData.pocketIndex > 1) return;
+                || dragData.pocketIndex > 0) return;
             removeCompanionPocketItem(dragData.instanceId, dragData.pocketIndex);
         }
     } catch (err) {

@@ -175,7 +175,7 @@ function loadHarness() {
     return { api: context.__companionEquipmentTestApi, panel, emitted, messages, player };
 }
 
-test('mercenary equipment renders as the Knight-style 3x3 grid with two pockets and no duplicate backpack list', () => {
+test('mercenary equipment renders as the Knight-style 3x3 grid with one pocket and no duplicate backpack list', () => {
     const { api, panel } = loadHarness();
     const selected = createCompanion();
 
@@ -185,18 +185,22 @@ test('mercenary equipment renders as the Knight-style 3x3 grid with two pockets 
     assert.equal(grids.length, 1);
     assert.equal(hasClass(grids[0], 'paper-doll-grid'), true);
     assert.equal(grids[0].children.length, 9);
+    assert.equal(hasClass(grids[0].children[0], 'empty-cell'), true);
+    assert.equal(grids[0].children[6].dataset.companionSlot, 'gloves');
+    assert.equal(grids[0].children[7].dataset.companionSlot, 'boots');
+    assert.equal(grids[0].children[8].dataset.companionPocketIndex, '0');
 
     const equipmentSlots = findAll(panel, element => element.dataset.companionSlot !== undefined);
     const pocketSlots = findAll(panel, element => element.dataset.companionPocketIndex !== undefined);
     assert.deepEqual(equipmentSlots.map(slot => slot.dataset.companionSlot).sort(), ['armor', 'boots', 'gloves', 'helmet', 'offhand', 'weapon']);
-    assert.deepEqual(pocketSlots.map(slot => slot.dataset.companionPocketIndex), ['0', '1']);
+    assert.deepEqual(pocketSlots.map(slot => slot.dataset.companionPocketIndex), ['0']);
     assert.equal(equipmentSlots.concat(pocketSlots).every(slot => hasClass(slot, 'equip-slot')), true);
 
     const panelText = flattenText(panel);
     assert.doesNotMatch(panelText, /Shared Backpack Gear|No equipment or combat consumables/);
 });
 
-test('backpack drops equip matching mercenary gear and fill either pocket', () => {
+test('backpack drops equip matching mercenary gear and fill the pocket', () => {
     const { api, panel, emitted, messages } = loadHarness();
     api.renderCompanionEquipmentPanel([createCompanion()], ['merc_1']);
 
@@ -211,14 +215,14 @@ test('backpack drops equip matching mercenary gear and fill either pocket', () =
     }]);
 
     emitted.length = 0;
-    const pocketTwo = findAll(panel, element => element.dataset.companionPocketIndex === '1')[0];
+    const pocket = findAll(panel, element => element.dataset.companionPocketIndex === '0')[0];
     const pocketTransfer = createDataTransfer();
     api.handleItemDragStart({ dataTransfer: pocketTransfer }, 1, 'backpack');
-    pocketTwo.ondrop({ preventDefault() {}, stopPropagation() {}, dataTransfer: pocketTransfer });
+    pocket.ondrop({ preventDefault() {}, stopPropagation() {}, dataTransfer: pocketTransfer });
 
     assert.deepEqual(emitted, [{
         eventName: 'inventoryAction',
-        payload: { action: 'storeCompanionPocket', instanceId: 'merc_1', index: 1, pocketIndex: 1 }
+        payload: { action: 'storeCompanionPocket', instanceId: 'merc_1', index: 1, pocketIndex: 0 }
     }]);
 
     emitted.length = 0;

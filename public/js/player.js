@@ -50,7 +50,7 @@ function normalizeClientPlayerContainers() {
         'gloves',
         'boots'
     ];
-    const pocketCount = 2;
+    const pocketCount = 1;
     const maxSelectedCompanions = 3;
     equipmentSlots.forEach(slot => {
         if (!Object.prototype.hasOwnProperty.call(player.equipment, slot)) player.equipment[slot] = null;
