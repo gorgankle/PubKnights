@@ -182,6 +182,16 @@ function syncCombatCollectionsFromState(
         } else {
             delete player.guardState;
         }
+        if (
+            playerActorSnapshot.evasionState
+            && typeof playerActorSnapshot.evasionState === 'object'
+        ) {
+            player.evasionState = {
+                ...playerActorSnapshot.evasionState
+            };
+        } else {
+            delete player.evasionState;
+        }
     }
     enemies = serverCombatState.enemies || [];
     allies = serverCombatState.allies || [];
@@ -256,7 +266,21 @@ function getCombatActorByUid(uid) {
 
 function clearExpiredGuardForActivatedActor(actorUid) {
     const actor = getCombatActorByUid(actorUid);
-    if (actor) delete actor.guardState;
+    if (actor) {
+        delete actor.guardState;
+        delete actor.evasionState;
+    }
+}
+
+function clearConsumedLocalShieldGuard(actor, event) {
+    event = event || {};
+    const guarded = event.guarded === true
+        || event.deflectReason === 'shield_block';
+    if (guarded && actor) delete actor.guardState;
+    const evaded = event.evaded === true
+        || event.deflectReason === 'evade_stance';
+    if (evaded && actor) delete actor.evasionState;
+    return guarded || evaded;
 }
 
 function getPlayerAttackables() {
@@ -294,7 +318,16 @@ function presentCombatVictory() {
 function getCombatEventActorUid(event) {
     if (!event) return null;
     if (event.sourceUid) return event.sourceUid;
-    if (["move", "hit", "deflect", "rest", "statusTick"].includes(event.type)) return event.uid || null;
+    if ([
+        "move",
+        "hit",
+        "deflect",
+        "rest",
+        "statusTick",
+        "intent",
+        "intentOutcome",
+        "guard"
+    ].includes(event.type)) return event.uid || null;
     return null;
 }
 
@@ -801,6 +834,19 @@ function getCombatResultTarget(result, sourceActor) {
     };
 }
 
+function applyOutgoingCombatReposition(result) {
+    if (!result.reposition || !result.actorUid) return null;
+    const sourceActor = getCombatActorByUid(result.actorUid);
+    if (!sourceActor) return null;
+    sourceActor.x = result.reposition.x;
+    sourceActor.y = result.reposition.y;
+    sourceActor.combatMovementRate = 0.16;
+    logMessage(
+        `${sourceActor.name || 'The attacker'} slips back after the shot.`
+    );
+    return sourceActor;
+}
+
 function applyOutgoingCombatImpact(result) {
     const targets = Array.isArray(result.targets) ? result.targets : [];
     const actionLabel = result.action && result.action.name
@@ -847,6 +893,12 @@ function applyOutgoingCombatImpact(result) {
         if (targetData.statusEffects) {
             target.statusEffects = targetData.statusEffects;
         }
+        if (targetData.pushed) {
+            target.x = targetData.pushed.x;
+            target.y = targetData.pushed.y;
+            target.combatMovementRate = 0.16;
+            logMessage(`${target.name} is driven back one tile.`);
+        }
         playHumanoidImpactReaction(target, targetData.killed === true);
 
         if (result.source === 'spell') {
@@ -890,7 +942,22 @@ function applyOutgoingCombatImpact(result) {
                 { color: "#8e44ad" }
             );
         }
+
+        if (targetData.interruptedIntent) {
+            delete target.pendingIntent;
+            const intentLabel = targetData.interruptedIntent.label
+                || 'powerful attack';
+            logMessage(`${target.name}'s ${intentLabel} was interrupted!`);
+            FXEngine.spawnText(
+                target.x,
+                target.y,
+                'INTERRUPTED',
+                { color: '#f6c453' }
+            );
+        }
     });
+
+    applyOutgoingCombatReposition(result);
 
     if (selectedEnemy && !selectedEnemy.alive) selectedEnemy = null;
     refreshSystemUI();
@@ -1080,7 +1147,12 @@ function playOutgoingCombatMiss(
     const defenseImpactTimeMs = (
         Number(attackTimeline.actionTimeMs) || 0
     ) + estimatedProjectileTravelMs;
-    const defenseProfile = result.deflectReason === 'armor'
+    const shieldBlocked = result.deflectReason === 'shield_block';
+    const stanceEvaded = result.deflectReason === 'evade_stance';
+    const defenseProfile = (
+        result.deflectReason === 'armor'
+        || shieldBlocked
+    )
         ? getHumanoidShieldDefenseProfile(targetActor)
         : null;
     let missShown = false;
@@ -1184,8 +1256,16 @@ function playOutgoingCombatMiss(
         if (missShown || presentationCancelled) return;
         missShown = true;
         const armorDeflect = result.deflectReason === 'armor';
-        const guardedDeflect = armorDeflect && Boolean(defenseProfile);
-        if (armorDeflect) {
+        const guardedDeflect = shieldBlocked
+            || (armorDeflect && Boolean(defenseProfile));
+        if (typeof clearConsumedLocalShieldGuard === 'function') {
+            clearConsumedLocalShieldGuard(targetActor, result);
+        }
+        if (shieldBlocked) {
+            logMessage(`${targetActor ? targetActor.name : 'Target'} blocked the strike!`);
+        } else if (stanceEvaded) {
+            logMessage(`${targetActor ? targetActor.name : 'Target'} evaded from a readied stance!`);
+        } else if (armorDeflect) {
             logMessage(
                 guardedDeflect
                     ? `${targetActor.name} blocked the strike!`
@@ -1197,17 +1277,24 @@ function playOutgoingCombatMiss(
             );
         }
         if (typeof playRetroSound === 'function') {
-            playRetroSound(armorDeflect ? 'deflect' : 'error');
+            playRetroSound(
+                shieldBlocked || armorDeflect
+                    ? 'deflect'
+                    : 'error'
+            );
         }
         if (targetActor) {
             FXEngine.spawnText(
                 targetActor.x,
                 targetActor.y,
-                armorDeflect
+                shieldBlocked || armorDeflect
                     ? (guardedDeflect ? "BLOCK" : "DEFLECT")
-                    : "MISS",
+                    : (stanceEvaded ? 'EVADE' : 'MISS'),
                 { color: "#3498db" }
             );
+        }
+        if (typeof applyOutgoingCombatReposition === 'function') {
+            applyOutgoingCombatReposition(result);
         }
         barrier.markImpactComplete();
     }
@@ -1273,6 +1360,13 @@ function playOutgoingCombatGuard(
     const facingTarget = selectedEnemy && selectedEnemy.alive
         ? selectedEnemy
         : null;
+    const guardTimeline = typeof getCombatAnimationTimeline === 'function'
+        ? getCombatAnimationTimeline(animation.clipId)
+        : null;
+    const heldFrame = guardTimeline
+        && Number.isInteger(guardTimeline.holdFrame)
+        ? guardTimeline.holdFrame
+        : null;
     let settled = false;
 
     function settleGuard() {
@@ -1290,7 +1384,7 @@ function playOutgoingCombatGuard(
     }
 
     logMessage(
-        `${result.actorName || (sourceActor && sourceActor.name) || 'Party member'} readied ${result.action && result.action.name ? result.action.name : 'a shield block'}.`
+        `${result.actorName || (sourceActor && sourceActor.name) || 'Party member'} readied ${result.action && result.action.name ? result.action.name : 'a defensive stance'}.`
     );
     if (typeof playRetroSound === 'function') playRetroSound('deflect');
 
@@ -1298,6 +1392,7 @@ function playOutgoingCombatGuard(
         sourceActor,
         {
             clipId: animation.clipId,
+            ...(heldFrame === null ? {} : { endFrameIndex: heldFrame }),
             targetX: facingTarget ? facingTarget.x : undefined,
             targetY: facingTarget ? facingTarget.y : undefined,
             onComplete: settleGuard,
@@ -1890,6 +1985,19 @@ socket.on('enemyTurnReceipt', (receipt) => {
     }
 
     function getEnemyEventPlaybackDuration(ev) {
+        if (ev.type === 'intent') {
+            const intentTimeline = typeof getCombatAnimationTimeline === 'function'
+                ? getCombatAnimationTimeline(ev.clipId || (ev.intent && ev.intent.clipId) || 'slash')
+                : { frameDurationMs: 125, actionFrame: 2 };
+            return Math.max(
+                450,
+                (Number(intentTimeline.frameDurationMs) || 125)
+                    * Math.max(1, Number(intentTimeline.actionFrame) || 1)
+                    + 100
+            );
+        }
+        if (ev.type === 'intentOutcome') return 260;
+        if (ev.type === 'guard') return 450;
         const attackEvent = [
             'hit',
             'deflect',
@@ -2014,6 +2122,9 @@ socket.on('enemyTurnReceipt', (receipt) => {
     function playEnemyAttackFx(ev, onComplete, targetActor = null) {
         if (!isEnemyReceiptPlaybackCurrent()) return;
         const sourceActor = getEnemyEventSourceActor(ev);
+        if (ev.telegraphed && sourceActor) {
+            delete sourceActor.pendingIntent;
+        }
         const resolvedTarget = targetActor || player;
         const targetSize = Math.max(
             1,
@@ -2148,6 +2259,95 @@ socket.on('enemyTurnReceipt', (receipt) => {
                     );
                 }
             }
+            else if (ev.type === 'intent') {
+                const actor = getCombatActorByUid(ev.uid);
+                const intent = ev.intent && typeof ev.intent === 'object'
+                    ? { ...ev.intent }
+                    : null;
+                if (actor && intent) {
+                    actor.pendingIntent = intent;
+                    if (
+                        typeof CombatSpriteAnimation !== 'undefined'
+                        && Number.isFinite(intent.targetX)
+                    ) {
+                        CombatSpriteAnimation.faceActorToward(
+                            actor,
+                            intent.targetX
+                        );
+                    }
+                    const timeline = typeof getCombatAnimationTimeline === 'function'
+                        ? getCombatAnimationTimeline(intent.clipId || ev.clipId || 'slash')
+                        : { actionFrame: 2 };
+                    startCombatSpriteActionWhenReady(
+                        actor,
+                        {
+                            clipId: intent.clipId || ev.clipId || 'slash',
+                            endFrameIndex: Math.max(
+                                0,
+                                (Number(timeline.actionFrame) || 1) - 1
+                            ),
+                            targetX: intent.targetX,
+                            targetY: intent.targetY,
+                            playbackRate: compressedPlaybackOptions.playbackRate
+                        }
+                    );
+                    FXEngine.spawnText(
+                        actor.x,
+                        actor.y,
+                        'INTENT!',
+                        { color: '#ff8a65' }
+                    );
+                }
+                const counterplay = intent && Array.isArray(intent.counterplay)
+                    ? intent.counterplay.join(', ')
+                    : 'move or defend';
+                logMessage(
+                    `${ev.name || 'Enemy'} prepares ${intent && intent.label ? intent.label : 'a powerful attack'} — ${counterplay}.`
+                );
+            }
+            else if (ev.type === 'intentOutcome') {
+                const actor = getCombatActorByUid(ev.uid);
+                if (actor) delete actor.pendingIntent;
+                const label = ev.intent && ev.intent.label
+                    ? ev.intent.label
+                    : 'prepared attack';
+                if (ev.outcome === 'avoided') {
+                    logMessage(`${ev.name || 'Enemy'}'s ${label} misses the marked tiles.`);
+                    if (actor) {
+                        FXEngine.spawnText(actor.x, actor.y, 'AVOIDED', { color: '#2dd4bf' });
+                    }
+                } else {
+                    logMessage(`${ev.name || 'Enemy'} loses ${label} (${ev.reason || 'invalidated'}).`);
+                }
+            }
+            else if (ev.type === 'guard') {
+                const actor = getCombatActorByUid(ev.uid);
+                if (actor) {
+                    actor.guardState = ev.guardState
+                        ? { ...ev.guardState }
+                        : { type: 'shield_block', charges: 1 };
+                    if (typeof CombatSpriteAnimation !== 'undefined') {
+                        CombatSpriteAnimation.faceActorToward(actor, player.x);
+                    }
+                    const timeline = typeof getCombatAnimationTimeline === 'function'
+                        ? getCombatAnimationTimeline(ev.clipId || 'shield_block')
+                        : { holdFrame: 2 };
+                    startCombatSpriteActionWhenReady(
+                        actor,
+                        {
+                            clipId: ev.clipId || 'shield_block',
+                            endFrameIndex: Number.isInteger(timeline.holdFrame)
+                                ? timeline.holdFrame
+                                : 2,
+                            targetX: player.x,
+                            targetY: player.y,
+                            playbackRate: compressedPlaybackOptions.playbackRate
+                        }
+                    );
+                    FXEngine.spawnText(actor.x, actor.y, 'GUARD', { color: '#7dd3fc' });
+                }
+                logMessage(`${ev.name || 'Enemy'} raises a shield guard.`);
+            }
             else if (ev.type === 'rest') {
                 logMessage(`${ev.name || 'Combatant'} rests and recovers ${ev.recovered || 0} stamina.`);
             }
@@ -2159,16 +2359,30 @@ socket.on('enemyTurnReceipt', (receipt) => {
                 const attacker = getEnemyEventSourceActor(ev);
                 const shieldBlocked = ev.guarded === true
                     || ev.deflectReason === 'shield_block';
-                playHumanoidDefensiveReaction(
-                    player,
-                    attacker,
-                    getDeflectPlaybackOptions(ev, attacker, player)
-                );
+                const stanceEvaded = ev.evaded === true
+                    || ev.deflectReason === 'evade_stance';
+                clearConsumedLocalShieldGuard(player, ev);
+                if (!stanceEvaded) {
+                    playHumanoidDefensiveReaction(
+                        player,
+                        attacker,
+                        getDeflectPlaybackOptions(ev, attacker, player)
+                    );
+                }
                 playEnemyAttackFx(ev, () => {
-                    logMessage(shieldBlocked
-                        ? `Blocked attack from ${ev.enemyName}!`
-                        : `Deflected attack from ${ev.enemyName}!`);
-                    FXEngine.spawnText(player.x, player.y, shieldBlocked ? "BLOCK" : "DEFLECT", { color: "#3498db" });
+                    logMessage(
+                        shieldBlocked
+                            ? `Blocked attack from ${ev.enemyName}!`
+                            : (stanceEvaded
+                                ? `Evaded attack from ${ev.enemyName}!`
+                                : `Deflected attack from ${ev.enemyName}!`)
+                    );
+                    FXEngine.spawnText(
+                        player.x,
+                        player.y,
+                        shieldBlocked ? 'BLOCK' : (stanceEvaded ? 'EVADE' : 'DEFLECT'),
+                        { color: "#3498db" }
+                    );
                     if (typeof playRetroSound === 'function') playRetroSound('deflect');
                 });
             }
@@ -2230,16 +2444,32 @@ socket.on('enemyTurnReceipt', (receipt) => {
                 const attacker = getEnemyEventSourceActor(ev);
                 const shieldBlocked = ev.guarded === true
                     || ev.deflectReason === 'shield_block';
-                playHumanoidDefensiveReaction(
-                    target,
-                    attacker,
-                    getDeflectPlaybackOptions(ev, attacker, target)
-                );
+                const stanceEvaded = ev.evaded === true
+                    || ev.deflectReason === 'evade_stance';
+                clearConsumedLocalShieldGuard(target, ev);
+                if (!stanceEvaded) {
+                    playHumanoidDefensiveReaction(
+                        target,
+                        attacker,
+                        getDeflectPlaybackOptions(ev, attacker, target)
+                    );
+                }
                 playEnemyAttackFx(ev, () => {
-                    if (target) FXEngine.spawnText(target.x, target.y, shieldBlocked ? "BLOCK" : "DEFLECT", { color: "#3498db" });
-                    logMessage(shieldBlocked
-                        ? `${ev.targetName} blocked ${ev.sourceName}'s attack.`
-                        : `${ev.targetName} deflected ${ev.sourceName}'s attack.`);
+                    if (target) {
+                        FXEngine.spawnText(
+                            target.x,
+                            target.y,
+                            shieldBlocked ? 'BLOCK' : (stanceEvaded ? 'EVADE' : 'DEFLECT'),
+                            { color: "#3498db" }
+                        );
+                    }
+                    logMessage(
+                        shieldBlocked
+                            ? `${ev.targetName} blocked ${ev.sourceName}'s attack.`
+                            : (stanceEvaded
+                                ? `${ev.targetName} evaded ${ev.sourceName}'s attack.`
+                                : `${ev.targetName} deflected ${ev.sourceName}'s attack.`)
+                    );
                     if (typeof playRetroSound === 'function') playRetroSound('deflect');
                 }, target);
             }
@@ -2402,6 +2632,14 @@ function logMessage(msg) {
 
 function setGameState(state) {
     hideTooltip();
+
+    if (
+        typeof resetEquipmentAttackUiState === 'function'
+        && gameState === 'COMBAT'
+        && state !== 'COMBAT'
+    ) {
+        resetEquipmentAttackUiState();
+    }
 
     const activeJourney = player
         && player.adventure

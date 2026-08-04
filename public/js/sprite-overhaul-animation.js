@@ -139,6 +139,7 @@ const SidePlayerAnimationClips = Object.freeze({
         fps: 8,
         loop: false,
         actionFrame: 1,
+        holdFrame: 2,
         phases: Object.freeze({
             windupEnd: 0,
             guardStart: 1,

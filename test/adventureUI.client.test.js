@@ -14,8 +14,10 @@ test('Adventure Board exposes the exploration map, journey detail, bounties, and
     assert.match(html, /id="exploration-detail"/);
     assert.match(html, /id="bounty-list"/);
     assert.match(html, /id="legacy-deployments"/);
+    assert.match(html, /id="tavern-return-report"/);
+    assert.match(html, /id="tavern-return-kreg-canvas"/);
     assert.match(html, /Legacy Level Deployments \(fallback\)/);
-    assert.match(html, /js\/expeditions\.js\?v=1/);
+    assert.match(html, /js\/expeditions\.js\?v=3/);
 });
 
 test('expedition requests send only server catalog identifiers and never enemy or reward payloads', () => {
@@ -30,7 +32,18 @@ test('the responsive map keeps location nodes, active routes, and contract state
     assert.match(styles, /\.adventure-location-node\.is-locked/);
     assert.match(styles, /\.exploration-route-line\.is-active/);
     assert.match(styles, /\.bounty-card\.is-claimable/);
+    assert.match(styles, /\.adventure-encounter-report\s*\{/);
+    assert.match(styles, /\.tavern-return-report\s*\{/);
     assert.match(styles, /@media \(max-width: 820px\)/);
+});
+
+test('return reports and contract cards expose readable road, enemy, risk, and reward context', () => {
+    assert.match(client, /function buildTavernReturnPresentation/);
+    assert.match(client, /function renderTavernReturnReport/);
+    assert.match(client, /renderTavernReturnPortrait\(\)/);
+    assert.match(client, /route\.encounterReports/);
+    assert.match(client, /Expected:/);
+    assert.match(client, /Contract \$\{rewardGold\}g · Road \$\{routeReward\}g/);
 });
 
 test('fleeing persists the server-authored expedition failure before leaving combat', () => {
@@ -39,4 +52,3 @@ test('fleeing persists the server-authored expedition failure before leaving com
     assert.match(fleeBranch[1], /saveGame\(\)/);
     assert.match(fleeBranch[1], /transitionToTown/);
 });
-

@@ -46,6 +46,13 @@ test('three matching safe returns make the Old Road delivery claimable', () => {
     assert.equal(record.progress, 3);
     assert.equal(record.status, 'claimable');
     assert.equal(third.advancedBounties[0].bountyId, 'old_road_goods');
+    assert.deepEqual(knight.adventure.latestReturnReport.contractUpdates, [{
+        bountyId: 'old_road_goods',
+        title: 'Goods for the Old Road',
+        progress: 3,
+        target: 3,
+        status: 'claimable'
+    }]);
 });
 
 test('a different route cannot advance a delivery contract', () => {

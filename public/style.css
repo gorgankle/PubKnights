@@ -142,6 +142,106 @@ h1 { text-align: center; color: #ffcc66; margin: 5px 0 15px 0; font-size: 24px; 
     color: #d6eaf8;
 }
 
+.tavern-return-report {
+    margin: 0 0 10px;
+    padding: 12px;
+    border: 1px solid #8b6b3f;
+    border-left: 4px solid #2ecc71;
+    background: linear-gradient(135deg, #211b15, #17231b);
+    color: #d7c0a8;
+}
+
+.tavern-return-report[hidden] { display: none; }
+.tavern-return-report.is-failed {
+    border-left-color: #e67e22;
+    background: linear-gradient(135deg, #251a14, #211716);
+}
+
+.tavern-return-heading {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    align-items: start;
+}
+
+.tavern-return-heading h3 { margin: 2px 0 4px; }
+.tavern-return-heading p,
+.tavern-return-comment p { margin: 0; font-size: 10px; line-height: 1.45; }
+.tavern-return-kicker {
+    color: #87c98b;
+    font-size: 9px;
+    font-weight: bold;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.tavern-return-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: end; }
+.tavern-return-actions button { margin: 0; padding: 7px 9px; font-size: 9px; }
+.tavern-return-body {
+    display: grid;
+    grid-template-columns: minmax(210px, 1.15fr) minmax(210px, 1fr) minmax(220px, 1fr);
+    gap: 9px;
+    margin-top: 10px;
+}
+
+.tavern-return-comment {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 9px;
+    align-items: center;
+    min-width: 0;
+    padding: 8px;
+    border: 1px solid #493b2e;
+    border-radius: 3px;
+    background: #17120e;
+}
+.tavern-return-comment[hidden] { display: none; }
+.tavern-return-comment strong { display: block; margin-bottom: 3px; color: #f1c40f; font-size: 10px; }
+#tavern-return-kreg-canvas {
+    width: 64px;
+    height: 64px;
+    margin: 0;
+    border: 1px solid #634e3d;
+    cursor: default;
+    image-rendering: pixelated;
+}
+.tavern-return-crew-mark {
+    display: grid;
+    width: 46px;
+    height: 46px;
+    place-items: center;
+    justify-self: center;
+    border: 2px solid #3498db;
+    border-radius: 50%;
+    color: #d6eaf8;
+    background: #182631;
+    font-weight: bold;
+}
+.tavern-return-facts {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 3px 8px;
+    align-content: center;
+    margin: 0;
+    padding: 8px;
+    border: 1px solid #493b2e;
+    background: #17120e;
+    font-size: 9px;
+}
+.tavern-return-facts dt { color: #8f8175; }
+.tavern-return-facts dd { margin: 0; color: #f4ebd9; }
+.tavern-return-contracts {
+    grid-column: 1 / -1;
+    margin: 0;
+    padding: 7px 10px 7px 25px;
+    border: 1px dashed #5d4938;
+    color: #bbaaa0;
+    background: #18130f;
+    font-size: 9px;
+}
+.tavern-return-contracts[hidden] { display: none; }
+.tavern-return-contracts .is-claimable { color: #7ee39e; }
+
 .adventure-map-layout {
     display: grid;
     grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr);
@@ -257,6 +357,20 @@ h1 { text-align: center; color: #ffcc66; margin: 5px 0 15px 0; font-size: 24px; 
 .exploration-detail .danger-dangerous,
 .exploration-detail .danger-severe { color: #e67e22; }
 
+.adventure-encounter-reports { display: grid; gap: 6px; margin-bottom: 8px; }
+.adventure-encounter-report {
+    padding: 6px 7px;
+    border: 1px solid #493d33;
+    border-left: 3px solid #b87935;
+    border-radius: 3px;
+    background: #18130f;
+}
+.adventure-encounter-report > div { display: flex; justify-content: space-between; gap: 8px; }
+.adventure-encounter-report strong { color: #e0c07a; font-size: 10px; }
+.adventure-encounter-report span { color: #e67e22; font-size: 9px; }
+.adventure-encounter-report p { margin: 2px 0; color: #d7c0a8; font-size: 9px; }
+.adventure-encounter-report small { color: #8498a3; font-size: 8px; text-transform: capitalize; }
+
 .adventure-board-grid {
     display: grid;
     grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr);
@@ -280,6 +394,8 @@ h1 { text-align: center; color: #ffcc66; margin: 5px 0 15px 0; font-size: 24px; 
 .bounty-card.is-completed { border-left-color: #776c62; opacity: 0.7; }
 .bounty-card h4 { margin: 0 0 3px; color: #e0c07a; font-size: 11px; }
 .bounty-card p { margin: 0; color: #bbaaa0; font-size: 10px; line-height: 1.4; }
+.bounty-card .bounty-risk { margin-top: 5px; color: #e0c07a; }
+.bounty-card .bounty-enemies { color: #9eabb2; }
 .bounty-card .bounty-progress { margin-top: 4px; color: #87c98b; }
 .bounty-card button { min-width: 78px; margin: 0; }
 
@@ -304,6 +420,8 @@ h1 { text-align: center; color: #ffcc66; margin: 5px 0 15px 0; font-size: 24px; 
     .adventure-map-layout,
     .adventure-board-grid { grid-template-columns: 1fr; }
     .exploration-detail { min-height: 0; }
+    .tavern-return-body { grid-template-columns: 1fr 1fr; }
+    .tavern-return-facts { grid-column: 1 / -1; }
 }
 
 @media (max-width: 520px) {
@@ -312,6 +430,11 @@ h1 { text-align: center; color: #ffcc66; margin: 5px 0 15px 0; font-size: 24px; 
     .legacy-deployment-specials { grid-template-columns: 1fr; }
     .bounty-card { grid-template-columns: 1fr; }
     .bounty-card button { width: 100%; }
+    .tavern-return-heading { flex-direction: column; }
+    .tavern-return-actions { width: 100%; justify-content: stretch; }
+    .tavern-return-actions button { flex: 1; }
+    .tavern-return-body { grid-template-columns: 1fr; }
+    .tavern-return-facts { grid-column: auto; }
 }
 #wallet-display { background: #1a1512; padding: 8px; margin-bottom: 8px; border-radius: 4px; border: 1px dashed #ffcc66; font-size: 12px; line-height: 1.5; }
 
@@ -323,17 +446,48 @@ h3 { margin-top: 0; color: #ffcc66; font-size: 13px; border-bottom: 1px solid #6
 .slot-title { font-weight: bold; color: #bbaaa0; font-size: 9px; text-transform: uppercase; margin-bottom: 2px; }
 
 canvas { border: 4px solid #8b5a2b; background-color: #1a1512; cursor: pointer; display: block; margin: 0 auto; }
-#action-interface { margin-top: 8px; background: #221a14; padding: 8px; border-radius: 4px; text-align: left; }
+#action-interface { position: relative; overflow: visible; margin-top: 8px; background: #221a14; padding: 8px; border-radius: 4px; text-align: left; }
+
+.combat-primary-actions {
+    position: relative;
+    z-index: 20;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.equipment-attack-control {
+    position: relative;
+    z-index: 30;
+    min-width: 0;
+}
+
+.combat-primary-actions > button,
+.combat-primary-actions .equipment-attack-control > button {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+}
 
 .equipment-attack-menu {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 7px);
+    z-index: 31;
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-    margin: 0 2px 10px;
-    padding: 10px;
-    background: #17110d;
-    border: 1px solid #8b5a2b;
-    border-radius: 4px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+    width: min(320px, calc(100vw - 32px));
+    max-height: min(44vh, 280px);
+    margin: 0;
+    padding: 8px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: rgba(23, 17, 13, 0.98);
+    border: 1px solid #b87935;
+    border-radius: 5px;
+    box-shadow: 0 -8px 22px rgba(0, 0, 0, 0.68);
 }
 
 .equipment-attack-menu[hidden] {
@@ -342,7 +496,7 @@ canvas { border: 4px solid #8b5a2b; background-color: #1a1512; cursor: pointer; 
 
 .equipment-attack-menu-heading,
 .equipment-attack-menu-empty {
-    grid-column: 1 / -1;
+    min-width: 0;
 }
 
 .equipment-attack-menu-heading {
@@ -355,12 +509,13 @@ canvas { border: 4px solid #8b5a2b; background-color: #1a1512; cursor: pointer; 
 .equipment-attack-option {
     min-width: 0;
     margin: 0;
-    padding: 9px;
+    padding: 7px 8px;
     text-align: left;
 }
 
 .equipment-attack-option-name,
 .equipment-attack-option-meta,
+.equipment-attack-option-description,
 .equipment-attack-option-reason {
     display: block;
 }
@@ -377,10 +532,27 @@ canvas { border: 4px solid #8b5a2b; background-color: #1a1512; cursor: pointer; 
     font-weight: normal;
 }
 
+.equipment-attack-option-description {
+    margin-top: 4px;
+    color: #a99b90;
+    font-size: 9px;
+    font-weight: normal;
+    line-height: 1.35;
+}
+
 .equipment-attack-option-reason {
     margin-top: 4px;
     color: #e88b7e;
     font-size: 9px;
+}
+
+.equipment-attack-option[aria-disabled="true"],
+.equipment-attack-option[aria-disabled="true"]:hover {
+    background: #443a32 !important;
+    color: #776c62 !important;
+    border-color: #55493f !important;
+    cursor: not-allowed !important;
+    opacity: 0.6;
 }
 
 .combat-turn-header {
@@ -589,7 +761,8 @@ button:hover:not(:disabled) { background: #a06d3b; }
     }
 
     .equipment-attack-menu {
-        grid-template-columns: 1fr;
+        width: min(300px, calc(100vw - 24px));
+        max-height: min(40vh, 250px);
     }
 }
 

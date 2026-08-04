@@ -69,6 +69,7 @@ function applyAdventurePayload(payload) {
 
     adventureRequestPending = false;
     renderAdventureBoard();
+    renderTavernReturnReport();
 }
 
 function requestAdventureState() {
@@ -82,9 +83,218 @@ function getAdventureRoute(routeId) {
     return routes.find(route => route && route.id === routeId) || null;
 }
 
+function getAdventureEncounterReports(route) {
+    const reports = asAdventureList(route && route.encounterReports)
+        .filter(report => report && typeof report === 'object');
+    if (reports.length) return reports;
+    return asAdventureList(route && (
+        route.possibleEncounterNames
+        || route.encounterNames
+        || route.possibleEncounters
+    )).map(name => ({ name: String(name), difficulty: null, tags: [], enemyNames: [] }));
+}
+
+function getAdventureRouteEnemyNames(route) {
+    const names = [];
+    getAdventureEncounterReports(route).forEach(report => {
+        asAdventureList(report.enemyNames || report.enemies).forEach(enemy => {
+            const name = typeof enemy === 'string' ? enemy : enemy && enemy.name;
+            if (name && !names.includes(name)) names.push(name);
+        });
+    });
+    return names;
+}
+
+function getSnapshotRoute(snapshot, routeId) {
+    return asAdventureList(snapshot && snapshot.routes)
+        .find(route => route && route.id === routeId) || null;
+}
+
+function getReturnCompanion(playerState) {
+    const roster = playerState && playerState.roster && typeof playerState.roster === 'object'
+        ? playerState.roster
+        : {};
+    const companions = asAdventureList(roster.companions);
+    const activeIds = asAdventureList(roster.activeIds);
+    return companions.find(companion => companion && activeIds.includes(companion.instanceId))
+        || companions[0]
+        || null;
+}
+
+function buildTavernReturnPresentation(report, snapshot, playerState) {
+    if (!report || typeof report !== 'object') return null;
+    const route = getSnapshotRoute(snapshot, report.routeId) || {};
+    const failed = report.outcome === 'expedition_failed';
+    const snapshotBounties = asAdventureList(snapshot && snapshot.bounties);
+    const contractUpdates = asAdventureList(report.contractUpdates).map(update => {
+        const current = snapshotBounties.find(bounty => bounty && bounty.id === update.bountyId);
+        return {
+            ...update,
+            currentStatus: current && current.status ? String(current.status).toLowerCase() : update.status
+        };
+    });
+    const contractReady = contractUpdates.some(update => update && update.currentStatus === 'claimable');
+    const tags = asAdventureList(report.encounterTags).map(tag => String(tag).toLowerCase());
+    const enemies = asAdventureList(report.enemyNames).filter(Boolean);
+    const companion = getReturnCompanion(playerState);
+    const routeName = report.routeName || route.name || 'the road';
+    const danger = report.dangerLabel || route.dangerLabel || route.danger || 'Uncertain';
+    const rewardGold = failed ? 0 : Math.max(0, Number(report.rewardGold) || 0);
+
+    let kregLine;
+    if (failed) {
+        const reason = String(report.failureReason || 'failed');
+        if (reason === 'fled_combat') {
+            kregLine = 'Running is cheaper than a funeral. Tell me what chased you home.';
+        } else if (reason === 'combat_defeat') {
+            kregLine = 'Sit down. Pride can wait; breathing cannot.';
+        } else if (reason === 'interrupted') {
+            kregLine = 'The road went quiet. I kept your earlier contract marks and closed this run.';
+        } else {
+            kregLine = 'No safe return, no road pay. Catch your breath and decide what changes next time.';
+        }
+    } else if (contractReady) {
+        kregLine = 'That is the run the board was waiting for. Your contract is ready to claim.';
+    } else if (report.firstReturn) {
+        kregLine = 'The first round trip turns a rumor into a road. Drinks are on the honest ledger tonight.';
+    } else if (tags.includes('mage') || tags.includes('telegraph')) {
+        kregLine = 'Spell-light on the road again. At least now you know what the wind-up looks like.';
+    } else if (tags.includes('ranged') || tags.includes('cover')) {
+        kregLine = 'Poachers dislike travelers who make it home. Expect them to change their perches.';
+    } else {
+        kregLine = 'Boots back under my roof and coin back in the till. That counts as a good road.';
+    }
+
+    let companionLine = null;
+    if (companion) {
+        if (failed) {
+            companionLine = 'We got home. Next run, we leave ourselves a cleaner way back.';
+        } else if (tags.includes('mage') || tags.includes('interrupt')) {
+            companionLine = 'You could see the spell building. Give me one clean opening and I can stop the next one.';
+        } else if (tags.includes('ranged') || tags.includes('cover')) {
+            companionLine = 'Their archers owned the long lanes. Next time I want cover between us and them.';
+        } else if (tags.includes('melee') || tags.includes('close-quarters')) {
+            companionLine = 'They wanted a close brawl. We made them pay for every step.';
+        } else {
+            companionLine = 'The road taught us something. Let us change the loadout before it teaches us twice.';
+        }
+    }
+
+    return {
+        failed,
+        title: failed
+            ? `Expedition Cut Short: ${routeName}`
+            : `${report.firstReturn ? 'First Safe Return' : 'Back at the Pub'}: ${routeName}`,
+        summary: failed
+            ? `The ${danger} road reward was not secured. Existing contract progress remains intact.`
+            : `${rewardGold}g in return pay was secured after ${report.encounterName || 'the road encounter'}.`,
+        routeName,
+        danger: String(danger),
+        encounterName: report.encounterName || 'Unrecorded encounter',
+        enemies,
+        rewardGold,
+        contractUpdates,
+        kregLine,
+        companionName: companion && (companion.name || 'Mercenary'),
+        companionLine,
+        returnedAt: Number(report.returnedAt) || 0
+    };
+}
+
 function getAdventureLocation(locationId) {
     const locations = adventureViewSnapshot ? adventureViewSnapshot.locations : [];
     return locations.find(location => location && location.id === locationId) || null;
+}
+
+function renderTavernReturnPortrait() {
+    const canvas = document.getElementById('tavern-return-kreg-canvas');
+    if (!canvas) return;
+    const context = canvas.getContext && canvas.getContext('2d');
+    if (!context) return;
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    if (typeof drawHumanoidActorFront === 'function') {
+        const profile = drawHumanoidActorFront(
+            context,
+            { id: 'npc_kreg', kind: 'npc', name: 'Kreg', visualProfileId: 'npc_kreg' },
+            0,
+            0,
+            canvas.width
+        );
+        if (profile) return;
+    }
+    if (
+        typeof drawOptimizedSprite === 'function'
+        && typeof SpriteMatrices !== 'undefined'
+        && SpriteMatrices.npc_kreg
+    ) {
+        drawOptimizedSprite(context, 'npc_kreg', SpriteMatrices.npc_kreg, 0, 0, canvas.width);
+    }
+}
+
+function openTavernAdventureBoard() {
+    if (typeof setGameState === 'function') setGameState('ADVENTURES');
+}
+
+function reviewTavernCrewGear() {
+    if (typeof setGameState === 'function') setGameState('KNIGHT');
+    const roster = document.getElementById('party-roster-panel');
+    if (roster && typeof roster.scrollIntoView === 'function') {
+        roster.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+function renderTavernReturnReport() {
+    const panel = document.getElementById('tavern-return-report');
+    if (!panel) return;
+    const adventure = getClientAdventureState();
+    const presentation = buildTavernReturnPresentation(
+        adventure.latestReturnReport,
+        adventureViewSnapshot,
+        typeof player !== 'undefined' ? player : null
+    );
+    if (!presentation) {
+        panel.hidden = true;
+        return;
+    }
+
+    panel.hidden = false;
+    panel.classList.toggle('is-failed', presentation.failed);
+    const setText = (id, value) => {
+        const element = document.getElementById(id);
+        if (element) element.textContent = value;
+    };
+    setText('tavern-return-title', presentation.title);
+    setText('tavern-return-summary', presentation.summary);
+    setText('tavern-return-route', presentation.routeName);
+    setText('tavern-return-danger', presentation.danger);
+    setText('tavern-return-encounter', presentation.encounterName);
+    setText(
+        'tavern-return-enemies',
+        presentation.enemies.length ? presentation.enemies.join(', ') : 'No reliable names'
+    );
+    setText('tavern-return-kreg-copy', presentation.kregLine);
+
+    const companion = document.getElementById('tavern-return-companion');
+    if (companion) {
+        companion.hidden = !presentation.companionLine;
+        if (presentation.companionLine) {
+            setText('tavern-return-companion-name', presentation.companionName || 'Mercenary');
+            setText('tavern-return-companion-copy', presentation.companionLine);
+        }
+    }
+
+    const contractList = document.getElementById('tavern-return-contracts');
+    if (contractList) {
+        contractList.innerHTML = '';
+        presentation.contractUpdates.forEach(update => {
+            const item = document.createElement('li');
+            item.className = update.currentStatus === 'claimable' ? 'is-claimable' : '';
+            item.textContent = `${update.title}: ${update.progress}/${update.target}${update.currentStatus === 'claimable' ? ' — ready to claim' : ' on this return'}`;
+            contractList.appendChild(item);
+        });
+        contractList.hidden = presentation.contractUpdates.length === 0;
+    }
+    renderTavernReturnPortrait();
 }
 
 function getRouteDestinationId(route) {
@@ -244,6 +454,28 @@ function renderExplorationMap(activeJourney) {
     });
 }
 
+function renderEncounterReportsMarkup(route) {
+    const reports = getAdventureEncounterReports(route);
+    if (!reports.length) {
+        return '<p class="adventure-muted">The encounter pool has not been charted.</p>';
+    }
+    return `<div class="adventure-encounter-reports">${reports.map(report => {
+        const enemyNames = asAdventureList(report.enemyNames || report.enemies)
+            .map(enemy => typeof enemy === 'string' ? enemy : enemy && enemy.name)
+            .filter(Boolean);
+        const tags = asAdventureList(report.tags)
+            .map(tag => String(tag).replace(/[-_]+/g, ' '));
+        const difficulty = Number(report.difficulty);
+        return `
+            <div class="adventure-encounter-report">
+                <div><strong>${escapeAdventureHtml(report.name || 'Unverified encounter')}</strong>${Number.isFinite(difficulty) ? `<span>Threat ${difficulty}</span>` : ''}</div>
+                <p>${enemyNames.length ? `Enemies: ${enemyNames.map(escapeAdventureHtml).join(', ')}` : 'Enemy identities uncertain.'}</p>
+                ${tags.length ? `<small>${tags.map(escapeAdventureHtml).join(' · ')}</small>` : ''}
+            </div>
+        `;
+    }).join('')}</div>`;
+}
+
 function renderExplorationDetail(activeJourney) {
     const detail = document.getElementById('exploration-detail');
     if (!detail) return;
@@ -285,7 +517,6 @@ function renderExplorationDetail(activeJourney) {
     const destination = getAdventureLocation(getRouteDestinationId(route));
     const danger = route.dangerLabel || route.danger || 'Uncertain';
     const dangerClass = `danger-${String(danger).toLowerCase().replace(/[^a-z]+/g, '-')}`;
-    const encounters = asAdventureList(route.possibleEncounterNames || route.encounterNames || route.possibleEncounters);
     const unlocked = isRouteUnlocked(route);
     const reward = Number(route.safeReturnGold || route.roundTripRewardGold || route.roundTripReward || 0);
     const firstReward = Number(route.firstReturnGold || route.firstReturnBonusGold || 0);
@@ -299,7 +530,7 @@ function renderExplorationDetail(activeJourney) {
             <dt>Return</dt><dd>${reward}g${firstReward > 0 ? ` + ${firstReward}g first-return bonus` : ''}</dd>
         </dl>
         <h4>Road Reports</h4>
-        <p>${encounters.length ? encounters.map(escapeAdventureHtml).join(' · ') : 'The encounter pool has not been charted.'}</p>
+        ${renderEncounterReportsMarkup(route)}
         <button type="button" id="start-expedition-btn">${unlocked ? 'Travel This Route' : 'Route Locked'}</button>
     `;
     const startButton = document.getElementById('start-expedition-btn');
@@ -341,10 +572,17 @@ function renderBountyBoard(adventure) {
         card.className = `bounty-card is-${status}`;
         const copy = document.createElement('div');
         const rewardGold = Number(bounty.rewardGold || (bounty.reward && bounty.reward.gold) || 0);
+        const route = getAdventureRoute(bounty.routeId);
+        const routeName = route ? route.name : 'Unlisted route';
+        const danger = route && (route.dangerLabel || route.danger) || 'Uncertain';
+        const routeReward = Number(route && route.safeReturnGold) || 0;
+        const enemyNames = getAdventureRouteEnemyNames(route);
         copy.innerHTML = `
             <h4>${escapeAdventureHtml(bounty.title || bounty.name || bounty.id)}</h4>
             <p>${escapeAdventureHtml(bounty.description || 'Complete the posted journey and return safely.')}</p>
-            <p class="bounty-progress">${status === 'completed' ? 'Completed' : `${progress}/${target} safe returns`} · ${rewardGold}g</p>
+            <p class="bounty-risk"><b>${escapeAdventureHtml(routeName)}</b> · ${escapeAdventureHtml(danger)} danger</p>
+            <p class="bounty-enemies">Expected: ${enemyNames.length ? enemyNames.map(escapeAdventureHtml).join(', ') : 'Unconfirmed opposition'}</p>
+            <p class="bounty-progress">${status === 'completed' ? 'Completed' : `${progress}/${target} safe returns`} · Contract ${rewardGold}g · Road ${routeReward}g</p>
         `;
         const button = document.createElement('button');
         button.type = 'button';
@@ -435,7 +673,23 @@ if (typeof socket !== 'undefined' && socket) {
         applyAdventurePayload(payload);
         if (payload && payload.message && typeof logMessage === 'function') logMessage(payload.message);
     });
+    socket.on('enemyTurnReceipt', payload => {
+        if (!payload || payload.combatDefeated !== true || !payload.updatedPlayer) return;
+        if (player) Object.assign(player, payload.updatedPlayer);
+        if (adventureViewSnapshot && payload.updatedPlayer.adventure) {
+            adventureViewSnapshot.adventure = payload.updatedPlayer.adventure;
+        }
+        renderTavernReturnReport();
+    });
     socket.on('loginSuccess', () => {
         setTimeout(requestAdventureState, 0);
     });
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        buildTavernReturnPresentation,
+        getAdventureEncounterReports,
+        getAdventureRouteEnemyNames
+    };
 }

@@ -30,6 +30,10 @@ const {
     hasActiveJourney
 } = require('./adventureState.js');
 const { executeActorTurn } = require('./combatAI.js');
+const {
+    interruptActorIntent,
+    consumeActorReaction
+} = require('./combatIntents.js');
 const { applyPoison, tickPoison } = require('./combatStatus.js');
 const { applyPlayerCombatDefeat } = require('./combatDefeat.js');
 const {
@@ -53,7 +57,8 @@ const {
     getPlayerAttackTargets,
     isActorAlive,
     isPlayerActor,
-    isBlockingActor
+    isBlockingActor,
+    getOccupiedTileKeys
 } = require('./combatActors.js');
 const {
     PARTY_PLAYER,
@@ -97,11 +102,24 @@ function getEquipmentActionRules(action) {
 }
 
 function isShieldBlockAction(action) {
-    return !!action && (
-        action.actionType === 'guard'
+    const rules = getEquipmentActionRules(action);
+    return !!action && action.actionType === 'guard' && (
+        String(action.guardType || rules.guardType || '') === 'shield_block'
         || action.id === 'shield_block'
         || action.clipId === 'shield_block'
     );
+}
+
+function getEquipmentDefenseType(action) {
+    if (!action || action.actionType !== 'guard') return null;
+    const rules = getEquipmentActionRules(action);
+    const guardType = String(
+        action.guardType
+        || rules.guardType
+        || (isShieldBlockAction(action) ? 'shield_block' : '')
+    ).toLowerCase();
+    if (guardType === 'evasion' || guardType === 'evade') return 'evade';
+    return guardType === 'shield_block' ? 'shield_block' : null;
 }
 
 function getActorStatValue(actor, player, statKey) {
@@ -174,6 +192,119 @@ function completePlayerControlledAction(combat, player, actor) {
     if (actionResult.turnComplete) finishPlayerControlledTurn(combat, player, actor);
     else syncCombatViews(combat, player);
     return actionResult;
+}
+
+function commitPlayerControlledAction(combat, player, actor, rules = {}) {
+    if (rules && rules.endsTurn === true) {
+        finishPlayerControlledTurn(combat, player, actor);
+        return { consumed: true, actionsRemaining: 0, turnComplete: true };
+    }
+    return completePlayerControlledAction(combat, player, actor);
+}
+
+function getReactionMissDetails(reaction) {
+    if (!reaction || !reaction.state) return null;
+    if (reaction.type === 'shield_block') {
+        return {
+            deflectReason: 'shield_block',
+            guarded: true,
+            guardActionId: reaction.state.actionId || 'shield_block',
+            guardEquipmentSlot: reaction.state.equipmentSlot || 'offhand',
+            guardItemId: reaction.state.itemId || null
+        };
+    }
+    if (reaction.type === 'evade') {
+        return {
+            deflectReason: 'evade_stance',
+            evaded: true,
+            reactionActionId: reaction.state.actionId || 'evasive_feint',
+            reactionEquipmentSlot: reaction.state.equipmentSlot || 'weapon',
+            reactionItemId: reaction.state.itemId || null
+        };
+    }
+    return null;
+}
+
+function interruptTargetIntent(target, sourceActor, combatRules, damage) {
+    return interruptActorIntent(target, {
+        damage,
+        sourceActor,
+        interruptsIntent: combatRules && combatRules.interruptsIntent === true,
+        reason: combatRules && combatRules.interruptsIntent === true
+            ? 'equipment_disruption'
+            : 'direct_damage'
+    });
+}
+
+function getCardinalRetreatTile(combat, actor, threat) {
+    if (!combat || !actor || !threat) return null;
+    const cols = Math.max(1, Number(combat.gridSize && combat.gridSize.cols) || 1);
+    const rows = Math.max(1, Number(combat.gridSize && combat.gridSize.rows) || 1);
+    const occupied = getOccupiedTileKeys(combat, actor.uid);
+    const currentDistance = getGridDistance(
+        actor.x,
+        actor.y,
+        threat.x,
+        threat.y,
+        threat.size || 1
+    );
+    return [
+        { x: actor.x + 1, y: actor.y },
+        { x: actor.x - 1, y: actor.y },
+        { x: actor.x, y: actor.y + 1 },
+        { x: actor.x, y: actor.y - 1 }
+    ]
+        .filter(tile => (
+            tile.x >= 0
+            && tile.x < cols
+            && tile.y >= 0
+            && tile.y < rows
+            && !occupied.has(`${tile.x},${tile.y}`)
+            && getGridDistance(
+                tile.x,
+                tile.y,
+                threat.x,
+                threat.y,
+                threat.size || 1
+            ) > currentDistance
+        ))
+        .sort((left, right) => (
+            getGridDistance(
+                right.x,
+                right.y,
+                threat.x,
+                threat.y,
+                threat.size || 1
+            ) - getGridDistance(
+                left.x,
+                left.y,
+                threat.x,
+                threat.y,
+                threat.size || 1
+            )
+        ))[0] || null;
+}
+
+function repositionActorAway(combat, actor, threat, distance) {
+    const steps = Math.max(0, Math.trunc(Number(distance) || 0));
+    if (!steps) return null;
+    const from = { x: actor.x, y: actor.y };
+    for (let step = 0; step < steps; step++) {
+        const tile = getCardinalRetreatTile(combat, actor, threat);
+        if (!tile) break;
+        actor.x = tile.x;
+        actor.y = tile.y;
+        if (isPlayerActor(actor) && combat.player) {
+            combat.player.x = actor.x;
+            combat.player.y = actor.y;
+        }
+    }
+    if (actor.x === from.x && actor.y === from.y) return null;
+    return { fromX: from.x, fromY: from.y, x: actor.x, y: actor.y };
+}
+
+function pushTargetAway(combat, target, sourceActor, distance) {
+    return repositionActorAway(combat, target, sourceActor, distance);
 }
 
 function emitCombatResultError(
@@ -850,14 +981,21 @@ function handleEquipmentAttackAction(
         );
     }
 
-    if (isShieldBlockAction(action)) {
-        if (actor.guardState && actor.guardState.charges > 0) {
+    const defenseType = getEquipmentDefenseType(action);
+    if (defenseType) {
+        const reactionProperty = defenseType === 'shield_block'
+            ? 'guardState'
+            : 'evasionState';
+        if (
+            actor[reactionProperty]
+            && actor[reactionProperty].charges > 0
+        ) {
             return emitEquipmentActionError(
                 socket,
                 p,
                 combat,
                 actor,
-                `${actor.name} is already guarding.`
+                `${actor.name} already has that defensive stance readied.`
             );
         }
 
@@ -871,9 +1009,13 @@ function handleEquipmentAttackAction(
             );
         }
 
-        actor.guardState = {
-            type: 'shield_block',
-            charges: 1,
+        const actionRules = getEquipmentActionRules(action);
+        actor[reactionProperty] = {
+            type: defenseType,
+            charges: Math.max(
+                1,
+                Math.trunc(Number(action.charges || actionRules.charges) || 1)
+            ),
             actionId: action.id,
             equipmentSlot: action.equipmentSlot,
             itemId: action.itemId,
@@ -881,11 +1023,14 @@ function handleEquipmentAttackAction(
                 ? combat.turnSequence
                 : 0
         };
-        const actionResult = completePlayerControlledAction(
-            combat,
-            p,
-            actor
-        );
+        // Defensive stances are committed turns. They never convert the
+        // forfeited action credit into Pass stamina recovery.
+        const actionResult = actionRules.endsTurn === true
+            ? (
+                finishPlayerControlledTurn(combat, p, actor),
+                { actionsRemaining: 0, turnComplete: true }
+            )
+            : completePlayerControlledAction(combat, p, actor);
 
         return emitAnimatedCombatResult(socket, combat, {
             type: 'guard',
@@ -894,7 +1039,9 @@ function handleEquipmentAttackAction(
             action,
             actorUid: actor.uid,
             actorName: actor.name,
-            guarded: true,
+            reactionType: defenseType,
+            guarded: defenseType === 'shield_block',
+            evading: defenseType === 'evade',
             newStamina: getActorStaminaValue(actor, p),
             actionsRemaining: actionResult.actionsRemaining,
             turnComplete: actionResult.turnComplete,
@@ -997,7 +1144,12 @@ function handleWeaponSpellAction(
     }
 
     p.stamina -= combatRules.staminaCost || spellData.cost || 0;
-    completePlayerControlledAction(combat, p, getPlayerActor(combat));
+    commitPlayerControlledAction(
+        combat,
+        p,
+        getPlayerActor(combat),
+        combatRules
+    );
 
     const hitTargets = [];
     let combatComplete = false;
@@ -1005,6 +1157,12 @@ function handleWeaponSpellAction(
         if (!enemy || !isActorAlive(enemy)) return;
         const roll = rollSpellDamage(p, spellData, combatRules);
         enemy.hp -= roll.damage;
+        const interruptedIntent = interruptTargetIntent(
+            enemy,
+            getPlayerActor(combat),
+            combatRules,
+            roll.damage
+        );
         const poisonApplied = applyPoison(enemy, {
             chance: spellData.poisonChance || combatRules.poisonChance || 0,
             turns: spellData.poisonTurns || combatRules.poisonTurns || 3,
@@ -1017,7 +1175,7 @@ function handleWeaponSpellAction(
             const killResult = resolveDefeat(enemy, { sourceActor: getPlayerActor(combat), cause: 'spell' });
             combatComplete = combatComplete || !!(killResult && killResult.combatComplete);
         }
-        hitTargets.push({ uid: enemy.uid, damage: roll.damage, isCrit: roll.isCrit, killed: killed, statusApplied: poisonApplied ? 'poison' : null, statusEffects: enemy.statusEffects });
+        hitTargets.push({ uid: enemy.uid, damage: roll.damage, isCrit: roll.isCrit, killed: killed, statusApplied: poisonApplied ? 'poison' : null, statusEffects: enemy.statusEffects, interruptedIntent });
     };
 
     if (spellData.type === 'single') {
@@ -1123,7 +1281,7 @@ function handleActorWeaponAction(
         }
 
         spendActorStamina(actor, p, staminaCost);
-        completePlayerControlledAction(combat, p, actor);
+        commitPlayerControlledAction(combat, p, actor, combatRules);
         const resolvedBaseDmg = Math.floor(
             getActorStatValue(actor, p, 'offense') * combatRules.multiplier
         );
@@ -1141,13 +1299,19 @@ function handleActorWeaponAction(
                 const variedDmg = Math.floor(Math.random() * (maxDmg - minDmg + 1)) + minDmg;
                 const isCrit = variedDmg >= Math.floor(finalBaseDmg * 0.95);
                 enemy.hp -= variedDmg;
+                const interruptedIntent = interruptTargetIntent(
+                    enemy,
+                    actor,
+                    combatRules,
+                    variedDmg
+                );
                 let killed = false;
                 if (enemy.hp <= 0) {
                     killed = true;
                     const killResult = resolveDefeat(enemy, { sourceActor: actor, cause: 'weapon' });
                     combatComplete = combatComplete || !!(killResult && killResult.combatComplete);
                 }
-                hitTargets.push({ uid: enemy.uid, damage: variedDmg, isCrit, killed });
+                hitTargets.push({ uid: enemy.uid, damage: variedDmg, isCrit, killed, interruptedIntent });
             }
         });
 
@@ -1175,8 +1339,48 @@ function handleActorWeaponAction(
         return reject('Server: Target is obscured by an obstacle.');
     }
 
+    const attackOrigin = { x: actor.x, y: actor.y };
     spendActorStamina(actor, p, staminaCost);
-    completePlayerControlledAction(combat, p, actor);
+    commitPlayerControlledAction(combat, p, actor, combatRules);
+    const reposition = repositionActorAway(
+        combat,
+        actor,
+        serverEnemy,
+        combatRules.repositionAway
+    );
+    const reactionMiss = getReactionMissDetails(
+        consumeActorReaction(serverEnemy)
+    );
+    if (reactionMiss) {
+        const isRanged = !!weapon.projectileSprite;
+        return emitAnimatedCombatResult(socket, combat, {
+            type: 'miss',
+            source: 'weapon',
+            actionName: resolvedAction ? resolvedAction.name : data.subType,
+            action: resolvedAction || undefined,
+            actorUid: actor.uid,
+            actorName: actor.name,
+            targetUid: serverEnemy.uid,
+            hitChance: 100,
+            ...reactionMiss,
+            reposition,
+            newStamina: getActorStaminaValue(actor, p),
+            fx: {
+                tx: serverEnemy.x,
+                ty: serverEnemy.y,
+                sx: attackOrigin.x,
+                sy: attackOrigin.y,
+                sourceUid: actor.uid,
+                spriteId: isRanged
+                    ? weapon.projectileSprite
+                    : weapon.spriteId,
+                isProjectile: isRanged,
+                isAoE: false
+            },
+            updatedPlayer: p,
+            updatedCombatState: syncCombatViews(combat, p)
+        });
+    }
     const attackerOffense = getActorStatValue(actor, p, 'offense') * 10;
     const defenderSpeed = (serverEnemy.speed || 1) * 10;
     const defenderDefense = combatRules.ignoresDefense ? 0 : (serverEnemy.defense || 1) * 10;
@@ -1193,6 +1397,7 @@ function handleActorWeaponAction(
             targetUid: serverEnemy.uid,
             deflectReason: 'evasion',
             hitChance: 0,
+            reposition,
             newStamina: getActorStaminaValue(actor, p),
             updatedCombatState: syncCombatViews(combat, p)
         });
@@ -1212,6 +1417,7 @@ function handleActorWeaponAction(
             targetUid: serverEnemy.uid,
             deflectReason: 'armor',
             hitChance: 100,
+            reposition,
             newStamina: getActorStaminaValue(actor, p),
             updatedCombatState: syncCombatViews(combat, p)
         });
@@ -1225,6 +1431,20 @@ function handleActorWeaponAction(
         ? Math.max(1, resolvedDamage)
         : resolvedDamage;
     serverEnemy.hp -= finalDmg;
+    const interruptedIntent = interruptTargetIntent(
+        serverEnemy,
+        actor,
+        combatRules,
+        finalDmg
+    );
+    const pushed = serverEnemy.hp > 0
+        ? pushTargetAway(
+            combat,
+            serverEnemy,
+            actor,
+            combatRules.pushTarget
+        )
+        : null;
     const poisonApplied = applyPoison(serverEnemy, {
         chance: combatRules.poisonChance || 0,
         turns: combatRules.poisonTurns || 3,
@@ -1247,9 +1467,10 @@ function handleActorWeaponAction(
         actionName: resolvedAction ? resolvedAction.name : data.subType,
         action: resolvedAction || undefined,
         actorUid: actor.uid, actorName: actor.name,
-        targets: [{ uid: serverEnemy.uid, damage: finalDmg, isCrit, killed, statusApplied: poisonApplied ? 'poison' : null, statusEffects: serverEnemy.statusEffects }],
+        targets: [{ uid: serverEnemy.uid, damage: finalDmg, isCrit, killed, statusApplied: poisonApplied ? 'poison' : null, statusEffects: serverEnemy.statusEffects, interruptedIntent, pushed }],
+        reposition,
         newStamina: getActorStaminaValue(actor, p),
-        fx: { tx: serverEnemy.x, ty: serverEnemy.y, sx: actor.x, sy: actor.y, sourceUid: actor.uid, spriteId: isRanged ? weapon.projectileSprite : weapon.spriteId, isProjectile: isRanged, isAoE: false },
+        fx: { tx: serverEnemy.x, ty: serverEnemy.y, sx: attackOrigin.x, sy: attackOrigin.y, sourceUid: actor.uid, spriteId: isRanged ? weapon.projectileSprite : weapon.spriteId, isProjectile: isRanged, isAoE: false },
         updatedPlayer: p,
         updatedCombatState: combatComplete ? null : syncCombatViews(combat, p),
         combatComplete
@@ -1307,13 +1528,19 @@ function handleActorSpellAction(
     }
 
     spendActorStamina(actor, p, staminaCost);
-    completePlayerControlledAction(combat, p, actor);
+    commitPlayerControlledAction(combat, p, actor, combatRules);
     const hitTargets = [];
     let combatComplete = false;
     const hitEnemy = (enemy) => {
         if (!enemy || !isActorAlive(enemy)) return;
         const roll = rollActorSpellDamage(actor, p, spellData, combatRules);
         enemy.hp -= roll.damage;
+        const interruptedIntent = interruptTargetIntent(
+            enemy,
+            actor,
+            combatRules,
+            roll.damage
+        );
         const poisonApplied = applyPoison(enemy, {
             chance: spellData.poisonChance || combatRules.poisonChance || 0,
             turns: spellData.poisonTurns || combatRules.poisonTurns || 3,
@@ -1326,7 +1553,7 @@ function handleActorSpellAction(
             const killResult = resolveDefeat(enemy, { sourceActor: actor, cause: 'spell' });
             combatComplete = combatComplete || !!(killResult && killResult.combatComplete);
         }
-        hitTargets.push({ uid: enemy.uid, damage: roll.damage, isCrit: roll.isCrit, killed, statusApplied: poisonApplied ? 'poison' : null, statusEffects: enemy.statusEffects });
+        hitTargets.push({ uid: enemy.uid, damage: roll.damage, isCrit: roll.isCrit, killed, statusApplied: poisonApplied ? 'poison' : null, statusEffects: enemy.statusEffects, interruptedIntent });
     };
 
     if (spellData.type === 'single') {
@@ -1443,7 +1670,12 @@ function handleWeaponAction(
         }
 
         p.stamina -= staminaCost;
-        completePlayerControlledAction(combat, p, getPlayerActor(combat));
+        commitPlayerControlledAction(
+            combat,
+            p,
+            getPlayerActor(combat),
+            combatRules
+        );
 
         const serverPower = getEffectiveStat(p, 'offense');
         const resolvedBaseDmg = Math.floor(
@@ -1467,6 +1699,12 @@ function handleWeaponAction(
                 const isCrit = variedDmg >= Math.floor(finalBaseDmg * 0.95);
 
                 enemy.hp -= variedDmg;
+                const interruptedIntent = interruptTargetIntent(
+                    enemy,
+                    getPlayerActor(combat),
+                    combatRules,
+                    variedDmg
+                );
                 let killed = false;
                 if (enemy.hp <= 0) {
                     killed = true;
@@ -1474,7 +1712,7 @@ function handleWeaponAction(
                     combatComplete = combatComplete || !!(killResult && killResult.combatComplete);
                 }
 
-                hitTargets.push({ uid: enemy.uid, damage: variedDmg, isCrit: isCrit, killed: killed });
+                hitTargets.push({ uid: enemy.uid, damage: variedDmg, isCrit: isCrit, killed: killed, interruptedIntent });
             }
         });
 
@@ -1508,8 +1746,57 @@ function handleWeaponAction(
         }
     }
 
+    const attackOrigin = {
+        x: combat.player.x,
+        y: combat.player.y
+    };
     p.stamina -= staminaCost;
-    completePlayerControlledAction(combat, p, getPlayerActor(combat));
+    commitPlayerControlledAction(
+        combat,
+        p,
+        getPlayerActor(combat),
+        combatRules
+    );
+    const reposition = repositionActorAway(
+        combat,
+        getPlayerActor(combat),
+        serverEnemy,
+        combatRules.repositionAway
+    );
+
+    const reactionMiss = getReactionMissDetails(
+        consumeActorReaction(serverEnemy)
+    );
+    if (reactionMiss) {
+        const isRanged = !!weapon.projectileSprite;
+        return emitAnimatedCombatResult(socket, combat, {
+            type: 'miss',
+            source: 'weapon',
+            actionName: resolvedAction ? resolvedAction.name : data.subType,
+            action: resolvedAction || undefined,
+            actorUid: actor && actor.uid,
+            actorName: actor && actor.name,
+            targetUid: serverEnemy.uid,
+            hitChance: 100,
+            ...reactionMiss,
+            reposition,
+            newStamina: p.stamina,
+            fx: {
+                tx: serverEnemy.x,
+                ty: serverEnemy.y,
+                sx: attackOrigin.x,
+                sy: attackOrigin.y,
+                sourceUid: actor && actor.uid,
+                spriteId: isRanged
+                    ? weapon.projectileSprite
+                    : weapon.spriteId,
+                isProjectile: isRanged,
+                isAoE: false
+            },
+            updatedPlayer: p,
+            updatedCombatState: syncCombatViews(combat, p)
+        });
+    }
 
     const attackerOffense = getEffectiveStat(p, 'offense') * 10;
     const defenderSpeed = (serverEnemy.speed || 1) * 10;
@@ -1526,6 +1813,7 @@ function handleWeaponAction(
             targetUid: serverEnemy.uid,
             deflectReason: 'evasion',
             hitChance: 0,
+            reposition,
             newStamina: p.stamina,
             updatedCombatState: syncCombatViews(combat, p)
         });
@@ -1545,6 +1833,7 @@ function handleWeaponAction(
             targetUid: serverEnemy.uid,
             deflectReason: 'armor',
             hitChance: 100,
+            reposition,
             newStamina: p.stamina,
             updatedCombatState: syncCombatViews(combat, p)
         });
@@ -1560,6 +1849,20 @@ function handleWeaponAction(
         : resolvedDamage;
 
     serverEnemy.hp -= finalDmg;
+    const interruptedIntent = interruptTargetIntent(
+        serverEnemy,
+        getPlayerActor(combat),
+        combatRules,
+        finalDmg
+    );
+    const pushed = serverEnemy.hp > 0
+        ? pushTargetAway(
+            combat,
+            serverEnemy,
+            getPlayerActor(combat),
+            combatRules.pushTarget
+        )
+        : null;
     const poisonApplied = applyPoison(serverEnemy, {
         chance: combatRules.poisonChance || 0,
         turns: combatRules.poisonTurns || 3,
@@ -1582,8 +1885,9 @@ function handleWeaponAction(
         action: resolvedAction || undefined,
         actorUid: actor && actor.uid,
         actorName: actor && actor.name,
-        targets: [{ uid: serverEnemy.uid, damage: finalDmg, isCrit: isCrit, killed: killed, statusApplied: poisonApplied ? "poison" : null, statusEffects: serverEnemy.statusEffects }],
-        fx: { tx: serverEnemy.x, ty: serverEnemy.y, spriteId: isRanged ? weapon.projectileSprite : weapon.spriteId, isProjectile: isRanged, isAoE: false },
+        targets: [{ uid: serverEnemy.uid, damage: finalDmg, isCrit: isCrit, killed: killed, statusApplied: poisonApplied ? "poison" : null, statusEffects: serverEnemy.statusEffects, interruptedIntent, pushed }],
+        reposition,
+        fx: { tx: serverEnemy.x, ty: serverEnemy.y, sx: attackOrigin.x, sy: attackOrigin.y, sourceUid: actor && actor.uid, spriteId: isRanged ? weapon.projectileSprite : weapon.spriteId, isProjectile: isRanged, isAoE: false },
         updatedPlayer: p,
         updatedCombatState: combatComplete ? null : syncCombatViews(combat, p),
         combatComplete
@@ -1937,6 +2241,16 @@ function handleCombatEquip(socket, p, combat, data, actor) {
             || String(guardedItem.id || '') !== actor.guardState.itemId
         ) {
             delete actor.guardState;
+        }
+    }
+    if (actor && actor.evasionState) {
+        const reactionSlot = actor.evasionState.equipmentSlot;
+        const reactionItem = reactionSlot && p.equipment[reactionSlot];
+        if (
+            !reactionItem
+            || String(reactionItem.id || '') !== actor.evasionState.itemId
+        ) {
+            delete actor.evasionState;
         }
     }
     return emitPlayerItemReceipt(socket, p, combat, actor, {

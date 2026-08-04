@@ -1,28 +1,66 @@
 // --- items.js ---
 // A master dictionary of all items in the game. 
 
+const EquipmentCombatIdentities = Object.freeze({
+    shield: Object.freeze({
+        family: "shield",
+        label: "Guard and Disrupt",
+        description: "Block a committed attack or bash an enemy out of a dangerous wind-up."
+    }),
+    spear: Object.freeze({
+        family: "spear",
+        label: "Reach and Control",
+        description: "Threaten enemies from two tiles away and drive them out of a prepared attack."
+    }),
+    dagger: Object.freeze({
+        family: "dagger",
+        label: "Low-Cost Evasion",
+        description: "Make inexpensive strikes or spend the turn preparing to evade one attack."
+    }),
+    heavy: Object.freeze({
+        family: "heavy",
+        label: "Committed Armor Break",
+        description: "Commit the rest of the turn to a readable blow that ignores armor."
+    }),
+    bow: Object.freeze({
+        family: "bow",
+        label: "Range and Reposition",
+        description: "Attack at long range and use Parting Shot to withdraw from the target."
+    }),
+    staff: Object.freeze({
+        family: "staff",
+        label: "Channelled Spellcraft",
+        description: "Shape lanes and areas with powerful spells whose major casts can be interrupted."
+    })
+});
+
 const ShieldEquipmentActions = Object.freeze({
     shield_block: Object.freeze({
         name: "Shield Block",
-        description: "Brace behind the equipped shield and guard against the next attack.",
+        description: "Raise the equipped shield, end the turn, and hold a blocking stance that stops the next incoming attack.",
         actionType: "guard",
         targetType: "self",
         range: 0,
         staminaCost: 10,
         multiplier: 1.0,
         ignoresDefense: false,
+        guardType: "shield_block",
+        charges: 1,
+        endsTurn: true,
         animType: "shield_block",
         clipId: "shield_block"
     }),
     shield_bash: Object.freeze({
         name: "Shield Bash",
-        description: "Drive the equipped shield into an adjacent enemy.",
+        description: "Drive the equipped shield into an adjacent enemy, interrupt its wind-up, and push it back one clear tile.",
         actionType: "attack",
         targetType: "enemy",
         range: 1,
         staminaCost: 12,
         multiplier: 0.75,
         ignoresDefense: false,
+        interruptsIntent: true,
+        pushTarget: 1,
         animType: "shield_bash",
         clipId: "shield_bash"
     })
@@ -36,10 +74,11 @@ const ItemDatabase = {
         type: "Bow", // Keeps your item typings intact
         rarity: "Common", offense: 6, attackRange: 5, value: 75, spriteId: "weap_bow",
         handedness: "two", twoHanded: true, animationFamily: "shoot",
+        combatIdentity: EquipmentCombatIdentities.bow,
         projectileSprite: "icon_arrow", // <-- THIS becomes our universal flag
         combat: {
             standard: { range: 5, staminaCost: 5, multiplier: 1.0, animType: "shoot" },
-            special: { name: "Piercing Shot", range: 5, staminaCost: 15, multiplier: 1.5, ignoresDefense: true, animType: "shoot", desc: "A high-velocity shot that pierces armor." }
+            special: { name: "Parting Shot", range: 5, staminaCost: 15, multiplier: 1.5, ignoresDefense: true, repositionAway: 1, animType: "shoot", desc: "Loose an armor-piercing arrow, then withdraw one clear tile away from the target." }
         }
     },
 	
@@ -80,6 +119,7 @@ const ItemDatabase = {
         id: "round_shield", name: "Oak-Banded Round Shield", slot: "offhand",
         type: "Shield", offhandType: "shield", rarity: "Uncommon",
         defense: 3, value: 35, spriteId: "offhand_round_shield",
+        combatIdentity: EquipmentCombatIdentities.shield,
         equipmentActions: ShieldEquipmentActions
     },
     "captains_shield": {
@@ -87,6 +127,7 @@ const ItemDatabase = {
         type: "Shield", offhandType: "shield", rarity: "Rare",
         defense: 7, value: 90,
         spriteId: "offhand_captains_shield",
+        combatIdentity: EquipmentCombatIdentities.shield,
         equipmentActions: ShieldEquipmentActions
     },
     "tower_shield": {
@@ -94,6 +135,7 @@ const ItemDatabase = {
         type: "Shield", offhandType: "shield", rarity: "Epic",
         defense: 14, speed: -1, value: 180,
         spriteId: "offhand_tower_shield",
+        combatIdentity: EquipmentCombatIdentities.shield,
         equipmentActions: ShieldEquipmentActions
     },
     "parrying_dagger": {
@@ -102,6 +144,7 @@ const ItemDatabase = {
         offense: 5, speed: 1, value: 140,
         spriteId: "offhand_parrying_dagger",
         handedness: "one", animationFamily: "dual_wield",
+        combatIdentity: EquipmentCombatIdentities.dagger,
         equipmentActions: Object.freeze({
             offhand_strike: Object.freeze({
                 name: "Offhand Strike",
@@ -125,9 +168,10 @@ const ItemDatabase = {
         id: "behemoth_maw_crusher", name: "Behemoth's Splintered Maw", slot: "weapon", type: "Club", rarity: "Unique", 
         offense: 28, attackRange: 1, value: 450, spriteId: "weap_behemoth_maw",
         handedness: "two", twoHanded: true, animationFamily: "heavy",
+        combatIdentity: EquipmentCombatIdentities.heavy,
         combat: {
             standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "heavy" },
-            special: { name: "Heavy Smash", range: 1, staminaCost: 15, multiplier: 1.5, ignoresDefense: false, animType: "heavy", desc: "Converts weight momentum into a heavy attack producing 1.5x standard power." }
+            special: { name: "Heavy Smash", range: 1, staminaCost: 15, multiplier: 1.5, ignoresDefense: true, armorBreak: true, endsTurn: true, animType: "heavy", desc: "Commit the turn to a crushing blow that ignores armor." }
         }
     },
     "vintage_cask_plate": { id: "vintage_cask_plate", name: "Iron-Banded Cask Plate", slot: "armor", rarity: "Unique", defense: 15, speed: -1, value: 400, spriteId: "armor_cask_plate" },
@@ -146,9 +190,10 @@ const ItemDatabase = {
         id: "hunters_spear", name: "Hunter's Spear", slot: "weapon", type: "Spear", rarity: "Rare", 
         offense: 4, attackRange: 2, value: 40, spriteId: "weap_spear",
         handedness: "two", twoHanded: true, animationFamily: "thrust",
+        combatIdentity: EquipmentCombatIdentities.spear,
         combat: {
             standard: { range: 2, staminaCost: 5, multiplier: 1.0, animType: "thrust" },
-            special: { name: "Flurry", range: 2, staminaCost: 15, multiplier: 1.2, ignoresDefense: false, animType: "thrust", desc: "Strike rapidly targeting weak structural thresholds for 1.2x weapon value." }
+            special: { name: "Driving Thrust", range: 2, staminaCost: 10, multiplier: 1.0, ignoresDefense: false, interruptsIntent: true, pushTarget: 1, animType: "thrust", desc: "Drive a target back one clear tile and interrupt a prepared attack." }
         }
     },
     "boar_hide_armor": { id: "boar_hide_armor", name: "Boar-Hide Cuirass", slot: "armor", rarity: "Common", defense: 3, value: 30, spriteId: "armor_boar_hide" },
@@ -161,9 +206,10 @@ const ItemDatabase = {
         id: "mimic_fang_dagger", name: "Mimic Fang Dagger", slot: "weapon", type: "Sword", rarity: "Epic", 
         offense: 10, attackRange: 1, value: 150, spriteId: "weap_mimic_dagger",
         handedness: "one", animationFamily: "dagger",
+        combatIdentity: EquipmentCombatIdentities.dagger,
         combat: {
-            standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "dagger", poisonChance: 0.25, poisonTurns: 3 },
-            special: { name: "Flurry", range: 1, staminaCost: 15, multiplier: 1.2, ignoresDefense: false, animType: "dagger", poisonChance: 0.45, poisonTurns: 3, desc: "Strike rapidly targeting weak structural thresholds for 1.2x weapon value." }
+            standard: { range: 1, staminaCost: 3, multiplier: 1.0, animType: "dagger", poisonChance: 0.25, poisonTurns: 3, desc: "Make a quick, low-stamina dagger strike." },
+            special: { name: "Evasive Feint", actionType: "guard", targetType: "self", range: 0, staminaCost: 8, multiplier: 1.0, ignoresDefense: false, guardType: "evasion", charges: 1, endsTurn: true, animType: "dagger", desc: "End the turn in an evasive stance that avoids the next incoming attack." }
         }
     },
     "cellar_striders": { id: "cellar_striders", name: "Cellar Striders", slot: "boots", rarity: "Epic", speed: 1, value: 100, spriteId: "boots_cellar" },
@@ -174,9 +220,10 @@ const ItemDatabase = {
         id: "brewmasters_club", name: "Brewmaster's Great-Club", slot: "weapon", type: "Mace", rarity: "Rare", 
         offense: 13, attackRange: 1, value: 120, spriteId: "brewmasters_club",
         handedness: "two", twoHanded: true, animationFamily: "heavy",
+        combatIdentity: EquipmentCombatIdentities.heavy,
         combat: {
             standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "heavy" },
-            special: { name: "Heavy Smash", range: 1, staminaCost: 15, multiplier: 1.5, ignoresDefense: false, animType: "heavy", desc: "Converts weight momentum into a heavy attack producing 1.5x standard power." }
+            special: { name: "Heavy Smash", range: 1, staminaCost: 15, multiplier: 1.5, ignoresDefense: true, armorBreak: true, endsTurn: true, animType: "heavy", desc: "Commit the turn to a crushing blow that ignores armor." }
         }
     },
     "hop_infused_boots": { id: "hop_infused_boots", name: "Hop-Infused Boots", slot: "boots", rarity: "Rare", speed: 2, value: 80, spriteId: "hop_infused_boots" },
@@ -186,9 +233,10 @@ const ItemDatabase = {
         id: "silverback_greatclub", name: "🍌 Silverback Great-Club", slot: "weapon", type: "Mace", rarity: "Gorilla", 
         offense: 225, attackRange: 2, value: 500, spriteId: "silverback_greatclub",
         handedness: "two", twoHanded: true, animationFamily: "heavy",
+        combatIdentity: EquipmentCombatIdentities.heavy,
         combat: {
             standard: { range: 2, staminaCost: 5, multiplier: 1.0, animType: "heavy" },
-            special: { name: "Primate Cataclysm", range: 2, staminaCost: 15, multiplier: 4.0, ignoresDefense: true, animType: "heavy", desc: "Unleashes a crushing blow dealing 4.0x damage. Ignores resilience mechanics entirely." }
+            special: { name: "Primate Cataclysm", range: 2, staminaCost: 15, multiplier: 4.0, ignoresDefense: true, armorBreak: true, endsTurn: true, animType: "heavy", desc: "Commit the turn to a crushing blow dealing 4.0x damage and ignoring armor." }
         }
     },
     "primate_armor": { id: "primate_armor", name: "🍌 Primate-Armor Skullplate", slot: "helmet", rarity: "Gorilla", defense: 38, value: 500, spriteId: "primate_armor" },
@@ -215,9 +263,10 @@ const ItemDatabase = {
         id: "beerglass_shiv", name: "Jagged Beerglass Shiv", slot: "weapon", type: "Sword", rarity: "Epic", 
         offense: 23, attackRange: 1, value: 150, spriteId: "weap_beerglass",
         handedness: "one", animationFamily: "dagger",
+        combatIdentity: EquipmentCombatIdentities.dagger,
         combat: {
-            standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "dagger" },
-            special: { name: "Flurry", range: 1, staminaCost: 15, multiplier: 1.2, ignoresDefense: false, animType: "dagger", desc: "Strike rapidly targeting weak structural thresholds for 1.2x weapon value." }
+            standard: { range: 1, staminaCost: 3, multiplier: 1.0, animType: "dagger", desc: "Make a quick, low-stamina dagger strike." },
+            special: { name: "Evasive Feint", actionType: "guard", targetType: "self", range: 0, staminaCost: 8, multiplier: 1.0, ignoresDefense: false, guardType: "evasion", charges: 1, endsTurn: true, animType: "dagger", desc: "End the turn in an evasive stance that avoids the next incoming attack." }
         }
     },
     "beerglass_gloves": { id: "beerglass_gloves", name: "Beerglass Shard Gloves", slot: "gloves", rarity: "Epic", offense: 13, value: 90, spriteId: "gloves_beerglass" },
@@ -230,9 +279,10 @@ const ItemDatabase = {
         id: "tankard_maul", name: "Iron-Banded Tankard Maul", slot: "weapon", type: "Mace", rarity: "Epic", 
         offense: 8, attackRange: 1, value: 120, spriteId: "weap_tankard",
         handedness: "two", twoHanded: true, animationFamily: "heavy",
+        combatIdentity: EquipmentCombatIdentities.heavy,
         combat: {
             standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "heavy" },
-            special: { name: "Heavy Smash", range: 1, staminaCost: 15, multiplier: 1.5, ignoresDefense: false, animType: "heavy", desc: "Converts weight momentum into a heavy attack producing 1.5x standard power." }
+            special: { name: "Heavy Smash", range: 1, staminaCost: 15, multiplier: 1.5, ignoresDefense: true, armorBreak: true, endsTurn: true, animType: "heavy", desc: "Commit the turn to a crushing blow that ignores armor." }
         }
     },
     "tankard_gauntlets": { id: "tankard_gauntlets", name: "Tankard Iron Gauntlets", slot: "gloves", rarity: "Epic", offense: 3, value: 80, spriteId: "gloves_tankard" },
@@ -294,9 +344,10 @@ const ItemDatabase = {
         id: "blackout_axe", name: "Void-Forged Keg-Splitter", slot: "weapon", type: "Axe", rarity: "Relic", 
         offense: 73, attackRange: 1, value: 5000, spriteId: "weap_blackout",
         handedness: "two", twoHanded: true, animationFamily: "heavy",
+        combatIdentity: EquipmentCombatIdentities.heavy,
         combat: {
             standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "heavy" },
-            special: { name: "Execute", range: 1, staminaCost: 15, multiplier: 1.5, ignoresDefense: false, animType: "heavy", desc: "Brings down a devastating vertical chop producing 1.5x standard power." }
+            special: { name: "Execute", range: 1, staminaCost: 15, multiplier: 1.5, ignoresDefense: true, armorBreak: true, endsTurn: true, animType: "heavy", desc: "Commit the turn to a devastating vertical chop that ignores armor." }
         }
     },
     "blackout_wraps": { id: "blackout_wraps", name: "Numbed Knuckle Wraps", slot: "gloves", rarity: "Relic", offense: 38, value: 2000, spriteId: "gloves_blackout" },
@@ -313,9 +364,10 @@ const ItemDatabase = {
         id: "axe_timberlord", name: "Timber-Lord's Axe", slot: "weapon", type: "Axe", rarity: "Relic", 
         offense: 48, attackRange: 1, value: 800, spriteId: "weap_timberlord",
         handedness: "two", twoHanded: true, animationFamily: "heavy",
+        combatIdentity: EquipmentCombatIdentities.heavy,
         combat: {
             standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "heavy" },
-            special: { name: "Execute", range: 1, staminaCost: 15, multiplier: 1.5, ignoresDefense: false, animType: "heavy", desc: "Brings down a devastating vertical chop producing 1.5x standard power." }
+            special: { name: "Execute", range: 1, staminaCost: 15, multiplier: 1.5, ignoresDefense: true, armorBreak: true, endsTurn: true, animType: "heavy", desc: "Commit the turn to a devastating vertical chop that ignores armor." }
         }
     },
     "waders_angler": { id: "waders_angler", name: "The Angler's Waders", slot: "boots", rarity: "Relic", speed: 1, defense: 8, value: 800, spriteId: "boots_angler" },
@@ -351,9 +403,10 @@ const ItemDatabase = {
         id: "harpoon_trident", name: "Whaler's Harpoon", slot: "weapon", type: "Spear", rarity: "Epic", 
         offense: 12, attackRange: 2, value: 150, spriteId: "harpoon_trident",
         handedness: "two", twoHanded: true, animationFamily: "thrust",
+        combatIdentity: EquipmentCombatIdentities.spear,
         combat: {
             standard: { range: 2, staminaCost: 5, multiplier: 1.0, animType: "thrust" },
-            special: { name: "Flurry", range: 2, staminaCost: 15, multiplier: 1.2, ignoresDefense: false, animType: "thrust", desc: "Strike rapidly targeting weak structural thresholds for 1.2x weapon value." }
+            special: { name: "Driving Thrust", range: 2, staminaCost: 10, multiplier: 1.0, ignoresDefense: false, interruptsIntent: true, pushTarget: 1, animType: "thrust", desc: "Drive a target back one clear tile and interrupt a prepared attack." }
         }
     },
     "abyssal_diving_suit": { id: "abyssal_diving_suit", name: "Abyssal Diving Suit", slot: "armor", rarity: "Epic", defense: 13, value: 180, spriteId: "abyssal_diving_suit" },
@@ -370,9 +423,10 @@ const ItemDatabase = {
         id: "pitchfork_spear", name: "Farmer's Pitchfork", slot: "weapon", type: "Spear", rarity: "Epic", 
         offense: 11, attackRange: 2, value: 130, spriteId: "pitchfork_spear",
         handedness: "two", twoHanded: true, animationFamily: "thrust",
+        combatIdentity: EquipmentCombatIdentities.spear,
         combat: {
             standard: { range: 2, staminaCost: 5, multiplier: 1.0, animType: "thrust" },
-            special: { name: "Flurry", range: 2, staminaCost: 15, multiplier: 1.2, ignoresDefense: false, animType: "thrust", desc: "Strike rapidly targeting weak structural thresholds for 1.2x weapon value." }
+            special: { name: "Driving Thrust", range: 2, staminaCost: 10, multiplier: 1.0, ignoresDefense: false, interruptsIntent: true, pushTarget: 1, animType: "thrust", desc: "Drive a target back one clear tile and interrupt a prepared attack." }
         }
     },
     "burlap_sack_mask": { id: "burlap_sack_mask", name: "Scarecrow's Sack", slot: "helmet", rarity: "Epic", defense: 9, value: 140, spriteId: "burlap_sack_mask" },
@@ -402,36 +456,40 @@ const ItemDatabase = {
         id: "apprentice_staff", name: "Apprentice Tapstaff", slot: "weapon", type: "Staff", rarity: "Uncommon",
         offense: 6, attackRange: 5, value: 90, spriteId: "weap_apprentice_staff",
         handedness: "two", twoHanded: true, animationFamily: "cast",
+        combatIdentity: EquipmentCombatIdentities.staff,
         combat: {
             standard: { actionType: "spell", spellId: "arcane_bolt", range: 5, staminaCost: 6, multiplier: 1.0, animType: "cast", desc: "Cast a reliable single-target Arcane Bolt." },
-            special: { name: "Fireball Breath", actionType: "spell", spellId: "fireball_breath", range: 5, staminaCost: 20, multiplier: 1.0, targetType: "single", animType: "cast", desc: "Burn a straight lane with a fiery beam from the staff." }
+            special: { name: "Fireball Breath", actionType: "spell", spellId: "fireball_breath", range: 5, staminaCost: 20, multiplier: 1.0, targetType: "single", channelled: true, interruptible: true, endsTurn: true, telegraphShape: "line", animType: "cast", desc: "Channel a marked lane, then burn every target caught in it." }
         }
     },
     "bogwood_staff": {
         id: "bogwood_staff", name: "Bogwood Hex Staff", slot: "weapon", type: "Staff", rarity: "Rare",
         offense: 9, attackRange: 5, value: 180, spriteId: "weap_bogwood_staff",
         handedness: "two", twoHanded: true, animationFamily: "cast",
+        combatIdentity: EquipmentCombatIdentities.staff,
         combat: {
             standard: { actionType: "spell", spellId: "arcane_bolt", range: 5, staminaCost: 6, multiplier: 1.0, animType: "cast", desc: "Cast a reliable single-target Arcane Bolt." },
-            special: { name: "Poison Shot", actionType: "spell", spellId: "poison_shot", range: 5, staminaCost: 15, multiplier: 1.0, targetType: "single", animType: "cast", desc: "Thread poison through a line and try to infect each target hit." }
+            special: { name: "Poison Shot", actionType: "spell", spellId: "poison_shot", range: 5, staminaCost: 15, multiplier: 1.0, targetType: "single", channelled: true, interruptible: true, endsTurn: true, telegraphShape: "line", controlEffect: "poison", animType: "cast", desc: "Channel a marked lane and thread poison through each target caught in it." }
         }
     },
     "stormcaller_staff": {
         id: "stormcaller_staff", name: "Stormcaller Tapstaff", slot: "weapon", type: "Staff", rarity: "Epic",
         offense: 14, attackRange: 5, value: 360, spriteId: "weap_stormcaller_staff",
         handedness: "two", twoHanded: true, animationFamily: "cast",
+        combatIdentity: EquipmentCombatIdentities.staff,
         combat: {
             standard: { actionType: "spell", spellId: "frost_lance", range: 5, staminaCost: 16, multiplier: 1.0, animType: "cast", desc: "Pierce a lane with a cold lance." },
-            special: { name: "Storm Burst", actionType: "spell", spellId: "storm_burst", targetType: "aoe", aoeShape: "radius", aoeRadius: 1, range: 4, staminaCost: 28, multiplier: 1.0, animType: "cast", desc: "Call lightning into a 3x3 target area." }
+            special: { name: "Storm Burst", actionType: "spell", spellId: "storm_burst", targetType: "aoe", aoeShape: "radius", aoeRadius: 1, range: 4, staminaCost: 28, multiplier: 1.0, channelled: true, interruptible: true, endsTurn: true, telegraphShape: "radius", animType: "cast", desc: "Channel over a marked 3x3 area before calling down lightning." }
         }
     },
     "last_call_voidstaff": {
         id: "last_call_voidstaff", name: "Last Call Voidstaff", slot: "weapon", type: "Staff", rarity: "Relic",
         offense: 24, attackRange: 5, value: 1500, spriteId: "weap_last_call_voidstaff",
         handedness: "two", twoHanded: true, animationFamily: "cast",
+        combatIdentity: EquipmentCombatIdentities.staff,
         combat: {
             standard: { actionType: "spell", spellId: "shadow_sear", range: 5, staminaCost: 14, multiplier: 1.0, animType: "cast", desc: "Sear one enemy with dark magic." },
-            special: { name: "Storm Burst", actionType: "spell", spellId: "storm_burst", targetType: "aoe", aoeShape: "radius", aoeRadius: 1, range: 4, staminaCost: 28, multiplier: 1.0, animType: "cast", desc: "Open a violent 3x3 storm at target location." }
+            special: { name: "Void Burst", actionType: "spell", spellId: "storm_burst", targetType: "aoe", aoeShape: "radius", aoeRadius: 1, range: 4, staminaCost: 28, multiplier: 1.0, channelled: true, interruptible: true, endsTurn: true, telegraphShape: "radius", animType: "cast", desc: "Channel over a marked 3x3 area before tearing it open with void energy." }
         }
     },
     // === GAMBLE CRATES ===
@@ -457,5 +515,5 @@ function getItem(itemId) {
 
 // === NODE.JS EXPORT BRIDGE ===
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { ItemDatabase, getItem };
+    module.exports = { ItemDatabase, getItem, EquipmentCombatIdentities };
 }

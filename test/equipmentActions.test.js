@@ -137,7 +137,7 @@ test('each shield exposes normalized block and bash actions after the weapon spe
             {
                 id: 'shield_block',
                 name: 'Shield Block',
-                description: 'Brace behind the equipped shield and guard against the next attack.',
+                description: 'Raise the equipped shield, end the turn, and hold a blocking stance that stops the next incoming attack.',
                 equipmentSlot: 'offhand',
                 itemId,
                 itemName: ItemDatabase[itemId].name,
@@ -160,7 +160,7 @@ test('each shield exposes normalized block and bash actions after the weapon spe
             {
                 id: 'shield_bash',
                 name: 'Shield Bash',
-                description: 'Drive the equipped shield into an adjacent enemy.',
+                description: 'Drive the equipped shield into an adjacent enemy, interrupt its wind-up, and push it back one clear tile.',
                 equipmentSlot: 'offhand',
                 itemId,
                 itemName: ItemDatabase[itemId].name,

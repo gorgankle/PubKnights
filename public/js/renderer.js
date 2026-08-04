@@ -18,6 +18,98 @@ const COMBAT_OVERLAY_STYLE = Object.freeze({
     selectedInner: "#ff2525"
 });
 
+function getCombatIntentActors() {
+    const hostileActors = [
+        ...(typeof enemies !== 'undefined' && Array.isArray(enemies)
+            ? enemies
+            : []),
+        ...(typeof rogues !== 'undefined' && Array.isArray(rogues)
+            ? rogues
+            : [])
+    ];
+    return hostileActors.filter(actor => (
+        actor
+        && actor.alive !== false
+        && actor.pendingIntent
+        && typeof actor.pendingIntent === 'object'
+    ));
+}
+
+function drawEnemyIntentOverlays(cols, rows) {
+    const pulse = 0.55 + ((Math.sin(globalAnimClock * 0.14) + 1) * 0.18);
+    getCombatIntentActors().forEach(actor => {
+        const intent = actor.pendingIntent;
+        const tiles = Array.isArray(intent.targetTiles)
+            ? intent.targetTiles
+            : [];
+        tiles.forEach(tile => {
+            const tileX = Math.trunc(Number(tile && tile.x));
+            const tileY = Math.trunc(Number(tile && tile.y));
+            if (
+                !Number.isFinite(tileX)
+                || !Number.isFinite(tileY)
+                || tileX < 0
+                || tileY < 0
+                || tileX >= cols
+                || tileY >= rows
+            ) {
+                return;
+            }
+
+            const px = tileX * currentTileSize;
+            const py = tileY * currentTileSize;
+            ctx.save();
+            ctx.globalAlpha = pulse;
+            ctx.fillStyle = intent.powerful
+                ? 'rgba(185, 28, 28, 0.46)'
+                : 'rgba(217, 119, 6, 0.38)';
+            ctx.fillRect(px + 2, py + 2, currentTileSize - 4, currentTileSize - 4);
+            ctx.strokeStyle = intent.powerful ? '#ff6b4a' : '#f6c453';
+            ctx.lineWidth = Math.max(2, currentTileSize * 0.045);
+            ctx.setLineDash([
+                Math.max(4, currentTileSize * 0.12),
+                Math.max(3, currentTileSize * 0.07)
+            ]);
+            ctx.strokeRect(px + 5, py + 5, currentTileSize - 10, currentTileSize - 10);
+            ctx.setLineDash([]);
+            ctx.fillStyle = '#fff2c7';
+            ctx.font = `bold ${Math.max(12, Math.floor(currentTileSize * 0.28))}px Courier New`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.shadowColor = '#210b08';
+            ctx.shadowBlur = 3;
+            ctx.fillText('!', px + (currentTileSize / 2), py + (currentTileSize / 2));
+            ctx.restore();
+        });
+    });
+}
+
+function drawEnemyIntentBadge(actor, size = 1) {
+    const intent = actor && actor.pendingIntent;
+    if (!intent) return;
+    const visualX = Number.isFinite(actor.visualX) ? actor.visualX : actor.x;
+    const visualY = Number.isFinite(actor.visualY) ? actor.visualY : actor.y;
+    const label = String(intent.label || 'Powerful attack');
+    const compactLabel = label.length > 18 ? `${label.slice(0, 17)}…` : label;
+    const fontSize = Math.max(9, Math.floor(currentTileSize * 0.15));
+    ctx.save();
+    ctx.font = `bold ${fontSize}px Courier New`;
+    const text = `! ${compactLabel}`;
+    const width = Math.ceil(ctx.measureText(text).width) + 10;
+    const centerX = (visualX + (size / 2)) * currentTileSize;
+    const topY = Math.max(2, (visualY * currentTileSize) - fontSize - 8);
+    ctx.fillStyle = 'rgba(28, 12, 9, 0.92)';
+    ctx.strokeStyle = intent.powerful ? '#ff6b4a' : '#f6c453';
+    ctx.lineWidth = 1;
+    ctx.fillRect(centerX - (width / 2), topY, width, fontSize + 6);
+    ctx.strokeRect(centerX - (width / 2), topY, width, fontSize + 6);
+    ctx.fillStyle = '#fff2c7';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, centerX, topY + ((fontSize + 6) / 2));
+    ctx.restore();
+}
+
 function getCombatTargetProfile() {
     const activeWeapon = typeof getActiveCombatantWeapon === 'function'
         ? getActiveCombatantWeapon()
@@ -644,6 +736,10 @@ if (SpriteMatrices[groundSprite]) {
         }
     }
 
+    // Enemy warnings live beneath actors and player targeting strokes, so
+    // marked danger remains readable without obscuring the paper dolls.
+    drawEnemyIntentOverlays(cols, rows);
+
 mapObstacles.forEach(o => {
         if (o.spriteId && SpriteMatrices[o.spriteId]) {
             // === GPU RASTER SWAP ===
@@ -958,6 +1054,7 @@ renderGridHealthBar(player.visualX, player.visualY - (playerHopY / currentTileSi
                 e.maxStamina,
                 e.visualAtb
             );
+            drawEnemyIntentBadge(e, sSize);
         }
     });
 
@@ -1188,6 +1285,15 @@ function buildNpcTooltipHtml(mob) {
     const speed = Number.isFinite(mob.speed) ? mob.speed : 0;
     const attackRange = Number.isFinite(mob.attackRange) ? mob.attackRange : 1;
     const npcType = mob.type || "ENEMY";
+    const intent = mob.pendingIntent && typeof mob.pendingIntent === 'object'
+        ? mob.pendingIntent
+        : null;
+    const intentHtml = intent
+        ? `<br><b style="color:#ff8a65;">Intent:</b> ${String(intent.label || 'Powerful attack')}` +
+          `<br><b>Counterplay:</b> ${Array.isArray(intent.counterplay) && intent.counterplay.length
+              ? intent.counterplay.join(', ')
+              : 'Move, defend, or interrupt'}`
+        : '';
 
     return `<h3>${mob.name}</h3>` +
            `<b>Type:</b> ${npcType}<br>` +
@@ -1196,7 +1302,8 @@ function buildNpcTooltipHtml(mob) {
            `<b>Offense:</b> ${offense}<br>` +
            `<b>Defense:</b> ${defense}<br>` +
            `<b>Speed:</b> ${speed}<br>` +
-           `<b>Attack Range:</b> ${attackRange} Tile(s)`;
+           `<b>Attack Range:</b> ${attackRange} Tile(s)` +
+           intentHtml;
 }
 
 canvas.addEventListener("mouseleave", function() {

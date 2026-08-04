@@ -6,7 +6,7 @@
 	<!-- NEW: Mobile Viewport Scaling -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Pub Knights - Beta v0.9(Modular Refactor)</title>
-    <link rel="stylesheet" href="style.css?v=6">
+    <link rel="stylesheet" href="style.css?v=9">
 	
 	<!-- === NEW: MOBILE DRAG & DROP POLYFILL === -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/default.css">
@@ -142,12 +142,13 @@
             
             <div id="combat-top-bars" style="margin-bottom: 12px;"></div>
             
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+            <div class="combat-primary-actions">
                 <button id="slash-btn" onclick="executeCombatAction('slash')" style="padding: 12px; font-size: 15px;" onmouseenter="showSystemTooltip('combat_slash', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Standard Attack</button>
-                <button id="equipment-attacks-btn" type="button" onclick="toggleEquipmentAttackMenu()" aria-expanded="false" aria-controls="equipment-attack-menu" style="padding: 12px; font-size: 15px;" onmouseenter="showSystemTooltip('combat_equipment_attacks', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Equipment Attacks</button>
+                <div id="equipment-attack-control" class="equipment-attack-control">
+                    <button id="equipment-attacks-btn" type="button" onclick="toggleEquipmentAttackMenu()" aria-haspopup="menu" aria-expanded="false" aria-controls="equipment-attack-menu" style="padding: 12px; font-size: 15px;" onmouseenter="showSystemTooltip('combat_equipment_attacks', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">Equipment Attacks</button>
+                    <div id="equipment-attack-menu" class="equipment-attack-menu" role="menu" aria-labelledby="equipment-attacks-btn" hidden></div>
+                </div>
             </div>
-
-            <div id="equipment-attack-menu" class="equipment-attack-menu" role="region" aria-label="Available equipment attacks" hidden></div>
             
             <div id="combat-inventory-list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;"></div>
             
@@ -336,6 +337,37 @@
 <div id="knight-screen" class="panel" style="display: none; width: 100%; margin-bottom: 0; min-height: 486px; flex-direction: column; gap: 10px;">
     
     <div id="level-up-panel" style="margin-bottom: 0;"></div>
+
+    <section id="tavern-return-report" class="dashboard-panel tavern-return-report" aria-live="polite" hidden>
+        <div class="tavern-return-heading">
+            <div>
+                <span class="tavern-return-kicker">Latest word at the bar</span>
+                <h3 id="tavern-return-title">Back at the Pub</h3>
+                <p id="tavern-return-summary"></p>
+            </div>
+            <div class="tavern-return-actions">
+                <button type="button" onclick="reviewTavernCrewGear()">Review Crew Gear</button>
+                <button type="button" onclick="openTavernAdventureBoard()">Open Contract Board</button>
+            </div>
+        </div>
+        <div class="tavern-return-body">
+            <div class="tavern-return-comment">
+                <canvas id="tavern-return-kreg-canvas" width="64" height="64" aria-label="Kreg"></canvas>
+                <div><strong>Kreg</strong><p id="tavern-return-kreg-copy"></p></div>
+            </div>
+            <div id="tavern-return-companion" class="tavern-return-comment" hidden>
+                <span class="tavern-return-crew-mark" aria-hidden="true">M</span>
+                <div><strong id="tavern-return-companion-name">Mercenary</strong><p id="tavern-return-companion-copy"></p></div>
+            </div>
+            <dl class="tavern-return-facts">
+                <dt>Road</dt><dd id="tavern-return-route"></dd>
+                <dt>Danger</dt><dd id="tavern-return-danger"></dd>
+                <dt>Encounter</dt><dd id="tavern-return-encounter"></dd>
+                <dt>Enemies</dt><dd id="tavern-return-enemies"></dd>
+            </dl>
+            <ul id="tavern-return-contracts" class="tavern-return-contracts" hidden></ul>
+        </div>
+    </section>
 
     <div class="knight-dashboard-grid">
 
@@ -777,9 +809,9 @@
     <!-- Data-Driven Loot & Economy Layer -->
 	<script src="js/spells.js"></script>
 	<script src="js/aura-assets.js"></script>
-	<script src="js/items.js?v=5"></script>
-	<script src="js/equipment-actions.js?v=1"></script>
-	<script src="js/npc-database.js?v=5"></script>
+	<script src="js/items.js?v=6"></script>
+	<script src="js/equipment-actions.js?v=2"></script>
+	<script src="js/npc-database.js?v=6"></script>
 	<script src="js/lootTables.js?v=3"></script>
 
 
@@ -794,21 +826,21 @@
 	<script src="js/icon-assets.js?v=2"></script>
 <script src="js/sprite-overhaul.js?v=17"></script>
 <script src="js/sprite-overhaul-equipment.js?v=41"></script>
-<script src="js/sprite-overhaul-animation.js?v=36"></script>
+<script src="js/sprite-overhaul-animation.js?v=37"></script>
 <script src="js/humanoid-actor-visuals.js?v=8"></script>
-<script src="js/combat-animation.js?v=8"></script>
+<script src="js/combat-animation.js?v=10"></script>
     <script src="js/sprite-overhaul-world.js?v=3"></script>
     <script src="js/sprite-overhaul-icons.js?v=2"></script>
 	<script src="/socket.io/socket.io.js"></script>
 
-    <script src="js/main.js?v=17"></script>
+    <script src="js/main.js?v=19"></script>
     <script src="js/inventory.js?v=6"></script>
 
 <!-- UI, Tooltips & Graphics Output -->
     <script src="js/ui-tooltips.js?v=6"></script>
     <script src="js/companion-ui.js?v=5"></script>
-    <script src="js/ui-render.js?v=12"></script>
-    <script src="js/renderer.js?v=13"></script>       <!-- RENDERS DATA -->
+    <script src="js/ui-render.js?v=15"></script>
+    <script src="js/renderer.js?v=14"></script>       <!-- RENDERS DATA -->
 	<script src="js/fx-engine.js?v=3"></script>
 	<script src="js/dialogue.js?v=4"></script>
 	<script src="js/social.js?v=4"></script>
@@ -817,8 +849,8 @@
 <!-- Game Systems & Logic -->
     <script src="js/login.js"></script>
     <script src="js/combat-maps.js"></script>
-    <script src="js/expeditions.js?v=1"></script>
-    <script src="js/combat-mechanics.js?v=11"></script>
+    <script src="js/expeditions.js?v=3"></script>
+    <script src="js/combat-mechanics.js?v=15"></script>
     <script src="js/town-actions.js?v=3"></script>
 	<script src="js/minigames.js"></script>
 	<script src="js/spellbook.js"></script> 

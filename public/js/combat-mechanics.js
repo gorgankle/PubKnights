@@ -270,16 +270,26 @@ function getEquipmentAttackDisabledReason(action, options = {}) {
         return 'Awaiting action phase.';
     }
     const activeActor = getActiveCombatant();
-    if (
-        action.id === 'shield_block'
-        && activeActor
-        && activeActor.guardState
-        && Math.max(
-            0,
-            Math.trunc(Number(activeActor.guardState.charges) || 0)
-        ) > 0
-    ) {
-        return 'Shield Block is already active.';
+    if (activeActor) {
+        const rules = action.rules && typeof action.rules === 'object'
+            ? action.rules
+            : action;
+        const guardType = String(
+            action.guardType || rules.guardType || ''
+        ).toLowerCase();
+        const reactionState = guardType === 'evasion'
+            ? activeActor.evasionState
+            : activeActor.guardState;
+        if (
+            action.actionType === 'guard'
+            && reactionState
+            && Math.max(
+                0,
+                Math.trunc(Number(reactionState.charges) || 0)
+            ) > 0
+        ) {
+            return `${action.name} is already active.`;
+        }
     }
     const staminaCost = Math.max(0, Number(action.staminaCost) || 0);
     const stamina = Math.max(0, Number(getActiveCombatantStamina()) || 0);
@@ -300,6 +310,75 @@ function closeEquipmentAttackMenu() {
     equipmentAttackMenuOpen = false;
     equipmentAttackMenuActorUid = null;
     updateEquipmentAttackMenuDom(false);
+}
+
+function getEquipmentAttackMenuItems() {
+    const menu = document.getElementById('equipment-attack-menu');
+    if (!menu || typeof menu.querySelectorAll !== 'function') return [];
+    return Array.from(menu.querySelectorAll('[role="menuitem"]'));
+}
+
+function focusEquipmentAttackMenuItem(index = 0) {
+    const items = getEquipmentAttackMenuItems();
+    if (items.length === 0) return false;
+    const normalizedIndex = ((Math.trunc(Number(index)) || 0) % items.length + items.length) % items.length;
+    items.forEach((item, itemIndex) => {
+        item.tabIndex = itemIndex === normalizedIndex ? 0 : -1;
+    });
+    const item = items[normalizedIndex];
+    if (item && typeof item.focus === 'function') item.focus();
+    return true;
+}
+
+function handleEquipmentAttackPopoverDocumentClick(event) {
+    if (!equipmentAttackMenuOpen) return;
+    const control = document.getElementById('equipment-attack-control');
+    if (
+        control
+        && event
+        && typeof control.contains === 'function'
+        && control.contains(event.target)
+    ) {
+        return;
+    }
+    closeEquipmentAttackMenu();
+    if (typeof refreshSystemUI === 'function') refreshSystemUI();
+}
+
+function handleEquipmentAttackPopoverKeydown(event) {
+    if (!equipmentAttackMenuOpen || !event) return;
+    if (event.key === 'Escape') {
+        if (typeof event.preventDefault === 'function') event.preventDefault();
+        closeEquipmentAttackMenu();
+        if (typeof refreshSystemUI === 'function') refreshSystemUI();
+        const button = document.getElementById('equipment-attacks-btn');
+        if (button && typeof button.focus === 'function') button.focus();
+        return;
+    }
+
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+    const items = getEquipmentAttackMenuItems();
+    if (items.length === 0) return;
+    if (typeof event.preventDefault === 'function') event.preventDefault();
+    const currentIndex = items.indexOf(document.activeElement);
+    if (event.key === 'Home') focusEquipmentAttackMenuItem(0);
+    else if (event.key === 'End') focusEquipmentAttackMenuItem(items.length - 1);
+    else if (event.key === 'ArrowDown') focusEquipmentAttackMenuItem(currentIndex < 0 ? 0 : currentIndex + 1);
+    else focusEquipmentAttackMenuItem(currentIndex < 0 ? items.length - 1 : currentIndex - 1);
+}
+
+if (
+    typeof document !== 'undefined'
+    && typeof document.addEventListener === 'function'
+) {
+    document.addEventListener(
+        'click',
+        handleEquipmentAttackPopoverDocumentClick
+    );
+    document.addEventListener(
+        'keydown',
+        handleEquipmentAttackPopoverKeydown
+    );
 }
 
 function resetEquipmentAttackUiState(options = {}) {
@@ -346,6 +425,14 @@ function toggleEquipmentAttackMenu() {
         if (typeof playRetroSound === 'function') playRetroSound('menu');
     }
     refreshSystemUI();
+    if (equipmentAttackMenuOpen) {
+        focusEquipmentAttackMenuItem(0);
+        if (typeof requestAnimationFrame === 'function') {
+            requestAnimationFrame(() => {
+                if (equipmentAttackMenuOpen) focusEquipmentAttackMenuItem(0);
+            });
+        }
+    }
 }
 
 function beginEquipmentAttackTargeting(action) {

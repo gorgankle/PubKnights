@@ -173,7 +173,7 @@ function pinSuccessfulAttack(t) {
     t.after(() => { Math.random = originalRandom; });
 }
 
-test('player shield block resolves from the live offhand, spends one action, and locks playback', () => {
+test('player shield block ends the turn, holds one guard charge, and locks playback', () => {
     const harness = createActorHarness();
 
     harness.socket.dispatch('dispatchCombatAction', {
@@ -192,30 +192,31 @@ test('player shield block resolves from the live offhand, spends one action, and
     assert.equal(result.action.itemId, 'round_shield');
     assert.equal(result.action.clipId, 'shield_block');
     assert.equal(result.guarded, true);
-    assert.equal(result.actionsRemaining, 1);
+    assert.equal(result.actionsRemaining, 0);
+    assert.equal(result.turnComplete, true);
     assert.equal(harness.player.stamina, 40);
     assert.equal(harness.playerActor.stamina, 40);
     assert.equal(harness.playerActor.guardState.charges, 1);
+    assert.equal(harness.playerActor.atbCharge, 0);
+    assert.equal(harness.combat.activeActorUid, null);
+    assert.equal(harness.combat.atbPaused, false);
+    assert.equal(harness.combat.actionsRemaining, 0);
     assert.match(result.playbackId, /^combat-playback-\d+$/);
     assert.equal(harness.combat.playbackLock, true);
 });
 
-test('changing away from the guarding shield clears its actor-local guard', () => {
+test('changing away from a seeded guarding shield clears its actor-local guard', () => {
     const harness = createActorHarness({
         inventory: [cloneItem('hunter_bow')]
     });
-    harness.socket.dispatch('dispatchCombatAction', {
-        actionCategory: 'equipmentAttack',
+    harness.playerActor.guardState = {
+        type: 'shield_block',
+        charges: 1,
         equipmentSlot: 'offhand',
-        actionId: 'shield_block',
         itemId: 'round_shield'
-    });
-    const guardResult = harness.socket.lastPayload('combatResult');
-    assert.ok(harness.playerActor.guardState);
-
-    harness.socket.dispatch('clientPlaybackComplete', {
-        playbackId: guardResult.playbackId
-    });
+    };
+    harness.combat.actionsRemaining = 1;
+    harness.combat.actionsTaken = 1;
     harness.socket.dispatch('dispatchCombatAction', {
         actionCategory: 'equip',
         invIndex: 0
@@ -227,6 +228,36 @@ test('changing away from the guarding shield clears its actor-local guard', () =
     assert.equal(harness.player.equipment.offhand, null);
     assert.equal(harness.playerActor.guardState, undefined);
     assert.equal(harness.combat.actionsRemaining, 0);
+});
+
+test('companion Shield Block forfeits its remaining credit without Pass recovery', () => {
+    const harness = createActorHarness({
+        activeKind: 'companion',
+        companionEquipment: {
+            weapon: cloneItem('rusty_mace'),
+            offhand: cloneItem('round_shield')
+        },
+        companionStamina: 50
+    });
+    harness.combat.actionsRemaining = 1;
+    harness.combat.actionsTaken = 1;
+
+    harness.socket.dispatch('dispatchCombatAction', {
+        actionCategory: 'equipmentAttack',
+        equipmentSlot: 'offhand',
+        actionId: 'shield_block',
+        itemId: 'round_shield'
+    });
+
+    const result = harness.socket.lastPayload('combatResult');
+    assert.equal(result.type, 'guard');
+    assert.equal(result.actorUid, harness.companion.uid);
+    assert.equal(result.actionsRemaining, 0);
+    assert.equal(result.turnComplete, true);
+    assert.equal(harness.companion.stamina, 40);
+    assert.equal(harness.companion.guardState.charges, 1);
+    assert.equal(harness.combat.activeActorUid, null);
+    assert.equal(harness.combat.atbPaused, false);
 });
 
 test('shield bash and legacy weapon special carry authoritative action descriptors', async t => {
@@ -633,4 +664,193 @@ test('rejected combat equip includes recovery state and town inventory cannot by
     assert.match(inventoryReceipt.message, /locked during combat/i);
     assert.equal(townPlayer.equipment.weapon, null);
     assert.deepEqual(townPlayer.inventory.map(item => item.id), ['rusty_mace']);
+});
+
+test('dagger Evasive Feint ends the turn and the next AI attack consumes only that actor reaction', t => {
+    pinSuccessfulAttack(t);
+    const harness = createActorHarness({
+        playerEquipment: {
+            weapon: cloneItem('mimic_fang_dagger'),
+            offhand: null
+        }
+    });
+
+    harness.socket.dispatch('dispatchCombatAction', {
+        actionCategory: 'equipmentAttack',
+        equipmentSlot: 'weapon',
+        actionId: 'special',
+        itemId: 'mimic_fang_dagger'
+    });
+
+    const result = harness.socket.lastPayload('combatResult');
+    assert.equal(result.type, 'guard');
+    assert.equal(result.reactionType, 'evade');
+    assert.equal(result.evading, true);
+    assert.equal(result.turnComplete, true);
+    assert.equal(harness.playerActor.guardState, undefined);
+    assert.equal(harness.playerActor.evasionState.type, 'evade');
+    assert.equal(harness.combat.activeActorUid, null);
+
+    harness.enemy.attackRange = 1;
+    harness.enemy.attackStaminaCost = 5;
+    const events = executeActorTurn(
+        harness.socket.id,
+        harness.combat,
+        harness.player,
+        harness.enemy,
+        harness.activeCombats,
+        () => ({ combatComplete: false })
+    );
+    assert.equal(events[0].type, 'deflect');
+    assert.equal(events[0].deflectReason, 'evade_stance');
+    assert.equal(events[0].evaded, true);
+    assert.equal(harness.playerActor.evasionState, undefined);
+    assert.equal(harness.player.hp, 100);
+});
+
+test('Driving Thrust forcibly interrupts a heavy intent and pushes the target one clear tile', t => {
+    pinSuccessfulAttack(t);
+    const harness = createActorHarness({
+        playerEquipment: {
+            weapon: cloneItem('hunters_spear'),
+            offhand: null
+        }
+    });
+    harness.enemy.x = 4;
+    harness.enemy.y = 2;
+    harness.enemy.pendingIntent = {
+        intentId: 'intent_heavy_test',
+        actionId: 'crushing_swing',
+        label: 'Crushing Swing',
+        clipId: 'heavy',
+        interruptible: false,
+        targetTiles: [{ x: 2, y: 2 }],
+        counterplay: ['block', 'reposition']
+    };
+
+    harness.socket.dispatch('dispatchCombatAction', {
+        actionCategory: 'equipmentAttack',
+        equipmentSlot: 'weapon',
+        actionId: 'special',
+        itemId: 'hunters_spear',
+        targetEnemy: { uid: harness.enemy.uid }
+    });
+
+    const result = harness.socket.lastPayload('combatResult');
+    assert.equal(result.type, 'hit');
+    assert.equal(result.action.interruptsIntent, true);
+    assert.equal(result.targets[0].interruptedIntent.intentId, 'intent_heavy_test');
+    assert.equal(result.targets[0].pushed.x, 5);
+    assert.equal(harness.enemy.x, 5);
+    assert.equal(harness.enemy.pendingIntent, undefined);
+    assert.equal(harness.combat.actionsRemaining, 1);
+});
+
+test('Parting Shot withdraws after firing while a blocked retreat stays in place', t => {
+    pinSuccessfulAttack(t);
+    const harness = createActorHarness({
+        playerEquipment: {
+            weapon: cloneItem('hunter_bow'),
+            offhand: null
+        }
+    });
+    harness.enemy.x = 4;
+    harness.enemy.y = 2;
+
+    harness.socket.dispatch('dispatchCombatAction', {
+        actionCategory: 'equipmentAttack',
+        equipmentSlot: 'weapon',
+        actionId: 'special',
+        itemId: 'hunter_bow',
+        targetEnemy: { uid: harness.enemy.uid }
+    });
+
+    const result = harness.socket.lastPayload('combatResult');
+    assert.equal(result.type, 'hit');
+    assert.deepEqual(result.reposition, {
+        fromX: 2,
+        fromY: 2,
+        x: 1,
+        y: 2
+    });
+    assert.equal(harness.playerActor.x, 1);
+    assert.equal(harness.combat.player.x, 1);
+
+    const blocked = createActorHarness({
+        playerEquipment: {
+            weapon: cloneItem('hunter_bow'),
+            offhand: null
+        }
+    });
+    blocked.enemy.x = 4;
+    blocked.enemy.y = 2;
+    blocked.combat.obstacles = [
+        { x: 1, y: 2 },
+        { x: 2, y: 1 },
+        { x: 2, y: 3 }
+    ];
+    blocked.socket.dispatch('dispatchCombatAction', {
+        actionCategory: 'equipmentAttack',
+        equipmentSlot: 'weapon',
+        actionId: 'special',
+        itemId: 'hunter_bow',
+        targetEnemy: { uid: blocked.enemy.uid }
+    });
+    assert.equal(blocked.socket.lastPayload('combatResult').reposition, null);
+    assert.equal(blocked.playerActor.x, 2);
+});
+
+test('heavy and channelled staff specials commit the remainder of the turn', t => {
+    pinSuccessfulAttack(t);
+    for (const caseData of [
+        { itemId: 'tankard_maul', enemyX: 3 },
+        { itemId: 'apprentice_staff', enemyX: 4 }
+    ]) {
+        const harness = createActorHarness({
+            socketId: `commit_${caseData.itemId}`,
+            playerEquipment: {
+                weapon: cloneItem(caseData.itemId),
+                offhand: null
+            }
+        });
+        harness.enemy.x = caseData.enemyX;
+        harness.enemy.y = 2;
+        harness.enemy.defense = 999;
+        harness.socket.dispatch('dispatchCombatAction', {
+            actionCategory: 'equipmentAttack',
+            equipmentSlot: 'weapon',
+            actionId: 'special',
+            itemId: caseData.itemId,
+            targetEnemy: { uid: harness.enemy.uid }
+        });
+        const result = harness.socket.lastPayload('combatResult');
+        assert.equal(result.type, 'hit', caseData.itemId);
+        assert.equal(result.action.endsTurn, true, caseData.itemId);
+        assert.equal(harness.combat.actionsRemaining, 0, caseData.itemId);
+        assert.equal(harness.combat.activeActorUid, null, caseData.itemId);
+    }
+});
+
+test('player attacks consume an enemy shield guard before hit math', () => {
+    const harness = createActorHarness();
+    harness.enemy.guardState = {
+        type: 'shield_block',
+        charges: 1,
+        actionId: 'shield_block',
+        equipmentSlot: 'offhand',
+        itemId: 'captains_shield'
+    };
+
+    harness.socket.dispatch('dispatchCombatAction', {
+        actionCategory: 'weapon',
+        subType: 'slash',
+        targetEnemy: { uid: harness.enemy.uid }
+    });
+
+    const result = harness.socket.lastPayload('combatResult');
+    assert.equal(result.type, 'miss');
+    assert.equal(result.deflectReason, 'shield_block');
+    assert.equal(result.guarded, true);
+    assert.equal(harness.enemy.guardState, undefined);
+    assert.equal(harness.enemy.hp, harness.enemy.maxHp);
 });

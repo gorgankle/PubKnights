@@ -16,6 +16,10 @@ const rendererSource = fs.readFileSync(
     path.join(root, 'public', 'js', 'renderer.js'),
     'utf8'
 );
+const uiRenderSource = fs.readFileSync(
+    path.join(root, 'public', 'js', 'ui-render.js'),
+    'utf8'
+);
 const mainSource = fs.readFileSync(
     path.join(root, 'public', 'js', 'main.js'),
     'utf8'
@@ -50,10 +54,24 @@ function extractSocketHandler(source, eventName) {
 function createCombatClient({ equipment, stamina = 40, actorKind = 'player' }) {
     const emitted = [];
     const logs = [];
-    const menu = { hidden: true };
+    const listeners = {};
+    let refreshCount = 0;
+    let fakeDocument = null;
+    const menu = {
+        hidden: true,
+        items: [],
+        querySelectorAll() { return this.items; }
+    };
     const menuButton = {
         attributes: {},
-        setAttribute(name, value) { this.attributes[name] = value; }
+        focused: false,
+        setAttribute(name, value) { this.attributes[name] = value; },
+        focus() { this.focused = true; }
+    };
+    const menuControl = {
+        contains(target) {
+            return target === this || target === menu || target === menuButton;
+        }
     };
     const player = {
         uid: 'player_0',
@@ -79,6 +97,18 @@ function createCombatClient({ equipment, stamina = 40, actorKind = 'player' }) {
             speed: 3,
             equipment
         };
+    fakeDocument = {
+        activeElement: null,
+        getElementById(id) {
+            if (id === 'equipment-attack-menu') return menu;
+            if (id === 'equipment-attacks-btn') return menuButton;
+            if (id === 'equipment-attack-control') return menuControl;
+            return null;
+        },
+        addEventListener(eventName, handler) {
+            listeners[eventName] = handler;
+        }
+    };
     const globals = {
         EquipmentActionContract,
         player,
@@ -97,13 +127,7 @@ function createCombatClient({ equipment, stamina = 40, actorKind = 'player' }) {
         enemies: [],
         allies: [],
         rogues: [],
-        document: {
-            getElementById(id) {
-                if (id === 'equipment-attack-menu') return menu;
-                if (id === 'equipment-attacks-btn') return menuButton;
-                return null;
-            }
-        },
+        document: fakeDocument,
         window: {},
         socket: {
             emit(eventName, payload) { emitted.push({ eventName, payload }); }
@@ -124,7 +148,7 @@ function createCombatClient({ equipment, stamina = 40, actorKind = 'player' }) {
             return { inRange, lineClear: true, valid: inRange };
         },
         getPlayerAttackables() { return globals.enemies; },
-        refreshSystemUI() {},
+        refreshSystemUI() { refreshCount++; },
         drawGrid() {},
         logMessage(message) { logs.push(message); },
         playRetroSound() {},
@@ -173,10 +197,32 @@ function createCombatClient({ equipment, stamina = 40, actorKind = 'player' }) {
         };`,
         context
     );
-    return { context, api: context.clientApi, emitted, logs, player, menu };
+    return {
+        context,
+        api: context.clientApi,
+        emitted,
+        logs,
+        listeners,
+        player,
+        menu,
+        menuButton,
+        menuControl,
+        makeMenuItem() {
+            return {
+                tabIndex: -1,
+                focused: false,
+                focus() {
+                    menu.items.forEach(item => { item.focused = false; });
+                    this.focused = true;
+                    fakeDocument.activeElement = this;
+                }
+            };
+        },
+        get refreshCount() { return refreshCount; }
+    };
 }
 
-test('combat page loads the shared contract and exposes an inline Equipment Attacks menu', () => {
+test('combat page loads the shared contract and exposes an upward Equipment Attacks popover', () => {
     const html = fs.readFileSync(path.join(root, 'public', 'index.html'), 'utf8');
     const css = fs.readFileSync(path.join(root, 'public', 'style.css'), 'utf8');
 
@@ -184,18 +230,94 @@ test('combat page loads the shared contract and exposes an inline Equipment Atta
         html.indexOf('js/equipment-actions.js') < html.indexOf('js/main.js'),
         'equipment contract must load before combat consumers'
     );
-    assert.match(html, /id="equipment-attacks-btn"[^>]*>Equipment Attacks<\/button>/);
-    assert.match(html, /id="equipment-attack-menu"[^>]*hidden/);
+    const controlIndex = html.indexOf('id="equipment-attack-control"');
+    const buttonIndex = html.indexOf('id="equipment-attacks-btn"');
+    const menuIndex = html.indexOf('id="equipment-attack-menu"');
+    assert.ok(controlIndex >= 0 && controlIndex < buttonIndex);
+    assert.ok(buttonIndex < menuIndex);
+    assert.match(html, /id="equipment-attacks-btn"[^>]*aria-haspopup="menu"[^>]*>Equipment Attacks<\/button>/);
+    assert.match(html, /id="equipment-attack-menu"[^>]*role="menu"[^>]*hidden/);
+    assert.match(uiRenderSource, /heading\.setAttribute\('role', 'presentation'\)/);
+    assert.match(uiRenderSource, /option\.setAttribute\('aria-disabled'/);
     assert.doesNotMatch(html, /id="heavy-btn"/);
-    assert.match(html, /href="style\.css\?v=6"/);
-    assert.match(html, /src="js\/items\.js\?v=5"/);
-    assert.match(html, /src="js\/main\.js\?v=17"/);
+    assert.match(html, /href="style\.css\?v=9"/);
+    assert.match(html, /src="js\/items\.js\?v=6"/);
+    assert.match(html, /src="js\/main\.js\?v=19"/);
     assert.match(html, /src="js\/ui-tooltips\.js\?v=6"/);
-    assert.match(html, /src="js\/ui-render\.js\?v=12"/);
-    assert.match(html, /src="js\/renderer\.js\?v=13"/);
-    assert.match(html, /src="js\/combat-mechanics\.js\?v=11"/);
-    assert.match(css, /\.equipment-attack-menu\s*\{/);
+    assert.match(html, /src="js\/ui-render\.js\?v=15"/);
+    assert.match(html, /src="js\/renderer\.js\?v=14"/);
+    assert.match(html, /src="js\/combat-animation\.js\?v=10"/);
+    assert.match(html, /src="js\/combat-mechanics\.js\?v=15"/);
+    assert.match(css, /\.equipment-attack-control\s*\{[\s\S]*?position:\s*relative/);
+    assert.match(css, /\.equipment-attack-menu\s*\{[\s\S]*?position:\s*absolute/);
+    assert.match(css, /\.equipment-attack-menu\s*\{[\s\S]*?bottom:\s*calc\(100% \+ 7px\)/);
+    assert.match(css, /\.equipment-attack-menu\s*\{[\s\S]*?max-height:/);
+    assert.match(css, /\.equipment-attack-menu\s*\{[\s\S]*?overflow-y:\s*auto/);
+    assert.match(css, /\.combat-primary-actions > button,[\s\S]*?margin:\s*0/);
     assert.match(css, /@media \(max-width: 600px\)[\s\S]*\.equipment-attack-menu/);
+});
+
+test('the equipment popover closes outside and Escape returns focus to its trigger', () => {
+    const client = createCombatClient({
+        equipment: {
+            weapon: cloneItem('rusty_mace'),
+            offhand: cloneItem('round_shield')
+        }
+    });
+
+    client.api.toggleMenu();
+    assert.equal(client.api.isMenuOpen(), true);
+    client.listeners.click({ target: client.menuButton });
+    assert.equal(client.api.isMenuOpen(), true);
+
+    const refreshBeforeOutsideDismiss = client.refreshCount;
+    client.listeners.click({ target: {} });
+    assert.equal(client.api.isMenuOpen(), false);
+    assert.equal(client.refreshCount, refreshBeforeOutsideDismiss + 1);
+
+    client.api.toggleMenu();
+    const refreshBeforeEscapeDismiss = client.refreshCount;
+    let prevented = false;
+    client.listeners.keydown({
+        key: 'Escape',
+        preventDefault() { prevented = true; }
+    });
+    assert.equal(client.api.isMenuOpen(), false);
+    assert.equal(client.menuButton.focused, true);
+    assert.equal(prevented, true);
+    assert.equal(client.refreshCount, refreshBeforeEscapeDismiss + 1);
+});
+
+test('the equipment popover transfers focus and supports menu arrow navigation', () => {
+    const client = createCombatClient({
+        equipment: {
+            weapon: cloneItem('rusty_mace'),
+            offhand: cloneItem('round_shield')
+        }
+    });
+    client.menu.items = [
+        client.makeMenuItem(),
+        client.makeMenuItem(),
+        client.makeMenuItem()
+    ];
+
+    client.api.toggleMenu();
+    assert.equal(client.menu.items[0].focused, true);
+
+    let prevented = 0;
+    const press = key => client.listeners.keydown({
+        key,
+        preventDefault() { prevented++; }
+    });
+    press('ArrowDown');
+    assert.equal(client.menu.items[1].focused, true);
+    press('End');
+    assert.equal(client.menu.items[2].focused, true);
+    press('Home');
+    assert.equal(client.menu.items[0].focused, true);
+    press('ArrowUp');
+    assert.equal(client.menu.items[2].focused, true);
+    assert.equal(prevented, 4);
 });
 
 test('available actions come from the current mercenary equipment with a player fallback', () => {
@@ -552,9 +674,34 @@ test('authoritative actions choose their clip and player equipment supplies dual
 test('combat results include guard playback and readable shield-block feedback', () => {
     assert.match(mainSource, /result\.type === 'guard'/);
     assert.match(mainSource, /playOutgoingCombatGuard\(/);
+    assert.match(mainSource, /endFrameIndex: heldFrame/);
     assert.match(mainSource, /result\.action\.id === 'special'/);
     assert.match(mainSource, /ev\.guarded === true/);
-    assert.match(mainSource, /shieldBlocked \? "BLOCK" : "DEFLECT"/);
+    assert.match(mainSource, /guardedDeflect \? "BLOCK" : "DEFLECT"/);
+    assert.match(mainSource, /stanceEvaded \? 'EVADE' : 'MISS'/);
+});
+
+test('only an authoritative shield block event clears the held local guard', () => {
+    const guardedActor = {
+        guardState: { type: 'shield_block', charges: 1 }
+    };
+    const ordinaryDeflectActor = {
+        guardState: { type: 'shield_block', charges: 1 }
+    };
+    const context = vm.createContext({});
+    vm.runInContext(
+        `${extractFunction(mainSource, 'clearConsumedLocalShieldGuard')}
+        this.guardApi = clearConsumedLocalShieldGuard;`,
+        context
+    );
+
+    assert.equal(context.guardApi(guardedActor, { guarded: true }), true);
+    assert.equal(guardedActor.guardState, undefined);
+    assert.equal(
+        context.guardApi(ordinaryDeflectActor, { deflectReason: 'armor' }),
+        false
+    );
+    assert.ok(ordinaryDeflectActor.guardState);
 });
 
 test('combat snapshots mirror only the Knight actor guard state and clear it when absent', () => {

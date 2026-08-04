@@ -207,6 +207,7 @@ function renderEquipmentAttackMenu() {
     menu.innerHTML = '';
     const heading = document.createElement('div');
     heading.className = 'equipment-attack-menu-heading';
+    heading.setAttribute('role', 'presentation');
     heading.textContent = `${actor && actor.name ? actor.name : 'Knight'} — Equipment Attacks`;
     menu.appendChild(heading);
 
@@ -230,13 +231,19 @@ function renderEquipmentAttackMenu() {
             : '';
         const option = document.createElement('button');
         option.type = 'button';
+        option.setAttribute('role', 'menuitem');
+        option.setAttribute('aria-disabled', disabledReason ? 'true' : 'false');
+        option.tabIndex = -1;
         option.className = 'equipment-attack-option';
-        option.disabled = Boolean(disabledReason);
         option.title = action.description || '';
-        option.onclick = () => selectEquipmentAttack(
-            action.equipmentSlot,
-            action.id
-        );
+        option.onclick = () => {
+            if (disabledReason) {
+                if (typeof logMessage === 'function') logMessage(disabledReason);
+                if (typeof playRetroSound === 'function') playRetroSound('error');
+                return false;
+            }
+            return selectEquipmentAttack(action.equipmentSlot, action.id);
+        };
 
         const name = document.createElement('span');
         name.className = 'equipment-attack-option-name';
@@ -245,6 +252,12 @@ function renderEquipmentAttackMenu() {
         meta.className = 'equipment-attack-option-meta';
         meta.textContent = `${action.itemName || action.equipmentSlot} · ${Math.max(0, Number(action.staminaCost) || 0)} STAM · ${targetLabel}`;
         option.append(name, meta);
+        if (action.description) {
+            const description = document.createElement('span');
+            description.className = 'equipment-attack-option-description';
+            description.textContent = action.description;
+            option.appendChild(description);
+        }
         if (disabledReason) {
             const reason = document.createElement('span');
             reason.className = 'equipment-attack-option-reason';
@@ -253,6 +266,9 @@ function renderEquipmentAttackMenu() {
         }
         menu.appendChild(option);
     });
+
+    const firstOption = menu.querySelector('[role="menuitem"]');
+    if (firstOption) firstOption.tabIndex = 0;
 }
 
 function refreshSystemUI() {

@@ -86,9 +86,10 @@ function activatePartyActor(combat, actor) {
     syncCombatParties(combat);
     const partyId = getActorPartyId(actor);
     if (!partyId || !combat.parties[partyId].memberUids.includes(actor.uid)) return null;
-    // A manual shield guard protects the interval after it is raised and
-    // expires when that same actor next receives control.
+    // A manual reaction protects the interval after it is raised and expires
+    // when that same actor next receives control.
     if (actor.guardState) delete actor.guardState;
+    if (actor.evasionState) delete actor.evasionState;
     const previousTurnSequence = Number.isSafeInteger(combat.turnSequence)
         ? Math.max(0, combat.turnSequence)
         : 0;

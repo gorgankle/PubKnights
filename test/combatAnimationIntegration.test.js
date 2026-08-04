@@ -66,6 +66,8 @@ test('combat timelines expose authored contact and release frames', () => {
         ]
     );
     assert.equal(heavy.powerful, true);
+    assert.equal(block.holdFrame, 2);
+    assert.equal(block.phases.guardEnd, block.holdFrame);
 });
 
 test('registered locomotion, reaction, and terminal clips are valid without events', () => {
@@ -376,6 +378,126 @@ test('playback rate scales events, recovery, and post-action idle timing', () =>
         playbackRate: 100
     });
     assert.equal(clamped.playbackRate, 8);
+});
+
+test('shield raise completes into an unlocked held guard stance until authority clears it', () => {
+    const timeline = getCombatAnimationTimeline('shield_block');
+    const actor = {
+        uid: 'player_guard_stance',
+        kind: 'player',
+        x: 4,
+        y: 2,
+        alive: true,
+        guardState: { type: 'shield_block', charges: 1 }
+    };
+    let completions = 0;
+
+    CombatSpriteAnimation.clear();
+    const raise = CombatSpriteAnimation.startAction(actor, {
+        clipId: 'shield_block',
+        facing: 'left',
+        startTime: 0,
+        endFrameIndex: timeline.holdFrame,
+        onComplete() { completions++; }
+    });
+
+    assert.equal(raise.timeline.frameCount, timeline.holdFrame + 1);
+    assert.equal(raise.timeline.durationMs, 375);
+    assert.equal(
+        CombatSpriteAnimation.getRenderState(actor, { now: 374 }).frameIndex,
+        timeline.holdFrame
+    );
+
+    CombatSpriteAnimation.update(375);
+    const held = CombatSpriteAnimation.getRenderState(actor, { now: 500 });
+    assert.equal(completions, 1);
+    assert.equal(CombatSpriteAnimation.isAnimating(actor), false);
+    assert.equal(CombatSpriteAnimation.isActionLocked(actor), false);
+    assert.equal(held.clipId, 'shield_block');
+    assert.equal(held.frameIndex, timeline.holdFrame);
+    assert.equal(held.facing, 'left');
+    assert.equal(held.isGuarding, true);
+
+    const replacement = {
+        ...actor,
+        guardState: { type: 'shield_block', charges: 1 }
+    };
+    assert.equal(
+        CombatSpriteAnimation.getRenderState(replacement, { now: 600 }).frameIndex,
+        timeline.holdFrame
+    );
+
+    delete replacement.guardState;
+    const released = CombatSpriteAnimation.getRenderState(replacement, {
+        now: 601
+    });
+    assert.equal(released.clipId, 'idle');
+    assert.equal(released.facing, 'left');
+});
+
+test('a consumed guard reaction overrides the stance and cannot snap back', () => {
+    const actor = {
+        uid: 'player_consumed_guard',
+        kind: 'player',
+        x: 2,
+        y: 2,
+        alive: true,
+        guardState: { type: 'shield_block', charges: 1 }
+    };
+
+    CombatSpriteAnimation.clear();
+    CombatSpriteAnimation.faceActorToward(actor, 0);
+    assert.equal(
+        CombatSpriteAnimation.getRenderState(actor, { now: 0 }).isGuarding,
+        true
+    );
+
+    const reaction = CombatSpriteAnimation.startDefensiveReaction(actor, {
+        startTime: 100,
+        interrupt: true
+    });
+    delete actor.guardState;
+    assert.equal(
+        CombatSpriteAnimation.getRenderState(actor, { now: 100 }).isAction,
+        true
+    );
+    CombatSpriteAnimation.update(100 + reaction.timeline.durationMs);
+    const released = CombatSpriteAnimation.getRenderState(actor, { now: 700 });
+    assert.equal(released.clipId, 'idle');
+    assert.equal(released.facing, 'left');
+});
+
+test('pending enemy intent holds the shared clip on its final anticipation frame without locking actions', () => {
+    const actor = {
+        uid: 'mob_heavy_intent',
+        kind: 'monster',
+        x: 5,
+        y: 2,
+        alive: true,
+        pendingIntent: {
+            intentId: 'intent_heavy_1',
+            label: 'Crushing Swing',
+            clipId: 'heavy',
+            targetX: 2,
+            targetY: 2
+        }
+    };
+    const timeline = getCombatAnimationTimeline('heavy');
+
+    CombatSpriteAnimation.clear();
+    CombatSpriteAnimation.faceActorToward(actor, actor.pendingIntent.targetX);
+    const held = CombatSpriteAnimation.getRenderState(actor, { now: 100 });
+    assert.equal(held.clipId, 'heavy');
+    assert.equal(held.frameIndex, timeline.actionFrame - 1);
+    assert.equal(held.facing, 'left');
+    assert.equal(held.isIntent, true);
+    assert.equal(held.isAction, false);
+    assert.equal(CombatSpriteAnimation.isActionLocked(actor), false);
+
+    delete actor.pendingIntent;
+    const released = CombatSpriteAnimation.getRenderState(actor, { now: 101 });
+    assert.equal(released.clipId, 'idle');
+    assert.equal(released.facing, 'left');
 });
 
 test('walk frames change facing without disturbing the remembered idle side', () => {

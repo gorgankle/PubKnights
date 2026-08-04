@@ -91,6 +91,13 @@ const COMBAT_ANIMATION_FALLBACK_CLIPS = Object.freeze({
         fps: 8,
         loop: false,
         actionFrame: 1,
+        holdFrame: 2,
+        phases: Object.freeze({
+            windupEnd: 0,
+            guardStart: 1,
+            guardEnd: 2,
+            recoveryStart: 3
+        }),
         frames: Object.freeze([
             'shield_block_a',
             'shield_block_b',
@@ -211,6 +218,15 @@ function getCombatAnimationTimeline(clipId) {
     )
         ? clip.actionFrame
         : null;
+    const phases = clip.phases && typeof clip.phases === 'object'
+        ? Object.freeze({ ...clip.phases })
+        : Object.freeze({});
+    const requestedHoldFrame = Number.isInteger(clip.holdFrame)
+        ? clip.holdFrame
+        : phases.guardEnd;
+    const holdFrame = Number.isInteger(requestedHoldFrame)
+        ? Math.max(0, Math.min(frames.length - 1, requestedHoldFrame))
+        : null;
 
     return {
         clipId: resolvedClipId,
@@ -218,6 +234,7 @@ function getCombatAnimationTimeline(clipId) {
         frameDurationMs,
         frameCount: frames.length,
         actionFrame,
+        holdFrame,
         actionTimeMs: actionFrame === null
             ? null
             : actionFrame * frameDurationMs,
@@ -226,9 +243,7 @@ function getCombatAnimationTimeline(clipId) {
         terminal: clip.terminal === true,
         holdLastFrame: clip.holdLastFrame === true,
         powerful: clip.powerful === true,
-        phases: clip.phases && typeof clip.phases === 'object'
-            ? Object.freeze({ ...clip.phases })
-            : Object.freeze({})
+        phases
     };
 }
 
@@ -764,6 +779,17 @@ const CombatSpriteAnimation = (() => {
                 : baseTimeline.actionTimeMs / playbackRate,
             durationMs: baseTimeline.durationMs / playbackRate
         };
+        const requestedEndFrame = Number(options.endFrameIndex);
+        if (
+            Number.isInteger(requestedEndFrame)
+            && requestedEndFrame >= 0
+            && requestedEndFrame < timeline.frameCount - 1
+        ) {
+            timeline.frameCount = requestedEndFrame + 1;
+            timeline.durationMs = timeline.frameCount
+                * timeline.frameDurationMs;
+            timeline.endFrameIndex = requestedEndFrame;
+        }
         return {
             uid,
             actor,
@@ -1050,6 +1076,64 @@ const CombatSpriteAnimation = (() => {
         };
     }
 
+    function getHeldGuardRenderState(actor, uid) {
+        const guardState = actor && actor.guardState;
+        if (
+            !guardState
+            || guardState.type !== 'shield_block'
+            || Math.max(
+                0,
+                Math.trunc(Number(guardState.charges) || 0)
+            ) < 1
+        ) {
+            return null;
+        }
+
+        const timeline = getCombatAnimationTimeline('shield_block');
+        const facing = uid
+            ? (facings.get(uid) || rememberFacing(actor, 'right'))
+            : resolveFacing(actor);
+        return {
+            clipId: 'shield_block',
+            frameIndex: timeline.holdFrame === null
+                ? Math.max(0, timeline.actionFrame || 0)
+                : timeline.holdFrame,
+            facing,
+            isAction: false,
+            isTerminal: false,
+            isGuarding: true,
+            progress: 1
+        };
+    }
+
+    function getHeldIntentRenderState(actor, uid) {
+        const intent = actor && actor.pendingIntent;
+        if (!intent || typeof intent !== 'object') return null;
+
+        const clipId = String(intent.clipId || 'slash');
+        const timeline = getCombatAnimationTimeline(clipId);
+        const actionFrame = Number.isInteger(timeline.actionFrame)
+            ? timeline.actionFrame
+            : 1;
+        const facing = uid
+            ? (facings.get(uid) || rememberFacing(actor, 'right'))
+            : resolveFacing(actor);
+        return {
+            clipId,
+            // Hold on the last anticipation drawing, before contact/release.
+            // The same authored frame therefore communicates the gameplay
+            // warning without creating a second telegraph animation engine.
+            frameIndex: timeline.holdFrame === null
+                ? Math.max(0, actionFrame - 1)
+                : timeline.holdFrame,
+            facing,
+            isAction: false,
+            isTerminal: false,
+            isIntent: true,
+            progress: 1
+        };
+    }
+
     function getRenderState(actor, options = {}) {
         const uid = getCombatAnimationActorUid(actor);
         if (uid) rebindActorState(uid, actor);
@@ -1071,6 +1155,12 @@ const CombatSpriteAnimation = (() => {
             terminalState.actor = actor;
             return getTerminalRenderState(terminalState);
         }
+
+        const heldGuard = getHeldGuardRenderState(actor, uid);
+        if (heldGuard) return heldGuard;
+
+        const heldIntent = getHeldIntentRenderState(actor, uid);
+        if (heldIntent) return heldIntent;
 
         const deltaX = Number(options.deltaX) || 0;
         const isMoving = options.isMoving === true;

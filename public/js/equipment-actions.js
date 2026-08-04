@@ -123,6 +123,28 @@
         const description = String(action.description || action.desc || '');
         const itemId = String(item.id || '');
         const itemName = String(item.name || itemId || 'Equipment');
+        const identity = isObject(item.combatIdentity)
+            ? item.combatIdentity
+            : {};
+        const family = String(
+            action.family
+            || identity.family
+            || item.animationFamily
+            || item.offhandType
+            || item.type
+            || ''
+        ).toLowerCase();
+        const guardType = action.guardType
+            ? String(action.guardType).toLowerCase()
+            : null;
+        const charges = normalizedNumber(action.charges, 0);
+        const pushTarget = normalizedNumber(action.pushTarget, 0);
+        const repositionAway = normalizedNumber(action.repositionAway, 0);
+        const endsTurn = action.endsTurn === true;
+        const interruptsIntent = action.interruptsIntent === true;
+        const armorBreak = action.armorBreak === true;
+        const channelled = action.channelled === true;
+        const interruptible = action.interruptible === true;
         const normalizedRules = cloneAndFreeze({
             ...action,
             actionType,
@@ -132,7 +154,17 @@
             multiplier,
             ignoresDefense,
             animType,
-            clipId
+            clipId,
+            family,
+            guardType,
+            charges,
+            pushTarget,
+            repositionAway,
+            endsTurn,
+            interruptsIntent,
+            armorBreak,
+            channelled,
+            interruptible
         });
 
         return Object.freeze({
@@ -150,6 +182,16 @@
             ignoresDefense,
             animType,
             clipId,
+            family,
+            guardType,
+            charges,
+            pushTarget,
+            repositionAway,
+            endsTurn,
+            interruptsIntent,
+            armorBreak,
+            channelled,
+            interruptible,
             rules: normalizedRules
         });
     }

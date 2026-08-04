@@ -18,6 +18,7 @@ function applyPlayerCombatDefeat(player) {
         helmet: null,
         armor: null,
         weapon: null,
+        offhand: null,
         gloves: null,
         boots: null
     };

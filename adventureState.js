@@ -61,6 +61,7 @@ function createInitialAdventureState() {
         totalSafeReturns: 0,
         routeStats,
         activeJourney: null,
+        latestReturnReport: null,
         contracts: {
             active: {},
             completed: {}
@@ -147,6 +148,123 @@ function normalizeActiveJourney(source) {
     };
 }
 
+function getEncounterPublicSummary(encounterId) {
+    const encounter = AuthoredEncounterCatalog[encounterId];
+    if (!encounter) return null;
+    return {
+        name: encounter.name,
+        difficulty: Math.max(1, nonNegativeInt(encounter.difficulty, 1)),
+        tags: (Array.isArray(encounter.tags) ? encounter.tags : [])
+            .filter(tag => typeof tag === 'string' && tag)
+            .slice(0, 6),
+        enemyNames: (Array.isArray(encounter.enemies) ? encounter.enemies : [])
+            .map(enemy => enemy && enemy.name)
+            .filter(name => typeof name === 'string' && name)
+            .slice(0, 6)
+    };
+}
+
+function createReturnReport(journey, outcome, details = {}, now = Date.now()) {
+    const route = journey && RouteCatalog[journey.routeId];
+    if (!route || !['safe_return', 'expedition_failed'].includes(outcome)) return null;
+    const encounter = getEncounterPublicSummary(journey.currentEncounterId);
+    const contractUpdates = (Array.isArray(details.contractUpdates) ? details.contractUpdates : [])
+        .map(update => {
+            const bounty = update && BountyCatalog[update.bountyId];
+            if (!bounty) return null;
+            const target = Math.max(1, nonNegativeInt(bounty.targetRoundTrips, 1));
+            const progress = Math.min(target, nonNegativeInt(update.progress));
+            return {
+                bountyId: bounty.id,
+                title: bounty.title,
+                progress,
+                target,
+                status: progress >= target || update.status === 'claimable'
+                    ? 'claimable'
+                    : 'active'
+            };
+        })
+        .filter(Boolean);
+
+    return {
+        reportId: `return_${crypto.randomBytes(8).toString('hex')}`,
+        outcome,
+        routeId: route.id,
+        routeName: route.name,
+        dangerLabel: route.dangerLabel,
+        encounterName: encounter ? encounter.name : 'Unrecorded encounter',
+        encounterDifficulty: encounter ? encounter.difficulty : null,
+        encounterTags: encounter ? encounter.tags : [],
+        enemyNames: encounter ? encounter.enemyNames : [],
+        rewardGold: outcome === 'safe_return'
+            ? nonNegativeInt(details.rewardGold)
+            : 0,
+        firstReturn: outcome === 'safe_return' && details.firstReturn === true,
+        contractUpdates,
+        failureReason: outcome === 'expedition_failed'
+            ? String(details.failureReason || 'failed').slice(0, 40)
+            : null,
+        returnedAt: cleanTimestamp(now) || Date.now()
+    };
+}
+
+function normalizeReturnReport(source) {
+    if (!source || typeof source !== 'object' || Array.isArray(source)) return null;
+    const route = RouteCatalog[source.routeId];
+    const outcome = String(source.outcome || '').toLowerCase();
+    if (!route || !['safe_return', 'expedition_failed'].includes(outcome)) return null;
+    const reportId = typeof source.reportId === 'string' && /^return_[a-z0-9_:-]+$/i.test(source.reportId)
+        ? source.reportId.slice(0, 80)
+        : null;
+    if (!reportId) return null;
+
+    const contractUpdates = (Array.isArray(source.contractUpdates) ? source.contractUpdates : [])
+        .map(update => {
+            const bounty = update && BountyCatalog[update.bountyId];
+            if (!bounty || bounty.routeId !== route.id) return null;
+            const target = Math.max(1, nonNegativeInt(bounty.targetRoundTrips, 1));
+            const progress = Math.min(target, nonNegativeInt(update.progress));
+            return {
+                bountyId: bounty.id,
+                title: bounty.title,
+                progress,
+                target,
+                status: progress >= target || update.status === 'claimable'
+                    ? 'claimable'
+                    : 'active'
+            };
+        })
+        .filter(Boolean);
+
+    return {
+        reportId,
+        outcome,
+        routeId: route.id,
+        routeName: route.name,
+        dangerLabel: route.dangerLabel,
+        encounterName: typeof source.encounterName === 'string' && source.encounterName
+            ? source.encounterName.slice(0, 80)
+            : 'Unrecorded encounter',
+        encounterDifficulty: source.encounterDifficulty == null
+            ? null
+            : Math.max(1, nonNegativeInt(source.encounterDifficulty, 1)),
+        encounterTags: (Array.isArray(source.encounterTags) ? source.encounterTags : [])
+            .filter(tag => typeof tag === 'string' && tag)
+            .slice(0, 6),
+        enemyNames: (Array.isArray(source.enemyNames) ? source.enemyNames : [])
+            .filter(name => typeof name === 'string' && name)
+            .map(name => name.slice(0, 60))
+            .slice(0, 6),
+        rewardGold: outcome === 'safe_return' ? nonNegativeInt(source.rewardGold) : 0,
+        firstReturn: outcome === 'safe_return' && source.firstReturn === true,
+        contractUpdates,
+        failureReason: outcome === 'expedition_failed'
+            ? String(source.failureReason || 'failed').slice(0, 40)
+            : null,
+        returnedAt: cleanTimestamp(source.returnedAt) || Date.now()
+    };
+}
+
 function applyContractLocationUnlocks(adventure) {
     Object.keys(adventure.contracts.active).forEach(bountyId => {
         const bounty = BountyCatalog[bountyId];
@@ -167,6 +285,12 @@ function failJourneyRecord(adventure, reason, now = Date.now()) {
         stats.lastFailedAt = now;
         stats.lastFailureReason = String(reason || 'failed').slice(0, 40);
     }
+    adventure.latestReturnReport = createReturnReport(
+        journey,
+        'expedition_failed',
+        { failureReason: reason },
+        now
+    );
     adventure.activeJourney = null;
     return journey;
 }
@@ -193,6 +317,7 @@ function normalizeAdventureState(player, options = {}) {
             : source.safeReturns),
         routeStats: normalizeRouteStats(source.routeStats),
         activeJourney: normalizeActiveJourney(source.activeJourney),
+        latestReturnReport: normalizeReturnReport(source.latestReturnReport),
         contracts: normalizeContracts(source.contracts)
     };
 
@@ -368,6 +493,15 @@ function resolveExpeditionCombatVictory(player, context) {
     player.pendingGold = nonNegativeInt(player.pendingGold) + rewardGold;
     const advancedBounties = advanceBountiesForSafeReturn(adventure, route.id);
     if (firstReturn) applyFirstReturnUnlocks(adventure, route);
+    adventure.latestReturnReport = createReturnReport(
+        journey,
+        'safe_return',
+        {
+            rewardGold,
+            firstReturn,
+            contractUpdates: advancedBounties
+        }
+    );
     adventure.activeJourney = null;
 
     return {
@@ -490,6 +624,9 @@ function getAdventureSnapshot(player) {
             .map(encounterId => AuthoredEncounterCatalog[encounterId])
             .filter(Boolean)
             .map(encounter => encounter.name),
+        encounterReports: route.encounterIds
+            .map(getEncounterPublicSummary)
+            .filter(Boolean),
         stats: clone(adventure.routeStats[route.id])
     }));
     const bounties = Object.values(BountyCatalog).map(bounty => {
@@ -532,4 +669,3 @@ module.exports = {
     claimBounty,
     hasActiveJourney
 };
-
