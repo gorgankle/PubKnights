@@ -24,6 +24,7 @@ test('fresh registration hydrates the live client from the server-owned starter 
     const player = { inventory: [] };
     let normalized = 0;
     let rendered = 0;
+    let adventureRequests = 0;
     const context = vm.createContext({
         player,
         document: { getElementById: id => elements.get(id) },
@@ -32,6 +33,7 @@ test('fresh registration hydrates the live client from the server-owned starter 
             emit() {}
         },
         normalizeClientPlayerContainers() { normalized += 1; },
+        requestAdventureState() { adventureRequests += 1; },
         renderPaperDoll() { rendered += 1; },
         refreshSystemUI() {},
         saveGame() {},
@@ -53,6 +55,7 @@ test('fresh registration hydrates the live client from the server-owned starter 
     assert.deepEqual(player.inventory.map(item => item.id), ['stout', 'stout']);
     assert.equal(normalized, 1);
     assert.equal(rendered, 1);
+    assert.equal(adventureRequests, 1);
     assert.equal(elements.get('login-screen').style.display, 'none');
     assert.equal(elements.get('char-creation-screen').style.display, 'block');
 });

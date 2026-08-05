@@ -1132,6 +1132,8 @@ function getAdventureSnapshot(player) {
                 routeRole: route.routeRole || 'expedition',
                 bidirectional: route.bidirectional === true,
                 description: route.description,
+                newcomerLabel: route.newcomerLabel,
+                newcomerHint: route.newcomerHint,
                 safeReturnGold: route.safeReturnGold,
                 firstReturnGold: route.firstReturnGold,
                 unlocked: adventure.unlockedRouteIds.includes(route.id) && finaleGate.allowed,

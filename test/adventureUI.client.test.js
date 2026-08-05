@@ -16,7 +16,10 @@ test('Adventure Board exposes Chapter One exploration without retired deployment
     assert.match(html, /id="tavern-return-report"/);
     assert.match(html, /id="tavern-return-kreg-canvas"/);
     assert.doesNotMatch(html, /legacy-deployments|Legacy Level Deployments/);
-    assert.match(html, /js\/expeditions\.js\?v=5/);
+    assert.match(html, /style\.css\?v=11/);
+    assert.match(html, /js\/login\.js\?v=2/);
+    assert.match(html, /js\/expeditions\.js\?v=6/);
+    assert.match(html, /window\.MobileDragDrop && typeof window\.MobileDragDrop\.polyfill === 'function'/);
 });
 
 test('expedition requests send only server catalog identifiers and never enemy or reward payloads', () => {
@@ -30,9 +33,11 @@ test('expedition requests send only server catalog identifiers and never enemy o
 test('the responsive map keeps location nodes, active routes, and contract states visually distinct', () => {
     assert.match(styles, /\.exploration-map\s*\{/);
     assert.match(styles, /\.adventure-location-node\.is-locked/);
+    assert.match(styles, /\.adventure-location-node \.node-status/);
     assert.match(styles, /\.exploration-route-line\.is-active/);
     assert.match(styles, /\.bounty-card\.is-claimable/);
     assert.match(styles, /\.adventure-encounter-report\s*\{/);
+    assert.match(styles, /\.route-intel-empty/);
     assert.match(styles, /\.tavern-return-report\s*\{/);
     assert.match(styles, /@media \(max-width: 820px\)/);
 });
@@ -42,7 +47,12 @@ test('return reports keep observed intel while unobserved roads and typed object
     assert.match(client, /function renderTavernReturnReport/);
     assert.match(client, /renderTavernReturnPortrait\(\)/);
     assert.match(client, /route\.encounterReports/);
-    assert.match(client, /Opposition is unconfirmed\. Face the road to add a reliable report\./);
+    assert.match(client, /Open - Unscouted/);
+    assert.match(client, /This road is unlocked\. Travel it to turn rumor into a reliable enemy report\./);
+    assert.match(client, /Set Out for/);
+    assert.match(client, /Both roads marked Open are available from the start\./);
+    assert.match(client, /Contracts are optional\./);
+    assert.doesNotMatch(client, /Opposition is unconfirmed\. Face the road to add a reliable report\./);
     assert.match(client, /unconfirmedEncounterCount/);
     assert.match(client, /function getContractObjectivePresentation/);
     assert.match(client, /bounty-objectives/);

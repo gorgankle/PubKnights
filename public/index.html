@@ -6,7 +6,7 @@
 	<!-- NEW: Mobile Viewport Scaling -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Pub Knights - Beta v0.9(Modular Refactor)</title>
-    <link rel="stylesheet" href="style.css?v=10">
+    <link rel="stylesheet" href="style.css?v=11">
 	
 	<!-- === NEW: MOBILE DRAG & DROP POLYFILL === -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/default.css">
@@ -16,7 +16,9 @@
 	<script>
         window.addEventListener('DOMContentLoaded', function() {
             // Initialize the translator to require a 300ms long-press to pick up an item
-            MobileDragDrop.polyfill({ holdToDrag: 300 });
+            if (window.MobileDragDrop && typeof window.MobileDragDrop.polyfill === 'function') {
+                window.MobileDragDrop.polyfill({ holdToDrag: 300 });
+            }
             
             // Prevent the phone from scrolling the page while an item is actively being dragged
             window.addEventListener('touchmove', function() {}, {passive: false});
@@ -814,9 +816,9 @@
 
 
 <!-- Game Systems & Logic -->
-    <script src="js/login.js"></script>
+    <script src="js/login.js?v=2"></script>
     <script src="js/combat-maps.js"></script>
-    <script src="js/expeditions.js?v=5"></script>
+    <script src="js/expeditions.js?v=6"></script>
     <script src="js/combat-mechanics.js?v=15"></script>
     <script src="js/town-actions.js?v=3"></script>
 	<script src="js/minigames.js"></script>

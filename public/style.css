@@ -347,6 +347,18 @@ h1 { text-align: center; color: #ffcc66; margin: 5px 0 15px 0; font-size: 24px; 
 }
 
 .adventure-location-node .node-name { display: block; font-size: 10px; }
+.adventure-location-node .node-status {
+    display: block;
+    margin-top: 3px;
+    color: #9ee6aa;
+    font-size: 9px;
+    font-weight: bold;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+.adventure-location-node.is-locked .node-status { color: #8f8175; }
+.adventure-location-node.is-open-unscouted,
+.adventure-location-node.is-open-partial { border-color: #5b8c63; background: #1d2b20; }
 .adventure-location-node.is-home { border-color: #2ecc71; background: #203627; }
 .adventure-location-node.is-selected { border-color: #fff2a8; box-shadow: 0 0 0 2px #8b5a2b, 0 5px 12px rgba(0, 0, 0, 0.65); }
 .adventure-location-node.is-active { border-color: #3498db; background: #1f3440; }
@@ -367,6 +379,42 @@ h1 { text-align: center; color: #ffcc66; margin: 5px 0 15px 0; font-size: 24px; 
 .exploration-detail dt { float: left; clear: left; width: 72px; color: #8f8175; }
 .exploration-detail dd { margin-left: 78px; color: #f4ebd9; }
 .exploration-detail button { width: 100%; margin: 5px 0 0; padding: 10px; }
+.route-open-callout,
+.route-newcomer-hint,
+.route-intel-empty {
+    display: grid;
+    gap: 3px;
+    margin: 8px 0;
+    padding: 8px;
+    border: 1px solid #5b6947;
+    border-left: 4px solid #62c779;
+    border-radius: 3px;
+    background: #172019;
+}
+.route-open-callout strong,
+.route-intel-empty strong { color: #9ee6aa; }
+.route-open-callout span,
+.route-newcomer-hint span,
+.route-intel-empty span { font-size: 9px; line-height: 1.45; }
+.route-newcomer-hint {
+    border-color: #6f563d;
+    border-left-color: #d6a84c;
+    background: #211a13;
+}
+.route-newcomer-hint strong { color: #ffcc66; }
+.route-newcomer-hint small { color: #bbaaa0; font-size: 8px; line-height: 1.4; }
+.route-intel-empty.is-locked {
+    border-color: #493d33;
+    border-left-color: #6f6257;
+    background: #1a1613;
+}
+.route-intel-empty.is-locked strong { color: #9b8f84; }
+#start-expedition-btn:not(:disabled) {
+    border-color: #f4cf70;
+    background: #9a6425;
+    box-shadow: 0 0 0 2px rgba(214, 168, 76, 0.2);
+    font-weight: bold;
+}
 .adventure-route-choices { display: grid; gap: 5px; }
 .adventure-route-choices button { text-align: left; font-size: 9px; }
 .adventure-route-choices button.is-selected {

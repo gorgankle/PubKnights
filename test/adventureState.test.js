@@ -75,6 +75,12 @@ test('the server chooses an authored encounter for an unlocked route and rejects
     assert.equal(hasActiveJourney(knight), true);
 
     failActiveExpedition(knight, 'test_cleanup');
+    const alternate = beginExpedition(knight, 'route_pine_trail', { random: () => 0 });
+    assert.equal(alternate.success, true);
+    assert.equal(alternate.encounterId, 'pine_lookout');
+    assert.equal(alternate.expeditionContext.routeId, 'route_pine_trail');
+
+    failActiveExpedition(knight, 'test_cleanup');
     const locked = beginExpedition(knight, 'route_burnt_heath', { random: () => 0 });
     assert.equal(locked.success, false);
     assert.equal(locked.code, 'LOCKED_ROUTE');
@@ -193,6 +199,9 @@ test('public snapshots omit hidden nodes and unobserved enemy details, then reve
     );
     assert.equal(freshSnapshot.locations.some(location => location.id === 'burnt_heath'), false);
     assert.equal(freshSnapshot.routes.some(route => route.id === 'route_burnt_heath'), false);
+    assert.equal(freshSnapshot.routes.every(route => route.unlocked === true), true);
+    assert.equal(freshOldRoad.newcomerLabel, 'Gentler first outing');
+    assert.match(freshOldRoad.newcomerHint, /shortest road from the pub/i);
     assert.equal(freshOldRoad.possibleEncounterNames, undefined);
     assert.deepEqual(freshOldRoad.encounterReports, []);
     assert.equal(freshOldRoad.unconfirmedEncounterCount, 2);

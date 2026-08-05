@@ -59,6 +59,7 @@ socket.on('registerSuccess', (payload) => {
         Object.assign(player, payload.playerData);
         if (typeof normalizeClientPlayerContainers === 'function') normalizeClientPlayerContainers();
     }
+    if (typeof requestAdventureState === 'function') requestAdventureState();
     
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('char-creation-screen').style.display = 'block';

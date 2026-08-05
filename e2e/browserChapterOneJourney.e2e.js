@@ -127,7 +127,8 @@ test('fresh account completes the Old Road discovery and safe-return loop in a r
     const browserErrors = [];
     page.on('pageerror', error => browserErrors.push(`pageerror: ${error.message}`));
     page.on('console', message => {
-        if (message.type() === 'error' && !/Failed to load resource:.*404/i.test(message.text())) {
+        const expectedResourceFailure = /Failed to load resource:.*(?:404|ERR_NETWORK_ACCESS_DENIED)/i.test(message.text());
+        if (message.type() === 'error' && !expectedResourceFailure) {
             browserErrors.push(`console: ${message.text()}`);
         }
     });
@@ -159,8 +160,24 @@ test('fresh account completes the Old Road discovery and safe-return loop in a r
 
     await page.getByRole('button', { name: /Adventures/ }).click();
     await page.getByRole('heading', { name: 'Missing Kegs' }).waitFor();
+    const oldRoadNode = page.getByRole('button', { name: /Old Road\. Open - Unscouted\./ });
+    const pineTrailNode = page.getByRole('button', { name: /Pine Trail\. Open - Unscouted\./ });
+    await oldRoadNode.waitFor();
+    await pineTrailNode.waitFor();
+    assert.equal(await oldRoadNode.isEnabled(), true);
+    assert.equal(await pineTrailNode.isEnabled(), true);
+
+    await pineTrailNode.click();
+    const explorationDetail = page.locator('#exploration-detail');
+    await explorationDetail.getByRole('heading', { name: 'Pine Trail' }).waitFor();
+    await explorationDetail.getByText('Open - Unscouted', { exact: true }).first().waitFor();
+    assert.equal(await explorationDetail.getByRole('button', { name: 'Set Out for Pine Trail', exact: true }).isEnabled(), true);
+
+    await oldRoadNode.click();
+    await explorationDetail.getByRole('heading', { name: 'Old Road' }).waitFor();
+    assert.equal(await explorationDetail.getByRole('button', { name: 'Set Out for Old Road', exact: true }).isEnabled(), true);
     await page.getByRole('button', { name: 'Accept', exact: true }).click();
-    await page.getByRole('button', { name: 'Travel This Route', exact: true }).click();
+    await explorationDetail.getByRole('button', { name: 'Set Out for Old Road', exact: true }).click();
 
     await finishFreshBanditCombat(page, username);
     await page.getByRole('heading', { name: 'Destination Reached' }).waitFor({ timeout: 15000 });

@@ -10,6 +10,7 @@ const {
     buildTavernReturnPresentation,
     getContractObjectivePresentation,
     getExpeditionEscrowSummary,
+    getRouteAvailabilityPresentation,
     getSnapshotContracts,
     getWorldContractUpdates,
     isCurrentChapterCatalogItem
@@ -18,6 +19,33 @@ const {
 function plain(value) {
     return JSON.parse(JSON.stringify(value));
 }
+
+test('fresh route presentation distinguishes an open unscouted road from a locked route', () => {
+    assert.deepEqual(plain(getRouteAvailabilityPresentation({
+        unlocked: true,
+        encounterReports: []
+    })), {
+        unlocked: true,
+        scouted: false,
+        label: 'Open - Unscouted',
+        className: 'is-open-unscouted',
+        description: 'This road is unlocked. Travel it to turn rumor into a reliable enemy report.'
+    });
+    assert.equal(getRouteAvailabilityPresentation({ encounterReports: [] }).label, 'Locked');
+    assert.equal(getRouteAvailabilityPresentation({
+        unlocked: false,
+        encounterReports: []
+    }).label, 'Locked');
+    assert.equal(getRouteAvailabilityPresentation({
+        unlocked: true,
+        encounterReports: [{ encounterId: 'alley_robbery' }]
+    }).label, 'Open - Scouted');
+    assert.equal(getRouteAvailabilityPresentation({
+        unlocked: true,
+        encounterReports: [{ encounterId: 'alley_robbery' }],
+        unconfirmedEncounterCount: 1
+    }).label, 'Open - Partial Intel');
+});
 
 function createClientHarness(search = '?mute=1') {
     const listeners = {};

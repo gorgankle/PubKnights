@@ -490,7 +490,49 @@ function getLocationPosition(location, index, count) {
 }
 
 function isRouteUnlocked(route) {
-    return !!(route && route.unlocked !== false && route.available !== false && route.locked !== true);
+    if (!route || route.locked === true || route.unlocked === false || route.available === false) return false;
+    return route.unlocked === true || route.available === true;
+}
+
+function getRouteAvailabilityPresentation(route) {
+    const unlocked = isRouteUnlocked(route);
+    const reportCount = getAdventureEncounterReports(route).length;
+    const unconfirmedCount = Math.max(0, Number(route && route.unconfirmedEncounterCount) || 0);
+    const scouted = reportCount > 0 && unconfirmedCount === 0;
+    if (!unlocked) {
+        return {
+            unlocked: false,
+            scouted,
+            label: 'Locked',
+            className: 'is-locked',
+            description: 'This road needs another discovery or town preparation before departure.'
+        };
+    }
+    if (reportCount === 0) {
+        return {
+            unlocked: true,
+            scouted: false,
+            label: 'Open - Unscouted',
+            className: 'is-open-unscouted',
+            description: 'This road is unlocked. Travel it to turn rumor into a reliable enemy report.'
+        };
+    }
+    if (unconfirmedCount > 0) {
+        return {
+            unlocked: true,
+            scouted: false,
+            label: 'Open - Partial Intel',
+            className: 'is-open-partial',
+            description: `${reportCount} threat report${reportCount === 1 ? '' : 's'} confirmed; ${unconfirmedCount} remain unverified.`
+        };
+    }
+    return {
+        unlocked: true,
+        scouted: true,
+        label: 'Open - Scouted',
+        className: 'is-open-scouted',
+        description: 'This road is open and its observed opposition is listed below.'
+    };
 }
 
 function selectAdventureRoute(routeId) {
@@ -499,6 +541,25 @@ function selectAdventureRoute(routeId) {
     selectedAdventureRouteId = route.id;
     if (typeof playRetroSound === 'function') playRetroSound('menu');
     renderAdventureBoard();
+    if (
+        typeof window !== 'undefined'
+        && typeof window.matchMedia === 'function'
+        && window.matchMedia('(max-width: 820px)').matches
+        && typeof setTimeout === 'function'
+    ) {
+        setTimeout(() => {
+            const detail = document.getElementById('exploration-detail');
+            if (!detail) return;
+            const heading = detail.querySelector('h3');
+            const focusTarget = heading || detail;
+            focusTarget.setAttribute('tabindex', '-1');
+            if (typeof focusTarget.focus === 'function') focusTarget.focus({ preventScroll: true });
+            if (typeof detail.scrollIntoView === 'function') {
+                const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                detail.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
+            }
+        }, 0);
+    }
 }
 
 function startSelectedExpedition() {
@@ -907,19 +968,28 @@ function renderExplorationMap(activeJourney) {
             || activeJourney.destinationId === location.id
         );
         const node = document.createElement('button');
+        const availability = destinationRoute
+            ? getRouteAvailabilityPresentation(destinationRoute)
+            : null;
         node.type = 'button';
         node.className = 'adventure-location-node';
         if (isHome) node.className += ' is-home';
         if (isSelected) node.className += ' is-selected';
         if (isActive) node.className += ' is-active';
         if (!unlocked) node.className += ' is-locked';
+        if (availability) node.className += ` ${availability.className}`;
         if (!discovered) node.className += ' is-hidden';
         node.style.left = `${position.x}%`;
         node.style.top = `${position.y}%`;
         node.disabled = !discovered || isHome || !destinationRoute;
         const symbol = discovered ? (location.symbol || location.icon || (isHome ? 'PUB' : 'X')) : '?';
         const name = discovered ? (location.name || location.id) : 'Unknown Road';
-        node.innerHTML = `<span class="node-symbol">${escapeAdventureHtml(symbol)}</span><span class="node-name">${escapeAdventureHtml(name)}</span>`;
+        const status = isHome
+            ? 'Home'
+            : (availability ? availability.label : (unlocked ? 'Open' : 'Locked'));
+        const canSelect = discovered && !isHome && !!destinationRoute;
+        node.setAttribute('aria-label', `${name}. ${status}.${canSelect ? ' Select for route details.' : ''}`);
+        node.innerHTML = `<span class="node-symbol">${escapeAdventureHtml(symbol)}</span><span class="node-name">${escapeAdventureHtml(name)}</span><span class="node-status">${escapeAdventureHtml(status)}</span>`;
         if (destinationRoute && discovered) node.onclick = () => selectAdventureRoute(destinationRoute.id);
         map.appendChild(node);
     });
@@ -929,7 +999,11 @@ function renderEncounterReportsMarkup(route) {
     const reports = getAdventureEncounterReports(route);
     const unconfirmedCount = Math.max(0, Number(route && route.unconfirmedEncounterCount) || 0);
     if (!reports.length) {
-        return '<p class="adventure-muted">Opposition is unconfirmed. Face the road to add a reliable report.</p>';
+        const availability = getRouteAvailabilityPresentation(route);
+        return `<div class="route-intel-empty ${escapeAdventureHtml(availability.className)}">
+            <strong>${escapeAdventureHtml(availability.label)}</strong>
+            <span>${escapeAdventureHtml(availability.description)}</span>
+        </div>`;
     }
     return `<div class="adventure-encounter-reports">${reports.map(report => {
         const enemyNames = asAdventureList(report.enemyNames || report.enemies)
@@ -1010,13 +1084,25 @@ function renderExplorationDetail(activeJourney) {
     const danger = route.dangerLabel || route.danger || 'Uncertain';
     const dangerClass = `danger-${String(danger).toLowerCase().replace(/[^a-z]+/g, '-')}`;
     const unlocked = isRouteUnlocked(route);
+    const availability = getRouteAvailabilityPresentation(route);
     const reward = Number(route.safeReturnGold || route.roundTripRewardGold || route.roundTripReward || 0);
     const firstReward = Number(route.firstReturnGold || route.firstReturnBonusGold || 0);
     const routeChoices = getAdventureRoutesToLocation(getRouteDestinationId(route));
+    const firstTrip = Number(getClientAdventureState().totalSafeReturns || 0) === 0;
+    const destinationName = destination ? destination.name : route.name || route.id;
 
     detail.innerHTML = `
         <h3>${escapeAdventureHtml(destination ? destination.name : route.name || route.id)}</h3>
-        <p>${escapeAdventureHtml((destination && destination.description) || route.description || 'An uncharted road beyond the pub.')}</p>
+        <p>${escapeAdventureHtml((destination && destination.description) || route.description || 'Route description unavailable. Reopen the Adventure Board to refresh its road record.')}</p>
+        ${unlocked ? `<div class="route-open-callout ${escapeAdventureHtml(availability.className)}">
+            <strong>${escapeAdventureHtml(availability.label)}</strong>
+            <span>No contract is required for this route. Use Set Out below to begin the trip.</span>
+        </div>` : ''}
+        ${firstTrip && route.newcomerHint ? `<div class="route-newcomer-hint">
+            <strong>${escapeAdventureHtml(route.newcomerLabel || 'First-trip note')}</strong>
+            <span>${escapeAdventureHtml(route.newcomerHint)}</span>
+            <small>Travel out, inspect anything interesting, then survive the return to bank road rewards.</small>
+        </div>` : ''}
         <dl>
             <dt>Distance</dt><dd>${escapeAdventureHtml(route.distanceLabel || route.distance || 'Unknown')}</dd>
             <dt>Danger</dt><dd class="${dangerClass}">${escapeAdventureHtml(danger)}</dd>
@@ -1036,7 +1122,7 @@ function renderExplorationDetail(activeJourney) {
         ` : ''}
         <h4>Road Reports</h4>
         ${renderEncounterReportsMarkup(route)}
-        <button type="button" id="start-expedition-btn">${unlocked ? 'Travel This Route' : 'Route Locked'}</button>
+        <button type="button" id="start-expedition-btn">${unlocked ? `Set Out for ${escapeAdventureHtml(destinationName)}` : 'Route Locked'}</button>
     `;
     detail.querySelectorAll('[data-adventure-route-choice]').forEach(button => {
         button.onclick = () => selectAdventureRoute(button.getAttribute('data-adventure-route-choice'));
@@ -1200,9 +1286,18 @@ function renderAdventureBoard() {
         const powerSummary = power
             ? ` Party power ${Math.max(0, Number(power.score) || 0)} (${escapeAdventureHtml(String(power.bandId || 'scouting').replace(/[_-]+/g, ' '))} encounters).`
             : '';
+        const selectedRoute = getAdventureRoute(selectedAdventureRouteId);
+        const selectedDestination = selectedRoute
+            ? getAdventureLocation(getRouteDestinationId(selectedRoute))
+            : null;
+        const selectedName = selectedDestination && selectedDestination.name
+            ? selectedDestination.name
+            : (selectedRoute && selectedRoute.name);
         banner.textContent = activeJourney
             ? `The party is away from the pub. Complete the return leg to bank its travel reward and advance relevant contract objectives.${powerSummary}`
-            : `Choose a road freely. Encounter reports describe possibilities, not a prescribed order.${powerSummary}`;
+            : (safeReturns === 0
+                ? `Both roads marked Open are available from the start. ${selectedName ? `${selectedName} is selected; review its briefing and press Set Out.` : 'Select either road to review it.'} Contracts are optional.${powerSummary}`
+                : `Choose a road freely. Encounter reports describe possibilities, not a prescribed order.${powerSummary}`);
     }
 
     renderExplorationMap(activeJourney);
@@ -1250,6 +1345,7 @@ if (typeof module !== 'undefined' && module.exports) {
         getAdventureRouteEnemyNames,
         getContractObjectivePresentation,
         getExpeditionEscrowSummary,
+        getRouteAvailabilityPresentation,
         getReturnNpcReactions,
         getSnapshotContracts,
         getWorldContractUpdates,
