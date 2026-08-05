@@ -90,7 +90,7 @@ function renderCompanionRosterUI(companions, activeIds) {
     if (companions.length === 0) {
         const empty = document.createElement('div');
         empty.className = 'companion-empty-state';
-        empty.textContent = 'No mercenaries hired yet. Hire one from Town.';
+        empty.textContent = 'No companions have joined your company yet. Meet people in town and on the roads.';
         partyList.appendChild(empty);
         renderCompanionEquipmentPanel(companions, activeIds);
         return;

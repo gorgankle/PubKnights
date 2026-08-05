@@ -7,6 +7,7 @@ const DEFAULT_ACTOR_MAX_STAMINA = 25;
 const DEFAULT_ATTACK_STAMINA_COST = 5;
 const DEFAULT_HEAL_STAMINA_COST = 10;
 const REST_STAMINA_RATIO = 0.15;
+const MOVE_STAMINA_PER_TILE = 5;
 
 function isPlayerActor(actor) {
     return !!actor && actor.kind === 'player';
@@ -88,7 +89,7 @@ function recoverActorStamina(actor, player, ratio = REST_STAMINA_RATIO) {
 function getMoveStaminaCost(distance, speed) {
     const safeDistance = Math.max(0, Number(distance) || 0);
     const safeSpeed = Math.max(1, Number(speed) || 1);
-    return Math.max(0, Math.floor((safeDistance / safeSpeed) * 10));
+    return Math.max(0, Math.floor((safeDistance / safeSpeed) * MOVE_STAMINA_PER_TILE));
 }
 
 function getActorAttackStaminaCost(actor) {
@@ -107,6 +108,7 @@ module.exports = {
     DEFAULT_ATTACK_STAMINA_COST,
     DEFAULT_HEAL_STAMINA_COST,
     REST_STAMINA_RATIO,
+    MOVE_STAMINA_PER_TILE,
     ensureActorStamina,
     getActorMaxStamina,
     getActorStamina,

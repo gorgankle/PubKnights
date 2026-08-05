@@ -10,7 +10,7 @@ const {
     interruptActorIntent,
     consumeActorReaction
 } = require('../combatIntents.js');
-const { createEnemy } = require('../public/js/npc-database.js');
+const { NpcDatabase, createEnemy } = require('../public/js/npc-database.js');
 
 function makePlayer(overrides = {}) {
     return {
@@ -115,6 +115,7 @@ test('production humanoids carry server-owned AI roles independently of visuals'
         hedge_mage: 'telegraph_caster',
         harvest_champion: 'polearm_pursuer',
         shield_guard_captain: 'shield_guard',
+        chapter_one_shield_captain: 'chapter_one_shield_captain',
         cellar_duelist: 'agile_duelist',
         tankard_brute: 'heavy_telegraph',
         cult_champion: 'scythe_telegraph',
@@ -131,6 +132,20 @@ test('production humanoids carry server-owned AI roles independently of visuals'
         getActorAiProfile({ aiProfileId: 'not_a_real_profile' }).id,
         'melee_pursuer'
     );
+});
+
+test('Chapter One captain reuses the guard-captain rig without replacing the legacy fallback', () => {
+    const captain = createEnemy('chapter_one_shield_captain', 4, 3);
+    assert.equal(captain.id, 'chapter_one_shield_captain');
+    assert.equal(captain.visualProfileId, 'shield_guard_captain');
+    assert.equal(captain.aiProfileId, 'chapter_one_shield_captain');
+    assert.equal(captain.size, 1);
+    assert.equal(captain.hp, 72);
+    assert.equal(captain.offense, 2);
+    assert.equal(captain.defense, 4);
+
+    assert.equal(NpcDatabase.shield_guard_captain.aiProfileId, 'shield_guard');
+    assert.equal(NpcDatabase.shield_guard_captain.hp, 220);
 });
 
 test('actor-local intents use unique ids and require a later manual turn sequence', () => {
@@ -154,6 +169,7 @@ test('actor-local intents use unique ids and require a later manual turn sequenc
 
     assert.notEqual(firstIntent.intentId, secondIntent.intentId);
     assert.notEqual(harness.enemy.pendingIntent, second.pendingIntent);
+    assert.equal(firstIntent.damageMultiplier, 1.5);
     assert.equal(canResolveActorIntent(harness.combat, harness.enemy), false);
     harness.combat.turnSequence++;
     assert.equal(canResolveActorIntent(harness.combat, harness.enemy), true);
@@ -241,7 +257,22 @@ test('hedge mage channels without immediate damage and movement leaves the marke
     assert.equal(prepared.length, 1);
     assert.equal(prepared[0].type, 'intent');
     assert.equal(prepared[0].intent.clipId, 'cast');
-    assert.deepEqual(prepared[0].intent.targetTiles, [{ x: 1, y: 3 }]);
+    assert.equal(prepared[0].intent.targetShape, 'line');
+    assert.equal(prepared[0].intent.effectType, 'area_damage');
+    assert.equal(prepared[0].intent.hazardType, 'fire');
+    assert.equal(prepared[0].intent.hazardous, true);
+    assert.deepEqual(prepared[0].intent.targetTiles, [
+        { x: 4, y: 3 },
+        { x: 3, y: 3 },
+        { x: 2, y: 3 },
+        { x: 1, y: 3 },
+        { x: 0, y: 3 }
+    ]);
+    assert.deepEqual(
+        prepared[0].affectedTiles,
+        prepared[0].intent.targetTiles
+    );
+    assert.match(prepared[0].accessibilityLabel, /marked line attack/i);
     assert.equal(harness.player.hp, 100);
 
     const tooSoon = executeActorTurn(
@@ -271,6 +302,74 @@ test('hedge mage channels without immediate damage and movement leaves the marke
     assert.equal(avoided[0].reason, 'target_repositioned');
     assert.equal(harness.player.hp, 100);
     assert.equal(harness.enemy.pendingIntent, undefined);
+});
+
+test('Hedge Fire resolves once across every opposing actor left in its projected line', t => {
+    const originalRandom = Math.random;
+    Math.random = () => 0.99;
+    t.after(() => { Math.random = originalRandom; });
+
+    const harness = makeHarness({
+        id: 'hedge_mage',
+        name: 'Hedge Mage',
+        type: 'RANGED',
+        x: 5,
+        attackRange: 5,
+        aiProfileId: 'telegraph_caster',
+        spellFx: { type: 'beam', style: 'fire' }
+    });
+    harness.player.speed = 1;
+    harness.player.defense = 1;
+    const companion = makePlayerActor({
+        uid: 'ally_line_target',
+        id: 'companion',
+        kind: 'companion',
+        controller: 'player_companion',
+        name: 'Line Ally',
+        x: 2,
+        y: 3,
+        hp: 100,
+        maxHp: 100,
+        offense: 2,
+        defense: 1,
+        speed: 1
+    });
+    harness.combat.actors.push(companion);
+
+    const prepared = executeActorTurn(
+        harness.socketId,
+        harness.combat,
+        harness.player,
+        harness.enemy,
+        harness.activeCombats,
+        harness.onDefeat
+    );
+    assert.equal(prepared[0].intent.affectedTileCount, 5);
+
+    harness.combat.turnSequence++;
+    const resolved = executeActorTurn(
+        harness.socketId,
+        harness.combat,
+        harness.player,
+        harness.enemy,
+        harness.activeCombats,
+        harness.onDefeat
+    );
+
+    assert.equal(resolved.length, 2);
+    assert.deepEqual(
+        resolved.map(event => event.type).sort(),
+        ['actorHit', 'hit']
+    );
+    assert.ok(harness.player.hp < 100);
+    assert.ok(companion.hp < 100);
+    assert.equal(harness.enemy.stamina, 20);
+    resolved.forEach(event => {
+        assert.equal(event.telegraphed, true);
+        assert.equal(event.intentTargetShape, 'line');
+        assert.match(event.intentEffectSummary, /every opposing actor/i);
+        assert.match(event.intentAccessibilityLabel, /marked line attack/i);
+    });
 });
 
 test('telegraphed heavy attacks honor an already-raised shield on resolution', () => {
@@ -319,6 +418,51 @@ test('telegraphed heavy attacks honor an already-raised shield on resolution', (
     assert.equal(harness.enemy.pendingIntent, undefined);
 });
 
+test('powerful intents apply their explicit damage multiplier after mitigation', t => {
+    const originalRandom = Math.random;
+    Math.random = () => 0.99;
+    t.after(() => { Math.random = originalRandom; });
+
+    const harness = makeHarness({
+        id: 'tankard_brute',
+        name: 'Tankard Brute',
+        x: 2,
+        attackRange: 1,
+        aiProfileId: 'heavy_telegraph'
+    });
+
+    const prepared = executeActorTurn(
+        harness.socketId,
+        harness.combat,
+        harness.player,
+        harness.enemy,
+        harness.activeCombats,
+        harness.onDefeat
+    );
+    assert.equal(prepared[0].intent.damageMultiplier, 1.5);
+
+    harness.combat.turnSequence++;
+    const resolved = executeActorTurn(
+        harness.socketId,
+        harness.combat,
+        harness.player,
+        harness.enemy,
+        harness.activeCombats,
+        harness.onDefeat
+    );
+
+    assert.equal(resolved[0].type, 'hit');
+    assert.equal(resolved[0].damage, 15);
+    assert.equal(harness.player.hp, 85);
+});
+
+test('the hostile scythe telegraph is honestly named as a single strike', () => {
+    const intent = AI_PROFILE_CATALOG.scythe_telegraph.intent;
+    assert.equal(intent.actionId, 'reaping_strike');
+    assert.equal(intent.label, 'Reaping Strike');
+    assert.equal(intent.damageMultiplier, 1.5);
+});
+
 test('shield captains visibly guard on alternating activations', () => {
     const harness = makeHarness({
         id: 'shield_guard_captain',
@@ -352,6 +496,120 @@ test('shield captains visibly guard on alternating activations', () => {
     assert.equal(harness.enemy.guardState, undefined);
     assert.equal(attackEvents.some(event => event.type === 'guard'), false);
     assert.ok(attackEvents.length > 0);
+});
+
+test('Chapter One captain cycles readable defense, bash, and real area sweep actions', t => {
+    const originalRandom = Math.random;
+    Math.random = () => 0.99;
+    t.after(() => { Math.random = originalRandom; });
+
+    const harness = makeHarness({
+        id: 'chapter_one_shield_captain',
+        name: 'False Toll Shield Captain',
+        x: 2,
+        y: 3,
+        hp: 72,
+        maxHp: 72,
+        stamina: 35,
+        maxStamina: 35,
+        attackRange: 1,
+        offense: 2,
+        defense: 4,
+        speed: 2,
+        aiProfileId: 'chapter_one_shield_captain'
+    });
+    harness.player.speed = 1;
+    harness.player.defense = 1;
+    const companion = makePlayerActor({
+        uid: 'ally_captain_sweep_target',
+        id: 'companion',
+        kind: 'companion',
+        controller: 'player_companion',
+        name: 'Shieldmate',
+        x: 1,
+        y: 2,
+        hp: 100,
+        maxHp: 100,
+        offense: 2,
+        defense: 1,
+        speed: 1
+    });
+    harness.combat.actors.push(companion);
+
+    const defended = executeActorTurn(
+        harness.socketId,
+        harness.combat,
+        harness.player,
+        harness.enemy,
+        harness.activeCombats,
+        harness.onDefeat
+    );
+    assert.equal(defended[0].type, 'guard');
+    assert.equal(defended[0].actionName, 'Hold the Line');
+    assert.match(defended[0].effectSummary, /blocks the next/i);
+    assert.match(defended[0].accessibilityLabel, /captain is defending/i);
+    assert.equal(harness.enemy.guardState.charges, 1);
+
+    const bashPrepared = executeActorTurn(
+        harness.socketId,
+        harness.combat,
+        harness.player,
+        harness.enemy,
+        harness.activeCombats,
+        harness.onDefeat
+    );
+    assert.equal(bashPrepared[0].type, 'intent');
+    assert.equal(bashPrepared[0].intent.actionId, 'captains_bash');
+    assert.equal(bashPrepared[0].intent.targetShape, 'single');
+    assert.match(bashPrepared[0].intent.accessibilityLabel, /one marked target/i);
+
+    harness.combat.turnSequence++;
+    const bashResolved = executeActorTurn(
+        harness.socketId,
+        harness.combat,
+        harness.player,
+        harness.enemy,
+        harness.activeCombats,
+        harness.onDefeat
+    );
+    assert.ok(bashResolved.some(event => ['hit', 'deflect'].includes(event.type)));
+
+    const sweepPrepared = executeActorTurn(
+        harness.socketId,
+        harness.combat,
+        harness.player,
+        harness.enemy,
+        harness.activeCombats,
+        harness.onDefeat
+    );
+    assert.equal(sweepPrepared[0].type, 'intent');
+    assert.equal(sweepPrepared[0].intent.actionId, 'sweeping_rebuke');
+    assert.equal(sweepPrepared[0].intent.targetShape, 'radius');
+    assert.equal(sweepPrepared[0].intent.radius, 1);
+    assert.equal(sweepPrepared[0].intent.targetTiles.length, 9);
+    assert.match(sweepPrepared[0].intent.effectSummary, /every opposing actor/i);
+
+    harness.combat.turnSequence++;
+    const sweepResolved = executeActorTurn(
+        harness.socketId,
+        harness.combat,
+        harness.player,
+        harness.enemy,
+        harness.activeCombats,
+        harness.onDefeat
+    );
+    assert.equal(sweepResolved.length, 2);
+    assert.deepEqual(
+        sweepResolved.map(event => event.type).sort(),
+        ['actorHit', 'hit']
+    );
+    assert.ok(harness.player.hp < 100);
+    assert.ok(companion.hp < 100);
+    assert.equal(harness.enemy.stamina, 20);
+    sweepResolved.forEach(event => {
+        assert.equal(event.intentTargetShape, 'radius');
+        assert.match(event.intentAccessibilityLabel, /3 by 3 area/i);
+    });
 });
 
 test('ranged skirmishers seek distance before taking a shot', () => {

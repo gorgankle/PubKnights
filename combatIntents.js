@@ -36,8 +36,16 @@ const AI_PROFILE_CATALOG = deepFreeze({
             actionId: 'hedge_fire',
             label: 'Hedge Fire',
             clipId: 'cast',
+            targetShape: 'line',
+            range: 5,
+            effectType: 'area_damage',
+            hazardType: 'fire',
+            hazardous: true,
+            effectSummary: 'Damages every opposing actor left in the marked line.',
+            accessibilityLabel: 'Hedge Fire. A marked line attack. Damage the caster to interrupt it, evade, or leave the marked tiles.',
             targetingMode: 'locked_tiles',
             powerful: true,
+            damageMultiplier: 1.5,
             interruptible: true,
             blockable: false,
             evadable: true,
@@ -53,6 +61,54 @@ const AI_PROFILE_CATALOG = deepFreeze({
             staminaCost: 5
         }
     },
+    chapter_one_shield_captain: {
+        id: 'chapter_one_shield_captain',
+        role: 'captain',
+        guard: {
+            every: 3,
+            staminaCost: 5,
+            label: 'Hold the Line',
+            effectSummary: 'Raises a shield that blocks the next blockable attack.',
+            accessibilityLabel: 'Hold the Line. The captain is defending and will block the next blockable attack.'
+        },
+        intents: [
+            {
+                actionId: 'captains_bash',
+                label: "Captain's Bash",
+                clipId: 'shield_bash',
+                targetShape: 'single',
+                effectType: 'single_damage',
+                effectSummary: 'A committed shield strike against the marked target.',
+                accessibilityLabel: "Captain's Bash. One marked target. Block, evade, interrupt, or move away.",
+                targetingMode: 'locked_tiles',
+                powerful: true,
+                damageMultiplier: 1.25,
+                interruptible: true,
+                blockable: true,
+                evadable: true,
+                repositionable: true,
+                counterplay: ['interrupt', 'block', 'evade', 'reposition']
+            },
+            {
+                actionId: 'sweeping_rebuke',
+                label: 'Sweeping Rebuke',
+                clipId: 'slash',
+                targetShape: 'radius',
+                radius: 1,
+                effectType: 'area_damage',
+                effectSummary: 'Strikes every opposing actor left in the marked 3 by 3 area.',
+                accessibilityLabel: 'Sweeping Rebuke. A marked 3 by 3 area attack. Block, evade, interrupt, or leave the marked tiles.',
+                targetingMode: 'locked_tiles',
+                powerful: true,
+                damageMultiplier: 1.1,
+                interruptible: true,
+                blockable: true,
+                evadable: true,
+                repositionable: true,
+                counterplay: ['interrupt', 'block', 'evade', 'reposition']
+            }
+        ]
+    },
     heavy_telegraph: {
         id: 'heavy_telegraph',
         role: 'heavy',
@@ -60,8 +116,13 @@ const AI_PROFILE_CATALOG = deepFreeze({
             actionId: 'crushing_swing',
             label: 'Crushing Swing',
             clipId: 'heavy',
+            targetShape: 'single',
+            effectType: 'single_damage',
+            effectSummary: 'A crushing strike against the marked target.',
+            accessibilityLabel: 'Crushing Swing. One marked target. Block, evade, or leave the marked tile.',
             targetingMode: 'locked_tiles',
             powerful: true,
+            damageMultiplier: 1.5,
             interruptible: false,
             blockable: true,
             evadable: true,
@@ -73,11 +134,16 @@ const AI_PROFILE_CATALOG = deepFreeze({
         id: 'scythe_telegraph',
         role: 'heavy',
         intent: {
-            actionId: 'reaping_sweep',
-            label: 'Reaping Sweep',
+            actionId: 'reaping_strike',
+            label: 'Reaping Strike',
             clipId: 'scythe',
+            targetShape: 'single',
+            effectType: 'single_damage',
+            effectSummary: 'A committed scythe strike against the marked target.',
+            accessibilityLabel: 'Reaping Strike. One marked target. Interrupt, block, evade, or leave the marked tile.',
             targetingMode: 'locked_tiles',
             powerful: true,
+            damageMultiplier: 1.5,
             interruptible: true,
             blockable: true,
             evadable: true,
@@ -113,13 +179,114 @@ function getTargetFootprintTiles(target) {
     return tiles;
 }
 
+function getCombatGridBounds(combat) {
+    return {
+        cols: Math.max(1, Math.trunc(Number(combat && combat.gridSize && combat.gridSize.cols) || 16)),
+        rows: Math.max(1, Math.trunc(Number(combat && combat.gridSize && combat.gridSize.rows) || 10))
+    };
+}
+
+function isIntentTileAvailable(combat, x, y) {
+    const bounds = getCombatGridBounds(combat);
+    if (x < 0 || x >= bounds.cols || y < 0 || y >= bounds.rows) return false;
+    return !Array.isArray(combat && combat.obstacles) || !combat.obstacles.some(
+        obstacle => obstacle && obstacle.x === x && obstacle.y === y
+    );
+}
+
+function projectLineIntentTiles(combat, actor, target, range) {
+    const tiles = [];
+    let currentX = Math.trunc(Number(actor && actor.x) || 0);
+    let currentY = Math.trunc(Number(actor && actor.y) || 0);
+    const selectedTargetX = Math.trunc(Number(target && target.x) || 0);
+    const selectedTargetY = Math.trunc(Number(target && target.y) || 0);
+    const directionX = selectedTargetX - currentX;
+    const directionY = selectedTargetY - currentY;
+    const selectedDistance = Math.max(
+        Math.abs(directionX),
+        Math.abs(directionY)
+    );
+    if (selectedDistance <= 0) return getTargetFootprintTiles(target);
+    const projectedRange = Math.max(
+        selectedDistance,
+        Math.trunc(Number(range) || selectedDistance)
+    );
+    const targetX = currentX + Math.round(
+        (directionX / selectedDistance) * projectedRange
+    );
+    const targetY = currentY + Math.round(
+        (directionY / selectedDistance) * projectedRange
+    );
+    const deltaX = Math.abs(targetX - currentX);
+    const deltaY = Math.abs(targetY - currentY);
+    const stepX = currentX < targetX ? 1 : -1;
+    const stepY = currentY < targetY ? 1 : -1;
+    let error = deltaX - deltaY;
+    const bounds = getCombatGridBounds(combat);
+    const safetyLimit = bounds.cols * bounds.rows;
+
+    for (let step = 0; step < safetyLimit; step++) {
+        if (currentX === targetX && currentY === targetY) break;
+        const doubledError = 2 * error;
+        if (doubledError > -deltaY) {
+            error -= deltaY;
+            currentX += stepX;
+        }
+        if (doubledError < deltaX) {
+            error += deltaX;
+            currentY += stepY;
+        }
+        if (!isIntentTileAvailable(combat, currentX, currentY)) break;
+        tiles.push({ x: currentX, y: currentY });
+    }
+    return tiles;
+}
+
+function projectRadiusIntentTiles(combat, target, radius) {
+    const tiles = [];
+    const centerX = Math.trunc(Number(target && target.x) || 0);
+    const centerY = Math.trunc(Number(target && target.y) || 0);
+    const resolvedRadius = Math.max(0, Math.trunc(Number(radius) || 0));
+    for (let x = centerX - resolvedRadius; x <= centerX + resolvedRadius; x++) {
+        for (let y = centerY - resolvedRadius; y <= centerY + resolvedRadius; y++) {
+            if (isIntentTileAvailable(combat, x, y)) tiles.push({ x, y });
+        }
+    }
+    return tiles;
+}
+
+function projectIntentTargetTiles(combat, actor, target, intentProfile = {}) {
+    const targetShape = String(intentProfile.targetShape || 'single').toLowerCase();
+    if (targetShape === 'line') {
+        const lineTiles = projectLineIntentTiles(
+            combat,
+            actor,
+            target,
+            intentProfile.range || (actor && actor.attackRange)
+        );
+        return lineTiles.length > 0 ? lineTiles : getTargetFootprintTiles(target);
+    }
+    if (targetShape === 'radius') {
+        return projectRadiusIntentTiles(combat, target, intentProfile.radius);
+    }
+    return getTargetFootprintTiles(target).filter(tile => (
+        isIntentTileAvailable(combat, tile.x, tile.y)
+    ));
+}
+
+function cloneIntentTiles(tiles) {
+    return Array.isArray(tiles)
+        ? tiles.map(tile => ({ x: tile.x, y: tile.y }))
+        : [];
+}
+
 function cloneIntent(intent) {
     if (!intent || typeof intent !== 'object') return null;
     return {
         ...intent,
-        targetTiles: Array.isArray(intent.targetTiles)
-            ? intent.targetTiles.map(tile => ({ x: tile.x, y: tile.y }))
-            : [],
+        targetTiles: cloneIntentTiles(intent.targetTiles),
+        affectedTiles: cloneIntentTiles(intent.affectedTiles),
+        hazardTiles: cloneIntentTiles(intent.hazardTiles),
         counterplay: Array.isArray(intent.counterplay)
             ? [...intent.counterplay]
             : []
@@ -128,27 +295,68 @@ function cloneIntent(intent) {
 
 function prepareActorIntent(combat, actor, target, intentProfile) {
     if (!combat || !actor || !target || !intentProfile) return null;
+    const configuredDamageMultiplier = Number(intentProfile.damageMultiplier);
+    const targetShape = ['single', 'line', 'radius'].includes(
+        String(intentProfile.targetShape || '').toLowerCase()
+    )
+        ? String(intentProfile.targetShape).toLowerCase()
+        : 'single';
+    const targetTiles = projectIntentTargetTiles(
+        combat,
+        actor,
+        target,
+        { ...intentProfile, targetShape }
+    );
+    const counterplay = Array.isArray(intentProfile.counterplay)
+        ? [...intentProfile.counterplay]
+        : [];
+    const effectSummary = String(
+        intentProfile.effectSummary || 'Damages the marked target.'
+    );
+    const label = String(
+        intentProfile.label || actor.name || 'Telegraphed Attack'
+    );
     const intent = {
         intentId: getNextIntentId(combat, actor),
         actionId: String(intentProfile.actionId || 'telegraphed_attack'),
-        label: String(intentProfile.label || actor.name || 'Powerful Attack'),
+        label,
         clipId: String(intentProfile.clipId || 'slash'),
         sourceUid: actor.uid,
         targetUid: target.uid,
         targetX: Number(target.x) || 0,
         targetY: Number(target.y) || 0,
-        targetTiles: getTargetFootprintTiles(target),
+        targetShape,
+        radius: targetShape === 'radius'
+            ? Math.max(0, Math.trunc(Number(intentProfile.radius) || 0))
+            : 0,
+        targetTiles,
+        affectedTiles: cloneIntentTiles(targetTiles),
+        hazardTiles: intentProfile.hazardous === true
+            ? cloneIntentTiles(targetTiles)
+            : [],
+        affectedTileCount: targetTiles.length,
+        effectType: String(intentProfile.effectType || 'single_damage'),
+        effectSummary,
+        hazardType: intentProfile.hazardType
+            ? String(intentProfile.hazardType)
+            : null,
+        hazardous: intentProfile.hazardous === true,
+        accessibilityLabel: String(
+            intentProfile.accessibilityLabel
+            || `${label}. ${effectSummary}${counterplay.length > 0 ? ` Counterplay: ${counterplay.join(', ')}.` : ''}`
+        ),
         targetingMode: intentProfile.targetingMode === 'tracked_actor'
             ? 'tracked_actor'
             : 'locked_tiles',
         powerful: intentProfile.powerful === true,
+        damageMultiplier: Number.isFinite(configuredDamageMultiplier)
+            ? Math.max(1, configuredDamageMultiplier)
+            : 1,
         interruptible: intentProfile.interruptible === true,
         blockable: intentProfile.blockable !== false,
         evadable: intentProfile.evadable !== false,
         repositionable: intentProfile.repositionable !== false,
-        counterplay: Array.isArray(intentProfile.counterplay)
-            ? [...intentProfile.counterplay]
-            : [],
+        counterplay,
         createdTurnSequence: Number.isSafeInteger(combat.turnSequence)
             ? Math.max(0, combat.turnSequence)
             : 0
@@ -264,6 +472,10 @@ function createIntentEvent(actor, intent) {
         actorId: actor.id,
         name: actor.name,
         clipId: snapshot.clipId,
+        targetShape: snapshot.targetShape,
+        affectedTiles: cloneIntentTiles(snapshot.affectedTiles),
+        effectSummary: snapshot.effectSummary,
+        accessibilityLabel: snapshot.accessibilityLabel,
         intent: snapshot
     };
 }
@@ -285,6 +497,7 @@ module.exports = {
     DEFAULT_AI_PROFILE,
     getActorAiProfile,
     getTargetFootprintTiles,
+    projectIntentTargetTiles,
     prepareActorIntent,
     getPendingActorIntent,
     canResolveActorIntent,

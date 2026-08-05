@@ -194,6 +194,15 @@ const LootTables = {
             { itemId: "staunching_bitter", weight: 4 }
         ]
     },
+    "chapter_one_shield_captain": {
+        xpDrop: 110,
+        dropChance: 1.0,
+        pools: [
+            { itemId: "captains_shield", weight: 45 },
+            { itemId: "brewmasters_club", weight: 35 },
+            { itemId: "parrying_dagger", weight: 20 }
+        ]
+    },
     "cellar_duelist": {
         xpDrop: 70,
         dropChance: 0.78,
@@ -246,26 +255,6 @@ const LootTables = {
         ]
     },
 	
-// === BLACK MARKET GAMBLES ===
-    "black_market": {
-        xpDrop: 0,
-        dropChance: 1.0, 
-        pools: [
-            // Reverted back to mostly early-game gear for the 50 Hops price tag
-            { itemId: "rusty_mace", weight: 25 },
-            { itemId: "sturdy_boots", weight: 20 },
-            { itemId: "boar_hide_armor", weight: 20 },
-            { itemId: "scavenged_machete", weight: 15 },
-            { itemId: "wilderness_cloak", weight: 10 },
-            { itemId: "leather_tunic", weight: 5 },
-            { itemId: "leather_mitts", weight: 5 },
-            // A microscopic tease for mid-game gear to keep them gambling
-            { itemId: "brewmasters_club", weight: 2 },
-            { itemId: "hop_infused_boots", weight: 2 },
-            { itemId: "pubserker_flatcap", weight: 1 }
-        ]
-    },
-
     // === PROCEDURAL ABYSS MOBS ===
     "spectral_barfly": {
         xpDrop: 120, // Base XP (Note: We can scale this dynamically later if needed)

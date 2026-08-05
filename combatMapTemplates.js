@@ -161,6 +161,36 @@ const CombatMapTemplates = Object.freeze({
             { x: 13, y: 4, spriteId: "map_broken_cask" }
         ]
     },
+    EXPEDITION_RUINED_WATCHHOUSE: {
+        id: "EXPEDITION_RUINED_WATCHHOUSE",
+        zone: "WILDERNESS",
+        name: "Ruined Watchhouse",
+        gridSize: { cols: 16, rows: 10 },
+        tileSize: DEFAULT_TILE_SIZE,
+        floorSpriteId: "ground_wilderness",
+        playerStart: { x: 1, y: 4 },
+        deploymentZone: [
+            { x: 1, y: 3 }, { x: 1, y: 4 }, { x: 1, y: 5 },
+            { x: 2, y: 3 }, { x: 2, y: 4 }, { x: 2, y: 5 }
+        ],
+        enemySpawns: {
+            captain_gate: { x: 10, y: 4 },
+            mage_tower: { x: 13, y: 2 },
+            archer_wall: { x: 12, y: 7 },
+            guard_courtyard: { x: 8, y: 6 },
+            guard_rear: { x: 14, y: 5 }
+        },
+        obstacles: [
+            { x: 4, y: 1, spriteId: "map_boulder" }, { x: 6, y: 1, spriteId: "map_boulder" },
+            { x: 8, y: 1, spriteId: "map_boulder" }, { x: 10, y: 1, spriteId: "map_boulder" },
+            { x: 12, y: 1, spriteId: "map_boulder" }, { x: 14, y: 1, spriteId: "map_boulder" },
+            { x: 4, y: 8, spriteId: "map_boulder" }, { x: 6, y: 8, spriteId: "map_boulder" },
+            { x: 8, y: 8, spriteId: "map_boulder" }, { x: 10, y: 8, spriteId: "map_boulder" },
+            { x: 12, y: 8, spriteId: "map_boulder" }, { x: 14, y: 8, spriteId: "map_boulder" },
+            { x: 5, y: 3, spriteId: "map_broken_cask" }, { x: 5, y: 6, spriteId: "map_broken_cask" },
+            { x: 11, y: 3, spriteId: "map_broken_cask" }, { x: 11, y: 6, spriteId: "map_broken_cask" }
+        ]
+    },
     CELLARS_STANDARD: {
         id: "CELLARS_STANDARD",
         zone: "CELLARS",
@@ -174,11 +204,6 @@ const CombatMapTemplates = Object.freeze({
             { x: 11, y: 2 }, { x: 11, y: 3 }, { x: 11, y: 4 }
         ],
         mimicEnemies: [{ id: "pub_crawl_mimic", x: 11, y: 6 }],
-        chummedEnemies: [
-            { id: "pub_crawl_mimic", x: 8, y: 5 }, { id: "pub_crawl_mimic", x: 9, y: 5 },
-            { id: "pub_crawl_mimic", x: 10, y: 5 }, { id: "pub_crawl_mimic", x: 11, y: 5 },
-            { id: "pub_crawl_mimic", x: 12, y: 5 }
-        ],
         obstacles: [
             { x: 3, y: 2 }, { x: 3, y: 7 }, { x: 5, y: 4 }, { x: 6, y: 1 }, { x: 6, y: 8 },
             { x: 8, y: 3 }, { x: 8, y: 6 }, { x: 10, y: 1 }, { x: 13, y: 3 }, { x: 13, y: 7 }

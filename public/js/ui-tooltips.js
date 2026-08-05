@@ -6,13 +6,7 @@ function showSystemTooltip(type, event) {
     let item = typeof type === 'object' ? type : null;
 
     if (type === 'tavern_enter') {
-        html = `<h3>🍻 The Exchange</h3>Visit the Brewmaster and Guild Quartermaster for battle supplies. Mercenaries are now hired directly from Town.`;
-    }
-	else if (type === 'trade_routes') {
-        html = `<h3>🗺️ Expand Trade Routes</h3>Fund a massive infrastructure project to clear roads and build merchant cargo ships. <br><br>🔓 <b>Unlocks:</b> Bulk Fish Exports (Sell 1,000 Fish at once).<br>💰 Cost: 25,000 Gold`;
-    }
-	else if (type === 'monument') {
-        html = `<h3>🗽 The Golden Monument</h3>Erect a breathtaking statue in the center of town declaring yourself the ultimate Guildmaster.<br><br>🏆 <b>Reward:</b> Permanently DOUBLES all XP and Gold yields from combat!<br>💰 Cost: 1,000,000 Gold`;
+        html = `<h3>🍻 The Exchange</h3>Visit the Brewmaster and quartermaster for battle supplies.`;
     }
 else if (type === 'pet_train') {
         let cost = getPetTrainingCost();
@@ -26,7 +20,7 @@ else if (item && item.slot === "consumable") {
         }
 	} 	
     else if (type === 'adventures_enter') {
-        html = `<h3>⚔️ Adventure Board</h3>Choose a travel route, inspect road danger, manage bounties, and complete safe round trips from the pub.`;
+        html = `<h3>⚔️ Adventure Board</h3>Choose a travel route, inspect road danger, manage contracts, and complete safe round trips from the pub.`;
     }
 	else if (type === 'cellars_enter') {
         html = `<h3>🍷 Forbidden Cellars</h3>Descend into the forgotten, mold-covered storage vaults. Enemies here have thicker armor and hit harder than those in the Wilds.<br>⚠️ Danger: Beware of Mimics disguising themselves among the casks!`;
@@ -47,21 +41,6 @@ else if (item && item.slot === "consumable") {
     }
 	else if (type === 'reserve') {
         html = `<h3>Grandmaster Reserve</h3>Heavily mends wounds in battle and cleanses negative effects.<br>Cost: 1000g`;
-    }
-	else if (type === 'gilded_tavern') {
-        html = `<h3>✨ Gilded Tavern Metamorphosis</h3>Pay the ultimate tribute to the Guild. Imbues the pub walls with gold filigree and automates supply clearing.<br>💰 Cost: <b>10,000 Gold</b>`;
-    }
-    else if (type === 'happy_hour') {
-        html = `<h3>🎉 Host Happy Hour</h3>Throw a massive festival to double your team's morale! Woodcutters, Fishermen, and Farmers harvest at <b>2x speed vectors for the next 3 minutes</b>.<br>⚖️ Requires: 40 Hops, 100 Gold Pieces`;
-    }
-    else if (type === 'black_market') {
-        html = `<h3>Removed</h3>Black market trading has been removed.`;
-    }
-    else if (type === 'fish_wholesale') {
-        html = `<h3>Retired</h3>Fish exports have been retired in the gold economy.`;
-    }
-    else if (type === 'chum_cellars') {
-        html = `<h3>Retired</h3>Cellar chumming has been retired for now.`;
     }
    else if (type === 'stat_vitality') {
         html = `<h3>❤️ Vitality</h3>Increases your maximum health pool.<br>📈 Gain <b>+25 Max HP</b> per level.`;
@@ -86,24 +65,9 @@ else if (item && item.slot === "consumable") {
 	else if (type === 'stats_panel') {
         html = `<h3>Knight Attributes</h3>Click to expand your Knight's profile to view and allocate your core statistics.`;
     }
-    else if (type === 'idle_rest') {
-        html = `<h3>💤 Rest Bar</h3>Take a break in the tavern to passively regenerate <b>+5 HP</b> per tick.`;
-    }
-    else if (type === 'idle_wood') {
-        html = `<h3>🪓 Gather Wood</h3>Venture into the forest to passively collect <b>Timber</b> for upgrades and trade.`;
-    }
-    else if (type === 'idle_fish') {
-        html = `<h3>🎣 Catch Fish</h3>Relax by the lake to passively reel in <b>Fish</b> for trading.`;
-    }
-    else if (type === 'idle_hops') {
-        html = `<h3>🌾 Harvest Hops</h3>Work the fields to passively gather <b>Hops</b> for brewing and black market deals.`;
-    }
     else if (type === 'pack_up') {
         let pCost = getBackpackUpgradeCost();
         html = `<h3>Expand Backpack</h3>Adds <b>+1 slot</b> to your personal combat inventory.<br>Cost: ${pCost.gold}g`;
-    }
-    else if (type === 'claim_cart') {
-        html = `<h3>🧺 Claim Supplies</h3>Empty the town's production cart and deposit all gathered Timber, Fish, and Hops directly into your vault balance.`;
     }
     // === NEW: COMBAT ACTIONS ===
     else if (type === 'combat_slash') {

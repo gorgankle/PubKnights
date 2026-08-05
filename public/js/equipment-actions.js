@@ -142,9 +142,6 @@
         const repositionAway = normalizedNumber(action.repositionAway, 0);
         const endsTurn = action.endsTurn === true;
         const interruptsIntent = action.interruptsIntent === true;
-        const armorBreak = action.armorBreak === true;
-        const channelled = action.channelled === true;
-        const interruptible = action.interruptible === true;
         const normalizedRules = cloneAndFreeze({
             ...action,
             actionType,
@@ -161,10 +158,7 @@
             pushTarget,
             repositionAway,
             endsTurn,
-            interruptsIntent,
-            armorBreak,
-            channelled,
-            interruptible
+            interruptsIntent
         });
 
         return Object.freeze({
@@ -189,9 +183,6 @@
             repositionAway,
             endsTurn,
             interruptsIntent,
-            armorBreak,
-            channelled,
-            interruptible,
             rules: normalizedRules
         });
     }

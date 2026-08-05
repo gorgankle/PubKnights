@@ -6,7 +6,8 @@
   "scripts": {
     "test": "node --test",
     "start": "node server.js",
-    "preview": "node scripts/preview-server.js"
+    "preview": "node scripts/preview-server.js",
+    "test:e2e": "node --test e2e/browserChapterOneJourney.e2e.js"
   },
   "keywords": [],
   "author": "",
@@ -17,5 +18,8 @@
     "express": "^5.2.1",
     "mongoose": "^9.7.0",
     "socket.io": "^4.8.3"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.55.0"
   }
 }

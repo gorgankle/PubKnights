@@ -39,9 +39,13 @@ function drawEnemyIntentOverlays(cols, rows) {
     const pulse = 0.55 + ((Math.sin(globalAnimClock * 0.14) + 1) * 0.18);
     getCombatIntentActors().forEach(actor => {
         const intent = actor.pendingIntent;
-        const tiles = Array.isArray(intent.targetTiles)
-            ? intent.targetTiles
-            : [];
+        const effectText = String(intent.effectSummary || intent.effectLabel || '').toLowerCase();
+        const isLingeringHazard = intent.lingering === true
+            || effectText.includes('burn')
+            || effectText.includes('hazard');
+        const tiles = Array.isArray(intent.affectedTiles) && intent.affectedTiles.length
+            ? intent.affectedTiles
+            : (Array.isArray(intent.targetTiles) ? intent.targetTiles : []);
         tiles.forEach(tile => {
             const tileX = Math.trunc(Number(tile && tile.x));
             const tileY = Math.trunc(Number(tile && tile.y));
@@ -72,13 +76,30 @@ function drawEnemyIntentOverlays(cols, rows) {
             ]);
             ctx.strokeRect(px + 5, py + 5, currentTileSize - 10, currentTileSize - 10);
             ctx.setLineDash([]);
+            // A hatch survives monochrome displays and common color-vision
+            // deficiencies, so danger never depends on red/orange alone.
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(px + 3, py + 3, currentTileSize - 6, currentTileSize - 6);
+            ctx.clip();
+            ctx.globalAlpha = Math.min(1, pulse + 0.18);
+            ctx.strokeStyle = isLingeringHazard ? '#fff2a8' : '#ffe0d2';
+            ctx.lineWidth = Math.max(1, currentTileSize * 0.025);
+            const hatchStep = Math.max(8, Math.floor(currentTileSize * 0.22));
+            for (let offset = -currentTileSize; offset < currentTileSize * 2; offset += hatchStep) {
+                ctx.beginPath();
+                ctx.moveTo(px + offset, py + currentTileSize);
+                ctx.lineTo(px + offset + currentTileSize, py);
+                ctx.stroke();
+            }
+            ctx.restore();
             ctx.fillStyle = '#fff2c7';
             ctx.font = `bold ${Math.max(12, Math.floor(currentTileSize * 0.28))}px Courier New`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.shadowColor = '#210b08';
             ctx.shadowBlur = 3;
-            ctx.fillText('!', px + (currentTileSize / 2), py + (currentTileSize / 2));
+            ctx.fillText(isLingeringHazard ? 'F' : '!', px + (currentTileSize / 2), py + (currentTileSize / 2));
             ctx.restore();
         });
     });
@@ -724,7 +745,7 @@ if (SpriteMatrices[groundSprite]) {
                 if (pendingMove && pendingMove.x === x && pendingMove.y === y) {
                     let dist = getGridDistance(activeGridPos.x, activeGridPos.y, x, y, activeGridPos.size || 1);
                     let swiftness = typeof getActiveCombatantMoveRange === 'function' ? getActiveCombatantMoveRange() : getPlayerSwiftness();
-                    let estCost = Math.floor((dist / swiftness) * 10);
+                    let estCost = Math.floor((dist / swiftness) * 5);
                     let fontSize = currentGridSize > 10 ? 10 : 14;
                     ctx.font = `bold ${fontSize}px Courier New`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
                     ctx.fillStyle = "#f1c40f"; ctx.shadowColor = "#000"; ctx.shadowBlur = 4; ctx.shadowOffsetX = 1; ctx.shadowOffsetY = 1;
@@ -1288,8 +1309,17 @@ function buildNpcTooltipHtml(mob) {
     const intent = mob.pendingIntent && typeof mob.pendingIntent === 'object'
         ? mob.pendingIntent
         : null;
+    const intentArea = intent && (
+        intent.shapeLabel
+        || intent.areaLabel
+        || intent.targetShape
+        || intent.shape
+    );
+    const intentEffect = intent && (intent.effectSummary || intent.effectLabel);
     const intentHtml = intent
         ? `<br><b style="color:#ff8a65;">Intent:</b> ${String(intent.label || 'Powerful attack')}` +
+          (intentArea ? `<br><b>Area:</b> ${String(intentArea)}` : '') +
+          (intentEffect ? `<br><b>Effect:</b> ${String(intentEffect)}` : '') +
           `<br><b>Counterplay:</b> ${Array.isArray(intent.counterplay) && intent.counterplay.length
               ? intent.counterplay.join(', ')
               : 'Move, defend, or interrupt'}`
@@ -1409,7 +1439,7 @@ if (isValidPlayerMovePath(tx, ty)) {
                 let activePosForMove = typeof getActiveCombatantPosition === 'function' ? getActiveCombatantPosition() : { x: player.x, y: player.y, size: 1 };
                 let dist = getGridDistance(activePosForMove.x, activePosForMove.y, tx, ty, activePosForMove.size || 1);
                 let swiftness = typeof getActiveCombatantMoveRange === 'function' ? getActiveCombatantMoveRange() : getPlayerSwiftness();
-			    let moveStaminaCost = Math.floor((dist / swiftness) * 10);
+			    let moveStaminaCost = Math.floor((dist / swiftness) * 5);
                 if ((typeof getActiveCombatantStamina === 'function' ? getActiveCombatantStamina() : player.stamina) < moveStaminaCost) {
                     logMessage(`❌ Legs are too heavy. Not enough stamina (${moveStaminaCost} required).`); playRetroSound('error');
                     pendingMove = null; return;
@@ -1433,7 +1463,7 @@ if (isValidPlayerMovePath(tx, ty)) {
                 let activePosForMove = typeof getActiveCombatantPosition === 'function' ? getActiveCombatantPosition() : { x: player.x, y: player.y, size: 1 };
                 let dist = getGridDistance(activePosForMove.x, activePosForMove.y, tx, ty, activePosForMove.size || 1);
                 let swiftness = typeof getActiveCombatantMoveRange === 'function' ? getActiveCombatantMoveRange() : getPlayerSwiftness();
-                let estCost = Math.floor((dist / swiftness) * 10);
+                let estCost = Math.floor((dist / swiftness) * 5);
                 logMessage(`📍 Target marked. Click again to confirm movement (Costs ${estCost} Stamina).`);
             }
         } else { logMessage("❌ Outside stride capabilities."); playRetroSound('error'); }

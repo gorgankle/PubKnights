@@ -31,7 +31,7 @@ let player = {
 maxInventorySlots: 5, backpackUpgrades: 0,
     
 // === MULTI-BUFF ARRAYS ADDED HERE ===
-    activeCombatBuff: null, activeBuffs: [], happyHourTicks: 0, cellarsChummed: false,
+    activeCombatBuff: null, activeBuffs: [],
     
 // === NEW: PET STATE ===
     // supply cart automation retired
@@ -255,12 +255,7 @@ function getVaultUpgradeCost() {
 function getPetTrainingCost() {
     let level = player.pet ? (player.pet.level || 1) : 1;
     let upg = level - 1;
-    // Base: 500g, 250h, 50f. Scales moderately by 1.2x per level.
-    return {
-        gold: Math.floor(500 * Math.pow(1.2, upg)),
-        hops: Math.floor(250 * Math.pow(1.2, upg)),
-        fish: Math.floor(50 * Math.pow(1.2, upg))
-    };
+    return { gold: Math.floor(750 * Math.pow(1.2, upg)) };
 }
 
 // === REPLACED ===
@@ -283,7 +278,7 @@ function saveGame(manualNotify = false) {
         equipment: player.equipment, inventory: player.inventory, stash: player.stash,
         roster: player.roster,
 		maxInventorySlots: player.maxInventorySlots, backpackUpgrades: player.backpackUpgrades,
-        activeCombatBuff: player.activeCombatBuff, activeBuffs: player.activeBuffs, happyHourTicks: player.happyHourTicks, cellarsChummed: player.cellarsChummed,
+        activeCombatBuff: player.activeCombatBuff, activeBuffs: player.activeBuffs,
         pet: player.pet
     };
     

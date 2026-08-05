@@ -292,7 +292,6 @@ function refreshSystemUI() {
         const townScreen = document.getElementById("town-screen");
         const merchantScreen = document.getElementById("merchant-screen");
         const adventuresScreen = document.getElementById("adventures-screen");
-        const upgradesScreen = document.getElementById("upgrades-screen");
 
         if (!townVaultView || !combatScreen || !vaultScreen || !wallet || !townScreen || !merchantScreen) return;
 
@@ -305,6 +304,23 @@ function refreshSystemUI() {
         if (fishPtsUi) fishPtsUi.innerText = (player.fishingPoints || 0).toLocaleString();
         const hopsPtsUi = document.getElementById('ui-hops-pts');
         if (hopsPtsUi) hopsPtsUi.innerText = (player.hopsPoints || 0).toLocaleString();
+        const activityCrateTrades = [
+            ['trade-timber-crate', Number(player.lumberPoints) || 0],
+            ['trade-angler-crate', Number(player.fishingPoints) || 0],
+            ['trade-harvest-crate', Number(player.hopsPoints) || 0]
+        ];
+        const activityBackpackFull = Array.isArray(player.inventory)
+            && player.inventory.length >= (player.maxInventorySlots || 5);
+        activityCrateTrades.forEach(([buttonId, points]) => {
+            const button = document.getElementById(buttonId);
+            if (!button) return;
+            button.disabled = points < 2500 || activityBackpackFull;
+            button.title = activityBackpackFull
+                ? 'Make room in the backpack before trading.'
+                : (points < 2500
+                    ? `${(2500 - points).toLocaleString()} more points needed.`
+                    : 'Ready to trade.');
+        });
         const staticGold = document.getElementById('static-gold-display');
         if (staticGold) {
             staticGold.className = animG;
@@ -417,11 +433,25 @@ if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === '
             const equipmentAttacksBtn = document.getElementById('equipment-attacks-btn');
             const endBtn = document.getElementById('end-btn');
             const fleeBtn = document.getElementById('flee-btn');
-            const attackEnabled = actionReady && hasTarget && withinRange && losClear;
+            const standardAttackCost = activeUiWeapon && activeUiWeapon.combat && activeUiWeapon.combat.standard
+                ? Math.max(0, Number(activeUiWeapon.combat.standard.staminaCost) || 0)
+                : 5;
+            const activeStamina = typeof getActiveCombatantStamina === 'function'
+                ? Math.max(0, Number(getActiveCombatantStamina()) || 0)
+                : Math.max(0, Number(player.stamina) || 0);
+            const attackEnabled = actionReady
+                && hasTarget
+                && withinRange
+                && losClear
+                && activeStamina >= standardAttackCost;
             if (slashBtn) {
                 slashBtn.disabled = !attackEnabled;
-                const cost = activeUiWeapon && activeUiWeapon.combat && activeUiWeapon.combat.standard ? activeUiWeapon.combat.standard.staminaCost : 5;
-                slashBtn.innerText = activeUiWeapon ? `Attack (${cost} STAM)` : `Unarmed Strike (${cost} STAM)`;
+                slashBtn.innerText = activeUiWeapon
+                    ? `Attack (${standardAttackCost} STAM)`
+                    : `Unarmed Strike (${standardAttackCost} STAM)`;
+                slashBtn.setAttribute('aria-label', activeStamina < standardAttackCost
+                    ? `Attack unavailable: ${Math.floor(activeStamina)} of ${standardAttackCost} stamina`
+                    : `Attack for ${standardAttackCost} stamina`);
             }
             if (equipmentAttacksBtn) {
                 const equipmentAttacks = typeof listActiveEquipmentAttacks === 'function'
@@ -496,11 +526,6 @@ const combatInvList = document.getElementById("combat-inventory-list");
             merchantScreen.style.display = "none";
             if (adventuresScreen) adventuresScreen.style.display = "none";
             vaultScreen.style.display = "none";
-            if (upgradesScreen) upgradesScreen.style.display = "none";
-            
-			// === NEW: Hide Studio ===
-            const studioScreen = document.getElementById("studio-screen");
-            if (studioScreen) studioScreen.style.display = "none";
 			
 			
             // ADD THIS TO HIDE THE MINIGAME
@@ -549,13 +574,6 @@ if (hopsScreen) hopsScreen.style.display = "none";
 
                 renderVaultStorageList();
                 renderBackpackList(document.getElementById("vault-inventory-list"), true);
-			} else if (gameState === 'UPGRADES') {
-                if (upgradesScreen) upgradesScreen.style.display = "block";
-                document.getElementById('nav-town').classList.add('active-tab');
-            } else if (gameState === 'STUDIO') {
-                // === NEW: Show the Studio iframe ===
-                if (studioScreen) studioScreen.style.display = "block";
-                document.getElementById('nav-town').classList.add('active-tab'); // Keep Town tab highlighted
             }
 
             // --- NEW: DYNAMIC KNIGHT HEADER & STATS ---
@@ -646,18 +664,6 @@ if (hopsScreen) hopsScreen.style.display = "none";
 
 
 
-            const gateBtn = document.getElementById("gate-btn");
-            if (gateBtn) {
-                let activeWildLvl = player.selectedWildernessLevel || player.wildernessLevel;
-                if (activeWildLvl === 20) {
-                    gateBtn.innerText = "\u{1F4A5} Wilds (Lvl 20 BOSS)";
-                    gateBtn.style.background = "#b33939";
-                } else {
-                    gateBtn.innerText = `Deploy Wilds (Lvl ${activeWildLvl})`;
-                    gateBtn.style.background = "#8b5a2b";
-                }
-            }
-            
             let packCost = getBackpackUpgradeCost();
 
                    
@@ -666,9 +672,6 @@ if (hopsScreen) hopsScreen.style.display = "none";
             
             const resBtn = document.getElementById("reserve-btn");
             if (resBtn) resBtn.disabled = (player.gold < 1000 || player.inventory.length >= (player.maxInventorySlots || 5)); 
-
-            let wsBtn = document.getElementById("wholesale-btn");
-            if(wsBtn) wsBtn.disabled = true;
 
             let ipaBtn = document.getElementById("ipa-btn");
             if(ipaBtn) ipaBtn.disabled = (player.gold < 75 || player.inventory.length >= (player.maxInventorySlots || 5));
@@ -686,40 +689,10 @@ if (hopsScreen) hopsScreen.style.display = "none";
             if(staunchBtn) staunchBtn.disabled = (player.gold < 250 || player.inventory.length >= (player.maxInventorySlots || 5));
 
 
-            const cellarGate = document.getElementById("cellar-gate-btn");
-            if(cellarGate) {
-                let activeCellarLvl = player.selectedCellarLevel || player.cellarLevel;
-                if (player.cellarsUnlocked) {
-                    cellarGate.disabled = false; cellarGate.style.background = "#7b1fa2";
-                    cellarGate.innerText = `\u{1F377} Cellars (Lvl ${activeCellarLvl})`;
-                } else { 
-                    cellarGate.disabled = true; cellarGate.style.background = "#443a32";
-                    cellarGate.innerText = "\u{1F512} Defeat Lvl 20 Wilds";
-                }
-            }
-
-            const abyssBtn = document.getElementById("abyss-btn");
-            if (abyssBtn) {
-                if (player.abyssUnlocked) {
-                    abyssBtn.disabled = false;
-                    abyssBtn.style.background = "#190a2e"; 
-                    abyssBtn.innerText = `\u{1F30C} Descend into the Procedural Abyss (Depth ${player.abyssDepth || 1})`;
-                } else {
-                    abyssBtn.disabled = true;
-                    abyssBtn.style.background = "#443a32"; 
-                    abyssBtn.innerText = "\u{1F512} Defeat Lvl 20 Cellars";
-                }
-            }
             const roster = player.roster && typeof player.roster === 'object' ? player.roster : { companions: [], activeIds: [] };
             const companions = Array.isArray(roster.companions) ? roster.companions : [];
             const activeIds = Array.isArray(roster.activeIds) ? roster.activeIds : [];
             if (typeof renderCompanionRosterUI === 'function') renderCompanionRosterUI(companions, activeIds);
-
-            const hireMercenaryBtn = document.getElementById("hire-mercenary-btn");
-            if (hireMercenaryBtn) {
-                hireMercenaryBtn.disabled = player.gold < 250;
-                hireMercenaryBtn.innerText = companions.length > 0 ? 'Hire Another Mercenary (250g)' : 'Hire Mercenary (250g)';
-            }
 
             let invC = document.getElementById("inv-count");
             if(invC) invC.innerText = player.inventory.length;
@@ -1192,12 +1165,21 @@ function renderCombatModal(filter = 'DRINK') {
 
     grid.innerHTML = '';
     entries.forEach(entry => {
-        const slotDiv = document.createElement('div');
+        const slotDiv = document.createElement('button');
+        slotDiv.type = 'button';
         const rarityClass = entry.item.rarity === 'Gorilla'
             ? 'slot-jackpot'
             : (entry.item.rarity ? `slot-${entry.item.rarity.toLowerCase()}` : 'slot-common');
         slotDiv.className = `item-slot ${rarityClass}`;
         slotDiv.style.position = 'relative';
+        const itemDescription = entry.item.desc
+            || (entry.item.combat && entry.item.combat.desc)
+            || 'Use this item in combat.';
+        slotDiv.setAttribute(
+            'aria-label',
+            `${entry.item.name || 'Combat item'}. ${itemDescription} ${entry.sourceLabel}. Uses one action.`
+        );
+        slotDiv.title = `${entry.item.name || 'Combat item'} — ${itemDescription}`;
         slotDiv.onclick = () => {
             closeCombatModal();
             if (typeof selectCombatItem === 'function') selectCombatItem(entry.reference);

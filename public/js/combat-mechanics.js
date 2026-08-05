@@ -1011,6 +1011,6 @@ window.transitionToTown = function() {
         && player.adventure.activeJourney;
     logMessage(activeJourney
         ? "The party has reached a travel stop. Choose the next leg from the Adventure Board."
-        : "Returned safely to the Knight screen.");
+        : "Returned to the Knight screen.");
     if (typeof playRetroSound === 'function') playRetroSound('door');
 }

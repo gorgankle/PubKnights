@@ -800,7 +800,7 @@ test('Parting Shot withdraws after firing while a blocked retreat stays in place
     assert.equal(blocked.playerActor.x, 2);
 });
 
-test('heavy and channelled staff specials commit the remainder of the turn', t => {
+test('heavy and immediate staff specials commit the remainder of the turn', t => {
     pinSuccessfulAttack(t);
     for (const caseData of [
         { itemId: 'tankard_maul', enemyX: 3 },
@@ -826,9 +826,63 @@ test('heavy and channelled staff specials commit the remainder of the turn', t =
         const result = harness.socket.lastPayload('combatResult');
         assert.equal(result.type, 'hit', caseData.itemId);
         assert.equal(result.action.endsTurn, true, caseData.itemId);
+        assert.equal(Object.hasOwn(result.action, 'channelled'), false, caseData.itemId);
+        assert.equal(Object.hasOwn(result.action, 'interruptible'), false, caseData.itemId);
         assert.equal(harness.combat.actionsRemaining, 0, caseData.itemId);
         assert.equal(harness.combat.activeActorUid, null, caseData.itemId);
     }
+});
+
+test('Scythe Spin damages nearby enemies without moving and respects armor', t => {
+    pinSuccessfulAttack(t);
+    const harness = createActorHarness({
+        playerEquipment: {
+            weapon: cloneItem('scythe_of_reaping'),
+            offhand: null
+        }
+    });
+    harness.enemy.defense = 1;
+    const armoredEnemy = {
+        ...harness.enemy,
+        uid: 'mob_armored_scythe_target',
+        name: 'Armored Target',
+        x: 3,
+        y: 3,
+        hp: 1000,
+        maxHp: 1000,
+        defense: 40
+    };
+    harness.combat.actors.push(armoredEnemy);
+    const startingPosition = {
+        x: harness.playerActor.x,
+        y: harness.playerActor.y
+    };
+
+    harness.socket.dispatch('dispatchCombatAction', {
+        actionCategory: 'equipmentAttack',
+        equipmentSlot: 'weapon',
+        actionId: 'special',
+        itemId: 'scythe_of_reaping',
+        tx: 3,
+        ty: 2
+    });
+
+    const result = harness.socket.lastPayload('combatResult');
+    const targetsByUid = Object.fromEntries(
+        result.targets.map(target => [target.uid, target])
+    );
+    assert.equal(result.type, 'hit');
+    assert.equal(result.actionName, 'Scythe Spin');
+    assert.equal(result.targets.length, 2);
+    assert.ok(
+        targetsByUid[harness.enemy.uid].damage
+            > targetsByUid[armoredEnemy.uid].damage
+    );
+    assert.deepEqual(
+        { x: harness.playerActor.x, y: harness.playerActor.y },
+        startingPosition
+    );
+    assert.equal(harness.combat.actionsRemaining, 1);
 });
 
 test('player attacks consume an enemy shield guard before hit math', () => {

@@ -4,7 +4,8 @@ const assert = require('node:assert/strict');
 const {
     buildTavernReturnPresentation,
     getAdventureEncounterReports,
-    getAdventureRouteEnemyNames
+    getAdventureRouteEnemyNames,
+    getReturnNpcReactions
 } = require('../public/js/expeditions.js');
 
 const route = {
@@ -19,7 +20,19 @@ const route = {
     }]
 };
 
-const snapshot = { routes: [route] };
+const claimableContract = {
+    id: 'road_conditions_pine',
+    title: 'Pine Road Conditions',
+    status: 'claimable',
+    objectives: [{
+        id: 'report_pine_conditions',
+        description: 'Return safely from the Pine Trail.',
+        progress: 1,
+        target: 1,
+        complete: true
+    }]
+};
+const snapshot = { routes: [route], contracts: [claimableContract] };
 const player = {
     roster: {
         activeIds: ['merc_1'],
@@ -30,7 +43,9 @@ const player = {
     }
 };
 
-test('road reports expose unique public enemy names without needing combat definitions', () => {
+test('only observed road reports expose unique public enemy names', () => {
+    assert.deepEqual(getAdventureEncounterReports({ unconfirmedEncounterCount: 2 }), []);
+    assert.deepEqual(getAdventureRouteEnemyNames({ unconfirmedEncounterCount: 2 }), []);
     assert.equal(getAdventureEncounterReports(route).length, 1);
     assert.deepEqual(getAdventureRouteEnemyNames({
         encounterReports: [
@@ -53,13 +68,7 @@ test('safe-return presentation chooses the active mercenary and contract-ready r
         rewardGold: 50,
         firstReturn: true,
         returnedAt: 123,
-        contractUpdates: [{
-            bountyId: 'pine_trail_patrol',
-            title: 'Patrol the Pine Trail',
-            progress: 1,
-            target: 1,
-            status: 'claimable'
-        }]
+        worldContractUpdates: ['road_conditions_pine:report_pine_conditions']
     }, snapshot, player);
 
     assert.equal(presentation.failed, false);
@@ -82,8 +91,7 @@ test('failed-return presentation preserves failure tone without inventing an inj
         encounterTags: ['ranged'],
         enemyNames: ['Pine Poacher'],
         rewardGold: 999,
-        failureReason: 'fled_combat',
-        contractUpdates: []
+        failureReason: 'fled_combat'
     }, snapshot, player);
 
     assert.equal(presentation.failed, true);
@@ -94,7 +102,7 @@ test('failed-return presentation preserves failure tone without inventing an inj
     assert.doesNotMatch(presentation.companionLine, /injur|wound|crippl/i);
 });
 
-test('a claimed contract no longer leaves Kreg saying its payment is waiting', () => {
+test('a non-claimable typed contract no longer leaves Kreg saying its payment is waiting', () => {
     const presentation = buildTavernReturnPresentation({
         reportId: 'return_3',
         outcome: 'safe_return',
@@ -105,18 +113,107 @@ test('a claimed contract no longer leaves Kreg saying its payment is waiting', (
         encounterTags: ['ranged'],
         enemyNames: ['Pine Poacher'],
         rewardGold: 30,
-        contractUpdates: [{
-            bountyId: 'pine_trail_patrol',
-            title: 'Patrol the Pine Trail',
-            progress: 1,
-            target: 1,
-            status: 'claimable'
-        }]
+        worldContractUpdates: ['road_conditions_pine:report_pine_conditions']
     }, {
         routes: [route],
-        bounties: [{ id: 'pine_trail_patrol', status: 'available' }]
+        contracts: [{
+            ...claimableContract,
+            status: 'available'
+        }]
     }, player);
 
     assert.doesNotMatch(presentation.kregLine, /ready to claim/);
     assert.equal(presentation.contractUpdates[0].currentStatus, 'available');
+});
+
+test('a historical first-return offer stops advertising gear after the kit is claimed', () => {
+    const presentation = buildTavernReturnPresentation({
+        outcome: 'safe_return',
+        routeId: route.id,
+        firstReturn: true,
+        rewardChoiceOffered: true,
+        rewardGold: 30
+    }, {
+        routes: [route],
+        contracts: [],
+        world: {
+            rewardChoices: [{
+                id: 'first_return_kit',
+                status: 'claimed',
+                claimedOptionId: 'shield_control'
+            }]
+        }
+    }, player);
+
+    assert.equal(presentation.rewardChoiceAvailable, false);
+    assert.doesNotMatch(presentation.summary, /choice waiting/);
+    assert.doesNotMatch(presentation.kregLine, /set aside a first-return kit/);
+});
+
+test('legacy counter updates do not masquerade as typed world objectives', () => {
+    const presentation = buildTavernReturnPresentation({
+        outcome: 'safe_return',
+        routeId: route.id,
+        contractUpdates: [{
+            bountyId: 'pine_trail_patrol',
+            progress: 3,
+            target: 3,
+            status: 'claimable'
+        }]
+    }, snapshot, player);
+
+    assert.deepEqual(presentation.contractUpdates, []);
+    assert.doesNotMatch(presentation.kregLine, /ready to claim/);
+});
+
+test('progressed town NPCs add state-driven return reactions without generic clones', () => {
+    const worldSnapshot = {
+        world: {
+            npcs: [
+                { id: 'kreg', name: 'Kreg', reaction: 'Already represented by the main return line.' },
+                { id: 'tilda', name: 'Tilda', stageId: 'prepared', returnReaction: 'The firebreak held.' },
+                { id: 'marlow', name: 'Marlow', stageId: 'allied', reaction: 'The old gate is still usable.' }
+            ]
+        }
+    };
+    assert.deepEqual(getReturnNpcReactions(worldSnapshot), [
+        { npcId: 'tilda', name: 'Tilda', line: 'The firebreak held.', stageId: 'prepared' },
+        { npcId: 'marlow', name: 'Marlow', line: 'The old gate is still usable.', stageId: 'allied' }
+    ]);
+
+    const presentation = buildTavernReturnPresentation({
+        outcome: 'safe_return',
+        routeId: route.id,
+        rewardGold: 30
+    }, { ...snapshot, ...worldSnapshot }, player);
+    assert.equal(presentation.npcReactions.length, 2);
+    assert.equal(presentation.npcReactions[0].name, 'Tilda');
+});
+
+test('return reactions prioritize the traveled branch and benched companions stay silent', () => {
+    const worldSnapshot = {
+        routes: [{ id: 'route_toll_crossing', name: 'Toll Crossing' }],
+        world: {
+            contracts: [],
+            npcs: [
+                { id: 'kreg', name: 'Kreg', returnReaction: 'Main line.' },
+                { id: 'elowen', name: 'Elowen', returnReaction: 'Pines.' },
+                { id: 'mara', name: 'Mara', returnReaction: 'Stock.' },
+                { id: 'tilda', name: 'Tilda', returnReaction: 'Ash.' },
+                { id: 'marlow', name: 'Marlow', returnReaction: 'Gate.' }
+            ]
+        }
+    };
+    const report = { outcome: 'safe_return', routeId: 'route_toll_crossing' };
+    const reactions = getReturnNpcReactions(worldSnapshot, report);
+    assert.equal(reactions[0].npcId, 'marlow');
+    assert.ok(reactions.some(reaction => reaction.npcId === 'tilda'));
+
+    const presentation = buildTavernReturnPresentation(report, worldSnapshot, {
+        roster: {
+            activeIds: [],
+            companions: [{ instanceId: 'story_marlow', name: 'Marlow' }]
+        }
+    });
+    assert.equal(presentation.companionName, null);
 });

@@ -264,6 +264,38 @@ function getCombatActorByUid(uid) {
     return [...(enemies || []), ...(allies || []), ...(rogues || [])].find(actor => actor.uid === uid) || null;
 }
 
+function applyAuthoritativeCombatResultState(result) {
+    if (!result || typeof result !== 'object') return null;
+
+    if (result.updatedPlayer && player) {
+        Object.assign(player, result.updatedPlayer);
+    }
+
+    const sourceUid = result.actorUid
+        || (result.fx && result.fx.sourceUid)
+        || (
+            result.updatedCombatState
+            && result.updatedCombatState.activeActorUid
+        )
+        || 'player_0';
+    const sourceActor = getCombatActorByUid(sourceUid);
+    if (Number.isFinite(result.newStamina)) {
+        if (sourceActor) sourceActor.stamina = result.newStamina;
+        if (
+            player
+            && (
+                sourceUid === 'player_0'
+                || sourceActor === player
+                || (sourceActor && sourceActor.kind === 'player')
+            )
+        ) {
+            player.stamina = result.newStamina;
+        }
+    }
+
+    return sourceActor;
+}
+
 function clearExpiredGuardForActivatedActor(actorUid) {
     const actor = getCombatActorByUid(actorUid);
     if (actor) {
@@ -289,6 +321,17 @@ function getPlayerAttackables() {
 
 let combatVictoryPresentationStarted = false;
 
+function isAtExpeditionDestination() {
+    const journey = player
+        && player.adventure
+        && player.adventure.activeJourney;
+    return !!(
+        journey
+        && journey.phase === 'AT_DESTINATION'
+        && journey.reachedDestination === true
+    );
+}
+
 function presentCombatVictory() {
     if (combatVictoryPresentationStarted || gameState !== "COMBAT") return;
     combatVictoryPresentationStarted = true;
@@ -311,7 +354,15 @@ function presentCombatVictory() {
     if (typeof drawGrid === "function") drawGrid();
 
     setTimeout(() => {
-        if (gameState === "COMBAT" && typeof showLootScreen === "function") showLootScreen();
+        if (gameState !== "COMBAT") return;
+        // Outbound rewards remain in expedition escrow. Let the player inspect
+        // the authored destination before choosing when to begin the return.
+        if (isAtExpeditionDestination()) {
+            if (typeof saveGame === 'function') saveGame();
+            if (typeof transitionToTown === 'function') transitionToTown();
+            return;
+        }
+        if (typeof showLootScreen === "function") showLootScreen();
     }, 1200);
 }
 
@@ -946,7 +997,7 @@ function applyOutgoingCombatImpact(result) {
         if (targetData.interruptedIntent) {
             delete target.pendingIntent;
             const intentLabel = targetData.interruptedIntent.label
-                || 'powerful attack';
+                || 'telegraphed attack';
             logMessage(`${target.name}'s ${intentLabel} was interrupted!`);
             FXEngine.spawnText(
                 target.x,
@@ -1099,6 +1150,33 @@ function playOutgoingCombatHit(
             barrier.markActionComplete();
         }
     );
+}
+
+function getOutgoingCombatMissMessage(
+    result,
+    targetActor = null,
+    guardedDeflect = false
+) {
+    const targetName = targetActor && targetActor.name
+        ? targetActor.name
+        : 'Target';
+    const deflectReason = result && result.deflectReason;
+
+    if (deflectReason === 'shield_block') {
+        return `${targetName} blocked the strike!`;
+    }
+    if (deflectReason === 'evade_stance') {
+        return `${targetName} evaded from a readied stance!`;
+    }
+    if (deflectReason === 'armor') {
+        return guardedDeflect
+            ? `${targetName} blocked the strike!`
+            : 'The strike was deflected by armor!';
+    }
+    if (deflectReason === 'evasion') {
+        return `${targetName} evaded the strike!`;
+    }
+    return 'The strike missed!';
 }
 
 function playOutgoingCombatMiss(
@@ -1261,21 +1339,11 @@ function playOutgoingCombatMiss(
         if (typeof clearConsumedLocalShieldGuard === 'function') {
             clearConsumedLocalShieldGuard(targetActor, result);
         }
-        if (shieldBlocked) {
-            logMessage(`${targetActor ? targetActor.name : 'Target'} blocked the strike!`);
-        } else if (stanceEvaded) {
-            logMessage(`${targetActor ? targetActor.name : 'Target'} evaded from a readied stance!`);
-        } else if (armorDeflect) {
-            logMessage(
-                guardedDeflect
-                    ? `${targetActor.name} blocked the strike!`
-                    : 'The strike was deflected by armor!'
-            );
-        } else {
-            logMessage(
-                `💨 Strike MISSED! Target evaded (${result.hitChance}% Hit Chance).`
-            );
-        }
+        logMessage(getOutgoingCombatMissMessage(
+            result,
+            targetActor,
+            guardedDeflect
+        ));
         if (typeof playRetroSound === 'function') {
             playRetroSound(
                 shieldBlocked || armorDeflect
@@ -1429,7 +1497,6 @@ socket.on('serverTick', (serverData) => {
 
     // Server ticks keep durable town status in sync.
     if (typeof serverData.gold === 'number') player.gold = serverData.gold;
-    player.happyHourTicks = serverData.happyHourTicks;
 
     refreshSystemUI();
     updateTownUI(serverData);
@@ -1449,7 +1516,7 @@ socket.on('combatResult', (result) => {
     if (typeof resetEquipmentAttackUiState === 'function') {
         resetEquipmentAttackUiState();
     }
-    if (result.updatedPlayer) Object.assign(player, result.updatedPlayer); // Instantly sync stamina
+    const resultSourceActor = applyAuthoritativeCombatResultState(result);
 
     // === THE FIX: HANDLE ERRORS & PASS TURN ===
     if (result.type === 'error') {
@@ -1472,7 +1539,7 @@ socket.on('combatResult', (result) => {
     }
 
     if (result.type === 'guard') {
-        const sourceActor = getCombatActorByUid(
+        const sourceActor = resultSourceActor || getCombatActorByUid(
             result.actorUid || 'player_0'
         ) || player;
         playOutgoingCombatGuard(
@@ -1501,7 +1568,7 @@ socket.on('combatResult', (result) => {
 
     // --- 1. HANDLE EVASION ---
     if (result.type === 'miss') {
-        const sourceActor = getCombatActorByUid(
+        const sourceActor = resultSourceActor || getCombatActorByUid(
             result.actorUid || 'player_0'
         ) || player;
         playOutgoingCombatMiss(
@@ -1516,7 +1583,9 @@ socket.on('combatResult', (result) => {
     // --- 2. HANDLE HITS (WEAPONS & MAGIC) ---
     if (result.type === 'hit') {
         let fx = result.fx || {};
-        const sourceActor = getCombatActorByUid(result.actorUid || fx.sourceUid || 'player_0') || player;
+        const sourceActor = resultSourceActor
+            || getCombatActorByUid(result.actorUid || fx.sourceUid || 'player_0')
+            || player;
         playOutgoingCombatHit(
             result,
             sourceActor,
@@ -1663,14 +1732,8 @@ socket.on('townReceipt', (receipt) => {
     }
 
     // Play the correct sound effect based on what we just bought/did
-    if (receipt.action === 'gildedTavern' || receipt.action === 'tradeRoutes' || receipt.action === 'monument') {
-        if (typeof playRetroSound === 'function') playRetroSound('victory');
-    } else if (receipt.action === 'trainPet' || receipt.action === 'resetStats' || receipt.action === 'allocateStat') {
+    if (receipt.action === 'trainPet' || receipt.action === 'resetStats' || receipt.action === 'allocateStat') {
         if (typeof playRetroSound === 'function') playRetroSound('statUp');
-    } else if (receipt.action === 'claimCart') {
-        if (!receipt.isAuto && typeof playRetroSound === 'function') playRetroSound('claim');
-    } else if (receipt.action === 'chumCellars') {
-        if (typeof playRetroSound === 'function') playRetroSound('splat');
     } else if (receipt.action === 'drinkBrew') {
         if (typeof playRetroSound === 'function') playRetroSound('chug');
     } else if (receipt.action === 'adoptPet') {
@@ -1760,6 +1823,12 @@ socket.on('rogueLootTheft', (data) => {
 
 // === REPLACED ===
 socket.on('combatRewardsReceipt', (receipt) => {
+    if (!receipt || receipt.success === false) {
+        if (receipt && receipt.updatedPlayer) Object.assign(player, receipt.updatedPlayer);
+        if (receipt && receipt.message) logMessage(receipt.message);
+        if (typeof playRetroSound === 'function') playRetroSound('error');
+        return;
+    }
     if (receipt.updatedPlayer) {
         let oldLevel = player.level;
 
@@ -1858,7 +1927,6 @@ socket.on('combatDeployed', (serverCombatState) => {
     delete player.moveAnimTimer;
 
     // Sync browser state to the Server's command
-    player.idleJob = 'NONE';
     player.statusEffects = {};
     gameState = 'COMBAT';
 
@@ -1892,7 +1960,6 @@ socket.on('combatDeployed', (serverCombatState) => {
     if (activeCombatZone === 'GORILLA_ARENA') logMessage("🚨 GORILLA PIT INITIALIZED. Challenge parameters deployed.");
     else if (activeCombatZone === 'ABYSS') logMessage(`🌌 Descended to Abyss Depth ${player.abyssDepth || 1}. The pressure is crushing.`);
     else if (activeCombatZone === 'CELLARS' && (player.selectedCellarLevel || player.cellarLevel) === 20) logMessage("⚠️ THE FLOOR TREMBLES! An ancient, corrupted mega-cask awakens from its slumber!");
-    else if (activeCombatZone === 'CELLARS' && player.cellarsChummed) logMessage("⚠️ SEAFOOD CODES LOADED: 5 Mimics burst out of the structural drain layers!");
 
     // Force the browser to draw the server's map
     refreshSystemUI();
@@ -2301,9 +2368,24 @@ socket.on('enemyTurnReceipt', (receipt) => {
                 const counterplay = intent && Array.isArray(intent.counterplay)
                     ? intent.counterplay.join(', ')
                     : 'move or defend';
-                logMessage(
-                    `${ev.name || 'Enemy'} prepares ${intent && intent.label ? intent.label : 'a powerful attack'} — ${counterplay}.`
+                const area = intent && (
+                    intent.shapeLabel
+                    || intent.areaLabel
+                    || intent.targetShape
+                    || intent.shape
                 );
+                const effect = intent && (intent.effectSummary || intent.effectLabel);
+                const intentAnnouncement = [
+                    intent && intent.accessibilityLabel
+                        ? intent.accessibilityLabel
+                        : `${ev.name || 'Enemy'} prepares ${intent && intent.label ? intent.label : 'a telegraphed attack'}.`,
+                    area ? `Area: ${area}.` : '',
+                    effect ? `Effect: ${effect}.` : '',
+                    `Counterplay: ${counterplay}.`
+                ].filter(Boolean).join(' ');
+                const announcer = document.getElementById('combat-intent-announcer');
+                if (announcer) announcer.textContent = intentAnnouncement;
+                logMessage(intentAnnouncement);
             }
             else if (ev.type === 'intentOutcome') {
                 const actor = getCombatActorByUid(ev.uid);
@@ -2318,6 +2400,12 @@ socket.on('enemyTurnReceipt', (receipt) => {
                     }
                 } else {
                     logMessage(`${ev.name || 'Enemy'} loses ${label} (${ev.reason || 'invalidated'}).`);
+                }
+                const announcer = document.getElementById('combat-intent-announcer');
+                if (announcer) {
+                    announcer.textContent = ev.outcome === 'avoided'
+                        ? `${ev.name || 'Enemy'}'s ${label} missed the marked tiles.`
+                        : `${ev.name || 'Enemy'}'s ${label} ended.`;
                 }
             }
             else if (ev.type === 'guard') {

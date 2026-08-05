@@ -6,7 +6,7 @@
 	<!-- NEW: Mobile Viewport Scaling -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Pub Knights - Beta v0.9(Modular Refactor)</title>
-    <link rel="stylesheet" href="style.css?v=9">
+    <link rel="stylesheet" href="style.css?v=10">
 	
 	<!-- === NEW: MOBILE DRAG & DROP POLYFILL === -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/default.css">
@@ -139,6 +139,7 @@
                 <span id="combat-active-actor" class="combat-active-actor" aria-live="polite">ATB: CHARGING</span>
                 <span id="target-ui-header" class="combat-phase-instruction">INITIALIZING MATRIX</span>
             </div>
+            <div id="combat-intent-announcer" class="sr-only" role="status" aria-live="assertive" aria-atomic="true"></div>
             
             <div id="combat-top-bars" style="margin-bottom: 12px;"></div>
             
@@ -346,7 +347,7 @@
                 <p id="tavern-return-summary"></p>
             </div>
             <div class="tavern-return-actions">
-                <button type="button" onclick="reviewTavernCrewGear()">Review Crew Gear</button>
+                <button type="button" onclick="reviewTavernCrewGear()">Visit Mara's Stall</button>
                 <button type="button" onclick="openTavernAdventureBoard()">Open Contract Board</button>
             </div>
         </div>
@@ -359,6 +360,7 @@
                 <span class="tavern-return-crew-mark" aria-hidden="true">M</span>
                 <div><strong id="tavern-return-companion-name">Mercenary</strong><p id="tavern-return-companion-copy"></p></div>
             </div>
+            <div id="tavern-return-npc-reactions" class="tavern-return-npc-reactions" hidden></div>
             <dl class="tavern-return-facts">
                 <dt>Road</dt><dd id="tavern-return-route"></dd>
                 <dt>Danger</dt><dd id="tavern-return-danger"></dd>
@@ -466,38 +468,57 @@
 <div id="town-screen" class="panel" style="display: none; width: 100%; margin-bottom: 0; min-height: 486px; flex-direction: column; gap: 10px;">
     
     <div class="dashboard-panel" style="background: #1a1512; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; margin-bottom: 5px; border: 1px solid #4a3b2c;">
-        <span style="color: #ffcc66; font-weight: bold; font-size:15px;">🏕️ Town Management</span>
+        <span style="color: #ffcc66; font-weight: bold; font-size:15px;">Town &amp; Tavern</span>
     </div>
 
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px; align-items: start;">
 
-        <!-- MODULE 1: Hire Mercenary -->
-        <div class="dashboard-panel hire-mercenary-panel" style="margin-bottom: 0;">
-            <h3 style="color: #2ecc71; border-bottom: 1px dashed #27ae60;">🛡️ Hire Mercenary</h3>
-            <div class="hire-mercenary-controls">
-                <label class="sr-only" for="mercenary-name-input">Mercenary name</label>
-                <input id="mercenary-name-input" placeholder="Mercenary name" maxlength="24" autocomplete="off">
-                <button id="hire-mercenary-btn" onclick="hireTavernCompanion()">Hire Mercenary (250g)</button>
-            </div>
-            <p class="hire-mercenary-note">Roster limit: 6 mercenaries. Up to 3 can deploy with your Knight.</p>
+        <!-- MODULE 1: Chapter One NPC state -->
+        <div id="town-world-panel" class="dashboard-panel town-world-panel" style="margin-bottom: 0;">
+            <h3 style="color: #f1c40f; border-bottom: 1px dashed #f1c40f;">People at the Pub</h3>
+            <p id="town-milestone-summary" class="adventure-muted">Listening for news from the roads...</p>
+            <div id="town-milestone-list" class="town-milestone-list" aria-live="polite"></div>
+            <div id="town-npc-list" class="town-npc-list" aria-live="polite"></div>
+            <div id="town-service-list" class="town-service-list" aria-live="polite"></div>
         </div>
 
-        <!-- MODULE 2: Administration -->
-        <div class="dashboard-panel" style="margin-bottom: 0;">
-            <h3 style="color: #f1c40f; border-bottom: 1px dashed #f1c40f;">🏛️ Town Hall</h3>
-            <div style="display: grid; grid-template-columns: 1fr; gap: 6px;">
-                <button disabled style="background: #3e3126; border-color: #634e3d; color: #bbaaa0; padding: 10px; margin: 0; cursor: not-allowed; text-decoration: line-through;">📜 Issue Town Decrees (Coming Soon)</button>
-                <button disabled style="background: #3e3126; border-color: #634e3d; color: #bbaaa0; padding: 10px; margin: 0; cursor: not-allowed; text-decoration: line-through;">💰 Collect Daily Taxes (Coming Soon)</button>
-            </div>
+        <!-- MODULE 2: Visible town growth and first-return build choice -->
+        <div id="quartermaster-panel" class="dashboard-panel quartermaster-panel" style="margin-bottom: 0;">
+            <h3 style="color: #9b59b6; border-bottom: 1px dashed #9b59b6;">Mara's Quartermaster Stall</h3>
+            <p id="quartermaster-status" class="adventure-muted">The shutters stay closed until a reliable supply route returns.</p>
+            <div id="first-return-reward" class="first-return-reward" hidden></div>
+            <div id="quartermaster-stock" class="quartermaster-stock" hidden></div>
         </div>
 
+        <div id="chapter-epilogue-panel" class="dashboard-panel chapter-epilogue-panel" style="margin-bottom: 0;" hidden>
+            <h3>Chapter One: Road Reopened</h3>
+            <p id="chapter-epilogue-copy"></p>
+            <p id="chapter-next-region-copy" class="adventure-muted"></p>
+        </div>
 
-        <!-- MODULE 3: The Renaissance Corner -->
-        <div class="dashboard-panel" style="margin-bottom: 0; text-align: center;">
-            <h3 style="color: #9b59b6; border-bottom: 1px dashed #9b59b6;">🎨 The Renaissance Corner 🎵</h3>
-            <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
-                <button onclick="openStudioTool('pixel-studio.html')" style="background: #e67e22; border-color: #d35400; padding: 10px; font-size: 14px; margin: 0;">🎨 Art Studio</button>
-                <button onclick="openStudioTool('beat-studio.html')" style="background: #2980b9; border-color: #3498db; padding: 10px; font-size: 14px; margin: 0;">🎵 Music Studio</button>
+        <!-- OPTIONAL SIDE ACTIVITIES: preserved outside the Chapter One critical path -->
+        <div id="town-activities-panel" class="dashboard-panel" style="margin-bottom: 0; grid-column: 1 / -1;">
+            <h3 style="color: #2ecc71; border-bottom: 1px dashed #2ecc71;">Town Diversions</h3>
+            <p class="adventure-muted">Optional skill trials earn Quartermaster points. Trade 2,500 matching points for a sealed loot crate.</p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px;">
+                <div class="town-activity-card">
+                    <strong>Timber Trial</strong>
+                    <span>Points: <b id="ui-timber-pts">0</b></span>
+                    <button id="open-lumber-minigame" type="button" onclick="setGameState('MINIGAME_LUMBER')">Visit Timber Camp</button>
+                    <button id="trade-timber-crate" type="button" onclick="exchangePoints('lumber', 'gamble')">Trade for Timber Crate</button>
+                </div>
+                <div class="town-activity-card">
+                    <strong>Fishing Trial</strong>
+                    <span>Points: <b id="ui-fish-pts">0</b></span>
+                    <button id="open-fishing-minigame" type="button" onclick="setGameState('MINIGAME_FISHING')">Visit Fishing Pond</button>
+                    <button id="trade-angler-crate" type="button" onclick="exchangePoints('fish', 'gamble')">Trade for Angler Crate</button>
+                </div>
+                <div class="town-activity-card">
+                    <strong>Hops Trial</strong>
+                    <span>Points: <b id="ui-hops-pts">0</b></span>
+                    <button id="open-hops-minigame" type="button" onclick="setGameState('MINIGAME_HOPS')">Visit Hops Farm</button>
+                    <button id="trade-harvest-crate" type="button" onclick="exchangePoints('hops', 'gamble')">Trade for Harvest Crate</button>
+                </div>
             </div>
         </div>
 
@@ -533,53 +554,23 @@
 
     <div class="adventure-board-grid">
         <div class="dashboard-panel adventure-bounty-panel">
-            <h3>📜 Bounty Board</h3>
+            <h3>📜 Contract Board</h3>
             <div id="bounty-list" class="bounty-list">
                 <p class="adventure-muted">Checking the latest contracts...</p>
             </div>
         </div>
 
-        <div class="dashboard-panel adventure-guild-panel">
-            <h3>🪓 Guild Expeditions</h3>
-            <div class="adventure-guild-actions">
-                <button onclick="setGameState('MINIGAME_LUMBER')">🌲 Timber Camp</button>
-                <button onclick="setGameState('MINIGAME_FISHING')">🐟 Fishing Pond</button>
-                <button onclick="setGameState('MINIGAME_HOPS')">🌾 Hops Farm</button>
-            </div>
+        <div id="world-discoveries-panel" class="dashboard-panel adventure-guild-panel">
+            <h3>Road Discoveries</h3>
+            <p class="adventure-muted">Clues are found by investigating destinations, not by clearing a prescribed mission list.</p>
+            <div id="world-fact-list" class="world-fact-list" aria-live="polite"></div>
+            <div id="chapter-preparation-list" class="chapter-preparation-list" aria-live="polite"></div>
         </div>
     </div>
 
-    <details id="legacy-deployments" class="dashboard-panel legacy-deployments">
-        <summary>Legacy Level Deployments (fallback)</summary>
-        <p>The former progression remains available while expeditions are being proven.</p>
-        <div class="legacy-deployment-row">
-            <button onclick="changeZoneLevel('WILDERNESS', -1)">◀</button>
-            <button id="gate-btn" onclick="transitionToCombat('WILDERNESS')">Deploy to Wilds (Lvl 1)</button>
-            <button onclick="changeZoneLevel('WILDERNESS', 1)">▶</button>
-        </div>
-        <div class="legacy-deployment-row">
-            <button onclick="changeZoneLevel('CELLARS', -1)">◀</button>
-            <button id="cellar-gate-btn" onclick="transitionToCombat('CELLARS')">🔒 Forbidden Cellars</button>
-            <button onclick="changeZoneLevel('CELLARS', 1)">▶</button>
-        </div>
-        <div class="legacy-deployment-specials">
-            <button id="abyss-btn" onclick="transitionToCombat('ABYSS')">🌌 Procedural Abyss (Depth <span id="abyss-depth-indicator">1</span>)</button>
-            <button id="gorilla-btn" onclick="transitionToCombat('GORILLA_ARENA')">🦍 EVENT: Gorilla Pit</button>
-        </div>
-    </details>
 </div>
 				
 
-<!-- === RETIRED: TOWN UPGRADES SCREEN === -->
-<div id="upgrades-screen" class="panel" style="display: none; width: 100%; margin-bottom: 0; min-height: 486px; flex-direction: column; gap: 10px;">
-    <div class="dashboard-panel" style="background: #1a1512; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; margin-bottom: 5px; border: 1px solid #4a3b2c;">
-        <span style="color: #f1c40f; font-weight: bold; font-size:15px;">Tavern Upgrades Retired</span>
-        <button onclick="setGameState('TOWN')" style="background: #c0392b; margin:0; padding:6px 14px;">Return to Town</button>
-    </div>
-    <div class="dashboard-panel" style="border: 1px solid #634e3d; background: #221a14; color: #d7c0a8; font-size: 12px; line-height: 1.5;">
-        Town prestige, trade-route, worker, and supply-cart upgrades have been removed for the party-combat alpha branch. Tavern growth now comes from minigames, combat rewards, and companion progression.
-    </div>
-</div>
 <!-- === DEDICATED MERCHANT SCREEN (GRID REFACTOR) === -->
 <div id="merchant-screen" class="panel" style="display: none; width: 100%; margin-bottom: 0; min-height: 486px; flex-direction: column; gap: 10px;">
     
@@ -603,33 +594,9 @@
                 <button id="reserve-btn" onclick="craftReserveBrew()" style="grid-column: span 2; margin: 0; padding: 10px; background: #8e44ad; border-color: #9b59b6;" onmouseenter="showSystemTooltip('reserve', event)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">🍷 Grandmaster Reserve (1000g)</button>
             </div>
         </div>
-        <!-- MODULE 2: Guild Quartermaster -->
-        <div class="dashboard-panel" style="margin-bottom: 0;">
-            <h3 style="color: #f1c40f; border-bottom: 1px dashed #f39c12;">Guild Quartermaster</h3>
-
-            <div style="background: #1e271e; border: 1px solid #27ae60; padding: 8px; margin-bottom: 8px; border-radius: 4px;">
-                <span style="color: #2ecc71; font-weight: bold; font-size: 11px;">Timber Trial Points: <span id="ui-timber-pts">0</span></span>
-                <button onclick="exchangePoints('lumber', 'gamble')" style="width: 100%; margin: 6px 0 0 0; padding: 8px; background: #d35400;">Timber Crate - 2500 pts</button>
-            </div>
-
-            <div style="background: #1a242f; border: 1px solid #2980b9; padding: 8px; margin-bottom: 8px; border-radius: 4px;">
-                <span style="color: #3498db; font-weight: bold; font-size: 11px;">Fishing Trial Points: <span id="ui-fish-pts">0</span></span>
-                <button onclick="exchangePoints('fish', 'gamble')" style="width: 100%; margin: 6px 0 0 0; padding: 8px; background: #d35400;">Angler Crate - 2500 pts</button>
-            </div>
-
-            <div style="background: #2c1a35; border: 1px solid #8e44ad; padding: 8px; border-radius: 4px;">
-                <span style="color: #9b59b6; font-weight: bold; font-size: 11px;">Hops Trial Points: <span id="ui-hops-pts">0</span></span>
-                <button onclick="exchangePoints('hops', 'gamble')" style="width: 100%; margin: 6px 0 0 0; padding: 8px; background: #d35400;">Harvest Crate - 2500 pts</button>
-            </div>
-        </div>
-
     </div> <!-- End Grid Container -->
 </div>
 				
-	<div id="studio-screen" class="panel" style="display: none; width: 100%; margin-bottom: 0; height: 80vh; padding: 0; overflow: hidden; border: 2px solid #8e44ad;">
-    <iframe id="studio-iframe" src="" style="width: 100%; height: 100%; border: none; background: #1e1915;"></iframe>
-	</div>
-
 </div> <div id="log">--- Tavern Records ---<br>Engine v0.8.13 modular running... All synchronization pipelines functional.</div>
 
 	<style>
@@ -684,10 +651,10 @@
 
 			<!-- === NEW: 🎒 Combat Backpack === -->
 
-<div id="combat-backpack-modal" class="panel" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 380px; z-index: 9999; box-shadow: 0 0 0 9999px rgba(0,0,0,0.75);">
+<div id="combat-backpack-modal" class="panel" role="dialog" aria-modal="true" aria-labelledby="combat-modal-title" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 380px; z-index: 9999; box-shadow: 0 0 0 9999px rgba(0,0,0,0.75);">
     <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #634e3d; padding-bottom: 10px; margin-bottom: 15px;">
         <h2 id="combat-modal-title" style="color: #ffcc66; font-size: 16px; margin: 0;">🎒 Combat Backpack</h2>
-        <span onclick="closeCombatModal()" style="color: #e74c3c; cursor: pointer; font-weight: bold;">[✖ Close]</span>
+        <button type="button" onclick="closeCombatModal()" aria-label="Close combat backpack" style="color: #e74c3c; cursor: pointer; font-weight: bold; background: transparent; border: 0;">[✖ Close]</button>
     </div>
     
     <div id="combat-modal-grid" class="inventory-grid" style="justify-content: center;"></div>
@@ -833,7 +800,7 @@
     <script src="js/sprite-overhaul-icons.js?v=2"></script>
 	<script src="/socket.io/socket.io.js"></script>
 
-    <script src="js/main.js?v=19"></script>
+    <script src="js/main.js?v=20"></script>
     <script src="js/inventory.js?v=6"></script>
 
 <!-- UI, Tooltips & Graphics Output -->
@@ -849,7 +816,7 @@
 <!-- Game Systems & Logic -->
     <script src="js/login.js"></script>
     <script src="js/combat-maps.js"></script>
-    <script src="js/expeditions.js?v=3"></script>
+    <script src="js/expeditions.js?v=5"></script>
     <script src="js/combat-mechanics.js?v=15"></script>
     <script src="js/town-actions.js?v=3"></script>
 	<script src="js/minigames.js"></script>

@@ -386,11 +386,18 @@ function pushHitEvent(actor, target, player, damage, isCrit, poisonApplied, kill
 }
 
 function attackTarget(socketId, combat, player, actor, target, activeCombats, onActorDefeated, turnEvents, options = {}) {
-    const dist = getActorDistance(actor, target);
-    if (dist > (actor.attackRange || 1) || !actorHasLineOfSight(combat, actor, target)) return false;
+    if (options.ignoreGeometry !== true) {
+        const dist = getActorDistance(actor, target);
+        if (dist > (actor.attackRange || 1) || !actorHasLineOfSight(combat, actor, target)) return false;
+    }
 
     const staminaCost = getActorAttackStaminaCost(actor);
-    if (!spendActorStamina(actor, player, staminaCost)) return false;
+    if (
+        options.skipStaminaCost !== true
+        && !spendActorStamina(actor, player, staminaCost)
+    ) {
+        return false;
+    }
     const attackFx = {
         ...buildAttackFx(actor),
         stamina: getActorStamina(actor, player),
@@ -405,7 +412,14 @@ function attackTarget(socketId, combat, player, actor, target, activeCombats, on
             telegraphed: true,
             intentId: options.intent.intentId,
             intentLabel: options.intent.label,
-            intentActionId: options.intent.actionId
+            intentActionId: options.intent.actionId,
+            intentTargetShape: options.intent.targetShape || 'single',
+            intentEffectType: options.intent.effectType || 'single_damage',
+            intentEffectSummary: options.intent.effectSummary || null,
+            intentAccessibilityLabel: options.intent.accessibilityLabel || null,
+            intentAffectedTiles: Array.isArray(options.intent.affectedTiles)
+                ? options.intent.affectedTiles.map(tile => ({ x: tile.x, y: tile.y }))
+                : []
         }
         : {};
     if (consumedReaction && consumedReaction.type === 'shield_block') {
@@ -446,14 +460,19 @@ function attackTarget(socketId, combat, player, actor, target, activeCombats, on
 
     const rawDamageRoll = Math.sqrt(Math.random()) * offense;
     const armorAbsorption = Math.pow(Math.random(), 2) * defenderDefense;
-    const damage = Math.floor(rawDamageRoll - armorAbsorption);
+    const mitigatedDamage = Math.floor(rawDamageRoll - armorAbsorption);
 
-    if (damage <= 0) {
+    if (mitigatedDamage <= 0) {
         pushDeflectEvent(actor, target, turnEvents, attackFx, intentDetails);
         return true;
     }
 
-    const isCrit = damage >= Math.floor(offense * 0.90);
+    const configuredDamageMultiplier = Number(options.damageMultiplier);
+    const damageMultiplier = Number.isFinite(configuredDamageMultiplier)
+        ? Math.max(1, configuredDamageMultiplier)
+        : 1;
+    const damage = Math.max(1, Math.floor(mitigatedDamage * damageMultiplier));
+    const isCrit = mitigatedDamage >= Math.floor(offense * 0.90);
     setActorHp(target, player, getActorHp(target, player) - damage);
     const interruptedIntent = interruptActorIntent(target, {
         damage,
@@ -507,6 +526,25 @@ function getActorProfileActivation(actor) {
     return actor.aiState.profileActivations;
 }
 
+function selectActorIntentProfile(actor, profile) {
+    if (!profile) return null;
+    if (profile.intent) return profile;
+    if (!Array.isArray(profile.intents) || profile.intents.length === 0) return null;
+
+    actor.aiState = actor.aiState && typeof actor.aiState === 'object'
+        ? actor.aiState
+        : {};
+    const currentIndex = Math.max(
+        0,
+        Math.trunc(Number(actor.aiState.intentVariantIndex) || 0)
+    ) % profile.intents.length;
+    actor.aiState.intentVariantIndex = (currentIndex + 1) % profile.intents.length;
+    return {
+        ...profile,
+        intent: profile.intents[currentIndex]
+    };
+}
+
 function performGuardAction(combat, actor, player, profile, turnEvents) {
     const guardProfile = profile && profile.guard;
     if (!guardProfile) return false;
@@ -520,6 +558,7 @@ function performGuardAction(combat, actor, player, profile, turnEvents) {
         type: 'shield_block',
         charges: 1,
         actionId: 'shield_block',
+        actionName: String(guardProfile.label || 'Shield Guard'),
         equipmentSlot: 'offhand',
         itemId: null,
         source: 'ai',
@@ -533,6 +572,9 @@ function performGuardAction(combat, actor, player, profile, turnEvents) {
         actorId: actor.id,
         name: actor.name,
         clipId: 'shield_block',
+        actionName: actor.guardState.actionName,
+        effectSummary: guardProfile.effectSummary || 'Blocks the next blockable attack.',
+        accessibilityLabel: guardProfile.accessibilityLabel || 'Shield guard. The next blockable attack will be blocked.',
         guardState: { ...actor.guardState },
         stamina: getActorStamina(actor, player),
         maxStamina: getActorMaxStamina(actor, player)
@@ -555,6 +597,83 @@ function getIntentTarget(combat, intent) {
     )) || null;
 }
 
+function isSpatialDamageIntent(intent) {
+    return Boolean(
+        intent
+        && intent.effectType === 'area_damage'
+        && ['line', 'radius'].includes(intent.targetShape)
+        && Array.isArray(intent.targetTiles)
+    );
+}
+
+function getSpatialIntentTargets(combat, actor, intent) {
+    return getHostileActorsFor(actor, combat)
+        .filter(candidate => (
+            isActorAlive(candidate)
+            && actorOccupiesIntentTiles(candidate, intent)
+        ))
+        .sort((left, right) => {
+            if (left.uid === intent.targetUid) return -1;
+            if (right.uid === intent.targetUid) return 1;
+            return String(left.uid).localeCompare(String(right.uid));
+        });
+}
+
+function resolveSpatialIntentTurn(
+    socketId,
+    combat,
+    player,
+    actor,
+    intent,
+    activeCombats,
+    onActorDefeated
+) {
+    const targets = getSpatialIntentTargets(combat, actor, intent);
+    if (targets.length === 0) {
+        return [createIntentOutcomeEvent(
+            actor,
+            intent,
+            'avoided',
+            { reason: 'target_repositioned' }
+        )];
+    }
+
+    const turnEvents = [];
+    let staminaSpent = false;
+    for (const target of targets) {
+        if (!activeCombats[socketId] || player.hp <= 0 || !isActorAlive(actor)) break;
+        const acted = attackTarget(
+            socketId,
+            combat,
+            player,
+            actor,
+            target,
+            activeCombats,
+            onActorDefeated,
+            turnEvents,
+            {
+                intent,
+                blockable: intent.blockable,
+                evadable: intent.evadable,
+                damageMultiplier: intent.damageMultiplier,
+                ignoreGeometry: true,
+                skipStaminaCost: staminaSpent
+            }
+        );
+        if (acted) staminaSpent = true;
+    }
+
+    if (!staminaSpent) {
+        turnEvents.push(createIntentOutcomeEvent(
+            actor,
+            intent,
+            'cancelled',
+            { reason: 'invalidated' }
+        ));
+    }
+    return turnEvents;
+}
+
 function resolvePendingIntentTurn(
     socketId,
     combat,
@@ -569,6 +688,17 @@ function resolvePendingIntentTurn(
 
     const intent = consumeActorIntent(actor);
     clearExpiredActorReactions(actor);
+    if (isSpatialDamageIntent(intent)) {
+        return resolveSpatialIntentTurn(
+            socketId,
+            combat,
+            player,
+            actor,
+            intent,
+            activeCombats,
+            onActorDefeated
+        );
+    }
     const target = getIntentTarget(combat, intent);
     if (!target) {
         return [createIntentOutcomeEvent(
@@ -604,7 +734,8 @@ function resolvePendingIntentTurn(
         {
             intent,
             blockable: intent.blockable,
-            evadable: intent.evadable
+            evadable: intent.evadable,
+            damageMultiplier: intent.damageMultiplier
         }
     );
     if (!acted) {
@@ -862,8 +993,9 @@ function executeActorTurn(socketId, combat, player, actor, activeCombats, onActo
             return guardEvents;
         }
     }
-    if (profile.intent) {
-        return executeIntentProfileTurn(combat, actor, player, profile);
+    const intentProfile = selectActorIntentProfile(actor, profile);
+    if (intentProfile) {
+        return executeIntentProfileTurn(combat, actor, player, intentProfile);
     }
     if (profile.role === 'ranged') {
         return executeRangedProfileTurn(

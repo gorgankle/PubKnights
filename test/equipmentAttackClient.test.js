@@ -240,9 +240,9 @@ test('combat page loads the shared contract and exposes an upward Equipment Atta
     assert.match(uiRenderSource, /heading\.setAttribute\('role', 'presentation'\)/);
     assert.match(uiRenderSource, /option\.setAttribute\('aria-disabled'/);
     assert.doesNotMatch(html, /id="heavy-btn"/);
-    assert.match(html, /href="style\.css\?v=9"/);
+    assert.match(html, /href="style\.css\?v=10"/);
     assert.match(html, /src="js\/items\.js\?v=6"/);
-    assert.match(html, /src="js\/main\.js\?v=19"/);
+    assert.match(html, /src="js\/main\.js\?v=20"/);
     assert.match(html, /src="js\/ui-tooltips\.js\?v=6"/);
     assert.match(html, /src="js\/ui-render\.js\?v=15"/);
     assert.match(html, /src="js\/renderer\.js\?v=14"/);
@@ -826,4 +826,15 @@ test('stale combat receipts preserve newer equipment menu and targeting state', 
             `${eventName} must reject stale receipts before clearing equipment UI`
         );
     });
+
+    const combatResultHandler = extractSocketHandler(
+        mainSource,
+        'combatResult'
+    );
+    assert.ok(
+        combatResultHandler.indexOf(
+            'applyAuthoritativeCombatResultState(result)'
+        ) > combatResultHandler.indexOf('if (authority.stale)'),
+        'stale receipts must be rejected before applying player or actor stamina'
+    );
 });

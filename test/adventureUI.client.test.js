@@ -9,21 +9,21 @@ const client = fs.readFileSync(path.join(root, 'public', 'js', 'expeditions.js')
 const styles = fs.readFileSync(path.join(root, 'public', 'style.css'), 'utf8');
 const main = fs.readFileSync(path.join(root, 'public', 'js', 'main.js'), 'utf8');
 
-test('Adventure Board exposes the exploration map, journey detail, bounties, and legacy fallback', () => {
+test('Adventure Board exposes Chapter One exploration without retired deployments', () => {
     assert.match(html, /id="exploration-map"/);
     assert.match(html, /id="exploration-detail"/);
     assert.match(html, /id="bounty-list"/);
-    assert.match(html, /id="legacy-deployments"/);
     assert.match(html, /id="tavern-return-report"/);
     assert.match(html, /id="tavern-return-kreg-canvas"/);
-    assert.match(html, /Legacy Level Deployments \(fallback\)/);
-    assert.match(html, /js\/expeditions\.js\?v=3/);
+    assert.doesNotMatch(html, /legacy-deployments|Legacy Level Deployments/);
+    assert.match(html, /js\/expeditions\.js\?v=5/);
 });
 
 test('expedition requests send only server catalog identifiers and never enemy or reward payloads', () => {
     assert.match(client, /socket\.emit\('startExpedition', \{ routeId: route\.id \}\)/);
-    assert.match(client, /socket\.emit\('acceptBounty', \{ bountyId \}\)/);
-    assert.match(client, /socket\.emit\('claimBounty', \{ bountyId \}\)/);
+    assert.match(client, /socket\.emit\('acceptContract', \{ contractId \}\)/);
+    assert.match(client, /socket\.emit\('claimContract', \{ contractId \}\)/);
+    assert.doesNotMatch(client, /acceptBounty|claimBounty|targetRoundTrips/);
     assert.doesNotMatch(client, /socket\.emit\('startExpedition',[\s\S]{0,160}(enemy|reward|danger)/i);
 });
 
@@ -37,12 +37,17 @@ test('the responsive map keeps location nodes, active routes, and contract state
     assert.match(styles, /@media \(max-width: 820px\)/);
 });
 
-test('return reports and contract cards expose readable road, enemy, risk, and reward context', () => {
+test('return reports keep observed intel while unobserved roads and typed objectives stay honest', () => {
     assert.match(client, /function buildTavernReturnPresentation/);
     assert.match(client, /function renderTavernReturnReport/);
     assert.match(client, /renderTavernReturnPortrait\(\)/);
     assert.match(client, /route\.encounterReports/);
+    assert.match(client, /Opposition is unconfirmed\. Face the road to add a reliable report\./);
+    assert.match(client, /unconfirmedEncounterCount/);
+    assert.match(client, /function getContractObjectivePresentation/);
+    assert.match(client, /bounty-objectives/);
     assert.match(client, /Expected:/);
+    assert.match(client, /Unconfirmed opposition/);
     assert.match(client, /Contract \$\{rewardGold\}g · Road \$\{routeReward\}g/);
 });
 

@@ -8,9 +8,8 @@ function enterGameUI() {
     document.getElementById('char-creation-screen').style.display = 'none';
     document.getElementById('main-game-container').style.display = 'flex';
     
-    // Force the default UI tab and ensure the player starts healing immediately
+    // Force the default UI tab.
     gameState = 'KNIGHT';
-    player.idleJob = 'TAVERN';
     
     // Kick off the initial UI render now that the engine is active
     refreshSystemUI();
@@ -56,6 +55,10 @@ socket.on('loginError', (message) => {
 socket.on('registerSuccess', (payload) => {
     // Save the username they just registered with
     currentUsername = (payload && payload.username) || document.getElementById("char-name-input").value.trim();
+    if (payload && payload.playerData && player) {
+        Object.assign(player, payload.playerData);
+        if (typeof normalizeClientPlayerContainers === 'function') normalizeClientPlayerContainers();
+    }
     
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('char-creation-screen').style.display = 'block';

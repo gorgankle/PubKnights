@@ -11,6 +11,12 @@ const injectCombatRouter = require('./combatRouter.js');
 const injectSocialRouter = require('./socialRouter.js');
 const injectAdventureRouter = require('./adventureRouter.js');
 const { normalizeAdventureState } = require('./adventureState.js');
+const {
+    CURRENT_SAVE_VERSION,
+    needsSaveMigration,
+    migrateSaveData
+} = require('./saveMigrations.js');
+const { createAuthoritativeSaveQueue } = require('./authoritativeSaveQueue.js');
 const { CombatMapTemplates, obstacleStyleForZone } = require('./combatMapTemplates.js');
 const { ItemDatabase } = require('./public/js/items.js');
 const {
@@ -140,11 +146,24 @@ function createSaveSnapshot(playerState) {
     delete snapshot.currentZone;
     delete snapshot.socialX;
     delete snapshot.socialY;
-    delete snapshot.wood;
-    delete snapshot.fish;
-    delete snapshot.hops;
+    migrateSaveData(snapshot);
 
     return snapshot;
+}
+
+const authoritativeSaveQueue = createAuthoritativeSaveQueue({
+    createSnapshot: createSaveSnapshot,
+    writeSnapshot: (username, saveData) => Player.findOneAndUpdate(
+        { username },
+        { saveData }
+    ),
+    onError: (error, context) => {
+        console.error(`Error persisting authoritative state for ${context.username}:`, error);
+    }
+});
+
+function persistAuthoritativePlayer(player, metadata = {}) {
+    return authoritativeSaveQueue.enqueue(player, metadata);
 }
 
 function migrateLifetimeXp(pd) {
@@ -184,6 +203,7 @@ function migrateLifetimeXp(pd) {
 
 function createDefaultSaveData(username) {
     const saveData = {
+        saveVersion: CURRENT_SAVE_VERSION,
         username,
         level: 1, xp: 0, xpToNext: getTotalXpForNextLevel(1), skillPoints: 0,
         vitality: 1, hp: 25, stamina: 25, maxStamina: 1,
@@ -196,12 +216,19 @@ function createDefaultSaveData(username) {
             weapon: JSON.parse(JSON.stringify(ItemDatabase["rusty_mace"])),
             offhand: null,
         },
-        inventory: [], stash: [],
+        // A first expedition is an outward fight plus a return fight. Two
+        // starter drinks let a new Knight learn that rhythm without one rough
+        // damage roll turning the discovery loop into a consumable death spiral.
+        inventory: [
+            JSON.parse(JSON.stringify(ItemDatabase["stout"])),
+            JSON.parse(JSON.stringify(ItemDatabase["stout"]))
+        ], stash: [],
         roster: { companions: [], activeIds: [] },
         maxInventorySlots: 5, backpackUpgrades: 0,
         pet: { adopted: false, level: 1 }
     };
     normalizeAdventureState(saveData, { recoverInterruptedJourney: false });
+    migrateSaveData(saveData);
     return saveData;
 }
 
@@ -211,6 +238,8 @@ function normalizeSavedRoster(pd) {
 }
 
 function hydratePlayerData(playerDoc) {
+    const migration = migrateSaveData(playerDoc && playerDoc.saveData);
+    playerDoc.saveData = migration.saveData;
     if (!playerDoc.saveData.appearance) {
         playerDoc.saveData.appearance = { ...DEFAULT_APPEARANCE };
     }
@@ -231,10 +260,6 @@ function hydratePlayerData(playerDoc) {
     delete pd.currentZone;
     delete pd.socialX;
     delete pd.socialY;
-    delete pd.wood;
-    delete pd.fish;
-    delete pd.hops;
-
     if (!pd.equipment || typeof pd.equipment !== 'object') {
         pd.equipment = {};
     }
@@ -254,7 +279,7 @@ function hydratePlayerData(playerDoc) {
     normalizeSavedRoster(pd);
     // An in-progress journey has no durable combat instance after a process
     // restart or reconnect. Hydration converts it into a failed expedition
-    // while retaining completed routes, discoveries, and bounty progress.
+    // while retaining completed routes, discoveries, and contract progress.
     normalizeAdventureState(pd, { recoverInterruptedJourney: true });
     pd.activeBuffs = [];
     pd.activeCombatBuff = null;
@@ -342,6 +367,7 @@ app.get('/', (req, res) => {
 });
 
 app.get('/api/combat-map-templates', (req, res) => {
+    if (process.env.PUBKNIGHTS_CREATOR_TOOLS !== '1') return res.sendStatus(404);
     res.json(getPublicCombatMapTemplates());
 });
 
@@ -378,10 +404,13 @@ io.on('connection', (socket) => {
 
             // === THE FIX: LOG THE PLAYER INTO RAM IMMEDIATELY ===
             // This ensures the server knows who they are when they click "Begin Adventure"
-            rememberSocketLogin(socket, newPlayer);
+            const playerData = rememberSocketLogin(socket, newPlayer);
             // ====================================================
 
-            socket.emit('registerSuccess', { username: newPlayer.username });
+            socket.emit('registerSuccess', {
+                username: newPlayer.username,
+                playerData
+            });
         } catch (err) {
             console.error(err);
             socket.emit('loginError', 'Server error during registration.');
@@ -401,9 +430,6 @@ if (data.saveData) {
                 if (data.saveData.appearance) {
                     p.appearance = sanitizeAppearance(data.saveData.appearance);
                 }
-                // Allow the server to remember their job when logging in!
-                if (data.saveData.idleJob) p.idleJob = sanitizeToken(data.saveData.idleJob, p.idleJob || 'TAVERN');
-                
                 // Allow pet cosmetic updates, but fiercely protect the level and adoption status!
                 if (data.saveData.pet) {
                     p.pet = sanitizePetCosmetics(data.saveData.pet, p.pet);
@@ -411,11 +437,7 @@ if (data.saveData) {
             }
 
             // 3. Save the SERVER'S secure memory state to MongoDB, completely ignoring the client's economy data.
-            const saveSnapshot = createSaveSnapshot(p);
-            await Player.findOneAndUpdate(
-                { username: p.username },
-                { saveData: saveSnapshot }
-            );
+            await persistAuthoritativePlayer(p, { reason: 'client_save' });
             console.log(`ðŸ’¾ Secure save synced for Knight: ${p.username}`);
         } catch (err) {
             console.error('Error saving game data to MongoDB:', err);
@@ -449,11 +471,18 @@ if (data.saveData) {
                 const savedRoster = playerDoc.saveData && playerDoc.saveData.roster;
                 const hadSavedCompanions = !!(savedRoster && Array.isArray(savedRoster.companions) && savedRoster.companions.length > 0);
                 const savedRosterJson = hadSavedCompanions ? JSON.stringify(savedRoster) : '';
+                const saveMigrationRequired = needsSaveMigration(playerDoc.saveData);
+                const hadInterruptedJourney = !!(
+                    playerDoc.saveData
+                    && playerDoc.saveData.adventure
+                    && playerDoc.saveData.adventure.activeJourney
+                );
                 const pd = rememberSocketLogin(socket, playerDoc);
-                if (hadSavedCompanions && JSON.stringify(pd.roster) !== savedRosterJson) {
+                const rosterChanged = hadSavedCompanions && JSON.stringify(pd.roster) !== savedRosterJson;
+                if (saveMigrationRequired || hadInterruptedJourney || rosterChanged) {
                     await Player.updateOne(
                         { _id: playerDoc._id },
-                        { $set: { 'saveData.roster': pd.roster, 'saveData.inventory': pd.inventory } }
+                        { $set: { saveData: createSaveSnapshot(pd) } }
                     );
                 }
                 socket.emit('loginSuccess', pd);
@@ -466,14 +495,18 @@ if (data.saveData) {
         // === RESTORED: MODULAR ROUTER INJECTIONS ===
         // This plugs your other files into the main server connection!
         injectTownRouter(socket, io, activePlayers, activeCombats);
-        injectAdventureRouter(socket, io, activePlayers, activeCombats);
-        injectCombatRouter(socket, io, activePlayers, activeCombats);
+        injectAdventureRouter(socket, io, activePlayers, activeCombats, persistAuthoritativePlayer);
+        injectCombatRouter(socket, io, activePlayers, activeCombats, persistAuthoritativePlayer);
         injectSocialRouter(socket, io, activePlayers, activeCombats);
 
 
         // === RESTORED: DISCONNECT HANDLER ===
         socket.on('disconnect', () => {
             console.log(`âŒ A Knight disconnected: ${socket.id}`);
+            const player = activePlayers[socket.id];
+            if (player && player.username) {
+                void persistAuthoritativePlayer(player, { reason: 'disconnect' });
+            }
             releaseUsernameSession(socket);
             delete activePlayers[socket.id];
             delete activeCombats[socket.id];
@@ -487,14 +520,9 @@ setInterval(() => {
         let p = activePlayers[socketId];
         if (!p) continue;
 
-        // Worker production and side-resource economies are retired.
-        if (p.happyHourTicks > 0) p.happyHourTicks--;
-
         io.to(socketId).emit('serverTick', {
             hp: p.hp,
-            gold: p.gold,
-            happyHourTicks: p.happyHourTicks,
-            upgrades: p.upgrades
+            gold: p.gold
         });
     }
 }, 3000);

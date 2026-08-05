@@ -294,25 +294,20 @@ test('companion gear changes are rejected during combat', () => {
     assert.equal(player.inventory[0].id, 'new_sword');
 });
 
-test('hiring supports multiple roster instances while keeping one active slot', () => {
+test('generic mercenary hiring no longer mutates the roster or spends gold', () => {
     const harness = createTownHarness();
+    const rosterBefore = structuredClone(harness.player.roster);
+    const goldBefore = harness.player.gold;
+    const emissionCountBefore = harness.socket.emitted.length;
 
     harness.socket.dispatch('townAction', {
         action: 'hireCompanion',
         templateId: 'starter_mercenary',
         companionName: 'Mira'
     });
-    harness.socket.dispatch('townAction', {
-        action: 'hireCompanion',
-        templateId: 'starter_mercenary',
-        companionName: 'Tomas'
-    });
 
-    const companions = harness.player.roster.companions;
-    assert.equal(companions.length, 2);
-    assert.notEqual(companions[0].instanceId, companions[1].instanceId);
-    assert.equal(companions[0].templateId, 'starter_mercenary');
-    assert.equal(companions[1].templateId, 'starter_mercenary');
-    assert.equal(harness.player.roster.activeIds.length, 1);
-    assert.equal(harness.player.roster.activeIds[0], companions[0].instanceId);
+    assert.equal(harness.player.gold, goldBefore);
+    assert.deepEqual(harness.player.roster, rosterBefore);
+    assert.equal(harness.socket.emitted.length, emissionCountBefore);
+    assert.equal(harness.socket.lastPayload('townReceipt'), undefined);
 });

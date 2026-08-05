@@ -177,6 +177,76 @@ test('old snapshots update visuals without overwriting newer combat controls', (
     assert.equal(state.enemies[0].hp, 20);
 });
 
+test('combat results apply authoritative player and acting-unit stamina immediately', () => {
+    const player = {
+        uid: 'player_0',
+        kind: 'player',
+        username: 'Knight',
+        stamina: 40,
+        hp: 60
+    };
+    const ally = {
+        uid: 'merc_1',
+        kind: 'ally',
+        stamina: 30
+    };
+    const context = vm.createContext({
+        Object,
+        Number,
+        player,
+        enemies: [],
+        allies: [ally],
+        rogues: []
+    });
+    vm.runInContext(
+        `${extractFunction(mainSource, 'getCombatActorByUid')}
+        ${extractFunction(mainSource, 'applyAuthoritativeCombatResultState')}
+        this.resultStateApi = applyAuthoritativeCombatResultState;`,
+        context
+    );
+
+    const playerSource = context.resultStateApi({
+        actorUid: 'player_0',
+        type: 'miss',
+        deflectReason: 'armor',
+        newStamina: 17,
+        updatedPlayer: { hp: 52, stamina: 99 }
+    });
+    assert.equal(playerSource, player);
+    assert.equal(player.hp, 52);
+    assert.equal(player.stamina, 17);
+
+    const allySource = context.resultStateApi({
+        actorUid: 'merc_1',
+        type: 'hit',
+        source: 'equipment',
+        action: { id: 'shield_bash' },
+        newStamina: 11,
+        updatedPlayer: { hp: 52, stamina: 17 }
+    });
+    assert.equal(allySource, ally);
+    assert.equal(ally.stamina, 11);
+    assert.equal(player.stamina, 17);
+
+    const actorlessErrorSource = context.resultStateApi({
+        type: 'error',
+        newStamina: 9,
+        updatedCombatState: { activeActorUid: 'merc_1' }
+    });
+    assert.equal(actorlessErrorSource, ally);
+    assert.equal(ally.stamina, 9);
+    assert.equal(player.stamina, 17);
+
+    context.resultStateApi({
+        actorUid: 'missing_ally',
+        type: 'hit',
+        newStamina: 3,
+        updatedPlayer: { hp: 48, stamina: 15 }
+    });
+    assert.equal(player.hp, 48);
+    assert.equal(player.stamina, 15);
+});
+
 test('playback acknowledgements carry their token and emit exactly once', () => {
     const emitted = [];
     const context = vm.createContext({

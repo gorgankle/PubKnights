@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const {
+    ADVENTURE_SCHEMA_VERSION,
     createInitialAdventureState,
     normalizeAdventureState,
     getAdventureSnapshot,
@@ -41,14 +42,17 @@ test('old and malformed saves normalize into the two-branch starting map', () =>
 
     const adventure = normalizeAdventureState(knight);
 
-    assert.equal(adventure.schemaVersion, 1);
+    assert.equal(adventure.schemaVersion, ADVENTURE_SCHEMA_VERSION);
     assert.deepEqual(adventure.discoveredLocationIds.sort(), ['old_road', 'pine_trail', 'pub_hub']);
     assert.deepEqual(adventure.unlockedLocationIds.sort(), ['old_road', 'pine_trail', 'pub_hub']);
+    assert.deepEqual(adventure.discoveredRouteIds.sort(), ['route_old_road', 'route_pine_trail']);
+    assert.deepEqual(adventure.unlockedRouteIds.sort(), ['route_old_road', 'route_pine_trail']);
     assert.equal(adventure.totalSafeReturns, 0);
     assert.equal(adventure.routeStats.route_old_road.successfulRoundTrips, 2);
     assert.equal(adventure.routeStats.route_old_road.failedTrips, 0);
     assert.equal(adventure.latestReturnReport, null);
-    assert.deepEqual(adventure.contracts.active, {});
+    assert.equal(adventure.contracts, undefined);
+    assert.deepEqual(adventure.observedEncounterIdsByRoute.route_old_road, []);
 });
 
 test('initial state creation is independent and does not share mutable route records', () => {
@@ -59,7 +63,7 @@ test('initial state creation is independent and does not share mutable route rec
     assert.equal(second.routeStats.route_old_road.successfulRoundTrips, 0);
 });
 
-test('the server chooses an authored encounter for an unlocked route and rejects locked travel', () => {
+test('the server chooses an authored encounter for an unlocked route and rejects a hidden branch', () => {
     const knight = player();
     const first = beginExpedition(knight, 'route_old_road', { random: () => 0 });
 
@@ -88,7 +92,7 @@ test('outbound victory reaches the destination without awarding a round-trip rew
     assert.equal(knight.pendingGold, 0);
 });
 
-test('a matching return victory pays once, counts once, and reveals first-return roads', () => {
+test('a matching return victory pays once and counts once without leaking undiscovered roads', () => {
     const knight = player();
     completeLeg(knight, beginExpedition(knight, 'route_old_road', { random: () => 0 }));
     const returning = beginReturnTrip(knight, { random: () => 0.99 });
@@ -100,13 +104,13 @@ test('a matching return victory pays once, counts once, and reveals first-return
     assert.equal(knight.pendingGold, 35);
     assert.equal(knight.adventure.totalSafeReturns, 1);
     assert.equal(knight.adventure.routeStats.route_old_road.successfulRoundTrips, 1);
-    assert.equal(knight.adventure.unlockedLocationIds.includes('toll_crossing'), true);
+    assert.equal(knight.adventure.unlockedLocationIds.includes('toll_crossing'), false);
     assert.equal(knight.adventure.activeJourney, null);
     assert.match(knight.adventure.latestReturnReport.reportId, /^return_[a-f0-9]{16}$/);
     assert.equal(knight.adventure.latestReturnReport.outcome, 'safe_return');
     assert.equal(knight.adventure.latestReturnReport.routeName, 'The Old Road');
-    assert.equal(knight.adventure.latestReturnReport.encounterName, 'Roadside Gang');
-    assert.deepEqual(knight.adventure.latestReturnReport.enemyNames, ['Roadside Bandit', 'Bandit Lookout']);
+    assert.equal(knight.adventure.latestReturnReport.encounterName, 'Alley Robbery');
+    assert.deepEqual(knight.adventure.latestReturnReport.enemyNames, ['Roadside Bandit']);
     assert.equal(knight.adventure.latestReturnReport.rewardGold, 35);
     assert.equal(knight.adventure.latestReturnReport.firstReturn, true);
 
@@ -129,9 +133,15 @@ test('stale victory context cannot advance or redirect an active journey', () =>
     assert.equal(knight.pendingGold, 0);
 });
 
-test('failure clears only the current journey and is idempotent', () => {
+test('failure clears the current journey and its escrow without touching durable progress', () => {
     const knight = player();
     beginExpedition(knight, 'route_pine_trail', { random: () => 0 });
+    Object.assign(knight, {
+        pendingGold: 40,
+        pendingXp: 15,
+        pendingLoot: [{ id: 'unsecured_drop' }],
+        pendingMercenaryXpContext: { eligibleInstanceIds: ['merc_1'] }
+    });
     const failed = failActiveExpedition(knight, 'fled_combat');
     const duplicate = failActiveExpedition(knight, 'fled_combat');
 
@@ -142,11 +152,20 @@ test('failure clears only the current journey and is idempotent', () => {
     assert.equal(knight.adventure.latestReturnReport.outcome, 'expedition_failed');
     assert.equal(knight.adventure.latestReturnReport.failureReason, 'fled_combat');
     assert.equal(knight.adventure.latestReturnReport.rewardGold, 0);
+    assert.equal(knight.pendingGold, 0);
+    assert.equal(knight.pendingXp, 0);
+    assert.deepEqual(knight.pendingLoot, []);
+    assert.equal(knight.pendingMercenaryXpContext, undefined);
 });
 
 test('explicit login recovery converts an interrupted saved journey into a failed trip', () => {
     const knight = player();
     beginExpedition(knight, 'route_old_road', { random: () => 0 });
+    Object.assign(knight, {
+        pendingGold: 25,
+        pendingXp: 9,
+        pendingLoot: [{ id: 'road_drop' }]
+    });
     const preserved = normalizeAdventureState(knight, { recoverInterruptedJourney: false });
     assert.ok(preserved.activeJourney);
 
@@ -154,26 +173,82 @@ test('explicit login recovery converts an interrupted saved journey into a faile
     assert.equal(recovered.activeJourney, null);
     assert.equal(recovered.routeStats.route_old_road.failedTrips, 1);
     assert.equal(recovered.routeStats.route_old_road.lastFailureReason, 'interrupted');
+    assert.equal(knight.pendingGold, 0);
+    assert.equal(knight.pendingXp, 0);
+    assert.deepEqual(knight.pendingLoot, []);
 });
 
-test('public snapshots expose road reports without mutable enemy or reward authority', () => {
+test('public snapshots omit hidden nodes and unobserved enemy details, then reveal only observed intel', () => {
     const knight = player();
-    const snapshot = getAdventureSnapshot(knight);
-    const oldRoad = snapshot.routes.find(route => route.id === 'route_old_road');
+    const freshSnapshot = getAdventureSnapshot(knight);
+    const freshOldRoad = freshSnapshot.routes.find(route => route.id === 'route_old_road');
 
-    assert.deepEqual(oldRoad.possibleEncounterNames, ['Alley Robbery', 'Roadside Gang']);
-    assert.deepEqual(oldRoad.encounterReports[0], {
+    assert.deepEqual(
+        freshSnapshot.locations.map(location => location.id),
+        ['pub_hub', 'old_road', 'pine_trail']
+    );
+    assert.deepEqual(
+        freshSnapshot.routes.map(route => route.id),
+        ['route_old_road', 'route_pine_trail']
+    );
+    assert.equal(freshSnapshot.locations.some(location => location.id === 'burnt_heath'), false);
+    assert.equal(freshSnapshot.routes.some(route => route.id === 'route_burnt_heath'), false);
+    assert.equal(freshOldRoad.possibleEncounterNames, undefined);
+    assert.deepEqual(freshOldRoad.encounterReports, []);
+    assert.equal(freshOldRoad.unconfirmedEncounterCount, 2);
+    assert.equal(freshSnapshot.adventure.routeEncounterHistory, undefined);
+    assert.equal(freshSnapshot.adventure.observedEncounterIdsByRoute, undefined);
+
+    beginExpedition(knight, 'route_old_road', { random: () => 0 });
+    const observedSnapshot = getAdventureSnapshot(knight);
+    const observedOldRoad = observedSnapshot.routes.find(route => route.id === 'route_old_road');
+    assert.deepEqual(observedOldRoad.encounterReports, [{
         name: 'Alley Robbery',
         difficulty: 1,
         tags: ['melee', 'close-quarters'],
         enemyNames: ['Roadside Bandit']
-    });
-    assert.deepEqual(oldRoad.encounterReports[1].enemyNames, ['Roadside Bandit', 'Bandit Lookout']);
-    assert.equal(oldRoad.encounterIds, undefined);
-    assert.equal(JSON.stringify(oldRoad.encounterReports).includes('aiProfileId'), false);
-    assert.equal(JSON.stringify(oldRoad.encounterReports).includes('statMult'), false);
-    assert.equal(JSON.stringify(oldRoad.encounterReports).includes('spawnId'), false);
-    assert.equal(snapshot.locations.find(location => location.id === 'burnt_heath').unlocked, false);
-    snapshot.adventure.unlockedLocationIds.push('burnt_heath');
+    }]);
+    assert.equal(observedOldRoad.unconfirmedEncounterCount, 1);
+    assert.equal(JSON.stringify(observedOldRoad.encounterReports).includes('Roadside Gang'), false);
+    assert.equal(JSON.stringify(observedOldRoad.encounterReports).includes('Bandit Lookout'), false);
+    assert.equal(observedOldRoad.encounterIds, undefined);
+    assert.equal(JSON.stringify(observedOldRoad.encounterReports).includes('aiProfileId'), false);
+    assert.equal(JSON.stringify(observedOldRoad.encounterReports).includes('statMult'), false);
+    assert.equal(JSON.stringify(observedOldRoad.encounterReports).includes('spawnId'), false);
+
+    observedSnapshot.adventure.unlockedLocationIds.push('burnt_heath');
     assert.equal(knight.adventure.unlockedLocationIds.includes('burnt_heath'), false);
+});
+
+test('return-report world metadata survives snapshots with catalog validation and bounded deduplication', () => {
+    const knight = player();
+    completeLeg(knight, beginExpedition(knight, 'route_old_road', { random: () => 0 }));
+    const returning = beginReturnTrip(knight, { random: () => 0 });
+    completeLeg(knight, returning);
+    knight.adventure.latestReturnReport.worldContractUpdates = [
+        'missing_kegs:return_from_old_road',
+        'missing_kegs:return_from_old_road',
+        ' missing_kegs:return_from_old_road ',
+        'missing_kegs:not_an_objective',
+        'not_a_contract:return_from_old_road',
+        'missing_kegs:return_from_old_road:extra',
+        { contractId: 'missing_kegs' }
+    ];
+    knight.adventure.latestReturnReport.rewardChoiceOffered = true;
+
+    const snapshot = getAdventureSnapshot(knight);
+    const report = snapshot.adventure.latestReturnReport;
+
+    assert.deepEqual(report.worldContractUpdates, ['missing_kegs:return_from_old_road']);
+    assert.equal(report.contractUpdates, undefined);
+    assert.equal(report.rewardChoiceOffered, true);
+    assert.deepEqual(
+        knight.adventure.latestReturnReport.worldContractUpdates,
+        ['missing_kegs:return_from_old_road']
+    );
+    report.worldContractUpdates.push('road_conditions_pine:return_from_pine');
+    assert.deepEqual(
+        knight.adventure.latestReturnReport.worldContractUpdates,
+        ['missing_kegs:return_from_old_road']
+    );
 });

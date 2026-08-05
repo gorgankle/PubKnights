@@ -1,106 +1,129 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
+const adventureState = require('../adventureState.js');
+const adventureCatalog = require('../adventureCatalog.js');
 const {
-    acceptBounty,
-    claimBounty,
-    beginExpedition,
-    beginReturnTrip,
-    resolveExpeditionCombatVictory,
-    failActiveExpedition,
-    getAdventureSnapshot
-} = require('../adventureState.js');
+    acceptChapterOneContract,
+    advanceChapterOneSafeReturn,
+    claimChapterOneContract,
+    resolveDestinationInteraction
+} = require('../chapterOneWorld.js');
 
 function player() {
-    return { username: 'Contract Tester', gold: 0, pendingGold: 0 };
+    return {
+        username: 'Contract Tester',
+        gold: 0,
+        pendingGold: 0,
+        pendingXp: 0,
+        pendingLoot: []
+    };
 }
 
-function completeRoundTrip(knight, routeId) {
-    const outbound = beginExpedition(knight, routeId, { random: () => 0 });
+function reachDestination(knight, routeId) {
+    const outbound = adventureState.beginExpedition(knight, routeId, { random: () => 0 });
     assert.equal(outbound.success, true);
-    assert.equal(resolveExpeditionCombatVictory(knight, outbound.expeditionContext).outcome, 'destination_reached');
-    const returning = beginReturnTrip(knight, { random: () => 0 });
-    assert.equal(returning.success, true);
-    return resolveExpeditionCombatVictory(knight, returning.expeditionContext);
+    const arrival = adventureState.resolveExpeditionCombatVictory(knight, outbound.expeditionContext);
+    assert.equal(arrival.outcome, 'destination_reached');
+    return arrival;
 }
 
-test('accepting the hedge investigation reveals its route without adding a cargo item', () => {
-    const knight = player();
-    const accepted = acceptBounty(knight, 'hedge_fire_investigation');
+function returnSafely(knight) {
+    const returning = adventureState.beginReturnTrip(knight, { random: () => 0 });
+    assert.equal(returning.success, true);
+    const result = adventureState.resolveExpeditionCombatVictory(knight, returning.expeditionContext);
+    assert.equal(result.outcome, 'safe_return');
+    const worldProgress = advanceChapterOneSafeReturn(knight, result.routeId);
+    if (knight.adventure.latestReturnReport) {
+        knight.adventure.latestReturnReport.worldContractUpdates = worldProgress.completedObjectiveIds;
+        knight.adventure.latestReturnReport.rewardChoiceOffered = worldProgress.rewardChoiceOffered;
+    }
+    return { ...result, worldContractUpdates: worldProgress.completedObjectiveIds };
+}
 
-    assert.equal(accepted.success, true);
-    assert.equal(knight.adventure.unlockedLocationIds.includes('burnt_heath'), true);
-    assert.equal(knight.adventure.discoveredLocationIds.includes('burnt_heath'), true);
-    assert.equal(knight.inventory, undefined);
+function clearEscrow(knight) {
+    knight.pendingGold = 0;
+    knight.pendingXp = 0;
+    knight.pendingLoot = [];
+}
+
+test('legacy three-return bounty APIs and catalog are retired', () => {
+    assert.equal(adventureState.acceptBounty, undefined);
+    assert.equal(adventureState.claimBounty, undefined);
+    assert.equal(adventureCatalog.BountyCatalog, undefined);
+
+    const snapshot = adventureState.getAdventureSnapshot(player());
+    assert.equal(Object.hasOwn(snapshot, 'bounties'), false);
+    assert.equal(Object.hasOwn(snapshot.adventure, 'contracts'), false);
+    assert.deepEqual(snapshot.world.contracts.map(contract => contract.id), ['missing_kegs']);
 });
 
-test('three matching safe returns make the Old Road delivery claimable', () => {
+test('Missing Kegs advances through typed discovery and safe-return objectives', () => {
     const knight = player();
-    acceptBounty(knight, 'old_road_goods');
+    assert.equal(acceptChapterOneContract(knight, 'missing_kegs').success, true);
 
-    completeRoundTrip(knight, 'route_old_road');
-    completeRoundTrip(knight, 'route_old_road');
-    const third = completeRoundTrip(knight, 'route_old_road');
+    reachDestination(knight, 'route_old_road');
+    const discovery = resolveDestinationInteraction(knight, 'inspect_wreck');
+    assert.equal(discovery.success, true);
+    assert.equal(
+        knight.world.contracts.active.missing_kegs.objectives.find_keg_wreck.complete,
+        true
+    );
+    assert.equal(knight.world.contracts.active.missing_kegs.status, 'active');
 
-    const record = knight.adventure.contracts.active.old_road_goods;
-    assert.equal(record.progress, 3);
-    assert.equal(record.status, 'claimable');
-    assert.equal(third.advancedBounties[0].bountyId, 'old_road_goods');
-    assert.deepEqual(knight.adventure.latestReturnReport.contractUpdates, [{
-        bountyId: 'old_road_goods',
-        title: 'Goods for the Old Road',
-        progress: 3,
-        target: 3,
-        status: 'claimable'
-    }]);
+    const returned = returnSafely(knight);
+    assert.equal(knight.world.contracts.active.missing_kegs.status, 'claimable');
+    assert.deepEqual(returned.worldContractUpdates, ['missing_kegs:return_from_old_road']);
+    assert.equal(knight.adventure.routeStats.route_old_road.successfulRoundTrips, 1);
 });
 
-test('a different route cannot advance a delivery contract', () => {
+test('failed travel preserves typed contract progress without completing a safe-return objective', () => {
     const knight = player();
-    acceptBounty(knight, 'old_road_goods');
-    completeRoundTrip(knight, 'route_pine_trail');
+    acceptChapterOneContract(knight, 'missing_kegs');
+    reachDestination(knight, 'route_old_road');
+    resolveDestinationInteraction(knight, 'inspect_wreck');
+    const returning = adventureState.beginReturnTrip(knight, { random: () => 0 });
+    assert.equal(returning.success, true);
 
-    assert.equal(knight.adventure.contracts.active.old_road_goods.progress, 0);
+    adventureState.failActiveExpedition(knight, 'fled_combat');
+
+    const active = knight.world.contracts.active.missing_kegs;
+    assert.equal(active.objectives.find_keg_wreck.complete, true);
+    assert.equal(active.objectives.return_from_old_road.progress, 0);
+    assert.equal(active.status, 'active');
 });
 
-test('fleeing preserves previous progress but does not count the failed trip', () => {
+test('contract claims use immutable rewards and cannot be duplicated', () => {
     const knight = player();
-    acceptBounty(knight, 'old_road_goods');
-    completeRoundTrip(knight, 'route_old_road');
-    beginExpedition(knight, 'route_old_road', { random: () => 0 });
-    failActiveExpedition(knight, 'fled_combat');
+    acceptChapterOneContract(knight, 'missing_kegs');
+    reachDestination(knight, 'route_old_road');
+    resolveDestinationInteraction(knight, 'inspect_wreck');
+    returnSafely(knight);
 
-    assert.equal(knight.adventure.contracts.active.old_road_goods.progress, 1);
-    assert.equal(knight.adventure.routeStats.route_old_road.failedTrips, 1);
-});
-
-test('claiming uses the immutable catalog payout exactly once', () => {
-    const knight = player();
-    acceptBounty(knight, 'pine_trail_patrol');
-    completeRoundTrip(knight, 'route_pine_trail');
-
-    const claimed = claimBounty(knight, 'pine_trail_patrol', { rewardGold: 999999 });
-    const duplicate = claimBounty(knight, 'pine_trail_patrol');
+    const claimed = claimChapterOneContract(knight, 'missing_kegs');
+    const duplicate = claimChapterOneContract(knight, 'missing_kegs');
 
     assert.equal(claimed.success, true);
-    assert.equal(claimed.rewardGold, 70);
-    assert.equal(knight.gold, 70);
+    assert.equal(claimed.rewardGold, 75);
+    assert.equal(knight.gold, 75);
     assert.equal(duplicate.success, false);
-    assert.equal(knight.gold, 70);
+    assert.equal(knight.gold, 75);
 });
 
-test('repeatable and one-time bounties expose the correct post-claim board state', () => {
+test('Pine Road Conditions is discovered through an optional clue and repeats one typed report at a time', () => {
     const knight = player();
-    acceptBounty(knight, 'pine_trail_patrol');
-    completeRoundTrip(knight, 'route_pine_trail');
-    claimBounty(knight, 'pine_trail_patrol');
-    assert.equal(acceptBounty(knight, 'pine_trail_patrol').success, true);
+    reachDestination(knight, 'route_pine_trail');
+    assert.equal(resolveDestinationInteraction(knight, 'search_signal_cache').success, true);
+    returnSafely(knight);
+    clearEscrow(knight);
 
-    acceptBounty(knight, 'hedge_fire_investigation');
-    completeRoundTrip(knight, 'route_burnt_heath');
-    claimBounty(knight, 'hedge_fire_investigation');
-    assert.equal(acceptBounty(knight, 'hedge_fire_investigation').success, false);
+    assert.equal(acceptChapterOneContract(knight, 'road_conditions_pine').success, true);
+    reachDestination(knight, 'route_pine_trail');
+    returnSafely(knight);
+    assert.equal(knight.world.contracts.active.road_conditions_pine.status, 'claimable');
 
-    const snapshot = getAdventureSnapshot(knight);
-    assert.equal(snapshot.bounties.find(entry => entry.id === 'hedge_fire_investigation').status, 'completed');
+    assert.equal(claimChapterOneContract(knight, 'road_conditions_pine').success, true);
+    assert.equal(knight.gold, 45);
+    assert.equal(acceptChapterOneContract(knight, 'road_conditions_pine').success, true);
+    assert.equal(knight.world.contracts.active.road_conditions_pine.status, 'active');
 });

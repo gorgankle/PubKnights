@@ -23,7 +23,6 @@ const { recoverUnusedActionStamina } = require('./combatTurnRecovery.js');
 const { findCompanionByInstanceId } = require('./companionRoster.js');
 const { claimCombatRewards } = require('./combatRewards.js');
 const { resolveActorDefeat } = require('./combatResolution.js');
-const { createCombatEncounter } = require('./combatEncounters.js');
 const {
     getAdventureSnapshot,
     failActiveExpedition,
@@ -236,6 +235,25 @@ function interruptTargetIntent(target, sourceActor, combatRules, damage) {
     });
 }
 
+function rollAreaWeaponDamage(baseDamage, target, player, ignoresDefense) {
+    const maximumDamage = Math.max(1, Math.floor(Number(baseDamage) || 0));
+    const minimumDamage = Math.max(1, Math.ceil(maximumDamage * 0.85));
+    const rolledDamage = Math.floor(
+        Math.random() * (maximumDamage - minimumDamage + 1)
+    ) + minimumDamage;
+    const targetDefense = ignoresDefense === true
+        ? 0
+        : getActorStatValue(target, player, 'defense');
+    const armorAbsorption = Math.floor(
+        Math.pow(Math.random(), 2) * targetDefense
+    );
+    const damage = Math.max(1, rolledDamage - armorAbsorption);
+    return {
+        damage,
+        isCrit: damage >= Math.floor(maximumDamage * 0.95)
+    };
+}
+
 function getCardinalRetreatTile(combat, actor, threat) {
     if (!combat || !actor || !threat) return null;
     const cols = Math.max(1, Number(combat.gridSize && combat.gridSize.cols) || 1);
@@ -342,8 +360,23 @@ function emitCombatResultError(
     });
 }
 
-module.exports = function(socket, io, activePlayers, activeCombats) {
-    const combatContext = { activePlayers, activeCombats, io };
+function emitExpeditionEscrowReceipt(socket, eventName, action, player) {
+    return socket.emit(eventName, {
+        success: false,
+        code: 'ACTIVE_JOURNEY',
+        action,
+        updatedPlayer: player,
+        adventureState: getAdventureSnapshot(player),
+        message: 'Expedition rewards remain in escrow until you return safely to the pub.'
+    });
+}
+
+module.exports = function(socket, io, activePlayers, activeCombats, persistPlayer) {
+    const combatContext = { activePlayers, activeCombats, io, persistPlayer };
+    function persistCombatMutation(player, reason) {
+        if (!player || typeof persistPlayer !== 'function') return;
+        void Promise.resolve(persistPlayer(player, { reason })).catch(() => undefined);
+    }
     function resolveDefeat(target, details = {}) {
         return resolveActorDefeat(socket.id, target, combatContext, details);
     }
@@ -413,7 +446,6 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             p.pendingGold = 0;
             p.pendingXp = 0;
             p.pendingLoot = [];
-            p.cellarsChummed = false;
             p.statusEffects = {};
             p.activeBuffs = [];
             p.activeCombatBuff = null;
@@ -421,6 +453,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             p.stamina = getMaxStamina(p);
             delete p.pendingMercenaryXpContext;
             delete activeCombats[socket.id];
+            persistCombatMutation(p, adventureOutcome ? 'expedition_fled' : 'combat_fled');
             if (adventureOutcome) {
                 socket.emit('adventureProgress', {
                     ...adventureOutcome,
@@ -525,35 +558,6 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             activeActor,
             'Server: Unsupported combat action.'
         );
-    });
-
-    socket.on('deployToCombat', (data) => {
-        const p = activePlayers[socket.id];
-        if (!p) return;
-        if (!data || typeof data !== 'object') return;
-
-        if (hasActiveJourney(p)) {
-            return socket.emit('adventureReceipt', {
-                action: 'legacyDeploy',
-                success: false,
-                code: 'ACTIVE_JOURNEY',
-                message: 'Finish or abandon the active expedition before using legacy deployments.',
-                adventureState: getAdventureSnapshot(p)
-            });
-        }
-
-        p.idleJob = 'NONE';
-        p.pendingXp = 0;
-        delete p.pendingMercenaryXpContext;
-        p.statusEffects = {};
-        p.activeBuffs = [];
-        p.activeCombatBuff = null;
-
-        const combatState = createCombatEncounter(p, data);
-        if (!combatState) return;
-
-        activeCombats[socket.id] = syncCombatViews(combatState, p);
-        io.to(socket.id).emit('combatDeployed', activeCombats[socket.id]);
     });
 
     socket.on('endPlayerTurn', (data = {}) => {
@@ -674,8 +678,18 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
 
     socket.on('takePendingLoot', (idx) => {
         const p = activePlayers[socket.id];
-        const lootIndex = getArrayIndex(idx, p && p.pendingLoot);
-        if (!p || lootIndex < 0) return;
+        if (!p) return;
+        if (hasActiveJourney(p)) {
+            return emitExpeditionEscrowReceipt(
+                socket,
+                'inventoryReceipt',
+                'takeLoot',
+                p
+            );
+        }
+
+        const lootIndex = getArrayIndex(idx, p.pendingLoot);
+        if (lootIndex < 0) return;
 
         p.maxInventorySlots = p.maxInventorySlots || 5;
         if (p.inventory.length < p.maxInventorySlots) {
@@ -689,8 +703,18 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
 
     socket.on('sellPendingLoot', (idx) => {
         const p = activePlayers[socket.id];
-        const lootIndex = getArrayIndex(idx, p && p.pendingLoot);
-        if (!p || lootIndex < 0) return;
+        if (!p) return;
+        if (hasActiveJourney(p)) {
+            return emitExpeditionEscrowReceipt(
+                socket,
+                'inventoryReceipt',
+                'sellPendingLoot',
+                p
+            );
+        }
+
+        const lootIndex = getArrayIndex(idx, p.pendingLoot);
+        if (lootIndex < 0) return;
 
         const itemToSell = p.pendingLoot.splice(lootIndex, 1)[0];
         const val = itemToSell.value || (itemToSell.rarity === "Gorilla" ? 500 : 15);
@@ -702,6 +726,14 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
     socket.on('claimCombatRewards', () => {
         const p = activePlayers[socket.id];
         if (!p) return;
+        if (hasActiveJourney(p)) {
+            return emitExpeditionEscrowReceipt(
+                socket,
+                'combatRewardsReceipt',
+                'claimCombatRewards',
+                p
+            );
+        }
         if (activeCombats[socket.id]) {
             return socket.emit('combatRewardsReceipt', { success: false, message: 'Combat rewards can only be claimed after victory.' });
         }
@@ -779,6 +811,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                     if (isPlayerActor(readyControlledActor) && p.hp <= 0) {
                         applyPlayerCombatDefeat(p);
                         delete activeCombats[socketId];
+                        persistCombatMutation(p, 'combat_defeat');
                         io.to(socketId).emit('enemyTurnReceipt', {
                             events: [{ type: 'death' }],
                             updatedPlayer: p,
@@ -1294,10 +1327,13 @@ function handleActorWeaponAction(
             if (!isActorAlive(enemy)) return;
             const eDist = getGridDistance(data.tx, data.ty, enemy.x, enemy.y, enemy.size || 1);
             if (eDist <= (combatRules.aoeRadius || 1)) {
-                const minDmg = Math.ceil(finalBaseDmg * 0.85);
-                const maxDmg = Math.max(minDmg, finalBaseDmg);
-                const variedDmg = Math.floor(Math.random() * (maxDmg - minDmg + 1)) + minDmg;
-                const isCrit = variedDmg >= Math.floor(finalBaseDmg * 0.95);
+                const areaDamage = rollAreaWeaponDamage(
+                    finalBaseDmg,
+                    enemy,
+                    p,
+                    combatRules.ignoresDefense
+                );
+                const variedDmg = areaDamage.damage;
                 enemy.hp -= variedDmg;
                 const interruptedIntent = interruptTargetIntent(
                     enemy,
@@ -1311,7 +1347,7 @@ function handleActorWeaponAction(
                     const killResult = resolveDefeat(enemy, { sourceActor: actor, cause: 'weapon' });
                     combatComplete = combatComplete || !!(killResult && killResult.combatComplete);
                 }
-                hitTargets.push({ uid: enemy.uid, damage: variedDmg, isCrit, killed, interruptedIntent });
+                hitTargets.push({ uid: enemy.uid, damage: variedDmg, isCrit: areaDamage.isCrit, killed, interruptedIntent });
             }
         });
 
@@ -1693,10 +1729,13 @@ function handleWeaponAction(
             const eDist = getGridDistance(data.tx, data.ty, enemy.x, enemy.y, enemy.size || 1);
 
             if (eDist <= (combatRules.aoeRadius || 1)) {
-                const minDmg = Math.ceil(finalBaseDmg * 0.85);
-                const maxDmg = finalBaseDmg;
-                const variedDmg = Math.floor(Math.random() * (maxDmg - minDmg + 1)) + minDmg;
-                const isCrit = variedDmg >= Math.floor(finalBaseDmg * 0.95);
+                const areaDamage = rollAreaWeaponDamage(
+                    finalBaseDmg,
+                    enemy,
+                    p,
+                    combatRules.ignoresDefense
+                );
+                const variedDmg = areaDamage.damage;
 
                 enemy.hp -= variedDmg;
                 const interruptedIntent = interruptTargetIntent(
@@ -1712,7 +1751,7 @@ function handleWeaponAction(
                     combatComplete = combatComplete || !!(killResult && killResult.combatComplete);
                 }
 
-                hitTargets.push({ uid: enemy.uid, damage: variedDmg, isCrit: isCrit, killed: killed, interruptedIntent });
+                hitTargets.push({ uid: enemy.uid, damage: variedDmg, isCrit: areaDamage.isCrit, killed: killed, interruptedIntent });
             }
         });
 

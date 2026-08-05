@@ -409,6 +409,53 @@ test('a companion staff can resolve single-target and area spells', async t => {
     });
 });
 
+test('a companion area weapon applies per-target armor mitigation', t => {
+    pinRandom(t);
+    const weapon = makeWeapon(
+        { range: 1, staminaCost: 5, multiplier: 1 },
+        {
+            targetType: 'aoe',
+            aoeRadius: 1,
+            range: 4,
+            staminaCost: 5,
+            multiplier: 1,
+            ignoresDefense: false
+        }
+    );
+    const enemies = [
+        {
+            uid: 'enemy_unarmored', kind: 'monster', controller: 'ai_enemy', teamId: 'ENEMY', name: 'Unarmored',
+            x: 4, y: 2, size: 1, hp: 10000, maxHp: 10000, defense: 1, speed: 1, alive: true,
+            targetable: true, targetableByPlayer: true, targetableByEnemies: false, rewardsEligible: true
+        },
+        {
+            uid: 'enemy_armored', kind: 'monster', controller: 'ai_enemy', teamId: 'ENEMY', name: 'Armored',
+            x: 4, y: 3, size: 1, hp: 10000, maxHp: 10000, defense: 15, speed: 1, alive: true,
+            targetable: true, targetableByPlayer: true, targetableByEnemies: false, rewardsEligible: true
+        }
+    ];
+    const harness = createHarness({ weapon, enemies });
+
+    harness.socket.dispatch('dispatchCombatAction', {
+        actorUid: harness.companion.uid,
+        actionCategory: 'weapon',
+        subType: 'special',
+        tx: 4,
+        ty: 2
+    });
+
+    const result = harness.socket.lastPayload('combatResult');
+    const targetsByUid = Object.fromEntries(
+        result.targets.map(target => [target.uid, target])
+    );
+    assert.equal(result.type, 'hit');
+    assert.equal(result.targets.length, 2);
+    assert.ok(
+        targetsByUid.enemy_unarmored.damage
+            > targetsByUid.enemy_armored.damage
+    );
+});
+
 test('rest spends one companion action and ignores a spoofed actor uid', () => {
     const weapon = makeWeapon({ range: 1, staminaCost: 5, multiplier: 1 });
     const harness = createHarness({ weapon });

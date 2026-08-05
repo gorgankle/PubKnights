@@ -19,7 +19,7 @@ const EquipmentCombatIdentities = Object.freeze({
     }),
     heavy: Object.freeze({
         family: "heavy",
-        label: "Committed Armor Break",
+        label: "Committed Armor-Piercing Blow",
         description: "Commit the rest of the turn to a readable blow that ignores armor."
     }),
     bow: Object.freeze({
@@ -29,8 +29,8 @@ const EquipmentCombatIdentities = Object.freeze({
     }),
     staff: Object.freeze({
         family: "staff",
-        label: "Channelled Spellcraft",
-        description: "Shape lanes and areas with powerful spells whose major casts can be interrupted."
+        label: "Committed Spellcraft",
+        description: "Spend the rest of the turn on an immediate line or area spell."
     })
 });
 
@@ -171,7 +171,7 @@ const ItemDatabase = {
         combatIdentity: EquipmentCombatIdentities.heavy,
         combat: {
             standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "heavy" },
-            special: { name: "Heavy Smash", range: 1, staminaCost: 15, multiplier: 1.5, ignoresDefense: true, armorBreak: true, endsTurn: true, animType: "heavy", desc: "Commit the turn to a crushing blow that ignores armor." }
+            special: { name: "Heavy Smash", range: 1, staminaCost: 15, multiplier: 1.5, ignoresDefense: true, endsTurn: true, animType: "heavy", desc: "Commit the turn to a crushing blow that ignores armor." }
         }
     },
     "vintage_cask_plate": { id: "vintage_cask_plate", name: "Iron-Banded Cask Plate", slot: "armor", rarity: "Unique", defense: 15, speed: -1, value: 400, spriteId: "armor_cask_plate" },
@@ -183,7 +183,7 @@ const ItemDatabase = {
         handedness: "one", animationFamily: "slash",
         combat: {
             standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "slash" },
-            special: { name: "Flurry", range: 1, staminaCost: 15, multiplier: 1.2, ignoresDefense: false, animType: "slash", desc: "Strike rapidly targeting weak structural thresholds for 1.2x weapon value." }
+            special: { name: "Driving Cut", range: 1, staminaCost: 15, multiplier: 1.2, ignoresDefense: false, animType: "slash", desc: "Put extra force behind a single cut for 1.2x standard damage." }
         }
     },
     "hunters_spear": { 
@@ -223,7 +223,7 @@ const ItemDatabase = {
         combatIdentity: EquipmentCombatIdentities.heavy,
         combat: {
             standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "heavy" },
-            special: { name: "Heavy Smash", range: 1, staminaCost: 15, multiplier: 1.5, ignoresDefense: true, armorBreak: true, endsTurn: true, animType: "heavy", desc: "Commit the turn to a crushing blow that ignores armor." }
+            special: { name: "Heavy Smash", range: 1, staminaCost: 15, multiplier: 1.5, ignoresDefense: true, endsTurn: true, animType: "heavy", desc: "Commit the turn to a crushing blow that ignores armor." }
         }
     },
     "hop_infused_boots": { id: "hop_infused_boots", name: "Hop-Infused Boots", slot: "boots", rarity: "Rare", speed: 2, value: 80, spriteId: "hop_infused_boots" },
@@ -236,7 +236,7 @@ const ItemDatabase = {
         combatIdentity: EquipmentCombatIdentities.heavy,
         combat: {
             standard: { range: 2, staminaCost: 5, multiplier: 1.0, animType: "heavy" },
-            special: { name: "Primate Cataclysm", range: 2, staminaCost: 15, multiplier: 4.0, ignoresDefense: true, armorBreak: true, endsTurn: true, animType: "heavy", desc: "Commit the turn to a crushing blow dealing 4.0x damage and ignoring armor." }
+            special: { name: "Primate Cataclysm", range: 2, staminaCost: 15, multiplier: 4.0, ignoresDefense: true, endsTurn: true, animType: "heavy", desc: "Commit the turn to a crushing blow dealing 4.0x damage and ignoring armor." }
         }
     },
     "primate_armor": { id: "primate_armor", name: "🍌 Primate-Armor Skullplate", slot: "helmet", rarity: "Gorilla", defense: 38, value: 500, spriteId: "primate_armor" },
@@ -282,7 +282,7 @@ const ItemDatabase = {
         combatIdentity: EquipmentCombatIdentities.heavy,
         combat: {
             standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "heavy" },
-            special: { name: "Heavy Smash", range: 1, staminaCost: 15, multiplier: 1.5, ignoresDefense: true, armorBreak: true, endsTurn: true, animType: "heavy", desc: "Commit the turn to a crushing blow that ignores armor." }
+            special: { name: "Heavy Smash", range: 1, staminaCost: 15, multiplier: 1.5, ignoresDefense: true, endsTurn: true, animType: "heavy", desc: "Commit the turn to a crushing blow that ignores armor." }
         }
     },
     "tankard_gauntlets": { id: "tankard_gauntlets", name: "Tankard Iron Gauntlets", slot: "gloves", rarity: "Epic", offense: 3, value: 80, spriteId: "gloves_tankard" },
@@ -347,7 +347,7 @@ const ItemDatabase = {
         combatIdentity: EquipmentCombatIdentities.heavy,
         combat: {
             standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "heavy" },
-            special: { name: "Execute", range: 1, staminaCost: 15, multiplier: 1.5, ignoresDefense: true, armorBreak: true, endsTurn: true, animType: "heavy", desc: "Commit the turn to a devastating vertical chop that ignores armor." }
+            special: { name: "Sundering Chop", range: 1, staminaCost: 15, multiplier: 1.5, ignoresDefense: true, endsTurn: true, animType: "heavy", desc: "Commit the turn to a devastating vertical chop that ignores armor." }
         }
     },
     "blackout_wraps": { id: "blackout_wraps", name: "Numbed Knuckle Wraps", slot: "gloves", rarity: "Relic", offense: 38, value: 2000, spriteId: "gloves_blackout" },
@@ -357,7 +357,6 @@ const ItemDatabase = {
     "junk_splinters": { id: "junk_splinters", name: "Handful of Splinters", slot: "consumable", type: "junk", rarity: "Common", value: 1, spriteId: "icon_junk" },
     "junk_boots": { id: "junk_boots", name: "Waterlogged Boot", slot: "consumable", type: "junk", rarity: "Common", value: 1, spriteId: "icon_junk" },
     "junk_vine": { id: "junk_vine", name: "Rotten Vine", slot: "consumable", type: "junk", rarity: "Common", value: 1, spriteId: "icon_junk" },
-    "fish_wholesale": { id: "fish_wholesale", name: "Wholesale Export Voucher", slot: "consumable", type: "voucher", rarity: "Rare", value: 1500, spriteId: "icon_voucher" },
     
     // === CRATE JACKPOT GEAR ===
     "axe_timberlord": { 
@@ -367,7 +366,7 @@ const ItemDatabase = {
         combatIdentity: EquipmentCombatIdentities.heavy,
         combat: {
             standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "heavy" },
-            special: { name: "Execute", range: 1, staminaCost: 15, multiplier: 1.5, ignoresDefense: true, armorBreak: true, endsTurn: true, animType: "heavy", desc: "Commit the turn to a devastating vertical chop that ignores armor." }
+            special: { name: "Sundering Chop", range: 1, staminaCost: 15, multiplier: 1.5, ignoresDefense: true, endsTurn: true, animType: "heavy", desc: "Commit the turn to a devastating vertical chop that ignores armor." }
         }
     },
     "waders_angler": { id: "waders_angler", name: "The Angler's Waders", slot: "boots", rarity: "Relic", speed: 1, defense: 8, value: 800, spriteId: "boots_angler" },
@@ -386,7 +385,7 @@ const ItemDatabase = {
         handedness: "one", animationFamily: "slash",
         combat: {
             standard: { range: 1, staminaCost: 5, multiplier: 1.0, animType: "slash" },
-            special: { name: "Flurry", range: 1, staminaCost: 15, multiplier: 1.2, ignoresDefense: false, animType: "slash", desc: "Strike rapidly targeting weak structural thresholds for 1.2x weapon value." }
+            special: { name: "Driving Cut", range: 1, staminaCost: 15, multiplier: 1.2, ignoresDefense: false, animType: "slash", desc: "Put extra force behind a single cut for 1.2x standard damage." }
         }
     },
     "heartwood_cuirass": { id: "heartwood_cuirass", name: "Heartwood Cuirass", slot: "armor", rarity: "Epic", defense: 11, value: 160, spriteId: "heartwood_cuirass" },
@@ -445,8 +444,8 @@ const ItemDatabase = {
                 staminaCost: 30, 
                 multiplier: 1.2, 
                 ignoresDefense: false, 
-                animType: "scythe", // Physically whirlwinds to the target center!
-                desc: "Whirlwinds to a target location, striking all entities in a 3x3 radius." 
+                animType: "scythe",
+                desc: "Strike every enemy in a targeted 3x3 area within two tiles."
             }
         }
     },
@@ -459,7 +458,7 @@ const ItemDatabase = {
         combatIdentity: EquipmentCombatIdentities.staff,
         combat: {
             standard: { actionType: "spell", spellId: "arcane_bolt", range: 5, staminaCost: 6, multiplier: 1.0, animType: "cast", desc: "Cast a reliable single-target Arcane Bolt." },
-            special: { name: "Fireball Breath", actionType: "spell", spellId: "fireball_breath", range: 5, staminaCost: 20, multiplier: 1.0, targetType: "single", channelled: true, interruptible: true, endsTurn: true, telegraphShape: "line", animType: "cast", desc: "Channel a marked lane, then burn every target caught in it." }
+            special: { name: "Fireball Breath", actionType: "spell", spellId: "fireball_breath", range: 5, staminaCost: 20, multiplier: 1.0, targetType: "enemy", endsTurn: true, animType: "cast", desc: "End the turn to burn every enemy in a line toward the target." }
         }
     },
     "bogwood_staff": {
@@ -469,7 +468,7 @@ const ItemDatabase = {
         combatIdentity: EquipmentCombatIdentities.staff,
         combat: {
             standard: { actionType: "spell", spellId: "arcane_bolt", range: 5, staminaCost: 6, multiplier: 1.0, animType: "cast", desc: "Cast a reliable single-target Arcane Bolt." },
-            special: { name: "Poison Shot", actionType: "spell", spellId: "poison_shot", range: 5, staminaCost: 15, multiplier: 1.0, targetType: "single", channelled: true, interruptible: true, endsTurn: true, telegraphShape: "line", controlEffect: "poison", animType: "cast", desc: "Channel a marked lane and thread poison through each target caught in it." }
+            special: { name: "Poison Shot", actionType: "spell", spellId: "poison_shot", range: 5, staminaCost: 15, multiplier: 1.0, targetType: "enemy", endsTurn: true, controlEffect: "poison", animType: "cast", desc: "End the turn to strike every enemy in a line and attempt to poison each one." }
         }
     },
     "stormcaller_staff": {
@@ -479,7 +478,7 @@ const ItemDatabase = {
         combatIdentity: EquipmentCombatIdentities.staff,
         combat: {
             standard: { actionType: "spell", spellId: "frost_lance", range: 5, staminaCost: 16, multiplier: 1.0, animType: "cast", desc: "Pierce a lane with a cold lance." },
-            special: { name: "Storm Burst", actionType: "spell", spellId: "storm_burst", targetType: "aoe", aoeShape: "radius", aoeRadius: 1, range: 4, staminaCost: 28, multiplier: 1.0, channelled: true, interruptible: true, endsTurn: true, telegraphShape: "radius", animType: "cast", desc: "Channel over a marked 3x3 area before calling down lightning." }
+            special: { name: "Storm Burst", actionType: "spell", spellId: "storm_burst", targetType: "aoe", aoeShape: "radius", aoeRadius: 1, range: 4, staminaCost: 28, multiplier: 1.0, endsTurn: true, animType: "cast", desc: "End the turn to strike every enemy in a targeted 3x3 area." }
         }
     },
     "last_call_voidstaff": {
@@ -489,7 +488,7 @@ const ItemDatabase = {
         combatIdentity: EquipmentCombatIdentities.staff,
         combat: {
             standard: { actionType: "spell", spellId: "shadow_sear", range: 5, staminaCost: 14, multiplier: 1.0, animType: "cast", desc: "Sear one enemy with dark magic." },
-            special: { name: "Void Burst", actionType: "spell", spellId: "storm_burst", targetType: "aoe", aoeShape: "radius", aoeRadius: 1, range: 4, staminaCost: 28, multiplier: 1.0, channelled: true, interruptible: true, endsTurn: true, telegraphShape: "radius", animType: "cast", desc: "Channel over a marked 3x3 area before tearing it open with void energy." }
+            special: { name: "Void Burst", actionType: "spell", spellId: "storm_burst", targetType: "aoe", aoeShape: "radius", aoeRadius: 1, range: 4, staminaCost: 28, multiplier: 1.0, endsTurn: true, animType: "cast", desc: "End the turn to strike every enemy in a targeted 3x3 area." }
         }
     },
     // === GAMBLE CRATES ===

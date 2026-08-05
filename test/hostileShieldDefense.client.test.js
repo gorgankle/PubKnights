@@ -34,6 +34,10 @@ const deflectOptionsSource = extractFunction(
     mainSource,
     'getHumanoidDeflectPlaybackOptions'
 );
+const outgoingMissMessageSource = extractFunction(
+    mainSource,
+    'getOutgoingCombatMissMessage'
+);
 const outgoingMissSource = extractFunction(
     mainSource,
     'playOutgoingCombatMiss'
@@ -167,7 +171,7 @@ function createClientHarness(deflectReason = 'armor') {
     });
 
     vm.runInContext(
-        `${deflectOptionsSource}\n${outgoingMissSource}\n`
+        `${deflectOptionsSource}\n${outgoingMissMessageSource}\n${outgoingMissSource}\n`
         + 'this.playOutgoingCombatMissForTest = playOutgoingCombatMiss;',
         context,
         { filename: 'hostile-shield-defense-client.js' }
@@ -266,4 +270,8 @@ test('an evasion miss keeps the authoritative target but does not invent a shiel
         label: 'MISS'
     }]);
     assert.deepEqual(calls.sounds, ['error']);
+    assert.deepEqual(calls.logs, [
+        'Shielded Guard Captain evaded the strike!'
+    ]);
+    assert.doesNotMatch(calls.logs[0], /hit chance|0%/i);
 });

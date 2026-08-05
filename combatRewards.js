@@ -13,8 +13,15 @@ const {
     getAdventureSnapshot,
     resolveExpeditionCombatVictory
 } = require('./adventureState.js');
+const {
+    advanceChapterOneSafeReturn,
+    advanceChapterOneDiscovery,
+    advanceChapterOneEncounterDefeat
+} = require('./chapterOneWorld.js');
 
 const ROGUE_STEAL_RARITIES = new Set(['Epic', 'Unique', 'Relic', 'Gorilla']);
+const EXPEDITION_DEFEAT_GOLD = 12;
+const EXPEDITION_CAPTAIN_GOLD = 35;
 
 function applyRogueLootTheft(socketId, player, combat, io) {
     if (combat.zone !== 'CELLARS' || combat.activeLevel !== 20) return null;
@@ -61,7 +68,14 @@ function grantActorDefeatRewards(socketId, defeatedActor, context) {
     defeatedActor.rewardResolved = true;
 
     const isGorilla = combat.zone === 'GORILLA_ARENA';
-    const goldReward = isGorilla ? 500 : 25;
+    const isExpedition = combat.mode === 'EXPEDITION';
+    const goldReward = isGorilla
+        ? 500
+        : (isExpedition
+            ? (defeatedActor.id === 'chapter_one_shield_captain'
+                ? EXPEDITION_CAPTAIN_GOLD
+                : EXPEDITION_DEFEAT_GOLD)
+            : 25);
     const table = LootTables[defeatedActor.id];
     const xpReward = table ? (table.xpDrop || 0) : 0;
     const droppedItem = rollLootFromTable(table);
@@ -107,12 +121,56 @@ function finalizeCombatVictory(socketId, context) {
             player,
             combat.expeditionContext || {}
         );
-        if (!adventureOutcome || adventureOutcome.success !== true) {
+        const validJourneyVictory = !!(adventureOutcome && adventureOutcome.success === true);
+        if (!validJourneyVictory) {
             const resolutionFailure = adventureOutcome;
             adventureOutcome = {
                 ...failActiveExpedition(player, 'victory_context_mismatch'),
                 code: 'EXPEDITION_CONTEXT_MISMATCH',
                 resolutionFailure
+            };
+        }
+        const worldObjectiveIds = [];
+        if (validJourneyVictory && combat.encounterId) {
+            const encounterProgress = advanceChapterOneEncounterDefeat(player, {
+                encounterId: combat.encounterId,
+                routeId: combat.expeditionContext && combat.expeditionContext.routeId,
+                direction: combat.expeditionContext && combat.expeditionContext.direction
+            }, Date.now());
+            worldObjectiveIds.push(...(encounterProgress.completedObjectiveIds || []));
+        }
+        if (validJourneyVictory && adventureOutcome.outcome === 'destination_reached') {
+            const reachedJourney = adventureOutcome.journey && typeof adventureOutcome.journey === 'object'
+                ? adventureOutcome.journey
+                : {};
+            const discoveryProgress = advanceChapterOneDiscovery(player, {
+                locationId: reachedJourney.destinationLocationId,
+                routeId: reachedJourney.routeId
+            }, Date.now());
+            worldObjectiveIds.push(...(discoveryProgress.completedObjectiveIds || []));
+        }
+        if (validJourneyVictory && adventureOutcome.outcome === 'safe_return') {
+            const worldProgress = advanceChapterOneSafeReturn(
+                player,
+                adventureOutcome.routeId,
+                Date.now()
+            );
+            worldObjectiveIds.push(...(worldProgress.completedObjectiveIds || []));
+            const completedObjectiveIds = [...new Set(worldObjectiveIds)];
+            adventureOutcome.worldProgress = {
+                completedObjectiveIds,
+                rewardChoiceOffered: worldProgress.rewardChoiceOffered
+            };
+            if (player.adventure && player.adventure.latestReturnReport) {
+                player.adventure.latestReturnReport.worldContractUpdates =
+                    completedObjectiveIds;
+                player.adventure.latestReturnReport.rewardChoiceOffered =
+                    worldProgress.rewardChoiceOffered;
+            }
+        } else if (worldObjectiveIds.length) {
+            adventureOutcome.worldProgress = {
+                completedObjectiveIds: [...new Set(worldObjectiveIds)],
+                rewardChoiceOffered: false
             };
         }
         combat.adventureOutcome = adventureOutcome;
@@ -163,6 +221,12 @@ function finalizeCombatVictory(socketId, context) {
     };
     syncCombatViews(combat, player);
     delete activeCombats[socketId];
+    if (typeof context.persistPlayer === 'function') {
+        const reason = isExpeditionCombat
+            ? `expedition_${adventureOutcome && adventureOutcome.outcome || 'victory'}`
+            : 'combat_victory';
+        void Promise.resolve(context.persistPlayer(player, { reason })).catch(() => undefined);
+    }
     return {
         combatComplete: true,
         petItem,
@@ -191,12 +255,13 @@ function claimCombatRewards(player) {
     player.pendingLoot = [];
     player.activeBuffs = [];
     player.activeCombatBuff = null;
-    player.cellarsChummed = false;
 
     return player;
 }
 
 module.exports = {
+    EXPEDITION_DEFEAT_GOLD,
+    EXPEDITION_CAPTAIN_GOLD,
     grantActorDefeatRewards,
     finalizeCombatVictory,
     rollPetVictoryLoot,

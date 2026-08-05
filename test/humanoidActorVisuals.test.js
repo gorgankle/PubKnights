@@ -177,8 +177,8 @@ test('standard humanoid enemies are createable from stat data and carry only a v
 
     assert.equal(goblin.visualProfileId, 'goblin_axeling');
     assert.equal(melee.name, 'Frenzied Melee Bandit');
-    assert.equal(melee.hp, 56);
-    assert.equal(melee.offense, 6);
+    assert.equal(melee.hp, 44);
+    assert.equal(melee.offense, 4);
     assert.equal(melee.visualProfileId, 'melee_bandit');
     assert.equal(archer.projectileSprite, 'icon_arrow');
     assert.equal(archer.visualProfileId, 'bandit_archer');

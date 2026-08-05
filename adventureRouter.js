@@ -1,18 +1,33 @@
 // --- adventureRouter.js ---
-// Server-authoritative exploration, expedition, and bounty socket wiring.
+// Server-authoritative exploration, expedition, and contract socket wiring.
 
 const { sanitizeToken } = require('./serverSecurity.js');
 const { createAuthoredCombatEncounter } = require('./combatEncounters.js');
+const { getMaxHp, getMaxStamina } = require('./combatMath.js');
+const { RouteCatalog } = require('./adventureCatalog.js');
+const { TownStockCatalog } = require('./worldCatalog.js');
+const {
+    ensureWorldState,
+    getAvailableTownServiceIds,
+    getAvailableTownStockEntries
+} = require('./worldState.js');
+const { purchaseChapterOneStockItem } = require('./chapterOneTownEconomy.js');
+const { recruitChapterOneCompanion } = require('./chapterOneCompanions.js');
 const {
     normalizeAdventureState,
     getAdventureSnapshot,
     beginExpedition,
     beginReturnTrip,
     failActiveExpedition,
-    acceptBounty,
-    claimBounty,
     hasActiveJourney
 } = require('./adventureState.js');
+const {
+    resolveDestinationInteraction,
+    acceptChapterOneContract,
+    claimChapterOneContract,
+    claimChapterOneRewardChoice,
+    selectChapterOneFinalePreparation
+} = require('./chapterOneWorld.js');
 
 function actionSucceeded(result) {
     if (!result || typeof result !== 'object') return false;
@@ -61,7 +76,6 @@ function rejectAction(socket, player, action, message, code) {
 }
 
 function preparePlayerForAdventureCombat(player) {
-    player.idleJob = 'NONE';
     delete player.pendingMercenaryXpContext;
     player.statusEffects = {};
     player.activeBuffs = [];
@@ -97,7 +111,13 @@ function deployResolvedEncounter(socket, io, player, activeCombats, action, resu
     return { deployed: true, combat: combatState };
 }
 
-module.exports = function registerAdventureRouter(socket, io, activePlayers, activeCombats) {
+module.exports = function registerAdventureRouter(
+    socket,
+    io,
+    activePlayers,
+    activeCombats,
+    persistPlayer
+) {
     function getPlayer(action) {
         const player = activePlayers[socket.id];
         if (!player) {
@@ -130,16 +150,34 @@ module.exports = function registerAdventureRouter(socket, io, activePlayers, act
 
     function finishAction(player, action, result, successMessage) {
         const receipt = buildAdventureReceipt(action, result, player, {
-            message: getActionMessage(result, successMessage)
+            message: getActionMessage(result, successMessage),
+            updatedPlayer: player
         });
         socket.emit('adventureReceipt', receipt);
         emitAdventureState(socket, player);
+        if (receipt.success && typeof persistPlayer === 'function') {
+            void Promise.resolve(persistPlayer(player, { reason: action })).catch(() => undefined);
+        }
         return receipt;
     }
 
-    function beginJourneyAction(action, operation) {
+    function beginJourneyAction(action, operation, resolveRouteId) {
         const player = getPlayer(action);
         if (!player || rejectCombatConflict(player, action)) return;
+        const routeId = typeof resolveRouteId === 'function'
+            ? resolveRouteId(player)
+            : null;
+        const route = routeId && RouteCatalog[routeId];
+        if (route && route.chapterStatus !== 'active') {
+            rejectAction(
+                socket,
+                player,
+                action,
+                'That road is not available in this chapter.',
+                'INACTIVE_ROUTE'
+            );
+            return;
+        }
 
         const result = operation(player);
         if (!actionSucceeded(result)) {
@@ -173,15 +211,28 @@ module.exports = function registerAdventureRouter(socket, io, activePlayers, act
         const routeId = sanitizeToken(data && data.routeId, '');
         beginJourneyAction(
             'startExpedition',
-            player => beginExpedition(player, routeId)
+            player => beginExpedition(player, routeId),
+            () => routeId
         );
     });
 
     socket.on('beginExpeditionReturn', () => {
         beginJourneyAction(
             'beginExpeditionReturn',
-            player => beginReturnTrip(player)
+            player => beginReturnTrip(player),
+            player => player.adventure && player.adventure.activeJourney
+                ? player.adventure.activeJourney.routeId
+                : null
         );
+    });
+
+    socket.on('resolveDestinationInteraction', (data = {}) => {
+        const action = 'resolveDestinationInteraction';
+        const player = getPlayer(action);
+        if (!player || rejectCombatConflict(player, action)) return;
+        const interactionId = sanitizeToken(data && data.interactionId, '');
+        const result = resolveDestinationInteraction(player, interactionId);
+        finishAction(player, action, result, 'Destination investigated.');
     });
 
     socket.on('abandonExpedition', () => {
@@ -194,24 +245,91 @@ module.exports = function registerAdventureRouter(socket, io, activePlayers, act
         }
 
         const result = failActiveExpedition(player, 'abandoned');
+        player.hp = getMaxHp(player);
+        player.stamina = getMaxStamina(player);
+        player.statusEffects = {};
+        player.activeBuffs = [];
+        player.activeCombatBuff = null;
         finishAction(player, action, result, 'The expedition was abandoned.');
     });
 
-    socket.on('acceptBounty', (data = {}) => {
-        const action = 'acceptBounty';
+    socket.on('acceptContract', (data = {}) => {
+        const action = 'acceptContract';
         const player = getPlayer(action);
         if (!player || rejectCombatConflict(player, action)) return;
-        const bountyId = sanitizeToken(data && data.bountyId, '');
-        const result = acceptBounty(player, bountyId);
-        finishAction(player, action, result, 'Bounty accepted.');
+        const contractId = sanitizeToken(data && data.contractId, '');
+        const result = acceptChapterOneContract(player, contractId);
+        finishAction(player, action, result, 'Contract accepted.');
     });
 
-    socket.on('claimBounty', (data = {}) => {
-        const action = 'claimBounty';
+    socket.on('claimContract', (data = {}) => {
+        const action = 'claimContract';
         const player = getPlayer(action);
         if (!player || rejectCombatConflict(player, action)) return;
-        const bountyId = sanitizeToken(data && data.bountyId, '');
-        const result = claimBounty(player, bountyId);
-        finishAction(player, action, result, 'Bounty reward claimed.');
+        const contractId = sanitizeToken(data && data.contractId, '');
+        const result = claimChapterOneContract(player, contractId);
+        finishAction(player, action, result, 'Contract reward claimed.');
+    });
+
+    socket.on('claimWorldRewardChoice', (data = {}) => {
+        const action = 'claimWorldRewardChoice';
+        const player = getPlayer(action);
+        if (!player || rejectCombatConflict(player, action)) return;
+        const rewardChoiceId = sanitizeToken(data && data.rewardChoiceId, '');
+        const optionId = sanitizeToken(data && data.optionId, '');
+        const result = claimChapterOneRewardChoice(player, rewardChoiceId, optionId);
+        finishAction(player, action, result, 'Equipment choice collected.');
+    });
+
+    socket.on('purchaseChapterOneStock', (data = {}) => {
+        const action = 'purchaseChapterOneStock';
+        const player = getPlayer(action);
+        if (!player || rejectCombatConflict(player, action)) return;
+        if (hasActiveJourney(player)) {
+            rejectAction(socket, player, action, 'Return to the pub before buying equipment.', 'AWAY_FROM_PUB');
+            return;
+        }
+        const stockId = sanitizeToken(data && data.stockId, '');
+        const world = ensureWorldState(player);
+        const availableEntry = getAvailableTownStockEntries(world)
+            .find(entry => entry.id === stockId);
+        // Resolve through the immutable catalog only after the world-domain
+        // availability check; clients can never submit price or item data.
+        const result = purchaseChapterOneStockItem(
+            player,
+            availableEntry ? TownStockCatalog[availableEntry.id] : null
+        );
+        finishAction(player, action, result, 'Quartermaster purchase completed.');
+    });
+
+    socket.on('recruitChapterOneNpc', (data = {}) => {
+        const action = 'recruitChapterOneNpc';
+        const player = getPlayer(action);
+        if (!player || rejectCombatConflict(player, action)) return;
+        if (hasActiveJourney(player)) {
+            rejectAction(socket, player, action, 'Return to the pub before changing the party.', 'AWAY_FROM_PUB');
+            return;
+        }
+        const npcId = sanitizeToken(data && data.npcId, '');
+        const availableServices = new Set(getAvailableTownServiceIds(ensureWorldState(player)));
+        if (npcId !== 'marlow' || !availableServices.has('marlow_road_watch')) {
+            rejectAction(socket, player, action, 'That named companion is not ready to join.', 'RECRUITMENT_LOCKED');
+            return;
+        }
+        const result = recruitChapterOneCompanion(player, npcId);
+        finishAction(player, action, result, 'Named companion recruited.');
+    });
+
+    socket.on('selectChapterOneFinalePreparation', (data = {}) => {
+        const action = 'selectChapterOneFinalePreparation';
+        const player = getPlayer(action);
+        if (!player || rejectCombatConflict(player, action)) return;
+        if (hasActiveJourney(player)) {
+            rejectAction(socket, player, action, 'Return to the pub before changing the watchhouse plan.', 'AWAY_FROM_PUB');
+            return;
+        }
+        const optionId = sanitizeToken(data && data.optionId, '');
+        const result = selectChapterOneFinalePreparation(player, optionId);
+        finishAction(player, action, result, 'Watchhouse approach selected.');
     });
 };

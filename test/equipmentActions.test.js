@@ -109,6 +109,35 @@ test('all production weapon specials adapt to an exact main-hand special action'
     );
     assert.equal(scythe.rules.aoeShape, 'radius');
     assert.equal(scythe.rules.aoeRadius, 1);
+    assert.equal(
+        scythe.description,
+        'Strike every enemy in a targeted 3x3 area within two tiles.'
+    );
+    assert.equal(Object.hasOwn(scythe, 'armorBreak'), false);
+    assert.equal(Object.hasOwn(scythe, 'channelled'), false);
+});
+
+test('single-hit legacy specials use names that describe their real effect', () => {
+    ['scavenged_machete', 'sawblade_chakram'].forEach(itemId => {
+        const action = resolveEquipmentAttack(
+            loadout(ItemDatabase[itemId]),
+            'weapon',
+            'special'
+        );
+        assert.equal(action.name, 'Driving Cut', itemId);
+        assert.match(action.description, /single cut/i, itemId);
+    });
+
+    ['blackout_axe', 'axe_timberlord'].forEach(itemId => {
+        const action = resolveEquipmentAttack(
+            loadout(ItemDatabase[itemId]),
+            'weapon',
+            'special'
+        );
+        assert.equal(action.name, 'Sundering Chop', itemId);
+        assert.equal(action.ignoresDefense, true, itemId);
+        assert.equal(action.endsTurn, true, itemId);
+    });
 });
 
 test('each shield exposes normalized block and bash actions after the weapon special', () => {

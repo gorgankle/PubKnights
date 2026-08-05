@@ -80,19 +80,24 @@ function makePlayer(overrides = {}) {
     };
 }
 
-function createHarness({ registerCombat = false, activeCombat = null } = {}) {
+function createHarness({
+    registerCombat = false,
+    activeCombat = null,
+    playerOverrides = {},
+    persistPlayer = null
+} = {}) {
     const socket = new FakeSocket();
     const io = createIo(socket);
-    const player = makePlayer();
+    const player = makePlayer(playerOverrides);
     const activePlayers = { [socket.id]: player };
     const activeCombats = {};
     if (activeCombat) activeCombats[socket.id] = activeCombat;
 
     const registerAdventureRouter = require('../adventureRouter.js');
-    registerAdventureRouter(socket, io, activePlayers, activeCombats);
+    registerAdventureRouter(socket, io, activePlayers, activeCombats, persistPlayer);
     if (registerCombat) {
         const registerCombatRouter = require('../combatRouter.js');
-        registerCombatRouter(socket, io, activePlayers, activeCombats);
+        registerCombatRouter(socket, io, activePlayers, activeCombats, persistPlayer);
     }
 
     return { socket, io, player, activePlayers, activeCombats };
@@ -103,7 +108,7 @@ test('adventure state is server-authored and starting a route deploys its resolv
 
     harness.socket.dispatch('requestAdventureState');
     const initial = harness.socket.lastPayload('adventureState');
-    assert.equal(initial.schemaVersion, 1);
+    assert.equal(initial.schemaVersion, 2);
     assert.ok(initial.routes.some(route => route.id === 'route_old_road'));
 
     harness.socket.timeline.length = 0;
@@ -130,6 +135,32 @@ test('adventure state is server-authored and starting a route deploys its resolv
     );
 });
 
+test('successful adventure and expedition transitions request ordered authoritative persistence', () => {
+    const { finalizeCombatVictory } = require('../combatRewards.js');
+    const reasons = [];
+    const persistPlayer = (_player, metadata) => {
+        reasons.push(metadata.reason);
+        return Promise.resolve();
+    };
+    const harness = createHarness({ persistPlayer });
+
+    harness.socket.dispatch('acceptContract', { contractId: 'missing_kegs' });
+    harness.socket.dispatch('acceptContract', { contractId: 'unknown_contract' });
+    harness.socket.dispatch('startExpedition', { routeId: 'route_old_road' });
+    finalizeCombatVictory(harness.socket.id, {
+        activePlayers: harness.activePlayers,
+        activeCombats: harness.activeCombats,
+        io: harness.io,
+        persistPlayer
+    });
+
+    assert.deepEqual(reasons, [
+        'acceptContract',
+        'startExpedition',
+        'expedition_destination_reached'
+    ]);
+});
+
 test('adventure mutations reject active combat and never replace the current combat instance', () => {
     const existingCombat = { mode: 'LEGACY', sentinel: true };
     const harness = createHarness({ activeCombat: existingCombat });
@@ -143,20 +174,12 @@ test('adventure mutations reject active combat and never replace the current com
     assert.equal(harness.io.emitted.some(entry => entry.eventName === 'combatDeployed'), false);
 });
 
-test('an active expedition blocks the legacy level selector deployment', () => {
+test('the retired legacy level-selector socket adapter is no longer registered', () => {
     const harness = createHarness({ registerCombat: true });
     harness.socket.dispatch('startExpedition', { routeId: 'route_old_road' });
     const authoredCombat = harness.activeCombats[harness.socket.id];
 
-    harness.socket.dispatch('deployToCombat', {
-        zoneChoice: 'WILDERNESS',
-        activeLevel: 1
-    });
-
-    const receipt = harness.socket.lastPayload('adventureReceipt');
-    assert.equal(receipt.action, 'legacyDeploy');
-    assert.equal(receipt.success, false);
-    assert.equal(receipt.code, 'ACTIVE_JOURNEY');
+    assert.equal(harness.socket.handlers.has('deployToCombat'), false);
     assert.equal(harness.activeCombats[harness.socket.id], authoredCombat);
 });
 
@@ -164,7 +187,7 @@ test('fleeing fails only the active journey and exposes its authoritative outcom
     const { hasActiveJourney } = require('../adventureState.js');
     const harness = createHarness({ registerCombat: true });
 
-    harness.socket.dispatch('acceptBounty', { bountyId: 'old_road_goods' });
+    harness.socket.dispatch('acceptContract', { contractId: 'missing_kegs' });
     assert.equal(harness.socket.lastPayload('adventureReceipt').success, true);
     harness.socket.dispatch('startExpedition', { routeId: 'route_old_road' });
     assert.equal(hasActiveJourney(harness.player), true);
@@ -177,11 +200,56 @@ test('fleeing fails only the active journey and exposes its authoritative outcom
     assert.equal(result.adventureOutcome.outcome, 'expedition_failed');
     assert.equal(hasActiveJourney(harness.player), false);
     assert.equal(harness.activeCombats[harness.socket.id], undefined);
-    assert.equal(
-        JSON.stringify(result.adventureState).includes('old_road_goods'),
-        true,
-        'fleeing erased accepted contract progress'
-    );
+    const accepted = result.adventureState.world.contracts
+        .find(contract => contract.id === 'missing_kegs');
+    assert.equal(accepted.status, 'active', 'fleeing erased accepted contract progress');
+});
+
+test('normal expedition sockets keep a hidden branch locked when only its location was restored', () => {
+    const { normalizeAdventureState } = require('../adventureState.js');
+    const harness = createHarness();
+    normalizeAdventureState(harness.player, { recoverInterruptedJourney: false });
+    harness.player.adventure.unlockedLocationIds.push('burnt_heath');
+
+    harness.socket.dispatch('startExpedition', { routeId: 'route_burnt_heath' });
+
+    const receipt = harness.socket.lastPayload('adventureReceipt');
+    assert.equal(receipt.success, false);
+    assert.equal(receipt.code, 'LOCKED_ROUTE');
+    assert.equal(harness.player.adventure.activeJourney, null);
+    assert.equal(harness.activeCombats[harness.socket.id], undefined);
+});
+
+test('normal expedition sockets preserve and deploy a restored active-branch return', () => {
+    const {
+        createInitialAdventureState
+    } = require('../adventureState.js');
+    const harness = createHarness();
+    harness.player.adventure = createInitialAdventureState();
+    harness.player.adventure.discoveredLocationIds.push('burnt_heath');
+    harness.player.adventure.unlockedLocationIds.push('burnt_heath');
+    harness.player.adventure.discoveredRouteIds.push('route_burnt_heath');
+    harness.player.adventure.unlockedRouteIds.push('route_burnt_heath');
+    harness.player.adventure.activeJourney = {
+        journeyId: 'journey_legacy_burnt_heath',
+        routeId: 'route_burnt_heath',
+        originLocationId: 'pub_hub',
+        destinationLocationId: 'burnt_heath',
+        phase: 'AT_DESTINATION',
+        direction: null,
+        reachedDestination: true,
+        currentEncounterId: null,
+        startedAt: Date.now()
+    };
+
+    harness.socket.dispatch('beginExpeditionReturn');
+
+    const receipt = harness.socket.lastPayload('adventureReceipt');
+    assert.equal(receipt.success, true);
+    assert.equal(receipt.action, 'beginExpeditionReturn');
+    assert.equal(harness.player.adventure.activeJourney.phase, 'RETURN_COMBAT');
+    assert.equal(harness.activeCombats[harness.socket.id].mode, 'EXPEDITION');
+    assert.equal(harness.activeCombats[harness.socket.id].expeditionContext.routeId, 'route_burnt_heath');
 });
 
 test('outbound and return victories advance the exact journey without changing legacy Wilderness progression', () => {
@@ -225,40 +293,107 @@ test('outbound and return victories advance the exact journey without changing l
     );
 });
 
-test('bounty commands accept identifiers only and reject an unearned claim', () => {
+test('context-mismatched expedition victories fail the journey without advancing world objectives', () => {
+    const { finalizeCombatVictory } = require('../combatRewards.js');
+    const { advanceChapterOneDiscovery } = require('../chapterOneWorld.js');
+    const harness = createHarness({
+        playerOverrides: { world: { facts: { pine_signal_chart: true } } }
+    });
+
+    harness.socket.dispatch('acceptContract', { contractId: 'ashes_on_the_heath' });
+    assert.equal(harness.socket.lastPayload('adventureReceipt').success, true);
+    advanceChapterOneDiscovery(harness.player, {
+        locationId: 'burnt_heath',
+        routeId: 'route_burnt_heath'
+    }, 100);
+    assert.equal(
+        harness.player.world.contracts.active.ashes_on_the_heath.objectives.discover_burnt_heath.complete,
+        true
+    );
+
+    harness.socket.dispatch('startExpedition', { routeId: 'route_old_road' });
+    const combat = harness.activeCombats[harness.socket.id];
+    combat.encounterId = 'hedge_fire';
+    combat.expeditionContext.routeId = 'route_burnt_heath';
+
+    const result = finalizeCombatVictory(harness.socket.id, {
+        activePlayers: harness.activePlayers,
+        activeCombats: harness.activeCombats,
+        io: harness.io
+    });
+
+    assert.equal(result.adventureOutcome.code, 'EXPEDITION_CONTEXT_MISMATCH');
+    assert.equal(
+        harness.player.world.contracts.active.ashes_on_the_heath.objectives.defeat_heath_signalers.progress,
+        0
+    );
+    assert.equal(harness.player.adventure.activeJourney, null);
+});
+
+test('abandoning at a destination forfeits escrow and returns the party recovered to the pub', () => {
+    const { finalizeCombatVictory } = require('../combatRewards.js');
+    const harness = createHarness();
+
+    harness.socket.dispatch('startExpedition', { routeId: 'route_old_road' });
+    finalizeCombatVictory(harness.socket.id, {
+        activePlayers: harness.activePlayers,
+        activeCombats: harness.activeCombats,
+        io: harness.io
+    });
+    harness.player.hp = 3;
+    harness.player.stamina = 2;
+    harness.player.pendingGold = 50;
+    harness.player.pendingXp = 20;
+    harness.player.pendingLoot = [{ id: 'unsecured' }];
+
+    harness.socket.dispatch('abandonExpedition');
+
+    const receipt = harness.socket.lastPayload('adventureReceipt');
+    assert.equal(receipt.success, true);
+    assert.equal(harness.player.adventure.activeJourney, null);
+    assert.equal(harness.player.pendingGold, 0);
+    assert.equal(harness.player.pendingXp, 0);
+    assert.deepEqual(harness.player.pendingLoot, []);
+    assert.equal(harness.player.hp, 25);
+    assert.equal(harness.player.stamina, 25);
+});
+
+test('contract commands accept Chapter One identifiers only and reject retired contract fallthrough', () => {
     const harness = createHarness();
     const startingGold = harness.player.gold;
 
-    harness.socket.dispatch('acceptBounty', {
-        bountyId: 'old_road_goods',
+    harness.socket.dispatch('acceptContract', {
+        contractId: 'old_road_goods',
         rewardGold: 999999,
         targetRoundTrips: 0
     });
-    assert.equal(harness.socket.lastPayload('adventureReceipt').success, true);
+    assert.equal(harness.socket.lastPayload('adventureReceipt').success, false);
+    assert.equal(harness.socket.lastPayload('adventureReceipt').code, 'UNKNOWN_CONTRACT');
+    assert.equal(harness.player.world.contracts.active.old_road_goods, undefined);
     assert.equal(harness.player.gold, startingGold);
 
-    harness.socket.dispatch('claimBounty', {
-        bountyId: 'old_road_goods',
+    harness.socket.dispatch('acceptContract', { contractId: 'missing_kegs' });
+    assert.equal(harness.socket.lastPayload('adventureReceipt').success, true);
+
+    harness.socket.dispatch('claimContract', {
+        contractId: 'missing_kegs',
         rewardGold: 999999
     });
     const claim = harness.socket.lastPayload('adventureReceipt');
     assert.equal(claim.success, false);
     assert.equal(harness.player.gold, startingGold);
 
-    harness.socket.dispatch('acceptBounty', { bountyId: 'not_a_real_bounty' });
+    harness.socket.dispatch('acceptContract', { contractId: 'not_a_real_contract' });
     assert.equal(harness.socket.lastPayload('adventureReceipt').success, false);
 });
 
-test('shared combat defeat fails the journey while preserving accepted bounty progress', () => {
-    const {
-        acceptBounty,
-        beginExpedition,
-        hasActiveJourney
-    } = require('../adventureState.js');
+test('shared combat defeat fails the journey while preserving accepted contract progress', () => {
+    const { beginExpedition, hasActiveJourney } = require('../adventureState.js');
+    const { acceptChapterOneContract } = require('../chapterOneWorld.js');
     const { applyPlayerCombatDefeat } = require('../combatDefeat.js');
     const player = makePlayer();
 
-    assert.equal(acceptBounty(player, 'old_road_goods').success, true);
+    assert.equal(acceptChapterOneContract(player, 'missing_kegs').success, true);
     assert.equal(beginExpedition(player, 'route_old_road', { random: () => 0 }).success, true);
     assert.equal(hasActiveJourney(player), true);
 
@@ -266,5 +401,156 @@ test('shared combat defeat fails the journey while preserving accepted bounty pr
 
     assert.equal(hasActiveJourney(player), false);
     assert.equal(player.adventure.routeStats.route_old_road.failedTrips, 1);
-    assert.equal(player.adventure.contracts.active.old_road_goods.progress, 0);
+    assert.equal(player.world.contracts.active.missing_kegs.objectives.find_keg_wreck.progress, 0);
+});
+
+test('Chapter One discovery connects contract, safe return, town growth, pay, and equipment choice', () => {
+    const { finalizeCombatVictory } = require('../combatRewards.js');
+    const harness = createHarness();
+
+    harness.socket.dispatch('acceptContract', {
+        contractId: 'missing_kegs',
+        rewardGold: 999999
+    });
+    assert.equal(harness.socket.lastPayload('adventureReceipt').success, true);
+    assert.ok(harness.player.world.contracts.active.missing_kegs);
+
+    harness.socket.dispatch('startExpedition', { routeId: 'route_old_road' });
+    const outbound = finalizeCombatVictory(harness.socket.id, {
+        activePlayers: harness.activePlayers,
+        activeCombats: harness.activeCombats,
+        io: harness.io
+    });
+    assert.equal(outbound.adventureOutcome.outcome, 'destination_reached');
+
+    harness.socket.dispatch('resolveDestinationInteraction', {
+        interactionId: 'inspect_wreck',
+        factId: 'invented_fact'
+    });
+    const discovery = harness.socket.lastPayload('adventureReceipt');
+    assert.equal(discovery.success, true);
+    assert.equal(harness.player.world.facts.forged_toll_seal, true);
+    assert.equal(
+        harness.player.world.contracts.active.missing_kegs.objectives.find_keg_wreck.complete,
+        true
+    );
+
+    harness.socket.dispatch('beginExpeditionReturn');
+    const returned = finalizeCombatVictory(harness.socket.id, {
+        activePlayers: harness.activePlayers,
+        activeCombats: harness.activeCombats,
+        io: harness.io
+    });
+    assert.equal(returned.adventureOutcome.outcome, 'safe_return');
+    assert.equal(returned.adventureOutcome.worldProgress.rewardChoiceOffered, true);
+    const progress = harness.io.emitted
+        .filter(entry => entry.eventName === 'adventureProgress')
+        .at(-1).payload;
+    assert.deepEqual(
+        progress.adventureState.adventure.latestReturnReport.worldContractUpdates,
+        ['missing_kegs:return_from_old_road']
+    );
+    assert.equal(
+        progress.adventureState.adventure.latestReturnReport.rewardChoiceOffered,
+        true
+    );
+    assert.equal(harness.player.world.contracts.active.missing_kegs.status, 'claimable');
+    assert.equal(
+        harness.player.world.town.milestones.quartermaster_stall_open.status,
+        'unlocked'
+    );
+
+    harness.socket.dispatch('claimContract', { contractId: 'missing_kegs', rewardGold: 999999 });
+    const claimed = harness.socket.lastPayload('adventureReceipt');
+    assert.equal(claimed.success, true);
+    assert.equal(harness.player.gold, 75);
+
+    harness.socket.dispatch('claimWorldRewardChoice', {
+        rewardChoiceId: 'first_return_kit',
+        optionId: 'shield_control',
+        itemId: 'tower_shield'
+    });
+    const kit = harness.socket.lastPayload('adventureReceipt');
+    assert.equal(kit.success, true);
+    assert.deepEqual(harness.player.inventory.map(item => item.id), ['round_shield']);
+    assert.equal(kit.adventureState.world.rewardChoices[0].status, 'claimed');
+
+    harness.socket.dispatch('purchaseChapterOneStock', {
+        stockId: 'quartermaster_hunters_spear',
+        price: 1,
+        itemId: 'tankard_maul'
+    });
+    const purchase = harness.socket.lastPayload('adventureReceipt');
+    assert.equal(purchase.success, true);
+    assert.equal(harness.player.gold, 15);
+    assert.deepEqual(harness.player.inventory.map(item => item.id), ['round_shield', 'hunters_spear']);
+
+    harness.socket.dispatch('purchaseChapterOneStock', {
+        stockId: 'quartermaster_apprentice_staff'
+    });
+    const lockedPurchase = harness.socket.lastPayload('adventureReceipt');
+    assert.equal(lockedPurchase.success, false);
+    assert.equal(harness.player.gold, 15);
+});
+
+test('Marlow recruitment is a one-time server-authored town service', () => {
+    const harness = createHarness({
+        playerOverrides: {
+            world: {
+                contracts: {
+                    completed: { false_toll: { count: 1, lastCompletedAt: 100 } }
+                }
+            }
+        }
+    });
+
+    harness.socket.dispatch('recruitChapterOneNpc', { npcId: 'marlow', level: 99 });
+    const recruited = harness.socket.lastPayload('adventureReceipt');
+    assert.equal(recruited.success, true);
+    assert.equal(harness.player.roster.companions.length, 1);
+    assert.equal(harness.player.roster.companions[0].instanceId, 'story_marlow');
+    assert.equal(harness.player.roster.companions[0].level, 2);
+
+    harness.socket.dispatch('recruitChapterOneNpc', { npcId: 'marlow' });
+    const duplicate = harness.socket.lastPayload('adventureReceipt');
+    assert.equal(duplicate.success, false);
+    assert.equal(harness.player.roster.companions.length, 1);
+});
+
+test('watchhouse preparation requires the finale contract and cannot change away from the pub', () => {
+    const harness = createHarness({
+        playerOverrides: {
+            world: {
+                contracts: {
+                    completed: {
+                        ashes_on_the_heath: { count: 1, lastCompletedAt: 100 },
+                        false_toll: { count: 1, lastCompletedAt: 200 }
+                    }
+                }
+            }
+        }
+    });
+
+    harness.socket.dispatch('selectChapterOneFinalePreparation', { optionId: 'warded_approach' });
+    assert.equal(harness.socket.lastPayload('adventureReceipt').code, 'FINALE_CONTRACT_INACTIVE');
+
+    harness.socket.dispatch('acceptContract', { contractId: 'watchhouse_reckoning' });
+    assert.equal(harness.socket.lastPayload('adventureReceipt').success, true);
+    harness.socket.dispatch('selectChapterOneFinalePreparation', { optionId: 'warded_approach' });
+    assert.equal(harness.socket.lastPayload('adventureReceipt').success, true);
+    assert.equal(
+        harness.player.world.chapters.chapter_one.finale.selectedPreparationOptionId,
+        'warded_approach'
+    );
+
+    harness.socket.dispatch('startExpedition', { routeId: 'route_old_road' });
+    delete harness.activeCombats[harness.socket.id];
+    harness.socket.dispatch('selectChapterOneFinalePreparation', { optionId: 'side_gate_breach' });
+    const away = harness.socket.lastPayload('adventureReceipt');
+    assert.equal(away.success, false);
+    assert.equal(away.code, 'AWAY_FROM_PUB');
+    assert.equal(
+        harness.player.world.chapters.chapter_one.finale.selectedPreparationOptionId,
+        'warded_approach'
+    );
 });

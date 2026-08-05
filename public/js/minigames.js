@@ -252,7 +252,7 @@ function leaveMinigame() {
     document.getElementById("lumber-chop-btn").style.display = "none";
     document.getElementById("lumber-feedback").innerHTML = "";
     
-    setGameState('ADVENTURES');
+    setGameState('TOWN');
 }
 // ============================================
 
@@ -619,7 +619,7 @@ function leaveFishingMinigame() {
     cancelAnimationFrame(fishingAnimFrameId);
     
     document.getElementById("fishing-start-btn").style.display = "block";
-    setGameState('ADVENTURES');
+    setGameState('TOWN');
 }
 // ============================================
 
@@ -835,6 +835,6 @@ function leaveHopsMinigame() {
     cancelAnimationFrame(hopsAnimFrameId);
     
     document.getElementById("hops-start-btn").style.display = "block";
-    setGameState('ADVENTURES');
+    setGameState('TOWN');
 }
 // ============================================

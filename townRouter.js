@@ -14,10 +14,8 @@ const {
 const {
     COMPANION_EQUIPMENT_SLOTS,
     COMPANION_POCKET_COUNT,
-    createCompanionInstanceId,
     normalizeRosterState,
     findCompanionByInstanceId,
-    canHireCompanion,
     canActivateCompanion,
     canBenchCompanion,
     canDismissCompanion
@@ -30,6 +28,7 @@ const {
     EQUIPMENT_SLOTS,
     equipItemWithHandRules
 } = require('./equipmentHandRules.js');
+const { hasActiveJourney } = require('./adventureState.js');
 
 // 2. Bring over the secure unboxing math from server.js
 function rollSecureCrateLoot(crateId) {
@@ -47,9 +46,6 @@ function rollSecureCrateLoot(crateId) {
     
     return chosenEntry;
 }
-
-const STARTER_COMPANION_ID = 'starter_mercenary';
-const STARTER_COMPANION_COST = 250;
 
 function cloneItem(itemId) {
     return ItemDatabase[itemId] ? JSON.parse(JSON.stringify(ItemDatabase[itemId])) : null;
@@ -70,38 +66,29 @@ function getCompanionStoredItems(companion) {
 }
 
 
-function createStarterCompanion(name = 'Hired Mercenary') {
-    return {
-        instanceId: createCompanionInstanceId(),
-        templateId: STARTER_COMPANION_ID,
-        name,
-        role: 'Frontliner',
-        level: 1,
-        xp: 0,
-        pockets: Array(COMPANION_POCKET_COUNT).fill(null),
-        hired: true,
-        active: false,
-        icon: 'M',
-        spriteId: 'companion_marlow',
-        stats: { vitality: 3, offense: 2, defense: 2, speed: 3 },
-        equipment: {
-            weapon: cloneItem('rusty_mace'),
-            offhand: null,
-            helmet: cloneItem('rusty_coif'),
-            armor: cloneItem('leather_tunic'),
-            gloves: null,
-            boots: null
-        }
-    };
-}
-
-
-
 function ensurePlayerContainers(player) {
     player.inventory = Array.isArray(player.inventory) ? player.inventory : [];
     player.stash = Array.isArray(player.stash) ? player.stash : [];
     player.equipment = player.equipment && typeof player.equipment === 'object' ? player.equipment : {};
     normalizeRosterState(player);
+}
+
+const EXPEDITION_LOCKED_INVENTORY_ACTIONS = new Set([
+    'sell',
+    'deposit',
+    'withdraw',
+    'depositEquipment',
+    'reorderVault'
+]);
+
+function emitActiveJourneyTownLock(socket, eventName, action, player) {
+    return socket.emit(eventName, {
+        success: false,
+        code: 'ACTIVE_JOURNEY',
+        action,
+        updatedPlayer: player,
+        message: 'Return safely to the pub before using town services.'
+    });
 }
 
 function reorderCollection(collection, fromValue, toValue) {
@@ -235,6 +222,18 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 message: 'Inventory changes are locked during combat and must be made outside combat. Use the combat Backpack to swap gear for one action.',
                 updatedPlayer: p
             });
+        }
+
+        if (
+            hasActiveJourney(p)
+            && EXPEDITION_LOCKED_INVENTORY_ACTIONS.has(data.action)
+        ) {
+            return emitActiveJourneyTownLock(
+                socket,
+                'inventoryReceipt',
+                data.action,
+                p
+            );
         }
 
         if (['equipCompanion', 'unequipCompanion', 'storeCompanionPocket', 'removeCompanionPocket'].includes(data.action)) {
@@ -440,6 +439,15 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
         if (!data || typeof data !== 'object') return;
         ensurePlayerContainers(p);
 
+        if (hasActiveJourney(p)) {
+            return emitActiveJourneyTownLock(
+                socket,
+                'townReceipt',
+                data.action,
+                p
+            );
+        }
+
         if (data.action === 'startMinigame') {
             const gameType = sanitizeToken(data.gameType, '');
             const session = createMinigameSession(p, gameType);
@@ -457,12 +465,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             recordMinigameEvent(p, data);
             return;
         }
-        // 1. RETIRED TOWN PRESTIGE UPGRADES
-        if (['purchaseGildedTavern', 'buyTradeRoutes', 'purchaseMonument'].includes(data.action)) {
-            socket.emit('townReceipt', { success: false, action: data.action, updatedPlayer: p, message: 'Town prestige and trade-route upgrades have been removed from this alpha branch.' });
-        }
-        // 3.5 ADOPT PET SECURELY
-        else if (data.action === 'adoptPet') {
+        if (data.action === 'adoptPet') {
             if (p.pet && p.pet.adopted) return socket.emit('townReceipt', { success: false, message: "\u274C You already have a companion." });
             
             if (p.gold >= 10) {
@@ -480,28 +483,6 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             } else {
                 socket.emit('townReceipt', { success: false, message: "\u274C Insufficient funds to adopt a companion (Requires 10 Gold)." });
             }
-        }
-        else if (data.action === 'hireCompanion') {
-            if (activeCombats && activeCombats[socket.id]) {
-                return socket.emit('townReceipt', { success: false, action: 'hireCompanion', message: 'Mercenary rosters can only be changed outside combat.' });
-            }
-            const templateId = sanitizeToken(data.templateId || data.companionId, STARTER_COMPANION_ID);
-            if (![STARTER_COMPANION_ID, 'marlow_shieldhand'].includes(templateId)) return socket.emit('townReceipt', { success: false, message: 'That companion is not available yet.' });
-            const hirePolicy = canHireCompanion(p);
-            if (!hirePolicy.allowed) {
-                return socket.emit('townReceipt', { success: false, action: 'hireCompanion', message: hirePolicy.message });
-            }
-            if (p.gold < STARTER_COMPANION_COST) {
-                return socket.emit('townReceipt', { success: false, message: 'A mercenary asks for ' + STARTER_COMPANION_COST + 'g up front.' });
-            }
-
-            p.gold -= STARTER_COMPANION_COST;
-            const requestedName = String(data.companionName || '').replace(/[^a-zA-Z0-9 '\-]/g, '').trim().slice(0, 24);
-            const companion = createStarterCompanion(requestedName || 'Hired Mercenary');
-            p.roster.companions.push(companion);
-            if (p.roster.companions.length === 1) p.roster.activeIds = [companion.instanceId];
-            normalizeRosterState(p);
-            socket.emit('townReceipt', { success: true, action: 'hireCompanion', updatedPlayer: p, message: companion.name + ' joins your roster. Manage party gear from the Knight screen.' });
         }
         else if (data.action === 'setActiveCompanion') {
             if (activeCombats && activeCombats[socket.id]) {
@@ -604,22 +585,6 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 socket.emit('townReceipt', { success: true, action: 'trainPet', updatedPlayer: p, message: `Fed pet! Scavenging increased to Level ${p.pet.level}!` });
             } else socket.emit('townReceipt', { success: false, message: 'Insufficient gold to train your companion.' });
         }
-        // 5. EXPORT FISH WHOLESALE
-        else if (data.action === 'exportFish') {
-            socket.emit('townReceipt', { success: false, action: 'exportFish', updatedPlayer: p, message: 'Fish exports have been retired in the gold economy.' });
-        }
-        else if (data.action === 'hireWorker' || data.action === 'upgradeCabin' || data.action === 'assignWorker' || data.action === 'claimCart') {
-            socket.emit('townReceipt', { success: false, action: data.action, updatedPlayer: p, message: 'Workers and supply carts have been removed from this alpha branch.' });
-        }
-        // 8. RETIRED HAPPY HOUR
-        else if (data.action === 'happyHour') {
-            socket.emit('townReceipt', { success: false, action: 'happyHour', updatedPlayer: p, message: 'Happy Hour has been retired from this alpha branch.' });
-        }
-        // 9. RETIRED CELLAR CHUM
-        else if (data.action === 'chumCellars') {
-            socket.emit('townReceipt', { success: false, action: 'chumCellars', updatedPlayer: p, message: 'Cellar chumming has been retired for now.' });
-        }
-        // 10. UPGRADE VAULT
         else if (data.action === 'upgradeVault') {
             let currentSlots = p.vaultSlots || 10;
             let upg = Math.floor((currentSlots - 10) / 5);
@@ -668,11 +633,6 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
             } else socket.emit('townReceipt', { success: false, message: "\u274C No Skill Points available." });
         }
 // ===================
-// 13. RETIRED: THROWABLES
-        else if (data.action === 'craftBomb') {
-            socket.emit('townReceipt', { success: false, message: 'Keg bombs have been retired. Ranged and AOE tactics now come from weapons.' });
-        }
-// 14. CRAFT BREWS 
         else if (data.action === 'craftBrew') {
             p.maxInventorySlots = p.maxInventorySlots || 5;
             if (p.inventory.length >= p.maxInventorySlots) return socket.emit('townReceipt', { success: false, message: 'Backpack is full.' });
@@ -715,7 +675,7 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 socket.emit('townReceipt', { success: true, action: 'drinkBrew', updatedPlayer: p, message: "\u{1F37A} Drank Swift Lager! Movement boosted for next run." });
             }
         }
-        // 16. UPGRADES (BACKPACK & CART)
+        // 16. BACKPACK UPGRADES
         else if (data.action === 'upgradeBackpack') {
             let upg = p.backpackUpgrades || 0;
             let gCost = Math.floor(400 * Math.pow(1.2, upg));
@@ -725,17 +685,6 @@ module.exports = function(socket, io, activePlayers, activeCombats) {
                 p.maxInventorySlots = (p.maxInventorySlots || 5) + 1; p.backpackUpgrades = upg + 1;
                 socket.emit('townReceipt', { success: true, action: 'upgradeBackpack', updatedPlayer: p, message: `Backpack capacity expanded to ${p.maxInventorySlots}!` });
             } else socket.emit('townReceipt', { success: false, message: 'Insufficient gold.' });
-        }
-        else if (data.action === 'upgradeCart') {
-            socket.emit('townReceipt', { success: false, action: 'upgradeCart', updatedPlayer: p, message: 'Supply cart upgrades have been removed from this alpha branch.' });
-        }
-        // 17. BLACK MARKET (SERVER-SIDE LOOT ROLL)
-        else if (data.action === 'blackMarket') {
-            socket.emit('townReceipt', { success: false, action: 'blackMarket', updatedPlayer: p, message: 'Black market trading has been removed.' });
-        }
-        // 18. SELL FISH BULK
-        else if (data.action === 'sellFishBulk') {
-            socket.emit('townReceipt', { success: false, action: 'sellFishBulk', updatedPlayer: p, message: 'Bulk fish exports have been retired in the gold economy.' });
         }
 // === REPLACED ===
         // 19. MINIGAME PAYOUT SECURE HANDLER

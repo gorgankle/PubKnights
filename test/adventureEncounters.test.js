@@ -15,7 +15,8 @@ const AUTHORED_MAP_IDS = Object.freeze([
     'EXPEDITION_ALLEY',
     'EXPEDITION_PINE_TRAIL',
     'EXPEDITION_HEDGE_FIRE',
-    'EXPEDITION_ROAD_TOLL'
+    'EXPEDITION_ROAD_TOLL',
+    'EXPEDITION_RUINED_WATCHHOUSE'
 ]);
 
 function catalogEntries() {
@@ -77,7 +78,8 @@ test('authored expedition catalog covers each production map and its intended en
         EXPEDITION_ALLEY: ['melee_bandit'],
         EXPEDITION_PINE_TRAIL: ['bandit_archer'],
         EXPEDITION_HEDGE_FIRE: ['hedge_mage'],
-        EXPEDITION_ROAD_TOLL: ['melee_bandit', 'bandit_archer']
+        EXPEDITION_ROAD_TOLL: ['melee_bandit', 'bandit_archer'],
+        EXPEDITION_RUINED_WATCHHOUSE: ['chapter_one_shield_captain']
     };
 
     AUTHORED_MAP_IDS.forEach(mapTemplateId => {

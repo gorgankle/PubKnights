@@ -4,13 +4,14 @@
 
 const NpcDatabase = {
     // Shared-rig standard humanoids (statistics remain independent of visuals)
-    "melee_bandit": { name: "Melee Bandit", type: "MELEE", hp: 28, maxHp: 28, attackRange: 1, offense: 3, defense: 2, speed: 3, icon: "B", size: 1, visualProfileId: "melee_bandit", aiProfileId: "melee_pursuer" },
-    "bandit_archer": { name: "Bandit Archer", type: "RANGED", hp: 22, maxHp: 22, attackRange: 5, offense: 3, defense: 1, speed: 3, icon: "A", size: 1, projectileSprite: "icon_arrow", visualProfileId: "bandit_archer", aiProfileId: "ranged_skirmisher" },
+    "melee_bandit": { name: "Melee Bandit", type: "MELEE", hp: 22, maxHp: 22, attackRange: 1, offense: 2, defense: 1, speed: 2, icon: "B", size: 1, visualProfileId: "melee_bandit", aiProfileId: "melee_pursuer" },
+    "bandit_archer": { name: "Bandit Archer", type: "RANGED", hp: 18, maxHp: 18, attackRange: 5, offense: 2, defense: 1, speed: 2, icon: "A", size: 1, projectileSprite: "icon_arrow", visualProfileId: "bandit_archer", aiProfileId: "ranged_skirmisher" },
     "hedge_mage": { name: "Hedge Mage", type: "RANGED", hp: 24, maxHp: 24, attackRange: 5, offense: 3, defense: 1, speed: 2, icon: "H", size: 1, spellId: "arcane_bolt", spellFx: { type: "beam", style: "arcane", density: 10, spread: 8, speed: 8 }, visualProfileId: "hedge_mage", aiProfileId: "telegraph_caster" },
 
     // Shared-rig advanced humanoids (production encounter statistics)
     "harvest_champion": { name: "Harvest Pitchfork Champion", type: "MELEE", hp: 90, maxHp: 90, attackRange: 2, offense: 5, defense: 5, speed: 3, icon: "H", size: 1, visualProfileId: "harvest_champion", aiProfileId: "polearm_pursuer" },
     "shield_guard_captain": { name: "Shielded Guard Captain", type: "MELEE", hp: 220, maxHp: 220, attackRange: 1, offense: 22, defense: 25, speed: 2, icon: "C", size: 1, visualProfileId: "shield_guard_captain", aiProfileId: "shield_guard" },
+    "chapter_one_shield_captain": { name: "False Toll Shield Captain", type: "MELEE", hp: 72, maxHp: 72, maxStamina: 35, attackStaminaCost: 5, attackRange: 1, offense: 2, defense: 4, speed: 2, icon: "C", size: 1, visualProfileId: "shield_guard_captain", aiProfileId: "chapter_one_shield_captain" },
     "cellar_duelist": { name: "Cellar Knife-Duelist", type: "MELEE", hp: 130, maxHp: 130, attackRange: 1, offense: 28, defense: 12, speed: 5, icon: "D", size: 1, poisonChance: 0.2, poisonTurns: 3, visualProfileId: "cellar_dweller", aiProfileId: "agile_duelist" },
     "tankard_brute": { name: "Tankard Maul Brute", type: "MELEE", hp: 340, maxHp: 340, attackRange: 1, offense: 34, defense: 18, speed: 1, icon: "T", size: 1, visualProfileId: "tankard_brute", aiProfileId: "heavy_telegraph" },
     "cult_champion": { name: "Cult Scythe Champion", type: "MELEE", hp: 165, maxHp: 165, attackRange: 2, offense: 38, defense: 18, speed: 3, icon: "C", size: 1, visualProfileId: "cult_champion", aiProfileId: "scythe_telegraph" },

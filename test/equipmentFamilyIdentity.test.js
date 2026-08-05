@@ -104,7 +104,7 @@ test('daggers trade raw weight for low-cost strikes and an evasive stance', () =
     });
 });
 
-test('heavy weapons expose one committed armor-breaking family rule', () => {
+test('heavy weapons expose one committed armor-piercing family rule', () => {
     [
         'behemoth_maw_crusher',
         'brewmasters_club',
@@ -119,13 +119,13 @@ test('heavy weapons expose one committed armor-breaking family rule', () => {
         assert.equal(item.combatIdentity.family, 'heavy');
         assert.equal(heavy.family, 'heavy');
         assert.equal(heavy.ignoresDefense, true);
-        assert.equal(heavy.armorBreak, true);
         assert.equal(heavy.endsTurn, true);
-        assert.equal(heavy.rules.armorBreak, true);
+        assert.equal(Object.hasOwn(heavy, 'armorBreak'), false);
+        assert.equal(Object.hasOwn(heavy.rules, 'armorBreak'), false);
     });
 });
 
-test('bow and staff specials declare reposition and channel contracts', () => {
+test('bow repositions while staff specials resolve immediately and commit the turn', () => {
     const bow = resolveWeaponSpecial('hunter_bow');
     assert.equal(bow.family, 'bow');
     assert.equal(bow.name, 'Parting Shot');
@@ -138,16 +138,24 @@ test('bow and staff specials declare reposition and channel contracts', () => {
         ['bogwood_staff', 'line'],
         ['stormcaller_staff', 'radius'],
         ['last_call_voidstaff', 'radius']
-    ].forEach(([itemId, telegraphShape]) => {
+    ].forEach(([itemId, targetShape]) => {
         const staff = resolveWeaponSpecial(itemId);
 
         assert.equal(ItemDatabase[itemId].combatIdentity.family, 'staff');
+        assert.equal(ItemDatabase[itemId].combatIdentity.label, 'Committed Spellcraft');
         assert.equal(staff.family, 'staff');
         assert.equal(staff.actionType, 'spell');
-        assert.equal(staff.channelled, true);
-        assert.equal(staff.interruptible, true);
         assert.equal(staff.endsTurn, true);
-        assert.equal(staff.rules.telegraphShape, telegraphShape);
+        assert.doesNotMatch(staff.description, /channel|interrupt/i);
+        assert.equal(
+            targetShape === 'line'
+                ? staff.targetType
+                : staff.rules.aoeShape,
+            targetShape === 'line' ? 'enemy' : 'radius'
+        );
+        assert.equal(Object.hasOwn(staff, 'channelled'), false);
+        assert.equal(Object.hasOwn(staff, 'interruptible'), false);
+        assert.equal(Object.hasOwn(staff.rules, 'telegraphShape'), false);
     });
 });
 
@@ -161,8 +169,8 @@ test('family rule normalization defaults safely for legacy attacks', () => {
     assert.equal(legacy.repositionAway, 0);
     assert.equal(legacy.endsTurn, false);
     assert.equal(legacy.interruptsIntent, false);
-    assert.equal(legacy.armorBreak, false);
-    assert.equal(legacy.channelled, false);
-    assert.equal(legacy.interruptible, false);
+    assert.equal(Object.hasOwn(legacy, 'armorBreak'), false);
+    assert.equal(Object.hasOwn(legacy, 'channelled'), false);
+    assert.equal(Object.hasOwn(legacy, 'interruptible'), false);
     assert.equal(Object.isFrozen(legacy.rules), true);
 });

@@ -14,18 +14,10 @@ function applyPlayerCombatDefeat(player) {
         failActiveExpedition(player, 'combat_defeat');
     }
 
-    player.equipment = {
-        helmet: null,
-        armor: null,
-        weapon: null,
-        offhand: null,
-        gloves: null,
-        boots: null
-    };
-    player.inventory = [];
     player.pendingLoot = [];
     player.pendingGold = 0;
     player.pendingXp = 0;
+    delete player.pendingMercenaryXpContext;
     player.statusEffects = {};
     player.activeBuffs = [];
     player.activeCombatBuff = null;
