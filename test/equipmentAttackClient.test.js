@@ -240,9 +240,9 @@ test('combat page loads the shared contract and exposes an upward Equipment Atta
     assert.match(uiRenderSource, /heading\.setAttribute\('role', 'presentation'\)/);
     assert.match(uiRenderSource, /option\.setAttribute\('aria-disabled'/);
     assert.doesNotMatch(html, /id="heavy-btn"/);
-    assert.match(html, /href="style\.css\?v=11"/);
+    assert.match(html, /href="style\.css\?v=13"/);
     assert.match(html, /src="js\/items\.js\?v=6"/);
-    assert.match(html, /src="js\/main\.js\?v=20"/);
+    assert.match(html, /src="js\/main\.js\?v=24"/);
     assert.match(html, /src="js\/ui-tooltips\.js\?v=6"/);
     assert.match(html, /src="js\/ui-render\.js\?v=15"/);
     assert.match(html, /src="js\/renderer\.js\?v=14"/);

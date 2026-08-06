@@ -144,11 +144,12 @@ h1 { text-align: center; color: #ffcc66; margin: 5px 0 15px 0; font-size: 24px; 
 
 .tavern-return-report {
     margin: 0 0 10px;
-    padding: 12px;
-    border: 1px solid #8b6b3f;
-    border-left: 4px solid #2ecc71;
-    background: linear-gradient(135deg, #211b15, #17231b);
-    color: #d7c0a8;
+    padding: 16px;
+    border: 1px solid #a17c46;
+    border-left: 5px solid #4ddb78;
+    background: linear-gradient(135deg, #241d16, #18271d);
+    color: #eadfce;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
 }
 
 .tavern-return-report[hidden] { display: none; }
@@ -163,25 +164,64 @@ h1 { text-align: center; color: #ffcc66; margin: 5px 0 15px 0; font-size: 24px; 
     gap: 14px;
     align-items: start;
 }
-
-.tavern-return-heading h3 { margin: 2px 0 4px; }
+.tavern-return-heading-copy { min-width: 0; }
+.tavern-return-label-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+.tavern-return-heading h3 { margin: 5px 0 6px; font-size: 16px; line-height: 1.25; }
 .tavern-return-heading p,
-.tavern-return-comment p { margin: 0; font-size: 10px; line-height: 1.45; }
+.tavern-return-comment p { margin: 0; font-size: 12px; line-height: 1.55; }
 .tavern-return-kicker {
-    color: #87c98b;
-    font-size: 9px;
+    color: #9fe2ae;
+    font-size: 10px;
     font-weight: bold;
     letter-spacing: 0.08em;
     text-transform: uppercase;
 }
+.tavern-return-outcome {
+    padding: 3px 7px;
+    border: 1px solid #58a96d;
+    border-radius: 999px;
+    color: #c9f7d3;
+    background: #193622;
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+.tavern-return-report.is-failed .tavern-return-outcome {
+    border-color: #b7672f;
+    color: #ffd1ae;
+    background: #3b2317;
+}
 
 .tavern-return-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: end; }
-.tavern-return-actions button { margin: 0; padding: 7px 9px; font-size: 9px; }
+.tavern-return-actions button { min-height: 40px; margin: 0; padding: 9px 12px; font-size: 11px; }
 .tavern-return-body {
     display: grid;
-    grid-template-columns: minmax(210px, 1.15fr) minmax(210px, 1fr) minmax(220px, 1fr);
-    gap: 9px;
-    margin-top: 10px;
+    grid-template-columns: minmax(280px, 1.3fr) minmax(260px, 1fr);
+    gap: 12px;
+    margin-top: 14px;
+}
+.tavern-return-primary { display: grid; gap: 8px; align-content: start; }
+.tavern-return-journey {
+    min-width: 0;
+    padding: 11px;
+    border: 1px solid #5b4938;
+    border-radius: 4px;
+    background: #17120e;
+}
+.tavern-return-section-label {
+    display: block;
+    margin-bottom: 7px;
+    color: #dcbf84;
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
 }
 
 .tavern-return-comment {
@@ -190,28 +230,42 @@ h1 { text-align: center; color: #ffcc66; margin: 5px 0 15px 0; font-size: 24px; 
     gap: 9px;
     align-items: center;
     min-width: 0;
-    padding: 8px;
-    border: 1px solid #493b2e;
-    border-radius: 3px;
+    padding: 10px;
+    border: 1px solid #5b4938;
+    border-radius: 4px;
     background: #17120e;
 }
 .tavern-return-comment[hidden] { display: none; }
-.tavern-return-comment strong { display: block; margin-bottom: 3px; color: #f1c40f; font-size: 10px; }
+.tavern-return-comment strong { display: block; margin-bottom: 4px; color: #f6d577; font-size: 12px; }
+.tavern-return-reactions-disclosure {
+    grid-column: 1 / -1;
+    border: 1px solid #50616b;
+    border-radius: 4px;
+    background: #141c20;
+}
+.tavern-return-reactions-disclosure[hidden] { display: none; }
+.tavern-return-reactions-disclosure summary {
+    padding: 11px 12px;
+    color: #c7e4ee;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: bold;
+}
+.tavern-return-reactions-disclosure summary span { color: #8fb5c4; }
 .tavern-return-npc-reactions {
     display: grid;
-    gap: 6px;
-    grid-column: 1 / -1;
+    gap: 7px;
+    padding: 0 10px 10px;
 }
-.tavern-return-npc-reactions[hidden] { display: none; }
 .tavern-return-npc-reaction {
-    padding: 8px 10px;
+    padding: 9px 11px;
     border-left: 3px solid #6fb6d9;
     background: rgba(18, 32, 38, 0.72);
     color: #e6eef2;
-    font-size: 9px;
-    line-height: 1.45;
+    font-size: 12px;
+    line-height: 1.5;
 }
-.tavern-return-npc-reaction strong { color: #9ddcf2; }
+.tavern-return-npc-reaction strong { margin-right: 5px; color: #aee6f7; }
 #tavern-return-kreg-canvas {
     width: 64px;
     height: 64px;
@@ -235,27 +289,30 @@ h1 { text-align: center; color: #ffcc66; margin: 5px 0 15px 0; font-size: 24px; 
 .tavern-return-facts {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
-    gap: 3px 8px;
+    gap: 6px 10px;
     align-content: center;
     margin: 0;
-    padding: 8px;
-    border: 1px solid #493b2e;
-    background: #17120e;
-    font-size: 9px;
+    padding: 0;
+    font-size: 12px;
+    line-height: 1.45;
 }
-.tavern-return-facts dt { color: #8f8175; }
+.tavern-return-facts dt { color: #b9aa9d; }
 .tavern-return-facts dd { margin: 0; color: #f4ebd9; }
+.tavern-return-contract-block {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid #5b4938;
+}
+.tavern-return-contract-block[hidden] { display: none; }
 .tavern-return-contracts {
-    grid-column: 1 / -1;
     margin: 0;
-    padding: 7px 10px 7px 25px;
-    border: 1px dashed #5d4938;
-    color: #bbaaa0;
-    background: #18130f;
-    font-size: 9px;
+    padding: 0 0 0 20px;
+    color: #e2d7c7;
+    font-size: 12px;
+    line-height: 1.5;
 }
 .tavern-return-contracts[hidden] { display: none; }
-.tavern-return-contracts .is-claimable { color: #7ee39e; }
+.tavern-return-contracts .is-claimable { color: #9ff2b4; font-weight: bold; }
 
 .adventure-map-layout {
     display: grid;
@@ -446,48 +503,189 @@ h1 { text-align: center; color: #ffcc66; margin: 5px 0 15px 0; font-size: 24px; 
     gap: 12px;
 }
 
-.bounty-list { display: grid; gap: 7px; }
+.contract-board-help {
+    margin: -3px 0 11px;
+    color: #c9b9a8;
+    font-size: 12px;
+    line-height: 1.5;
+}
+.bounty-list { display: grid; gap: 11px; }
 .bounty-card {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 9px;
+    min-width: 0;
+    padding: 13px;
+    border: 1px solid #6b5845;
+    border-left: 5px solid #b08b52;
+    border-radius: 5px;
+    background: #18130f;
+    box-shadow: 0 5px 12px rgba(0, 0, 0, 0.22);
+}
+.bounty-card.is-active { border-left-color: #55b7e8; }
+.bounty-card.is-claimable { border-left-color: #4ddb78; background: #152119; }
+.bounty-card.is-completed { border-left-color: #8b8177; background: #171513; }
+.bounty-card.is-locked { border-left-color: #75695e; }
+.bounty-card-copy { min-width: 0; }
+.bounty-card-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: start;
+    margin-bottom: 8px;
+}
+.bounty-badges { display: flex; flex-wrap: wrap; gap: 5px; }
+.contract-status-badge,
+.contract-type-badge {
+    display: inline-flex;
     align-items: center;
-    padding: 8px;
-    border: 1px solid #4f4338;
-    border-left: 3px solid #8a7355;
-    border-radius: 3px;
-    background: #1b1713;
-}
-.bounty-card.is-active { border-left-color: #3498db; }
-.bounty-card.is-claimable { border-left-color: #2ecc71; }
-.bounty-card.is-completed { border-left-color: #776c62; opacity: 0.7; }
-.bounty-card h4 { margin: 0 0 3px; color: #e0c07a; font-size: 11px; }
-.bounty-card p { margin: 0; color: #bbaaa0; font-size: 10px; line-height: 1.4; }
-.bounty-card .bounty-risk { margin-top: 5px; color: #e0c07a; }
-.bounty-card .bounty-enemies { color: #9eabb2; }
-.bounty-card .bounty-issuer { color: #8f8175; text-transform: capitalize; }
-.bounty-card .bounty-progress { margin-top: 4px; color: #87c98b; }
-.bounty-card button { min-width: 78px; margin: 0; }
-.bounty-objectives {
-    display: grid;
-    gap: 2px;
-    margin: 5px 0;
-    padding: 5px 7px;
-    list-style: none;
-    border: 1px dashed #493d33;
-    color: #bbaaa0;
-    font-size: 9px;
-}
-.bounty-objectives li { display: flex; justify-content: space-between; gap: 8px; }
-.bounty-objectives li.is-complete { color: #7ee39e; }
-.bounty-objectives .objective-type {
-    display: inline-block;
-    margin-right: 4px;
-    color: #9ddcf2;
-    font-size: 8px;
+    min-height: 22px;
+    padding: 2px 7px;
+    border: 1px solid #806a50;
+    border-radius: 999px;
+    color: #f0ddba;
+    background: #2b2118;
+    font-size: 10px;
+    font-weight: bold;
     letter-spacing: 0.04em;
     text-transform: uppercase;
 }
+.contract-status-badge.status-active { border-color: #4a9fc8; color: #c9ecff; background: #173344; }
+.contract-status-badge.status-claimable { border-color: #439c5c; color: #c9f7d3; background: #173622; }
+.contract-status-badge.status-completed { border-color: #756b62; color: #d7cec4; background: #28231f; }
+.contract-status-badge.status-locked { border-color: #665d55; color: #c1b7ad; background: #24201d; }
+.contract-type-badge { color: #c8bcae; border-color: #5e5145; background: transparent; }
+.bounty-contract-pay {
+    display: grid;
+    flex: 0 0 auto;
+    gap: 1px;
+    text-align: right;
+}
+.bounty-contract-pay small { color: #b8a897; font-size: 10px; text-transform: uppercase; }
+.bounty-contract-pay strong { color: #f7d56f; font-size: 16px; }
+.bounty-card h4 { margin: 0 0 6px; color: #f4d58a; font-size: 15px; line-height: 1.3; }
+.bounty-card p { margin: 0; font-size: 12px; line-height: 1.5; }
+.bounty-description { color: #e2d6c6; }
+.bounty-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px 12px;
+    margin-top: 8px !important;
+    color: #bfb0a1;
+}
+.bounty-meta span { position: relative; }
+.bounty-meta span + span::before {
+    position: absolute;
+    left: -8px;
+    color: #7f7165;
+    content: '•';
+}
+.contract-section-label {
+    display: block;
+    margin-bottom: 6px;
+    color: #d9bb7d;
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+}
+.contract-objective-block,
+.contract-next-step {
+    margin-top: 11px;
+    padding: 10px;
+    border: 1px solid #5b4a3b;
+    border-radius: 4px;
+    background: #211a14;
+}
+.contract-next-step {
+    border-left: 4px solid #d4a84c;
+    background: #261e14;
+}
+.contract-next-step p { color: #f3e7d4; }
+.contract-next-step p span { margin-right: 4px; color: #f2c75c; font-weight: bold; }
+.contract-objectives-complete {
+    margin-top: 11px;
+    padding: 10px;
+    border: 1px solid #468558;
+    border-radius: 4px;
+    color: #bdf2c8;
+    background: #16301e;
+    font-size: 12px;
+    font-weight: bold;
+}
+.contract-objectives-disclosure {
+    margin-top: 7px;
+    border: 1px solid #58483a;
+    border-radius: 4px;
+    background: #17130f;
+}
+.contract-objectives-disclosure summary {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 9px 10px;
+    color: #d8cbbb;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: bold;
+}
+.contract-objectives-disclosure summary span { color: #a99a8b; }
+.bounty-objectives {
+    display: grid;
+    gap: 5px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    color: #ded2c3;
+    font-size: 12px;
+}
+.contract-objectives-disclosure .bounty-objectives { padding: 2px 10px 10px; }
+.bounty-objectives li {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+    gap: 7px;
+    align-items: start;
+    padding: 6px 7px;
+    border-radius: 3px;
+    line-height: 1.45;
+}
+.bounty-objectives li.is-next { color: #fff0c9; background: #312515; }
+.bounty-objectives li.is-complete { color: #b7ddbf; }
+.objective-marker { color: #d9ad4f; font-weight: bold; text-align: center; }
+.is-complete .objective-marker { color: #70d789; }
+.objective-state {
+    min-width: 36px;
+    color: #d9c8b4;
+    font-size: 10px;
+    font-weight: bold;
+    text-align: right;
+    text-transform: uppercase;
+}
+.bounty-action-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: center;
+    margin-top: 11px;
+    padding-top: 10px;
+    border-top: 1px solid #4d4035;
+}
+.bounty-route-pay,
+.bounty-action-note { color: #b9ab9c; font-size: 11px; line-height: 1.4; }
+.bounty-action-row button { min-height: 40px; min-width: 150px; margin: 0; padding: 9px 12px; }
+.contract-history {
+    border: 1px solid #574b40;
+    border-radius: 4px;
+    background: #171411;
+}
+.contract-history > summary {
+    padding: 11px 12px;
+    color: #d7ccbf;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: bold;
+}
+.contract-history-list { display: grid; gap: 7px; padding: 0 8px 8px; }
+.bounty-card.is-history { padding: 10px; box-shadow: none; }
+.bounty-card.is-history h4 { margin-bottom: 2px; font-size: 13px; }
+.bounty-history-meta { color: #b7aa9d; }
 
 .town-activity-card {
     display: grid;
@@ -618,20 +816,24 @@ h1 { text-align: center; color: #ffcc66; margin: 5px 0 15px 0; font-size: 24px; 
     .adventure-map-layout,
     .adventure-board-grid { grid-template-columns: 1fr; }
     .exploration-detail { min-height: 0; }
-    .tavern-return-body { grid-template-columns: 1fr 1fr; }
-    .tavern-return-facts { grid-column: 1 / -1; }
+    .tavern-return-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 }
 
 @media (max-width: 520px) {
     .exploration-map { min-height: 310px; }
     .adventure-location-node { min-width: 76px; max-width: 100px; font-size: 9px; }
-    .bounty-card { grid-template-columns: 1fr; }
-    .bounty-card button { width: 100%; }
+    .bounty-card { padding: 11px; }
+    .bounty-action-row { flex-direction: column; align-items: stretch; }
+    .bounty-action-row button { width: 100%; min-height: 44px; }
+    .bounty-meta { display: grid; gap: 3px; }
+    .bounty-meta span + span::before { display: none; }
     .tavern-return-heading { flex-direction: column; }
     .tavern-return-actions { width: 100%; justify-content: stretch; }
-    .tavern-return-actions button { flex: 1; }
+    .tavern-return-actions button { flex: 1; min-height: 44px; }
     .tavern-return-body { grid-template-columns: 1fr; }
-    .tavern-return-facts { grid-column: auto; }
+    .tavern-return-reactions-disclosure { grid-column: auto; }
+    .activity-log-heading { align-items: flex-start; }
+    .activity-log-heading button { min-height: 40px; }
 }
 #wallet-display { background: #1a1512; padding: 8px; margin-bottom: 8px; border-radius: 4px; border: 1px dashed #ffcc66; font-size: 12px; line-height: 1.5; }
 
@@ -796,10 +998,87 @@ canvas { border: 4px solid #8b5a2b; background-color: #1a1512; cursor: pointer; 
 button { background: #8b5a2b; color: white; border: 1px solid #ffcc66; padding: 6px 10px; margin: 2px; font-family: monospace; font-weight: bold; cursor: pointer; border-radius: 3px; font-size: 11px; }
 button:disabled { background: #443a32 !important; color: #776c62 !important; border-color: #55493f !important; cursor: not-allowed !important; opacity: 0.6; }
 button:hover:not(:disabled) { background: #a06d3b; }
+button:focus-visible,
+summary:focus-visible,
+[tabindex="0"]:focus-visible {
+    outline: 3px solid #fff2a8;
+    outline-offset: 3px;
+}
 .active-job { background: #27ae60; border-color: #2ecc71; }
 
-/* Tavern Log Structural Bounds */
-#log { width: 100%; height: 140px; background: #110d0a; padding: 10px; overflow-y: scroll; text-align: left; font-size: 11px; color: #ffcc66; border: 2px solid #634e3d; border-radius: 4px; line-height: 1.4; box-sizing: border-box; }
+/* Global action feedback. Kept outside individual tabs because combat and town
+   systems both use the same logMessage entry point. */
+.activity-log-panel {
+    width: 100%;
+    margin-top: 10px;
+    border: 1px solid #725d48;
+    border-radius: 5px;
+    overflow: hidden;
+    background: #15110e;
+    box-sizing: border-box;
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
+}
+.activity-log-heading {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    padding: 9px 11px;
+    border-bottom: 1px solid #4d4035;
+    background: #261e18;
+    cursor: pointer;
+    list-style: none;
+}
+.activity-log-heading::-webkit-details-marker { display: none; }
+.activity-log-title > span {
+    display: block;
+    margin-bottom: 2px;
+    color: #b8a58f;
+    font-size: 9px;
+    font-weight: bold;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+.activity-log-title strong { display: block; color: #f2cf79; font-size: 14px; }
+.activity-log-disclosure {
+    display: inline-flex;
+    min-height: 36px;
+    align-items: center;
+    padding: 0 10px;
+    border: 1px solid #8b745f;
+    border-radius: 4px;
+    color: #f0e0c7;
+    background: #3a2d24;
+    font-size: 10px;
+    font-weight: bold;
+}
+.activity-log-disclosure::before { content: '\25BC'; margin-right: 6px; font-size: 9px; }
+.activity-log-panel:not([open]) .activity-log-disclosure::before { content: '\25B6'; }
+#log {
+    width: 100%;
+    height: 118px;
+    padding: 6px 12px;
+    overflow-y: auto;
+    text-align: left;
+    color: #e9dfd1;
+    background: #100d0b;
+    border: 0;
+    font-size: 12px;
+    line-height: 1.55;
+    box-sizing: border-box;
+    scrollbar-color: #725d48 #17120f;
+}
+#log[hidden] { display: none; }
+.activity-log-entry {
+    padding: 6px 2px;
+    border-bottom: 1px solid #2f2822;
+    overflow-wrap: anywhere;
+}
+.activity-log-entry:last-child { border-bottom: 0; }
+.activity-log-entry.is-system { color: #c4b6a7; font-style: italic; }
+.activity-log-entry.is-positive { padding-left: 9px; border-left: 3px solid #57bd70; color: #c9f2d2; }
+.activity-log-entry.is-warning { padding-left: 9px; border-left: 3px solid #dd8a45; color: #ffd4ad; }
+.activity-log-panel:not([open]) .activity-log-heading { border-bottom: 0; }
 .scroll-panel { overflow-y: auto; background: #15110e; padding: 6px; border-radius: 4px; border: 1px solid #5c4433; box-sizing: border-box; }
 
 .Common { color: #ffffff; }

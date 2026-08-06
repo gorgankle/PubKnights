@@ -27,3 +27,13 @@ test('Knight and pet share a profile column before the backpack and roster cards
     assert.match(style, /\.knight-profile-column\s*\{[^}]*display:\s*grid;[^}]*gap:\s*15px;/s);
     assert.doesNotMatch(style, /#main-pet-panel\s*\{\s*order:/);
 });
+
+test('return commentary keeps one primary report and collapses secondary tavern voices', () => {
+    assert.match(knightScreen, /id="tavern-return-report"[^>]*role="region"[^>]*aria-labelledby="tavern-return-title"/);
+    assert.match(knightScreen, /class="tavern-return-heading-copy"[^>]*aria-live="polite"[^>]*aria-atomic="true"/);
+    assert.match(knightScreen, /<details id="tavern-return-reactions-details"[^>]*hidden>/);
+    assert.match(knightScreen, /Other voices at the bar/);
+    assert.match(knightScreen, /id="tavern-return-contract-block"[^>]*hidden/);
+    assert.match(style, /\.tavern-return-comment p\s*\{[^}]*font-size:\s*12px/s);
+    assert.match(style, /\.tavern-return-npc-reaction\s*\{[^}]*font-size:\s*12px/s);
+});

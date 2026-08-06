@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     
 	<!-- NEW: Mobile Viewport Scaling -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pub Knights - Beta v0.9(Modular Refactor)</title>
-    <link rel="stylesheet" href="style.css?v=11">
+    <link rel="stylesheet" href="style.css?v=13">
 	
 	<!-- === NEW: MOBILE DRAG & DROP POLYFILL === -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/default.css">
@@ -29,7 +29,7 @@
 <body>
 
 <div id="title-row" style="position: relative; max-width: 1080px; margin: 0 auto;">
-    <div id="static-gold-display" style="position: absolute; left: 0; top: 50%; transform: translateY(-50%); background: rgba(26, 21, 18, 0.95); border: 2px solid #8b5a2b; border-radius: 5px; color: #f1c40f; font-family: monospace; font-weight: bold; font-size: 13px; padding: 7px 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.6); z-index: 10001;">Gold: 0g</div>
+    <div id="static-gold-display" hidden style="position: absolute; left: 0; top: 50%; transform: translateY(-50%); background: rgba(26, 21, 18, 0.95); border: 2px solid #8b5a2b; border-radius: 5px; color: #f1c40f; font-family: monospace; font-weight: bold; font-size: 13px; padding: 7px 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.6); z-index: 10001;">Gold: 0g</div>
     <h1>&#127867; Pub Knights: Beta v0.9 &#127867;</h1>
 </div>
 
@@ -341,10 +341,13 @@
     
     <div id="level-up-panel" style="margin-bottom: 0;"></div>
 
-    <section id="tavern-return-report" class="dashboard-panel tavern-return-report" aria-live="polite" hidden>
+    <section id="tavern-return-report" class="dashboard-panel tavern-return-report" role="region" aria-labelledby="tavern-return-title" hidden>
         <div class="tavern-return-heading">
-            <div>
-                <span class="tavern-return-kicker">Latest word at the bar</span>
+            <div class="tavern-return-heading-copy" aria-live="polite" aria-atomic="true">
+                <div class="tavern-return-label-row">
+                    <span class="tavern-return-kicker">Latest word at the bar</span>
+                    <span id="tavern-return-outcome" class="tavern-return-outcome">Return report</span>
+                </div>
                 <h3 id="tavern-return-title">Back at the Pub</h3>
                 <p id="tavern-return-summary"></p>
             </div>
@@ -354,22 +357,33 @@
             </div>
         </div>
         <div class="tavern-return-body">
-            <div class="tavern-return-comment">
-                <canvas id="tavern-return-kreg-canvas" width="64" height="64" aria-label="Kreg"></canvas>
-                <div><strong>Kreg</strong><p id="tavern-return-kreg-copy"></p></div>
+            <div class="tavern-return-primary">
+                <div class="tavern-return-comment">
+                    <canvas id="tavern-return-kreg-canvas" width="64" height="64" aria-label="Kreg"></canvas>
+                    <div><strong>Kreg</strong><p id="tavern-return-kreg-copy"></p></div>
+                </div>
+                <div id="tavern-return-companion" class="tavern-return-comment" hidden>
+                    <span class="tavern-return-crew-mark" aria-hidden="true">M</span>
+                    <div><strong id="tavern-return-companion-name">Mercenary</strong><p id="tavern-return-companion-copy"></p></div>
+                </div>
             </div>
-            <div id="tavern-return-companion" class="tavern-return-comment" hidden>
-                <span class="tavern-return-crew-mark" aria-hidden="true">M</span>
-                <div><strong id="tavern-return-companion-name">Mercenary</strong><p id="tavern-return-companion-copy"></p></div>
+            <div class="tavern-return-journey">
+                <span class="tavern-return-section-label">Journey at a glance</span>
+                <dl class="tavern-return-facts">
+                    <dt>Road</dt><dd id="tavern-return-route"></dd>
+                    <dt>Danger</dt><dd id="tavern-return-danger"></dd>
+                    <dt>Encounter</dt><dd id="tavern-return-encounter"></dd>
+                    <dt>Enemies</dt><dd id="tavern-return-enemies"></dd>
+                </dl>
+                <div id="tavern-return-contract-block" class="tavern-return-contract-block" hidden>
+                    <span class="tavern-return-section-label">Next actions</span>
+                    <ul id="tavern-return-contracts" class="tavern-return-contracts"></ul>
+                </div>
             </div>
-            <div id="tavern-return-npc-reactions" class="tavern-return-npc-reactions" hidden></div>
-            <dl class="tavern-return-facts">
-                <dt>Road</dt><dd id="tavern-return-route"></dd>
-                <dt>Danger</dt><dd id="tavern-return-danger"></dd>
-                <dt>Encounter</dt><dd id="tavern-return-encounter"></dd>
-                <dt>Enemies</dt><dd id="tavern-return-enemies"></dd>
-            </dl>
-            <ul id="tavern-return-contracts" class="tavern-return-contracts" hidden></ul>
+            <details id="tavern-return-reactions-details" class="tavern-return-reactions-disclosure" hidden>
+                <summary>Other voices at the bar <span id="tavern-return-reaction-count"></span></summary>
+                <div id="tavern-return-npc-reactions" class="tavern-return-npc-reactions"></div>
+            </details>
         </div>
     </section>
 
@@ -555,12 +569,13 @@
     </div>
 
     <div class="adventure-board-grid">
-        <div class="dashboard-panel adventure-bounty-panel">
+        <section class="dashboard-panel adventure-bounty-panel" aria-label="Contract Board">
             <h3>📜 Contract Board</h3>
+            <p class="contract-board-help">Story contracts open new opportunities. Repeatable work is optional.</p>
             <div id="bounty-list" class="bounty-list">
                 <p class="adventure-muted">Checking the latest contracts...</p>
             </div>
-        </div>
+        </section>
 
         <div id="world-discoveries-panel" class="dashboard-panel adventure-guild-panel">
             <h3>Road Discoveries</h3>
@@ -599,7 +614,19 @@
     </div> <!-- End Grid Container -->
 </div>
 				
-</div> <div id="log">--- Tavern Records ---<br>Engine v0.8.13 modular running... All synchronization pipelines functional.</div>
+</div>
+<details id="activity-log-panel" class="activity-log-panel" open>
+    <summary class="activity-log-heading">
+        <span class="activity-log-title">
+            <span>Game feedback</span>
+            <strong id="activity-log-heading">Recent Activity</strong>
+        </span>
+        <span class="activity-log-disclosure" aria-hidden="true">Show / hide</span>
+    </summary>
+    <div id="log" role="log" aria-live="polite" aria-relevant="additions text" aria-label="Recent game activity" tabindex="0">
+        <div class="activity-log-entry is-system">Your latest actions, road reports, and combat messages appear here.</div>
+    </div>
+</details>
 
 	<style>
     /* Desktop: 2/3 Map, 1/3 Chat */
@@ -786,7 +813,7 @@
 
 
 <!-- Core State & Player Data -->
-    <script src="js/player.js?v=7"></script>
+    <script src="js/player.js?v=8"></script>
     <script src="js/character-creator.js?v=8"></script> <!-- ESTABLISHES ARRAYS -->
 	<script src="js/item-assets.js?v=2"></script>       <!-- NEW: EQUIPMENT ARRAYS -->
 	<script src="js/pet-assets.js?v=3"></script>
@@ -802,7 +829,7 @@
     <script src="js/sprite-overhaul-icons.js?v=2"></script>
 	<script src="/socket.io/socket.io.js"></script>
 
-    <script src="js/main.js?v=20"></script>
+    <script src="js/main.js?v=24"></script>
     <script src="js/inventory.js?v=6"></script>
 
 <!-- UI, Tooltips & Graphics Output -->
@@ -816,9 +843,9 @@
 
 
 <!-- Game Systems & Logic -->
-    <script src="js/login.js?v=2"></script>
+    <script src="js/login.js?v=3"></script>
     <script src="js/combat-maps.js"></script>
-    <script src="js/expeditions.js?v=6"></script>
+    <script src="js/expeditions.js?v=8"></script>
     <script src="js/combat-mechanics.js?v=15"></script>
     <script src="js/town-actions.js?v=3"></script>
 	<script src="js/minigames.js"></script>

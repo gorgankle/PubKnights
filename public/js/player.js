@@ -288,6 +288,6 @@ function saveGame(manualNotify = false) {
         saveData: saveData
     });
     
-    if (manualNotify) { logMessage(`💾 Profiles tracked under block "${currentUsername}".`); }
+    if (manualNotify) { logMessage('💾 Progress saved.'); }
 }
 // ============================================

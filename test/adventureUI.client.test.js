@@ -16,9 +16,11 @@ test('Adventure Board exposes Chapter One exploration without retired deployment
     assert.match(html, /id="tavern-return-report"/);
     assert.match(html, /id="tavern-return-kreg-canvas"/);
     assert.doesNotMatch(html, /legacy-deployments|Legacy Level Deployments/);
-    assert.match(html, /style\.css\?v=11/);
-    assert.match(html, /js\/login\.js\?v=2/);
-    assert.match(html, /js\/expeditions\.js\?v=6/);
+    assert.match(html, /style\.css\?v=13/);
+    assert.match(html, /js\/login\.js\?v=3/);
+    assert.match(html, /id="static-gold-display" hidden/);
+    assert.match(html, /js\/expeditions\.js\?v=8/);
+    assert.doesNotMatch(html, /user-scalable=no|maximum-scale=1\.0/);
     assert.match(html, /window\.MobileDragDrop && typeof window\.MobileDragDrop\.polyfill === 'function'/);
 });
 
@@ -36,13 +38,15 @@ test('the responsive map keeps location nodes, active routes, and contract state
     assert.match(styles, /\.adventure-location-node \.node-status/);
     assert.match(styles, /\.exploration-route-line\.is-active/);
     assert.match(styles, /\.bounty-card\.is-claimable/);
+    assert.match(styles, /\.contract-status-badge/);
+    assert.match(styles, /\.contract-history/);
     assert.match(styles, /\.adventure-encounter-report\s*\{/);
     assert.match(styles, /\.route-intel-empty/);
     assert.match(styles, /\.tavern-return-report\s*\{/);
     assert.match(styles, /@media \(max-width: 820px\)/);
 });
 
-test('return reports keep observed intel while unobserved roads and typed objectives stay honest', () => {
+test('return reports and simplified contract cards keep progression honest', () => {
     assert.match(client, /function buildTavernReturnPresentation/);
     assert.match(client, /function renderTavernReturnReport/);
     assert.match(client, /renderTavernReturnPortrait\(\)/);
@@ -56,9 +60,14 @@ test('return reports keep observed intel while unobserved roads and typed object
     assert.match(client, /unconfirmedEncounterCount/);
     assert.match(client, /function getContractObjectivePresentation/);
     assert.match(client, /bounty-objectives/);
-    assert.match(client, /Expected:/);
-    assert.match(client, /Unconfirmed opposition/);
-    assert.match(client, /Contract \$\{rewardGold\}g · Road \$\{routeReward\}g/);
+    assert.match(client, /Ready to claim/);
+    assert.match(client, /Completed contracts/);
+    assert.match(client, /Next step/);
+    assert.match(client, /Road return:/);
+    assert.doesNotMatch(client, /Expected:/);
+    assert.doesNotMatch(client, /Contract \$\{rewardGold\}g · Road \$\{routeReward\}g/);
+    assert.match(html, /id="tavern-return-reactions-details"/);
+    assert.match(html, /Other voices at the bar/);
 });
 
 test('fleeing persists the server-authored expedition failure before leaving combat', () => {

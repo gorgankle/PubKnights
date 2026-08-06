@@ -396,6 +396,9 @@ test('disconnect recovery clears combat and returns to login without retaining a
         'combat-screen',
         createElement('combat-screen', { display: 'block' })
     );
+    const staticGold = createElement('static-gold-display');
+    staticGold.hidden = false;
+    elements.set(staticGold.id, staticGold);
     const username = createElement('char-name-input');
     const password = createElement('char-pass-input');
     password.value = 'do-not-retain-this';
@@ -475,6 +478,7 @@ test('disconnect recovery clears combat and returns to login without retaining a
     assert.equal(elements.get('main-game-container').style.display, 'none');
     assert.equal(elements.get('combat-screen').style.display, 'none');
     assert.equal(login.style.display, 'block');
+    assert.equal(staticGold.hidden, true);
     assert.equal(username.value, 'TestKnight');
     assert.equal(password.value, '');
     assert.match(

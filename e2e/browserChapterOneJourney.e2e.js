@@ -150,13 +150,17 @@ test('fresh account completes the Old Road discovery and safe-return loop in a r
     const username = `E2EOldRoad_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
     const password = 'MutedRoad!2026';
     await page.goto(`${baseUrl}/?mute=1`, { waitUntil: 'domcontentloaded' });
+    const goldWallet = page.locator('#static-gold-display');
+    assert.equal(await goldWallet.isHidden(), true);
     await page.getByRole('textbox', { name: 'Knight Name' }).fill(username);
     await page.getByRole('textbox', { name: 'Password' }).fill(password);
     await page.getByRole('button', { name: 'Register New' }).click();
     const beginAdventure = page.getByRole('button', { name: 'Begin Adventure', exact: true });
     await beginAdventure.waitFor({ timeout: 15000 });
+    assert.equal(await goldWallet.isHidden(), true);
     await beginAdventure.click();
     await page.getByRole('button', { name: /Adventures/ }).waitFor({ timeout: 15000 });
+    assert.equal(await goldWallet.isVisible(), true);
 
     await page.getByRole('button', { name: /Adventures/ }).click();
     await page.getByRole('heading', { name: 'Missing Kegs' }).waitFor();
@@ -176,7 +180,7 @@ test('fresh account completes the Old Road discovery and safe-return loop in a r
     await oldRoadNode.click();
     await explorationDetail.getByRole('heading', { name: 'Old Road' }).waitFor();
     assert.equal(await explorationDetail.getByRole('button', { name: 'Set Out for Old Road', exact: true }).isEnabled(), true);
-    await page.getByRole('button', { name: 'Accept', exact: true }).click();
+    await page.getByRole('button', { name: 'Accept Missing Kegs', exact: true }).click();
     await explorationDetail.getByRole('button', { name: 'Set Out for Old Road', exact: true }).click();
 
     await finishFreshBanditCombat(page, username);
@@ -197,8 +201,14 @@ test('fresh account completes the Old Road discovery and safe-return loop in a r
     await page.getByRole('heading', { name: 'First Safe Return: The Old Road' }).waitFor({ timeout: 15000 });
     await page.getByText(/Missing Kegs:.*ready to claim/).waitFor();
     await page.getByRole('button', { name: 'Open Contract Board', exact: true }).click();
-    await page.getByRole('button', { name: 'Claim', exact: true }).click();
-    await page.getByRole('button', { name: 'Paid', exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Claim Missing Kegs - 75g', exact: true }).click();
+    const completedContracts = page.getByText('Completed contracts (1)', { exact: true });
+    await completedContracts.waitFor();
+    assert.equal(
+        await completedContracts.evaluate(element => element === document.activeElement),
+        true,
+        'claiming a contract should move focus to completed contract history'
+    );
     await page.getByRole('button', { name: 'Return to Town', exact: true }).click();
 
     await page.getByRole('heading', { name: "Mara's Quartermaster Stall" }).waitFor();

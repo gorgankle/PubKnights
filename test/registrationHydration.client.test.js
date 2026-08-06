@@ -19,7 +19,8 @@ test('fresh registration hydrates the live client from the server-owned starter 
         ['char-name-input', { value: 'Fresh Knight' }],
         ['login-screen', { style: {} }],
         ['char-creation-screen', { style: {} }],
-        ['main-game-container', { style: {} }]
+        ['main-game-container', { style: {} }],
+        ['static-gold-display', { hidden: true }]
     ]);
     const player = { inventory: [] };
     let normalized = 0;
@@ -58,4 +59,10 @@ test('fresh registration hydrates the live client from the server-owned starter 
     assert.equal(adventureRequests, 1);
     assert.equal(elements.get('login-screen').style.display, 'none');
     assert.equal(elements.get('char-creation-screen').style.display, 'block');
+    assert.equal(elements.get('static-gold-display').hidden, true);
+
+    context.finalizeCharacter();
+    assert.equal(elements.get('char-creation-screen').style.display, 'none');
+    assert.equal(elements.get('main-game-container').style.display, 'flex');
+    assert.equal(elements.get('static-gold-display').hidden, false);
 });

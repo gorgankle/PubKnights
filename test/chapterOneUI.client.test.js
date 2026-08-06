@@ -9,11 +9,14 @@ const source = fs.readFileSync(path.join(root, 'public', 'js', 'expeditions.js')
 const {
     buildTavernReturnPresentation,
     getContractObjectivePresentation,
+    getContractRoutePayPresentation,
+    getContractStatusPresentation,
     getExpeditionEscrowSummary,
     getRouteAvailabilityPresentation,
     getSnapshotContracts,
     getWorldContractUpdates,
-    isCurrentChapterCatalogItem
+    isCurrentChapterCatalogItem,
+    sortAdventureContracts
 } = require('../public/js/expeditions.js');
 
 function plain(value) {
@@ -187,6 +190,30 @@ test('typed contract objectives and expedition escrow are normalized for display
     assert.equal(isCurrentChapterCatalogItem({ chapterStatus: 'deferred' }), false);
     assert.equal(isCurrentChapterCatalogItem({ chapterStatus: 'active' }), true);
     assert.doesNotMatch(source, /safe returns`|requiredRoundTrips|bountyCatalog/);
+});
+
+test('contract presentation prioritizes actionable work and reports alternative route pay honestly', () => {
+    const ordered = sortAdventureContracts([
+        { id: 'finished', status: 'completed', type: 'story' },
+        { id: 'repeatable', status: 'available', type: 'repeatable', repeatable: true },
+        { id: 'story', status: 'available', type: 'story' },
+        { id: 'active', status: 'active', type: 'story' },
+        { id: 'claim', status: 'claimable', type: 'story' }
+    ]);
+    assert.deepEqual(ordered.map(contract => contract.id), [
+        'claim',
+        'active',
+        'story',
+        'repeatable',
+        'finished'
+    ]);
+    assert.equal(getContractStatusPresentation({ status: 'claimable' }).label, 'Ready to claim');
+    assert.equal(getContractStatusPresentation({ status: 'available', repeatable: true }).sortRank, 3);
+    assert.equal(getContractRoutePayPresentation([
+        { safeReturnGold: 15 },
+        { safeReturnGold: 30 },
+        { safeReturnGold: 15 }
+    ]), '15-30g safe-return pay');
 });
 
 test('login restores the authoritative claim overlay for safe-return rewards', () => {

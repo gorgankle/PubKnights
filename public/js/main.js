@@ -345,7 +345,7 @@ function presentCombatVictory() {
         resetEquipmentAttackUiState();
     }
 
-    logMessage("🏆 VICTORY Conditions verified.");
+    logMessage("🏆 Victory secured.");
     if (typeof playRetroSound === "function") playRetroSound("victory");
 
     const returnButton = document.querySelector("#loot-screen button");
@@ -601,6 +601,7 @@ function recoverDiscardedSocketSession() {
     const mainContainer = document.getElementById('main-game-container');
     const creationScreen = document.getElementById('char-creation-screen');
     const loginScreen = document.getElementById('login-screen');
+    const staticGold = document.getElementById('static-gold-display');
     const authenticatedUiVisible = Boolean(
         (mainContainer && mainContainer.style.display === 'flex')
         || (
@@ -651,6 +652,7 @@ function recoverDiscardedSocketSession() {
     if (mainContainer) mainContainer.style.display = 'none';
     if (creationScreen) creationScreen.style.display = 'none';
     if (loginScreen) loginScreen.style.display = 'block';
+    if (staticGold) staticGold.hidden = true;
 
     const usernameInput = document.getElementById('char-name-input');
     if (
@@ -1709,7 +1711,7 @@ socket.on('ATB_READY', (payload = {}) => {
     combatActionsRemaining = Number.isInteger(payload.actionsRemaining) ? payload.actionsRemaining : 2;
     combatPhase = 'ACTION_READY';
     currentTurn = 'PLAYER';
-    logMessage(`⚡ ${payload.actorName || 'Party'} is ready! Tactical turn begins.`);
+    logMessage(`⚡ ${payload.actorName || 'Party'} is ready to act.`);
     if (typeof playRetroSound === 'function') playRetroSound('equip');
     refreshSystemUI();
     if (typeof drawGrid === 'function') drawGrid();
@@ -1789,7 +1791,7 @@ socket.on('killConfirmed', (data) => {
     player.pendingGold = (player.pendingGold || 0) + data.gold;
     player.pendingXp = (player.pendingXp || 0) + data.xp;
 
-    if (data.xp > 0) logMessage(`💀 Terminated entity: ${data.enemyName} (Stored ${data.xp} XP)`);
+    if (data.xp > 0) logMessage(`💀 Defeated ${data.enemyName} (+${data.xp} XP).`);
 
 if (data.item) {
         pendingLoot.push(data.item); // For the visual UI
@@ -1799,7 +1801,7 @@ if (data.item) {
         player.pendingLoot.push(data.item);
 
         if (data.isPet) logMessage(`🐾 ${data.petName || (player.pet && player.pet.name) || "Companion"} joyfully dug up a hidden treasure!`);
-        else logMessage(`🎁 SECURED LOOT: ${data.item.name} [${data.item.rarity}]`);
+        else logMessage(`🎁 Found ${data.item.name} [${data.item.rarity}].`);
     }
 
     if (document.getElementById("loot-screen").style.display === "block") {
@@ -2637,7 +2639,7 @@ socket.on('enemyTurnReceipt', (receipt) => {
                     true,
                     compressedPlaybackOptions
                 );
-                logMessage("💀 casualty verified. Transporting to safety structures.");
+                logMessage("💀 The party was defeated and carried back to safety.");
                 if (typeof playRetroSound === 'function') playRetroSound('death');
                 setTimeout(() => {
                     if (!isEnemyReceiptPlaybackCurrent()) return;
@@ -2710,12 +2712,35 @@ let combatParties = {};
 let pendingMove = null;
 let selectedEnemy = null;
 
+function getActivityLogTone(message) {
+    if (/\b(?:you(?:r party)?|the party|your crew|your knight)\s+(?:was|were)\s+defeated\b/i.test(message)) {
+        return 'is-warning';
+    }
+    if (/\b(?:failed|cannot|blocked|insufficient|not enough|defeat|fled|error)\b/i.test(message)) {
+        return 'is-warning';
+    }
+    if (/\b(?:victory|secured|claimed|completed|defeated|level up|found|saved)\b/i.test(message)) {
+        return 'is-positive';
+    }
+    return '';
+}
+
 function logMessage(msg) {
     const logDiv = document.getElementById("log");
-    if (logDiv) {
-        logDiv.innerHTML += "<br>" + msg;
-        logDiv.scrollTop = logDiv.scrollHeight;
+    if (!logDiv) return;
+    const message = String(msg == null ? '' : msg).trim();
+    if (!message) return;
+    const tone = getActivityLogTone(message);
+    const entry = document.createElement('div');
+    entry.className = `activity-log-entry ${tone}`.trim();
+    entry.textContent = message;
+    logDiv.appendChild(entry);
+    while (logDiv.children.length > 80 && logDiv.firstElementChild) {
+        logDiv.removeChild(logDiv.firstElementChild);
     }
+    logDiv.scrollTop = logDiv.scrollHeight;
+    const panel = document.getElementById('activity-log-panel');
+    if (tone === 'is-warning' && panel && 'open' in panel) panel.open = true;
 }
 
 function setGameState(state) {

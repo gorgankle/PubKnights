@@ -7,6 +7,8 @@ function enterGameUI() {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('char-creation-screen').style.display = 'none';
     document.getElementById('main-game-container').style.display = 'flex';
+    const staticGold = document.getElementById('static-gold-display');
+    if (staticGold) staticGold.hidden = false;
     
     // Force the default UI tab.
     gameState = 'KNIGHT';

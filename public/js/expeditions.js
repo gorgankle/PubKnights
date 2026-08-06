@@ -5,6 +5,7 @@
 let adventureViewSnapshot = null;
 let selectedAdventureRouteId = null;
 let adventureRequestPending = false;
+let pendingClaimedContractFocusId = null;
 
 function asAdventureList(value) {
     if (Array.isArray(value)) return value;
@@ -357,6 +358,21 @@ function renderTavernReturnPortrait() {
 
 function openTavernAdventureBoard() {
     if (typeof setGameState === 'function') setGameState('ADVENTURES');
+    if (typeof setTimeout !== 'function') return;
+    setTimeout(() => {
+        const panel = document.querySelector('.adventure-bounty-panel');
+        if (!panel) return;
+        const heading = panel.querySelector('h3');
+        const focusTarget = heading || panel;
+        focusTarget.setAttribute('tabindex', '-1');
+        if (typeof focusTarget.focus === 'function') focusTarget.focus({ preventScroll: true });
+        if (typeof panel.scrollIntoView === 'function') {
+            const reducedMotion = typeof window !== 'undefined'
+                && typeof window.matchMedia === 'function'
+                && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            panel.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
+        }
+    }, 0);
 }
 
 function openChapterOneTownService(actionId) {
@@ -390,12 +406,13 @@ function renderTavernReturnReport() {
         return;
     }
 
-    panel.hidden = false;
+    panel.hidden = true;
     panel.classList.toggle('is-failed', presentation.failed);
     const setText = (id, value) => {
         const element = document.getElementById(id);
         if (element) element.textContent = value;
     };
+    setText('tavern-return-outcome', presentation.failed ? 'Run ended' : 'Safe return');
     setText('tavern-return-title', presentation.title);
     setText('tavern-return-summary', presentation.summary);
     setText('tavern-return-route', presentation.routeName);
@@ -416,9 +433,14 @@ function renderTavernReturnReport() {
         }
     }
 
+    const reactionDetails = document.getElementById('tavern-return-reactions-details');
     const reactionList = document.getElementById('tavern-return-npc-reactions');
+    const reactionCount = document.getElementById('tavern-return-reaction-count');
+    if (reactionDetails) reactionDetails.hidden = presentation.npcReactions.length === 0;
+    if (reactionCount) {
+        reactionCount.textContent = `(${presentation.npcReactions.length})`;
+    }
     if (reactionList) {
-        reactionList.hidden = presentation.npcReactions.length === 0;
         reactionList.innerHTML = presentation.npcReactions.map(reaction => `
             <div class="tavern-return-npc-reaction">
                 <strong>${escapeAdventureHtml(reaction.name)}</strong>
@@ -428,6 +450,7 @@ function renderTavernReturnReport() {
     }
 
     const contractList = document.getElementById('tavern-return-contracts');
+    const contractBlock = document.getElementById('tavern-return-contract-block');
     if (contractList) {
         contractList.innerHTML = '';
         presentation.contractUpdates.forEach(update => {
@@ -444,10 +467,13 @@ function renderTavernReturnReport() {
             item.textContent = 'First-Return Kit: choose one piece of road gear at Mara\'s stall.';
             contractList.appendChild(item);
         }
-        contractList.hidden = presentation.contractUpdates.length === 0
-            && !presentation.rewardChoiceAvailable;
+        const hasNextActions = presentation.contractUpdates.length > 0
+            || presentation.rewardChoiceAvailable;
+        contractList.hidden = !hasNextActions;
+        if (contractBlock) contractBlock.hidden = !hasNextActions;
     }
     renderTavernReturnPortrait();
+    panel.hidden = false;
 }
 
 function getRouteDestinationId(route) {
@@ -595,6 +621,7 @@ function acceptAdventureContract(contractId) {
 
 function claimAdventureContract(contractId) {
     if (!contractId || adventureRequestPending) return;
+    pendingClaimedContractFocusId = contractId;
     adventureRequestPending = true;
     renderAdventureBoard();
     socket.emit('claimContract', { contractId });
@@ -1139,6 +1166,46 @@ function getContractStatus(contract) {
     return 'available';
 }
 
+function getContractStatusPresentation(contract) {
+    const status = getContractStatus(contract);
+    const repeatable = !!(contract && (contract.repeatable === true || contract.type === 'repeatable'));
+    if (status === 'claimable') {
+        return { status, label: 'Ready to claim', className: 'status-claimable', sortRank: 0 };
+    }
+    if (status === 'active') {
+        return { status, label: 'In progress', className: 'status-active', sortRank: 1 };
+    }
+    if (status === 'available') {
+        return {
+            status,
+            label: 'Available',
+            className: 'status-available',
+            sortRank: repeatable ? 3 : 2
+        };
+    }
+    if (status === 'completed') {
+        return { status, label: 'Completed', className: 'status-completed', sortRank: 5 };
+    }
+    return { status: 'locked', label: 'Locked', className: 'status-locked', sortRank: 4 };
+}
+
+function sortAdventureContracts(contracts) {
+    return asAdventureList(contracts)
+        .map((contract, index) => ({ contract, index, view: getContractStatusPresentation(contract) }))
+        .sort((left, right) => left.view.sortRank - right.view.sortRank || left.index - right.index)
+        .map(entry => entry.contract);
+}
+
+function getContractRoutePayPresentation(routes) {
+    const rewards = [...new Set(asAdventureList(routes)
+        .map(route => Math.max(0, Number(route && route.safeReturnGold) || 0))
+        .filter(reward => reward > 0))]
+        .sort((left, right) => left - right);
+    if (!rewards.length) return 'Safe-return pay varies by route';
+    if (rewards.length === 1) return `${rewards[0]}g safe-return pay`;
+    return `${rewards[0]}-${rewards[rewards.length - 1]}g safe-return pay`;
+}
+
 function getContractObjectivePresentation(contract) {
     return asAdventureList(contract && contract.objectives).map(objective => {
         const target = Math.max(1, Number(objective && objective.target) || 1);
@@ -1157,15 +1224,134 @@ function getContractObjectivePresentation(contract) {
     });
 }
 
+function renderContractObjectiveItemsMarkup(objectives, nextObjectiveIndex) {
+    return `<ul class="bounty-objectives">${objectives.map((objective, index) => {
+        const isNext = !objective.complete && index === nextObjectiveIndex;
+        const stateLabel = objective.complete
+            ? 'Done'
+            : (objective.target > 1 ? `${objective.progress}/${objective.target}` : (isNext ? 'Next' : ''));
+        return `
+            <li class="${objective.complete ? 'is-complete' : ''}${isNext ? ' is-next' : ''}">
+                <span class="objective-marker" aria-hidden="true">${objective.complete ? '&#10003;' : (isNext ? '&rarr;' : '&#9675;')}</span>
+                <span class="objective-copy"><span class="sr-only">${objective.complete ? 'Complete' : 'Incomplete'}: </span>${escapeAdventureHtml(objective.description)}</span>
+                ${stateLabel ? `<span class="objective-state">${escapeAdventureHtml(stateLabel)}</span>` : ''}
+            </li>
+        `;
+    }).join('')}</ul>`;
+}
+
 function renderContractObjectivesMarkup(contract) {
     const objectives = getContractObjectivePresentation(contract);
     if (!objectives.length) return '';
-    return `<ul class="bounty-objectives">${objectives.map(objective => `
-        <li class="${objective.complete ? 'is-complete' : ''}">
-            <span>${objective.complete ? '✓' : '○'} <b class="objective-type">${escapeAdventureHtml(String(objective.type).replace(/[_-]+/g, ' '))}</b> ${escapeAdventureHtml(objective.description)}</span>
-            <span>${objective.progress}/${objective.target}</span>
-        </li>
-    `).join('')}</ul>`;
+    const completedCount = objectives.filter(objective => objective.complete).length;
+    if (completedCount === objectives.length) {
+        return '<div class="contract-objectives-complete"><span aria-hidden="true">&#10003;</span> All objectives complete</div>';
+    }
+    const nextObjectiveIndex = objectives.findIndex(objective => !objective.complete);
+    if (objectives.length >= 4) {
+        const nextObjective = objectives[nextObjectiveIndex];
+        return `
+            <div class="contract-next-step">
+                <span class="contract-section-label">Next step</span>
+                <p><span aria-hidden="true">&rarr;</span> ${escapeAdventureHtml(nextObjective.description)}${nextObjective.target > 1 ? ` <b>${nextObjective.progress}/${nextObjective.target}</b>` : ''}</p>
+            </div>
+            <details class="contract-objectives-disclosure">
+                <summary>View all objectives <span>${completedCount}/${objectives.length}</span></summary>
+                ${renderContractObjectiveItemsMarkup(objectives, nextObjectiveIndex)}
+            </details>
+        `;
+    }
+    return `
+        <div class="contract-objective-block">
+            <span class="contract-section-label">Steps</span>
+            ${renderContractObjectiveItemsMarkup(objectives, nextObjectiveIndex)}
+        </div>
+    `;
+}
+
+function createContractCard(contract, adventure, options = {}) {
+    const view = getContractStatusPresentation(contract);
+    const compact = options.compact === true;
+    const title = contract.title || contract.id || 'Untitled contract';
+    const safeDomId = String(contract.id || title).replace(/[^a-z0-9_-]+/gi, '-');
+    const titleId = `contract-title-${safeDomId}`;
+    const rewardGold = Math.max(0, Number(contract.rewardGold) || 0);
+    const contractRouteIds = [...new Set([
+        contract.routeId,
+        ...asAdventureList(contract.routeIds)
+    ].filter(Boolean))];
+    const contractRoutes = contractRouteIds.map(getAdventureRoute).filter(Boolean);
+    const routeName = contractRoutes.length
+        ? contractRoutes.map(route => route.name).join(' / ')
+        : 'Route revealed by the contract';
+    const dangerLabels = [...new Set(contractRoutes
+        .map(route => route.dangerLabel || route.danger)
+        .filter(Boolean))];
+    const danger = dangerLabels.length ? dangerLabels.join(' / ') : 'Uncertain';
+    const issuer = contract.issuerName || 'Pub contract board';
+    const typeLabel = contract.repeatable === true || contract.type === 'repeatable'
+        ? 'Repeatable'
+        : 'Story';
+
+    const card = document.createElement('article');
+    card.className = `bounty-card is-${view.status}${compact ? ' is-history' : ''}`;
+    card.setAttribute('aria-labelledby', titleId);
+    const copy = document.createElement('div');
+    copy.className = 'bounty-card-copy';
+    copy.innerHTML = `
+        <header class="bounty-card-header">
+            <div class="bounty-badges">
+                <span class="contract-status-badge ${view.className}">${escapeAdventureHtml(view.label)}</span>
+                <span class="contract-type-badge">${escapeAdventureHtml(typeLabel)}</span>
+            </div>
+            <span class="bounty-contract-pay"><small>Contract pay</small><strong>${rewardGold}g</strong></span>
+        </header>
+        <h4 id="${escapeAdventureHtml(titleId)}">${escapeAdventureHtml(title)}</h4>
+        ${compact ? `
+            <p class="bounty-history-meta">Issued by ${escapeAdventureHtml(issuer)}</p>
+        ` : `
+            <p class="bounty-description">${escapeAdventureHtml(contract.description || 'Complete the posted objectives and return safely.')}</p>
+            <p class="bounty-meta">
+                <span>From ${escapeAdventureHtml(issuer)}</span>
+                <span>${escapeAdventureHtml(routeName)}</span>
+                <span>${escapeAdventureHtml(danger)} danger</span>
+            </p>
+            ${renderContractObjectivesMarkup(contract)}
+        `}
+    `;
+    card.appendChild(copy);
+
+    if (!compact) {
+        const actionRow = document.createElement('footer');
+        actionRow.className = 'bounty-action-row';
+        const routePay = document.createElement('span');
+        routePay.className = 'bounty-route-pay';
+        routePay.textContent = `Road return: ${getContractRoutePayPresentation(contractRoutes)}`;
+        actionRow.appendChild(routePay);
+
+        if (view.status === 'claimable' || view.status === 'available') {
+            const button = document.createElement('button');
+            button.type = 'button';
+            if (view.status === 'claimable') {
+                button.textContent = `Claim ${title} - ${rewardGold}g`;
+                button.onclick = () => claimAdventureContract(contract.id);
+            } else {
+                button.textContent = `Accept ${title}`;
+                button.onclick = () => acceptAdventureContract(contract.id);
+            }
+            if (adventureRequestPending || (adventure && adventure.activeJourney)) button.disabled = true;
+            actionRow.appendChild(button);
+        } else {
+            const note = document.createElement('span');
+            note.className = 'bounty-action-note';
+            note.textContent = view.status === 'active'
+                ? 'Follow the highlighted next step.'
+                : 'Requirements not met yet.';
+            actionRow.appendChild(note);
+        }
+        card.appendChild(actionRow);
+    }
+    return card;
 }
 
 function renderBountyBoard(adventure) {
@@ -1178,69 +1364,40 @@ function renderBountyBoard(adventure) {
         list.innerHTML = '<p class="adventure-muted">No contracts have been posted yet.</p>';
         return;
     }
+    const sortedContracts = sortAdventureContracts(contracts);
+    const currentContracts = sortedContracts.filter(contract => getContractStatus(contract) !== 'completed');
+    const completedContracts = sortedContracts.filter(contract => getContractStatus(contract) === 'completed');
 
     list.innerHTML = '';
-    contracts.forEach(contract => {
-        const status = getContractStatus(contract);
-        const target = Math.max(1, Number(contract.target) || 1);
-        const progress = Math.max(0, Number(contract.progress) || 0);
-        const card = document.createElement('div');
-        card.className = `bounty-card is-${status}`;
-        const copy = document.createElement('div');
-        const rewardGold = Number(contract.rewardGold || 0);
-        const contractRouteIds = [...new Set([
-            contract.routeId,
-            ...asAdventureList(contract.routeIds)
-        ].filter(Boolean))];
-        const contractRoutes = contractRouteIds.map(getAdventureRoute).filter(Boolean);
-        const routeName = contractRoutes.length
-            ? contractRoutes.map(route => route.name).join(' / ')
-            : 'Unlisted route';
-        const dangerLabels = [...new Set(contractRoutes
-            .map(route => route.dangerLabel || route.danger)
-            .filter(Boolean))];
-        const danger = dangerLabels.length ? dangerLabels.join(' / ') : 'Uncertain';
-        const routeReward = contractRoutes.reduce(
-            (best, route) => Math.max(best, Number(route.safeReturnGold) || 0),
-            0
-        );
-        const enemyNames = [...new Set(contractRoutes.flatMap(getAdventureRouteEnemyNames))];
-        const issuer = contract.issuerName || 'Pub contract board';
-        const contractType = String(contract.type || 'contract').replace(/[-_]+/g, ' ');
-        const typedObjectives = getContractObjectivePresentation(contract);
-        const progressLabel = `${progress}/${target} objectives`;
-        copy.innerHTML = `
-            <h4>${escapeAdventureHtml(contract.title || contract.id)}</h4>
-            <p>${escapeAdventureHtml(contract.description || 'Complete the posted objectives and return safely.')}</p>
-            <p class="bounty-issuer">Issued by ${escapeAdventureHtml(issuer)} · ${escapeAdventureHtml(contractType)}</p>
-            <p class="bounty-risk"><b>${escapeAdventureHtml(routeName)}</b> · ${escapeAdventureHtml(danger)} danger</p>
-            <p class="bounty-enemies">Expected: ${enemyNames.length ? enemyNames.map(escapeAdventureHtml).join(', ') : 'Unconfirmed opposition'}</p>
-            ${renderContractObjectivesMarkup(contract)}
-            <p class="bounty-progress">${status === 'completed' ? 'Completed' : progressLabel} · Contract ${rewardGold}g · Road ${routeReward}g</p>
-        `;
-        const button = document.createElement('button');
-        button.type = 'button';
-        if (status === 'active') {
-            button.textContent = 'In Progress';
-            button.disabled = true;
-        } else if (status === 'claimable') {
-            button.textContent = 'Claim';
-            button.onclick = () => claimAdventureContract(contract.id);
-        } else if (status === 'completed') {
-            button.textContent = 'Paid';
-            button.disabled = true;
-        } else if (status === 'locked') {
-            button.textContent = 'Locked';
-            button.disabled = true;
-        } else {
-            button.textContent = 'Accept';
-            button.onclick = () => acceptAdventureContract(contract.id);
-        }
-        if (adventureRequestPending || adventure.activeJourney) button.disabled = true;
-        card.appendChild(copy);
-        card.appendChild(button);
-        list.appendChild(card);
+    currentContracts.forEach(contract => {
+        list.appendChild(createContractCard(contract, adventure));
     });
+    if (completedContracts.length) {
+        const history = document.createElement('details');
+        history.className = 'contract-history';
+        const summary = document.createElement('summary');
+        summary.className = 'contract-history-summary';
+        summary.textContent = `Completed contracts (${completedContracts.length})`;
+        history.appendChild(summary);
+        const historyList = document.createElement('div');
+        historyList.className = 'contract-history-list';
+        completedContracts.forEach(contract => {
+            historyList.appendChild(createContractCard(contract, adventure, { compact: true }));
+        });
+        history.appendChild(historyList);
+        list.appendChild(history);
+
+        const claimedContractIsNowComplete = completedContracts.some(
+            contract => contract && contract.id === pendingClaimedContractFocusId
+        );
+        if (claimedContractIsNowComplete) {
+            pendingClaimedContractFocusId = null;
+            setTimeout(() => {
+                const focusTarget = document.querySelector('.contract-history-summary');
+                if (focusTarget && typeof focusTarget.focus === 'function') focusTarget.focus();
+            }, 0);
+        }
+    }
 }
 
 function updateAdventureNavigation(activeJourney) {
@@ -1310,6 +1467,7 @@ if (typeof socket !== 'undefined' && socket) {
     socket.on('adventureState', applyAdventurePayload);
     socket.on('adventureReceipt', payload => {
         applyAdventurePayload(payload);
+        if (payload && payload.success === false) pendingClaimedContractFocusId = null;
         if (payload && payload.message && typeof logMessage === 'function') logMessage(payload.message);
         if (payload && payload.success === false && typeof playRetroSound === 'function') playRetroSound('error');
         if (payload && payload.success !== false && typeof saveGame === 'function') saveGame();
@@ -1344,12 +1502,15 @@ if (typeof module !== 'undefined' && module.exports) {
         getAdventureRoutesToLocation,
         getAdventureRouteEnemyNames,
         getContractObjectivePresentation,
+        getContractRoutePayPresentation,
+        getContractStatusPresentation,
         getExpeditionEscrowSummary,
         getRouteAvailabilityPresentation,
         getReturnNpcReactions,
         getSnapshotContracts,
         getWorldContractUpdates,
         isCurrentChapterCatalogItem,
-        restoreUnclaimedRewardClaim
+        restoreUnclaimedRewardClaim,
+        sortAdventureContracts
     };
 }
