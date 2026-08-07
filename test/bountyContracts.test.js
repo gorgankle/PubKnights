@@ -23,7 +23,7 @@ function player() {
 function reachDestination(knight, routeId) {
     const outbound = adventureState.beginExpedition(knight, routeId, { random: () => 0 });
     assert.equal(outbound.success, true);
-    const arrival = adventureState.resolveExpeditionCombatVictory(knight, outbound.expeditionContext);
+    const arrival = finishJourneyDirection(knight, outbound);
     assert.equal(arrival.outcome, 'destination_reached');
     return arrival;
 }
@@ -31,7 +31,7 @@ function reachDestination(knight, routeId) {
 function returnSafely(knight) {
     const returning = adventureState.beginReturnTrip(knight, { random: () => 0 });
     assert.equal(returning.success, true);
-    const result = adventureState.resolveExpeditionCombatVictory(knight, returning.expeditionContext);
+    const result = finishJourneyDirection(knight, returning);
     assert.equal(result.outcome, 'safe_return');
     const worldProgress = advanceChapterOneSafeReturn(knight, result.routeId);
     if (knight.adventure.latestReturnReport) {
@@ -39,6 +39,30 @@ function returnSafely(knight) {
         knight.adventure.latestReturnReport.rewardChoiceOffered = worldProgress.rewardChoiceOffered;
     }
     return { ...result, worldContractUpdates: worldProgress.completedObjectiveIds };
+}
+
+function finishJourneyDirection(knight, started) {
+    let outcome = started;
+    let pendingCombat = started.combatRequired ? started : null;
+    while (!['destination_reached', 'safe_return'].includes(outcome.outcome)) {
+        const journey = knight.adventure && knight.adventure.activeJourney;
+        assert.ok(journey, `Journey ended before arrival: ${JSON.stringify(outcome)}`);
+        if (journey.currentInstance.kind === 'combat') {
+            const combat = pendingCombat || adventureState.continueJourney(knight);
+            assert.equal(combat.success, true);
+            outcome = adventureState.resolveExpeditionCombatVictory(
+                knight,
+                combat.expeditionContext
+            );
+            pendingCombat = null;
+        } else {
+            const option = journey.currentInstance.options[0];
+            assert.ok(option, 'noncombat journey instance must expose a server-authored choice');
+            outcome = adventureState.resolveJourneyInstance(knight, option.id);
+        }
+        assert.equal(outcome.success, true);
+    }
+    return outcome;
 }
 
 function clearEscrow(knight) {

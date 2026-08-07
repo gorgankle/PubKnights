@@ -11,6 +11,163 @@ function deepFreeze(value) {
     return Object.freeze(value);
 }
 
+// Non-combat journey instances are deliberately data-only. Their effects are
+// interpreted by adventureState so clients can submit only an option id, never
+// an amount of health, stamina, gold, or XP to apply.
+const JourneyInstanceCatalog = deepFreeze({
+    pine_waystone_riddle: {
+        id: 'pine_waystone_riddle',
+        kind: 'event',
+        type: 'puzzle',
+        title: 'The Mossbound Waystone',
+        description: 'Three weathered trail marks point in different directions. The oldest carving matches the pines around you.',
+        options: [
+            {
+                id: 'follow_oldest_mark',
+                label: 'Read the oldest mark',
+                description: 'Take time to match the carving to the surrounding ridge.',
+                result: 'solved',
+                resultMessage: 'The party deciphers the old drover mark and finds the quiet path onward.',
+                effects: { pendingXp: 4 }
+            },
+            {
+                id: 'follow_fresh_tracks',
+                label: 'Follow the fresh tracks',
+                description: 'Trust the newest sign of passage instead of the faded carving.',
+                result: 'alternate',
+                resultMessage: 'The tracks loop through wet brush before rejoining the trail.',
+                effects: { staminaCost: 1 }
+            }
+        ]
+    },
+    lost_pine_trader: {
+        id: 'lost_pine_trader',
+        kind: 'event',
+        type: 'npc',
+        title: 'A Trader Off the Road',
+        description: 'A stranded peddler is trying to free a handcart from the roots without attracting attention.',
+        options: [
+            {
+                id: 'help_free_cart',
+                label: 'Help free the cart',
+                description: 'Spend a few minutes lifting the axle clear.',
+                result: 'helped',
+                resultMessage: 'The grateful trader pays a few coins into the expedition purse.',
+                effects: { pendingGold: 4, pendingXp: 2 }
+            },
+            {
+                id: 'trade_for_tonic',
+                label: 'Trade for a tonic',
+                description: 'Spend 3 gold on a small restorative for the road.',
+                costGold: 3,
+                result: 'traded',
+                resultMessage: 'The tonic takes the edge off the road weariness.',
+                effects: { goldCost: 3, restoreHp: 5, restoreStamina: 4 }
+            }
+        ]
+    },
+    watchhouse_stormfront: {
+        id: 'watchhouse_stormfront',
+        kind: 'event',
+        type: 'weather',
+        title: 'Hard Rain on the Ridge',
+        description: 'A fast storm turns the exposed approach slick while the lower trail begins to flood.',
+        options: [
+            {
+                id: 'take_shelter',
+                label: 'Wait under cover',
+                description: 'Lose time but preserve the party\'s footing.',
+                result: 'cautious',
+                resultMessage: 'The worst rain passes, leaving the party steadier for the next leg.',
+                effects: { restoreStamina: 2 }
+            },
+            {
+                id: 'cross_the_ridge',
+                label: 'Risk the ridge',
+                description: 'Push through before the lower trail disappears.',
+                result: 'risky',
+                resultMessage: 'The crossing is punishing, but the party learns the storm route.',
+                effects: { staminaCost: 2, pendingXp: 3 }
+            }
+        ]
+    },
+    ashen_road_camp: {
+        id: 'ashen_road_camp',
+        kind: 'stop',
+        type: 'camp',
+        title: 'Ashen Road Camp',
+        description: 'An old charcoal-burner camp offers a screened fire ring and enough clean ground to rest safely.',
+        options: [
+            {
+                id: 'make_camp',
+                label: 'Make camp',
+                description: 'Dress wounds, eat, and recover before the road resumes.',
+                result: 'rested',
+                resultMessage: 'A guarded rest restores the party without risking the expedition purse.',
+                effects: { restoreHp: 10, restoreStamina: 10 }
+            },
+            {
+                id: 'keep_a_short_watch',
+                label: 'Take a short watch',
+                description: 'Pause only long enough to catch your breath.',
+                result: 'brief_rest',
+                resultMessage: 'The short halt restores some stamina before the party moves on.',
+                effects: { restoreHp: 3, restoreStamina: 5 }
+            }
+        ]
+    },
+    crossroads_waystation: {
+        id: 'crossroads_waystation',
+        kind: 'stop',
+        type: 'waypoint',
+        title: 'Crossroads Waystation',
+        description: 'A tiny roadside settlement keeps one lamp lit for travelers between the occupied roads.',
+        options: [
+            {
+                id: 'rest_at_waystation',
+                label: 'Rest at the waystation',
+                description: 'Use the common room and refill waterskins.',
+                result: 'rested',
+                resultMessage: 'Warm food and a bench give the party a measured recovery.',
+                effects: { restoreHp: 7, restoreStamina: 8 }
+            },
+            {
+                id: 'help_the_locals',
+                label: 'Help the locals',
+                description: 'Repair a storm shutter in exchange for provisions.',
+                result: 'helped',
+                resultMessage: 'The locals pack provisions and a few coins for the remaining road.',
+                effects: { restoreStamina: 4, pendingGold: 3, pendingXp: 2 }
+            }
+        ]
+    },
+    roadside_camp: {
+        id: 'roadside_camp',
+        kind: 'stop',
+        type: 'camp',
+        title: 'Roadside Camp',
+        description: 'A defensible clearing offers a safe place for a brief halt.',
+        options: [
+            {
+                id: 'rest',
+                label: 'Rest',
+                description: 'Take a guarded rest before continuing.',
+                result: 'rested',
+                resultMessage: 'The party leaves the clearing in better condition.',
+                effects: { restoreHp: 6, restoreStamina: 6 }
+            },
+            {
+                id: 'continue_early',
+                label: 'Continue early',
+                description: 'Resume travel after only a quick pause.',
+                result: 'brief_rest',
+                resultMessage: 'The quick pause restores a little stamina.',
+                effects: { restoreStamina: 2 }
+            }
+        ]
+    }
+});
+
 const PINE_BRANCH_REQUIREMENTS = {
     all: [
         { type: 'world_fact', factId: 'pine_signal_chart' },
@@ -545,7 +702,8 @@ const RouteCatalog = deepFreeze({
             scouting: ['pine_lookout'],
             seasoned: ['pine_lookout', 'poachers_trail', 'pine_signal_ambush'],
             company: ['poachers_trail', 'pine_signal_ambush']
-        }
+        },
+        journeyInstanceIds: ['pine_waystone_riddle', 'lost_pine_trader']
     },
     route_old_pine_cut: {
         id: 'route_old_pine_cut',
@@ -607,7 +765,8 @@ const RouteCatalog = deepFreeze({
             scouting: ['hedge_fire', 'heath_smoke_screen'],
             seasoned: ['hedge_fire', 'heath_smoke_screen', 'heath_cinder_circle'],
             company: ['heath_smoke_screen', 'heath_cinder_circle']
-        }
+        },
+        waypointInstanceId: 'ashen_road_camp'
     },
     route_toll_crossing: {
         id: 'route_toll_crossing',
@@ -632,7 +791,8 @@ const RouteCatalog = deepFreeze({
             scouting: ['road_toll'],
             seasoned: ['road_toll', 'road_toll_crossfire'],
             company: ['road_toll_crossfire', 'road_toll_ambush']
-        }
+        },
+        waypointInstanceId: 'crossroads_waystation'
     },
     route_heath_toll_cut: {
         id: 'route_heath_toll_cut',
@@ -707,7 +867,8 @@ const RouteCatalog = deepFreeze({
             'watchhouse_pursuit'
         ],
         preparationVariants: WATCHHOUSE_PREPARATION_VARIANTS,
-        returnEncounterIds: ['watchhouse_pursuit']
+        returnEncounterIds: ['watchhouse_pursuit'],
+        journeyInstanceIds: ['watchhouse_stormfront']
     },
     route_toll_watchhouse: {
         id: 'route_toll_watchhouse',
@@ -745,12 +906,14 @@ const RouteCatalog = deepFreeze({
             'watchhouse_pursuit'
         ],
         preparationVariants: WATCHHOUSE_PREPARATION_VARIANTS,
-        returnEncounterIds: ['watchhouse_pursuit']
+        returnEncounterIds: ['watchhouse_pursuit'],
+        journeyInstanceIds: ['watchhouse_stormfront']
     }
 });
 
 module.exports = {
     LocationCatalog,
     RouteCatalog,
-    AuthoredEncounterCatalog
+    AuthoredEncounterCatalog,
+    JourneyInstanceCatalog
 };

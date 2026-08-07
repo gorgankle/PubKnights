@@ -1,5 +1,5 @@
 // --- combatRewards.js ---
-// Server-side combat rewards, pending loot, pet scavenging, and zone progression.
+// Server-side combat rewards, pending loot, and zone progression.
 
 const { ItemDatabase } = require('./public/js/items.js');
 const { LootTables } = require('./public/js/lootTables.js');
@@ -97,13 +97,6 @@ function grantActorDefeatRewards(socketId, defeatedActor, context) {
     return defeatedActor.rewardResult;
 }
 
-function rollPetVictoryLoot(player) {
-    if (!player.pet || !player.pet.adopted) return null;
-    const petLevel = Math.max(1, Math.min(100, Math.trunc(Number(player.pet.level) || 1)));
-    if ((Math.random() * 100) >= petLevel) return null;
-    return rollLootFromTable(LootTables.pet_scavenge);
-}
-
 function finalizeCombatVictory(socketId, context) {
     const { activePlayers, activeCombats, io } = context;
     const player = activePlayers[socketId];
@@ -193,21 +186,6 @@ function finalizeCombatVictory(socketId, context) {
 
     applyRogueLootTheft(socketId, player, combat, io);
 
-    const petItem = rollPetVictoryLoot(player);
-    if (petItem) {
-        player.pendingLoot = player.pendingLoot || [];
-        player.pendingLoot.push(petItem);
-        io.to(socketId).emit('killConfirmed', {
-            gold: 0,
-            xp: 0,
-            item: petItem,
-            isPet: true,
-            petName: player.pet.name || 'Companion',
-            enemyName: null
-        });
-    }
-
-
     const rosterCompanions = player.roster && Array.isArray(player.roster.companions)
         ? player.roster.companions
         : [];
@@ -229,7 +207,6 @@ function finalizeCombatVictory(socketId, context) {
     }
     return {
         combatComplete: true,
-        petItem,
         zoneGoldReward,
         adventureOutcome,
         adventureState: getAdventureSnapshot(player)
@@ -264,6 +241,5 @@ module.exports = {
     EXPEDITION_CAPTAIN_GOLD,
     grantActorDefeatRewards,
     finalizeCombatVictory,
-    rollPetVictoryLoot,
     claimCombatRewards
 };

@@ -209,11 +209,13 @@ const EXPEDITION_CONTEXT_TOKEN_KEYS = Object.freeze([
     'destinationId',
     'direction',
     'encounterId',
+    'instanceId',
     'travelId',
     'legId'
 ]);
 const EXPEDITION_CONTEXT_INTEGER_KEYS = Object.freeze([
     'legIndex',
+    'legCount',
     'encounterIndex'
 ]);
 

@@ -18,6 +18,8 @@ const {
     getAdventureSnapshot,
     beginExpedition,
     beginReturnTrip,
+    continueJourney,
+    resolveJourneyInstance,
     failActiveExpedition,
     hasActiveJourney
 } = require('./adventureState.js');
@@ -26,7 +28,9 @@ const {
     acceptChapterOneContract,
     claimChapterOneContract,
     claimChapterOneRewardChoice,
-    selectChapterOneFinalePreparation
+    selectChapterOneFinalePreparation,
+    advanceChapterOneDiscovery,
+    advanceChapterOneSafeReturn
 } = require('./chapterOneWorld.js');
 
 function actionSucceeded(result) {
@@ -54,6 +58,7 @@ function buildAdventureReceipt(action, result, player, overrides = {}) {
         ...source,
         action,
         success: actionSucceeded(source),
+        combatDeployed: false,
         adventureState: getAdventureSnapshot(player),
         ...overrides
     };
@@ -80,6 +85,34 @@ function preparePlayerForAdventureCombat(player) {
     player.statusEffects = {};
     player.activeBuffs = [];
     player.activeCombatBuff = null;
+}
+
+function applyJourneyWorldProgress(player, result) {
+    if (!result || result.success !== true) return result;
+    if (result.outcome === 'destination_reached') {
+        const journey = result.journey && typeof result.journey === 'object' ? result.journey : {};
+        const progress = advanceChapterOneDiscovery(player, {
+            locationId: journey.destinationLocationId,
+            routeId: journey.routeId
+        }, Date.now());
+        result.worldProgress = {
+            completedObjectiveIds: [...new Set(progress.completedObjectiveIds || [])],
+            rewardChoiceOffered: false
+        };
+    }
+    if (result.outcome === 'safe_return') {
+        const progress = advanceChapterOneSafeReturn(player, result.routeId, Date.now());
+        const completedObjectiveIds = [...new Set(progress.completedObjectiveIds || [])];
+        result.worldProgress = {
+            completedObjectiveIds,
+            rewardChoiceOffered: progress.rewardChoiceOffered === true
+        };
+        if (player.adventure && player.adventure.latestReturnReport) {
+            player.adventure.latestReturnReport.worldContractUpdates = completedObjectiveIds;
+            player.adventure.latestReturnReport.rewardChoiceOffered = progress.rewardChoiceOffered === true;
+        }
+    }
+    return result;
 }
 
 function deployResolvedEncounter(socket, player, activeCombats, action, result) {
@@ -148,10 +181,11 @@ module.exports = function registerAdventureRouter(
         return true;
     }
 
-    function finishAction(player, action, result, successMessage) {
+    function finishAction(player, action, result, successMessage, overrides = {}) {
         const receipt = buildAdventureReceipt(action, result, player, {
             message: getActionMessage(result, successMessage),
-            updatedPlayer: player
+            updatedPlayer: player,
+            ...overrides
         });
         socket.emit('adventureReceipt', receipt);
         emitAdventureState(socket, player);
@@ -194,7 +228,9 @@ module.exports = function registerAdventureRouter(
         );
         if (deployment.failed) return;
 
-        finishAction(player, action, result, 'Expedition state updated.');
+        finishAction(player, action, result, 'Expedition state updated.', {
+            combatDeployed: deployment.deployed === true
+        });
         if (deployment.deployed) {
             io.to(socket.id).emit('combatDeployed', deployment.combat);
         }
@@ -223,6 +259,27 @@ module.exports = function registerAdventureRouter(
                 ? player.adventure.activeJourney.routeId
                 : null
         );
+    });
+
+    socket.on('continueJourney', () => {
+        beginJourneyAction(
+            'continueJourney',
+            player => continueJourney(player),
+            player => player.adventure && player.adventure.activeJourney
+                ? player.adventure.activeJourney.routeId
+                : null
+        );
+    });
+
+    socket.on('resolveJourneyInstance', (data = {}) => {
+        const action = 'resolveJourneyInstance';
+        const player = getPlayer(action);
+        if (!player || rejectCombatConflict(player, action)) return;
+        const optionId = sanitizeToken(data && data.optionId, '');
+        const result = applyJourneyWorldProgress(player, resolveJourneyInstance(player, optionId));
+        finishAction(player, action, result, 'Journey instance resolved.', {
+            combatDeployed: false
+        });
     });
 
     socket.on('resolveDestinationInteraction', (data = {}) => {

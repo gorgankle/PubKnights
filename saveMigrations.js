@@ -4,7 +4,14 @@
 
 const { ensureWorldState, normalizeWorldState } = require('./worldState.js');
 
-const CURRENT_SAVE_VERSION = 4;
+const CURRENT_SAVE_VERSION = 5;
+
+const LEGACY_PET_ADOPTION_REFUND_GOLD = 10;
+const LEGACY_PET_TRAINING_BASE_COST = 750;
+const LEGACY_PET_MAX_LEVEL = 100;
+// Adoption plus every historical training purchase through the old
+// scavenging cap. This protects migration math from forged or corrupt levels.
+const MAX_LEGACY_PET_REFUND_GOLD = 258_806_166_590;
 
 const RETIRED_TOP_LEVEL_KEYS = Object.freeze([
     'workers',
@@ -25,7 +32,8 @@ const RETIRED_TOP_LEVEL_KEYS = Object.freeze([
     'monumentBuilt',
     'sharpeningStoneBought',
     'ironPlatingBought',
-    'upgrades'
+    'upgrades',
+    'pet'
 ]);
 
 function nonNegativeInt(value) {
@@ -61,6 +69,25 @@ function getLegacyCabinRefund(saveData) {
     return refund;
 }
 
+function getLegacyPetRefund(saveData) {
+    const pet = saveData && saveData.pet && typeof saveData.pet === 'object'
+        ? saveData.pet
+        : null;
+    if (!pet || pet.adopted !== true) return 0;
+
+    const legacyLevel = Math.max(
+        1,
+        Math.min(LEGACY_PET_MAX_LEVEL, nonNegativeInt(pet.level) || 1)
+    );
+    let refund = LEGACY_PET_ADOPTION_REFUND_GOLD;
+    for (let level = 1; level < legacyLevel; level++) {
+        refund += Math.floor(
+            LEGACY_PET_TRAINING_BASE_COST * Math.pow(1.2, level - 1)
+        );
+    }
+    return Math.min(refund, MAX_LEGACY_PET_REFUND_GOLD);
+}
+
 function containsRetiredState(saveData) {
     if (!saveData || typeof saveData !== 'object' || Array.isArray(saveData)) return false;
     if (RETIRED_TOP_LEVEL_KEYS.some(key => Object.prototype.hasOwnProperty.call(saveData, key))) {
@@ -81,7 +108,7 @@ function containsRetiredState(saveData) {
 }
 
 function migrateRetiredEconomy(saveData, fromVersion) {
-    let refundGold = 0;
+    let refundGold = getLegacyPetRefund(saveData);
     if (fromVersion < 3) {
         const economyMigrationVersion = nonNegativeInt(saveData.economyMigrationVersion);
         if (economyMigrationVersion < 3) {
@@ -147,6 +174,9 @@ function migrateSaveData(saveData) {
     // Version 4 expands the world namespace with Chapter One branch NPCs,
     // typed contracts, finale preparation, epilogue state, and staged town
     // services. ensureWorldState above performs the idempotent schema merge.
+    // Version 5 retires the standalone pet system. Adopted pets receive their
+    // adoption and bounded historical training spend back before the key is
+    // removed; companion party data is already preserved under `roster`.
     target.saveVersion = Math.max(fromVersion, CURRENT_SAVE_VERSION);
 
     return {

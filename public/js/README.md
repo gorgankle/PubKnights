@@ -30,7 +30,6 @@ Load artwork in this order when a page needs the complete registry:
 ```text
 character-creator.js
 item-assets.js
-pet-assets.js
 npc-assets.js
 map-assets.js
 icon-assets.js
@@ -47,13 +46,12 @@ sprite-overhaul-icons.js
 | --- | --- |
 | `character-creator.js` | `PALETTE`, appearance choices, sprite helpers, and the initial ordered `SpriteMatrices` registry. |
 | `item-assets.js`, `npc-assets.js`, `map-assets.js`, `icon-assets.js` | Compatibility entry points and historical `SpriteMatrices` key order, not final artwork. |
-| `pet-assets.js` | Pet colors, pet UI helpers, and ordered `PetMatrices` keys. |
 | `sprite-overhaul.js` | Final player body, face, hair, and core-player sample matrices plus shared 32x32 authoring helpers. |
 | `sprite-overhaul-equipment.js` | Final equipment and weapon matrices, including paper-doll weapon projections. |
 | `sprite-overhaul-animation.js` | Side-player and humanoid animation matrices and frame resolvers. |
 | `humanoid-actor-visuals.js` | Actor visual profiles and humanoid drawing dispatch. |
 | `combat-animation.js` | Combat animation selection, timelines, and playback. |
-| `sprite-overhaul-world.js` | Final NPC, terrain, obstacle, minigame, pet, and world matrices; it also defines icon construction and registration. |
+| `sprite-overhaul-world.js` | Final NPC, terrain, obstacle, minigame, and world matrices; it also defines icon construction and registration. |
 | `sprite-overhaul-icons.js` | Calls `registerIconOverhaulMatrices()` after world and equipment art exist, making the final inventory icons live. |
 
 ## Compatibility registries

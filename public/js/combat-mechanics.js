@@ -953,6 +953,13 @@ function isValidPlayerMovePath(targetX, targetY) {
 // === RESTORED TRANSITION FUNCTION ===
 window.transitionToTown = function() {
     resetEquipmentAttackUiState();
+    const returningFromExpedition = (
+        typeof combatStartedFromJourney !== 'undefined'
+        && combatStartedFromJourney
+    ) || (
+        typeof expeditionRewardReturnPending !== 'undefined'
+        && expeditionRewardReturnPending
+    );
     // Invalidate delayed combat callbacks before clearing animation state.
     // A cancelled presentation must not be able to restore combat controls
     // after the player has already returned to town.
@@ -961,6 +968,7 @@ window.transitionToTown = function() {
             && player.adventure
             && player.adventure.activeJourney;
         if (activeJourney) setGameState('ADVENTURES');
+        else if (returningFromExpedition) setGameState('TOWN');
         else setGameState('KNIGHT');
     }
     if (typeof combatPlaybackGeneration !== 'undefined') {
@@ -996,7 +1004,17 @@ window.transitionToTown = function() {
         && player.adventure
         && player.adventure.activeJourney;
     logMessage(activeJourney
-        ? "The party has reached a travel stop. Choose the next leg from the Adventure Board."
-        : "Returned to the Knight screen.");
+        ? "The party has reached a travel stop. Choose the next leg from the journey screen."
+        : (
+            returningFromExpedition
+                ? "The party returned safely to town."
+                : "Returned to the Knight screen."
+        ));
+    if (typeof combatStartedFromJourney !== 'undefined') {
+        combatStartedFromJourney = false;
+    }
+    if (typeof expeditionRewardReturnPending !== 'undefined') {
+        expeditionRewardReturnPending = false;
+    }
     if (typeof playRetroSound === 'function') playRetroSound('door');
 }

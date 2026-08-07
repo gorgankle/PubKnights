@@ -107,8 +107,7 @@ test('drawProceduralSprite renders against the 32-cell grid', () => {
 test('compatibility registries preserve legacy order without duplicate matrices', () => {
     const scripts = [
         'character-creator.js',
-        'npc-assets.js',
-        'pet-assets.js'
+        'npc-assets.js'
     ];
     const context = vm.createContext({
         window: { addEventListener() {} },
@@ -124,12 +123,9 @@ test('compatibility registries preserve legacy order without duplicate matrices'
         const is32 = matrix => matrix.length === 32 && matrix.every(row => row.length === 32);
         return {
             spriteKeys: Object.keys(SpriteMatrices),
-            petKeys: Object.keys(PetMatrices),
             definedSpriteKeys: Object.keys(SpriteMatrices)
                 .filter(key => SpriteMatrices[key] !== undefined),
-            peanutIs32: is32(SpriteMatrices.icon_peanut),
-            petValuesArePlaceholders: Object.values(PetMatrices)
-                .every(matrix => matrix === undefined)
+            peanutIs32: is32(SpriteMatrices.icon_peanut)
         };
     })()`, context);
 
@@ -176,8 +172,6 @@ test('compatibility registries preserve legacy order without duplicate matrices'
         'mash_crawler',
         'eldritch_keg'
     ]);
-    assert.deepEqual(Array.from(result.petKeys), ['dog', 'cat']);
     assert.deepEqual(Array.from(result.definedSpriteKeys), ['icon_peanut']);
     assert.equal(result.peanutIs32, true);
-    assert.equal(result.petValuesArePlaceholders, true);
 });

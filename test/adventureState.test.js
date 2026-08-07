@@ -8,6 +8,8 @@ const {
     getAdventureSnapshot,
     beginExpedition,
     beginReturnTrip,
+    continueJourney,
+    resolveJourneyInstance,
     resolveExpeditionCombatVictory,
     failActiveExpedition,
     hasActiveJourney
@@ -77,8 +79,9 @@ test('the server chooses an authored encounter for an unlocked route and rejects
     failActiveExpedition(knight, 'test_cleanup');
     const alternate = beginExpedition(knight, 'route_pine_trail', { random: () => 0 });
     assert.equal(alternate.success, true);
-    assert.equal(alternate.encounterId, 'pine_lookout');
-    assert.equal(alternate.expeditionContext.routeId, 'route_pine_trail');
+    assert.equal(alternate.encounterId, undefined);
+    assert.equal(alternate.currentInstance.type, 'puzzle');
+    assert.equal(alternate.journey.routeId, 'route_pine_trail');
 
     failActiveExpedition(knight, 'test_cleanup');
     const locked = beginExpedition(knight, 'route_burnt_heath', { random: () => 0 });
@@ -128,7 +131,9 @@ test('a matching return victory pays once and counts once without leaking undisc
 
 test('stale victory context cannot advance or redirect an active journey', () => {
     const knight = player();
-    const outbound = beginExpedition(knight, 'route_pine_trail', { random: () => 0 });
+    const departure = beginExpedition(knight, 'route_pine_trail', { random: () => 0 });
+    resolveJourneyInstance(knight, departure.currentInstance.options[0].id);
+    const outbound = continueJourney(knight);
     const spoofed = resolveExpeditionCombatVictory(knight, {
         ...outbound.expeditionContext,
         routeId: 'route_old_road'
@@ -191,13 +196,17 @@ test('public snapshots omit hidden nodes and unobserved enemy details, then reve
 
     assert.deepEqual(
         freshSnapshot.locations.map(location => location.id),
-        ['pub_hub', 'old_road', 'pine_trail']
+        ['pub_hub', 'old_road', 'pine_trail', 'burnt_heath', 'toll_crossing', 'ruined_watchhouse']
     );
     assert.deepEqual(
         freshSnapshot.routes.map(route => route.id),
         ['route_old_road', 'route_pine_trail']
     );
-    assert.equal(freshSnapshot.locations.some(location => location.id === 'burnt_heath'), false);
+    const maskedHeath = freshSnapshot.locations.find(location => location.id === 'burnt_heath');
+    assert.equal(maskedHeath.discovered, false);
+    assert.equal(maskedHeath.silhouetted, true);
+    assert.equal(maskedHeath.name, 'Unknown Area');
+    assert.equal(maskedHeath.description, null);
     assert.equal(freshSnapshot.routes.some(route => route.id === 'route_burnt_heath'), false);
     assert.equal(freshSnapshot.routes.every(route => route.unlocked === true), true);
     assert.equal(freshOldRoad.newcomerLabel, 'Gentler first outing');
@@ -260,4 +269,77 @@ test('return-report world metadata survives snapshots with catalog validation an
         knight.adventure.latestReturnReport.worldContractUpdates,
         ['missing_kegs:return_from_old_road']
     );
+});
+
+test('distance-three journeys expose a gameplay-bearing noncombat leg in both directions', () => {
+    const knight = player({
+        hp: 12,
+        stamina: 12,
+        vitality: 1,
+        maxStamina: 1,
+        equipment: {},
+        roster: { companions: [], activeIds: [] }
+    });
+    const started = beginExpedition(knight, 'route_pine_trail', { random: () => 0 });
+    assert.equal(started.journey.legIndex, 1);
+    assert.equal(started.journey.legCount, 2);
+    assert.equal(started.currentInstance.type, 'puzzle');
+    assert.equal(started.combatRequired, false);
+    assert.deepEqual(
+        Object.keys(started.currentInstance).sort(),
+        ['description', 'id', 'kind', 'options', 'title', 'type']
+    );
+    assert.equal(resolveJourneyInstance(knight, 'client_invented_choice').code, 'INVALID_JOURNEY_OPTION');
+
+    const traveled = resolveJourneyInstance(knight, 'follow_oldest_mark');
+    assert.equal(traveled.outcome, 'combat_pending');
+    const combat = continueJourney(knight);
+    assert.equal(combat.expeditionContext.instanceId, combat.currentInstance.id);
+    const arrived = resolveExpeditionCombatVictory(knight, combat.expeditionContext);
+    assert.equal(arrived.outcome, 'destination_reached');
+    assert.equal(knight.pendingXp, 4);
+
+    const returning = beginReturnTrip(knight, { random: () => 0 });
+    const returnEvent = resolveExpeditionCombatVictory(knight, returning.expeditionContext);
+    const completed = resolveJourneyInstance(knight, returnEvent.currentInstance.options[0].id);
+    assert.equal(completed.outcome, 'safe_return');
+    assert.equal(knight.adventure.activeJourney, null);
+});
+
+test('distance-four journeys guarantee a restorative stop and require explicit continuation into the final combat', () => {
+    const knight = player({
+        hp: 2,
+        stamina: 3,
+        vitality: 1,
+        maxStamina: 1,
+        equipment: {},
+        roster: { companions: [], activeIds: [] }
+    });
+    knight.adventure = createInitialAdventureState();
+    knight.adventure.discoveredLocationIds.push('burnt_heath');
+    knight.adventure.unlockedLocationIds.push('burnt_heath');
+    knight.adventure.discoveredRouteIds.push('route_burnt_heath');
+    knight.adventure.unlockedRouteIds.push('route_burnt_heath');
+
+    const started = beginExpedition(knight, 'route_burnt_heath', { random: () => 0 });
+    assert.equal(started.journey.legCount, 3);
+    const stopped = resolveExpeditionCombatVictory(knight, started.expeditionContext);
+    assert.equal(stopped.currentInstance.kind, 'stop');
+    assert.equal(stopped.currentInstance.type, 'camp');
+
+    const rested = resolveJourneyInstance(knight, 'make_camp');
+    assert.equal(rested.outcome, 'combat_pending');
+    assert.equal(rested.combatRequired, true);
+    assert.equal(knight.hp, 12);
+    assert.equal(knight.stamina, 13);
+    assert.equal(knight.adventure.activeJourney.combatPending, true);
+
+    const nextCombat = continueJourney(knight);
+    assert.equal(nextCombat.success, true);
+    assert.equal(nextCombat.expeditionContext.legIndex, 3);
+    assert.equal(
+        resolveExpeditionCombatVictory(knight, started.expeditionContext).code,
+        'STALE_JOURNEY'
+    );
+    assert.equal(resolveExpeditionCombatVictory(knight, nextCombat.expeditionContext).outcome, 'destination_reached');
 });

@@ -151,6 +151,61 @@ test('malformed saves receive safe defaults without inventing progression', () =
     );
 });
 
+test('retired adopted pets refund adoption and historical training once', () => {
+    const legacy = {
+        saveVersion: 4,
+        gold: 100,
+        pet: {
+            adopted: true,
+            name: 'Biscuit',
+            type: 'dog',
+            level: 3
+        },
+        roster: {
+            companions: [{ instanceId: 'story_marlow', templateId: 'marlow' }],
+            activeIds: ['story_marlow']
+        }
+    };
+    const rosterBefore = structuredClone(legacy.roster);
+
+    const first = migrateSaveData(legacy);
+    const goldAfterFirstMigration = legacy.gold;
+    const second = migrateSaveData(legacy);
+
+    // 10g adoption + 750g level 1 training + 900g level 2 training.
+    assert.equal(first.refundedGold, 1_660);
+    assert.equal(goldAfterFirstMigration, 1_760);
+    assert.equal(legacy.pet, undefined);
+    assert.deepEqual(legacy.roster, rosterBefore);
+    assert.equal(second.refundedGold, 0);
+    assert.equal(second.migrated, false);
+    assert.equal(legacy.gold, goldAfterFirstMigration);
+});
+
+test('legacy pet refunds cap malformed levels at the former level-100 benefit ceiling', () => {
+    const malformed = {
+        saveVersion: CURRENT_SAVE_VERSION,
+        gold: 0,
+        pet: { adopted: true, level: Number.MAX_SAFE_INTEGER }
+    };
+    const neverAdopted = {
+        saveVersion: CURRENT_SAVE_VERSION,
+        gold: 40,
+        pet: { adopted: false, level: 100 }
+    };
+
+    const capped = migrateSaveData(malformed);
+    const inactive = migrateSaveData(neverAdopted);
+
+    assert.equal(capped.refundedGold, 258_806_166_590);
+    assert.equal(malformed.gold, 258_806_166_590);
+    assert.equal(Number.isSafeInteger(malformed.gold), true);
+    assert.equal(malformed.pet, undefined);
+    assert.equal(inactive.refundedGold, 0);
+    assert.equal(neverAdopted.gold, 40);
+    assert.equal(neverAdopted.pet, undefined);
+});
+
 test('historical workers and cabin levels refund once before retired state is stripped', () => {
     const legacy = {
         saveVersion: 1,

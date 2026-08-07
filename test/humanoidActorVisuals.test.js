@@ -33,6 +33,10 @@ const PROFILE_IDS = [
     'hedge_mage',
     'alpha_poacher',
     'npc_kreg',
+    'npc_mara',
+    'npc_elowen',
+    'npc_tilda',
+    'npc_marlow',
     'shield_guard_captain',
     'tankard_brute',
     'harvest_champion',
@@ -113,7 +117,14 @@ test('humanoid visual profiles are deeply immutable and visual-only', () => {
 test('Wave 3 profiles share stance, offhand, and advanced motion contracts', () => {
     assert.deepEqual(
         [...SPECIAL_HUMANOID_NPC_PROFILE_IDS],
-        ['npc_kreg', 'cellar_dweller']
+        [
+            'npc_kreg',
+            'npc_mara',
+            'npc_elowen',
+            'npc_tilda',
+            'npc_marlow',
+            'cellar_dweller'
+        ]
     );
     assert.deepEqual(
         [...ADVANCED_HUMANOID_PROTOTYPE_PROFILE_IDS],

@@ -38,8 +38,7 @@ const {
     hashPassword,
     verifyPassword,
     needsPasswordUpgrade,
-    sanitizeAppearance,
-    sanitizePetCosmetics
+    sanitizeAppearance
 } = require('./serverSecurity.js');
 
 
@@ -207,8 +206,7 @@ function createDefaultSaveData(username) {
             JSON.parse(JSON.stringify(ItemDatabase["stout"]))
         ], stash: [],
         roster: { companions: [], activeIds: [] },
-        maxInventorySlots: 5, backpackUpgrades: 0,
-        pet: { adopted: false, level: 1 }
+        maxInventorySlots: 5, backpackUpgrades: 0
     };
     normalizeAdventureState(saveData, { recoverInterruptedJourney: false });
     migrateSaveData(saveData);
@@ -398,10 +396,6 @@ io.on('connection', (socket) => {
 if (data.saveData) {
                 if (data.saveData.appearance) {
                     p.appearance = sanitizeAppearance(data.saveData.appearance);
-                }
-                // Allow pet cosmetic updates, but fiercely protect the level and adoption status!
-                if (data.saveData.pet) {
-                    p.pet = sanitizePetCosmetics(data.saveData.pet, p.pet);
                 }
             }
 

@@ -210,12 +210,4 @@ function closeUnboxing() {
     overlay.style.display = 'none';
     overlay.ondblclick = null; // Clean up the listener
 }
-// === PET PROGRESSION SYSTEM ===
-function trainPet() {
-    // Basic client-side check just to prevent spamming the button
-    if (!player.pet || !player.pet.adopted) return;
-    
-    // Ask the server to process the transaction securely
-    socket.emit('townAction', { action: 'trainPet' });
-}
 

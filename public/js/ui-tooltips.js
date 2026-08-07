@@ -6,13 +6,8 @@ function showSystemTooltip(type, event) {
     let item = typeof type === 'object' ? type : null;
 
     if (type === 'tavern_enter') {
-        html = `<h3>🍻 The Exchange</h3>Visit the Brewmaster and quartermaster for battle supplies.`;
+        html = `<h3>🍻 Town Common Room</h3>Walk up to townsfolk for quests, conversation, brews, and road supplies.`;
     }
-else if (type === 'pet_train') {
-        let cost = getPetTrainingCost();
-        html = `<h3>Companion Kibble</h3>Train your companion's scavenging instincts.<br><b>Reward:</b> +1% cumulative chance per level to dig up exclusive Pet-Only Loot after every combat victory!<br>Cost: ${cost.gold}g`;
-    }
-	
 else if (item && item.slot === "consumable") {
         if (item.type === "crate") {
             html += `\u{1F4E6} <b>Mystery Box:</b> Click to break the seal and reveal the loot inside.<br>`;
@@ -20,7 +15,7 @@ else if (item && item.slot === "consumable") {
         }
 	} 	
     else if (type === 'adventures_enter') {
-        html = `<h3>⚔️ Adventure Board</h3>Choose a travel route, inspect road danger, manage contracts, and complete safe round trips from the pub.`;
+        html = `<h3>⚔️ Roads & Expeditions</h3>Choose a travel route, inspect road danger, and complete the journey back to town.`;
     }
 	else if (type === 'cellars_enter') {
         html = `<h3>🍷 Forbidden Cellars</h3>Descend into the forgotten, mold-covered storage vaults. Enemies here have thicker armor and hit harder than those in the Wilds.<br>⚠️ Danger: Beware of Mimics disguising themselves among the casks!`;

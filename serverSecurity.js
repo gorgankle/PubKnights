@@ -32,12 +32,6 @@ const APPEARANCE_OPTIONS = Object.freeze({
     bootsColor: ['leather', 'black', 'grey', 'suede', 'iron', 'burgundy', 'olive']
 });
 
-const PET_OPTIONS = Object.freeze({
-    type: ['dog', 'cat'],
-    furColor: ['brown', 'gray', 'orange', 'white', 'black', 'golden', 'cream'],
-    collarColor: ['red', 'blue', 'green', 'yellow', 'purple', 'pink']
-});
-
 const ROOM_IDS = new Set(['ZONE_HUB', 'TAVERN', 'COMMUNITY_SQUARE', 'GILDED_TAVERN', 'TRAINING_GROUNDS']);
 
 function normalizeUsername(value) {
@@ -125,19 +119,6 @@ function sanitizeAppearance(value) {
     return output;
 }
 
-function sanitizePetCosmetics(value, existing = {}) {
-    const input = value && typeof value === 'object' ? value : {};
-    const current = existing && typeof existing === 'object' ? existing : {};
-
-    return {
-        ...current,
-        name: escapeHtml(cleanString(input.name, 20, current.name || 'Companion')) || 'Companion',
-        type: pickAllowed(input.type, PET_OPTIONS.type, current.type || 'dog'),
-        furColor: pickAllowed(input.furColor, PET_OPTIONS.furColor, current.furColor || 'brown'),
-        collarColor: pickAllowed(input.collarColor, PET_OPTIONS.collarColor, current.collarColor || 'red')
-    };
-}
-
 function toInt(value, fallback = 0) {
     const num = Number(value);
     if (!Number.isFinite(num)) return fallback;
@@ -178,7 +159,6 @@ module.exports = {
     sanitizeChatMessage,
     sanitizeToken,
     sanitizeAppearance,
-    sanitizePetCosmetics,
     clampInt,
     getArrayIndex,
     escapeRegExp,

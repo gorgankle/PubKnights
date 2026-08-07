@@ -125,7 +125,7 @@ h1 { text-align: center; color: #ffcc66; margin: 5px 0 15px 0; font-size: 24px; 
 }
 .dashboard-panel { margin-bottom: 10px; padding: 8px; background: #2b2118; border-radius: 4px; text-align: left; }
 
-/* --- ADVENTURE MAP & BOUNTY BOARD --- */
+/* --- ROADS, JOURNEYS & WORLD MAP --- */
 .adventure-status-banner {
     padding: 9px 12px;
     border: 1px solid #6f563d;
@@ -314,6 +314,289 @@ h1 { text-align: center; color: #ffcc66; margin: 5px 0 15px 0; font-size: 24px; 
 .tavern-return-contracts[hidden] { display: none; }
 .tavern-return-contracts .is-claimable { color: #9ff2b4; font-weight: bold; }
 
+/* --- WALKABLE TOWN, NPC DIALOGUE, AND JRPG SHOP --- */
+.town-screen-heading,
+.adventure-screen-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 0;
+    padding: 10px 14px;
+    border: 1px solid #4a3b2c;
+    background: #1a1512;
+}
+.town-screen-heading > div:first-child { display: grid; gap: 2px; }
+.town-screen-heading strong,
+.adventure-screen-heading > span { color: #ffcc66; font-size: 15px; }
+.town-screen-kicker {
+    color: #a9998b;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+.adventure-screen-heading > div { display: flex; flex-wrap: wrap; gap: 7px; }
+.adventure-screen-heading button,
+.town-screen-heading button { min-height: 38px; margin: 0; padding: 7px 12px; }
+#adventure-return-town-btn { border-color: #dc6458; background: #a9362b; }
+.world-map-open-button { border-color: #6b9cc9; background: #274c69; }
+
+.town-exploration-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 2.25fr) minmax(240px, 0.75fr);
+    gap: 12px;
+    align-items: stretch;
+}
+.town-scene-panel,
+.town-scene-guide { min-width: 0; margin: 0; border: 1px solid #4a3b2c; }
+.town-scene-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    gap: 12px;
+    margin-bottom: 9px;
+}
+.town-scene-heading h3 { margin: 0 0 3px; color: #f0c866; }
+.town-scene-heading p { margin: 0; color: #b9aa9b; font-size: 10px; line-height: 1.4; }
+.town-scene-heading > span {
+    flex: 0 0 auto;
+    padding: 4px 6px;
+    border: 1px solid #5d4d3e;
+    border-radius: 3px;
+    color: #d5c4b3;
+    background: #201914;
+    font-size: 9px;
+}
+#town-exploration-canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 5 / 3;
+    box-sizing: border-box;
+    border: 3px solid #6d5138;
+    border-radius: 5px;
+    outline: 0;
+    background: #211813;
+    box-shadow: inset 0 0 32px rgba(0, 0, 0, 0.72), 0 7px 18px rgba(0, 0, 0, 0.35);
+    cursor: crosshair;
+    image-rendering: pixelated;
+    touch-action: none;
+}
+#town-exploration-canvas:focus-visible { border-color: #f2cf72; box-shadow: 0 0 0 3px rgba(242, 207, 114, 0.3); }
+.town-scene-status {
+    min-height: 18px;
+    margin: 8px 0 5px;
+    color: #d8cabb;
+    font-size: 10px;
+    line-height: 1.45;
+}
+.town-nearby-npcs { display: flex; flex-wrap: wrap; gap: 6px; }
+.town-nearby-npcs button {
+    min-height: 44px;
+    margin: 0;
+    padding: 7px 10px;
+    border-color: #5c7064;
+    background: #203127;
+    font-size: 10px;
+}
+.town-nearby-npcs button.is-selected { border-color: #f2ce68; background: #4a3920; }
+.town-scene-guide { align-content: start; max-height: 590px; overflow: auto; }
+.town-scene-guide h3 { color: #e8c56f; }
+.town-guide-tip {
+    margin: 12px 0 0;
+    padding: 10px;
+    border: 1px solid #4e5f4d;
+    border-left: 4px solid #6dbc7c;
+    color: #c6d4c6;
+    background: #182019;
+    font-size: 10px;
+    line-height: 1.5;
+}
+.town-activities-panel { margin: 0; border: 1px solid #4a3b2c; }
+.town-activities-panel > summary { color: #79dd91; cursor: pointer; font-size: 13px; font-weight: bold; }
+.town-activities-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin-top: 10px; }
+
+.dialogue-overlay {
+    position: fixed;
+    z-index: 100005;
+    bottom: max(18px, env(safe-area-inset-bottom));
+    left: 50%;
+    display: none;
+    width: min(92vw, 760px);
+    max-height: min(72vh, 610px);
+    box-sizing: border-box;
+    gap: 15px;
+    align-items: flex-start;
+    padding: 15px;
+    overflow: auto;
+    transform: translateX(-50%);
+    border: 4px double #d8cfbd;
+    border-radius: 5px;
+    color: #f6f0e6;
+    background: linear-gradient(145deg, rgba(15, 35, 70, 0.99), rgba(8, 20, 43, 0.995));
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.92), inset 0 0 0 2px #345078;
+    cursor: pointer;
+}
+.dialogue-portrait-frame {
+    display: grid;
+    flex: 0 0 104px;
+    width: 104px;
+    height: 104px;
+    place-items: center;
+    overflow: hidden;
+    border: 3px double #cbd8ed;
+    background: #071228;
+    box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.85);
+}
+#dialogue-portrait-canvas { width: 96px; height: 96px; image-rendering: pixelated; }
+.dialogue-copy-panel { position: relative; display: flex; min-width: 0; flex: 1 1 auto; flex-direction: column; }
+#dialogue-speaker-name {
+    margin-bottom: 8px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #6680a8;
+    color: #ffe383;
+    font-size: 16px;
+    font-weight: bold;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+}
+#dialogue-text-content { min-height: 48px; color: #fff; font-family: "Courier New", monospace; font-size: 14px; font-weight: bold; line-height: 1.5; }
+#dialogue-next-indicator { display: none; align-self: end; color: #86f2ad; font-size: 18px; animation: pulseGlow 1.5s infinite; }
+.dialogue-choice-menu { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 12px; cursor: default; }
+.dialogue-choice-menu[hidden] { display: none; }
+.dialogue-choice {
+    display: grid;
+    min-height: 48px;
+    gap: 2px;
+    margin: 0;
+    padding: 8px 10px;
+    border: 2px solid #7792bc;
+    color: #f7f2e8;
+    background: #152d56;
+    text-align: left;
+}
+.dialogue-choice:hover:not(:disabled),
+.dialogue-choice:focus-visible { border-color: #ffe383; background: #244273; }
+.dialogue-choice strong { font-size: 11px; line-height: 1.35; }
+.dialogue-choice span { color: #c6d2e5; font-size: 9px; line-height: 1.4; }
+.dialogue-choice.is-quest { border-color: #d8b44f; }
+.dialogue-choice.is-turn-in { border-color: #68ce86; background: #163e36; }
+.dialogue-choice:disabled { border-color: #536077; color: #9ba6b7; background: #18243a; opacity: 0.72; }
+
+.town-shop-overlay,
+.world-map-overlay {
+    position: fixed;
+    z-index: 100006;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+    box-sizing: border-box;
+    background: rgba(4, 7, 12, 0.84);
+    backdrop-filter: blur(3px);
+}
+.town-shop-overlay[hidden],
+.world-map-overlay[hidden] { display: none; }
+.town-shop-window,
+.world-map-dialog {
+    width: min(94vw, 780px);
+    max-height: 90vh;
+    box-sizing: border-box;
+    padding: 15px;
+    overflow: auto;
+    border: 4px double #d7cfbf;
+    border-radius: 5px;
+    color: #f3ecdf;
+    background: linear-gradient(145deg, #142a52, #09162d);
+    box-shadow: 0 18px 55px rgba(0, 0, 0, 0.9), inset 0 0 0 2px #345078;
+}
+.town-shop-window > header,
+.world-map-dialog > header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #6e84a4;
+}
+.town-shop-window header span,
+.world-map-dialog header span { color: #aebed6; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; }
+.town-shop-window h2,
+.world-map-dialog h2 { margin: 2px 0 0; color: #ffe283; font-size: 20px; }
+.town-shop-wallet { color: #b7c8de; font-size: 11px; text-align: right; }
+.town-shop-wallet strong { display: block; color: #ffe169; font-size: 18px; }
+.town-shop-window > p,
+.world-map-dialog > p { color: #c4d0df; font-size: 10px; line-height: 1.5; }
+.town-shop-list { display: grid; gap: 7px; margin: 12px 0; }
+.town-shop-item {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    min-height: 58px;
+    gap: 10px;
+    align-items: center;
+    margin: 0;
+    padding: 8px 10px;
+    border: 2px solid #607da6;
+    background: #11264b;
+    text-align: left;
+}
+.town-shop-item:hover,
+.town-shop-item:focus-visible { border-color: #ffe383; background: #1b3967; }
+.town-shop-item-icon { display: grid; width: 32px; height: 32px; place-items: center; border: 1px solid #8ba0bf; color: #ffe383; background: #091731; }
+.town-shop-item-copy { display: grid; gap: 3px; }
+.town-shop-item-copy strong { color: #fff6df; font-size: 12px; }
+.town-shop-item-copy small { color: #b7c5d9; font-size: 9px; line-height: 1.35; }
+.town-shop-item-price { color: #ffe169; font-size: 14px; font-weight: bold; }
+.town-shop-window footer { display: flex; justify-content: end; padding-top: 10px; border-top: 1px solid #536d93; }
+.town-shop-window footer button { min-height: 42px; margin: 0; }
+
+.world-map-dialog { width: min(96vw, 1120px); }
+.world-map-expanded { min-height: min(72vh, 700px); }
+.world-map-expanded .adventure-location-node { min-width: 108px; }
+.adventure-location-node.is-silhouetted {
+    border-color: #313844;
+    border-style: dashed;
+    color: #4e5865;
+    background: #11171d;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.78);
+}
+.adventure-location-node.is-silhouetted .node-symbol {
+    color: #35404a;
+    text-shadow: 0 0 8px #000;
+}
+.adventure-location-node.is-silhouetted .node-status { color: #59616a; }
+.world-map-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; color: #c4cfdd; font-size: 10px; }
+.world-map-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.world-map-legend i { width: 18px; height: 10px; border: 2px solid #d6a84c; background: #3c2e21; }
+.world-map-legend i.is-unknown { border-color: #3e4852; border-style: dashed; background: #11171d; }
+.world-map-legend i.is-route { width: 24px; height: 0; border: 0; border-top: 2px dashed #8a7355; background: transparent; }
+
+.journey-progress-card,
+.journey-instance-card {
+    margin: 9px 0;
+    padding: 10px;
+    border: 1px solid #536d74;
+    border-left: 4px solid #6fb5ce;
+    border-radius: 4px;
+    background: #152127;
+}
+.journey-progress-heading { display: flex; justify-content: space-between; gap: 10px; color: #d7e7eb; font-size: 10px; }
+.journey-progress-track { height: 8px; margin: 7px 0 5px; overflow: hidden; border: 1px solid #3f535b; border-radius: 999px; background: #0c1418; }
+.journey-progress-track span { display: block; height: 100%; background: linear-gradient(90deg, #4f91ae, #8bd0ae); transition: width 180ms ease; }
+.journey-progress-card small { color: #93a9b0; font-size: 9px; }
+.journey-instance-card { border-color: #625b45; border-left-color: #d6a84c; background: #211d15; }
+.journey-instance-header { display: flex; justify-content: space-between; align-items: start; gap: 10px; }
+.journey-instance-header h4 { margin: 0; color: #f1d283; font-size: 12px; text-transform: none; }
+.journey-instance-type { padding: 3px 6px; border: 1px solid #6f674c; border-radius: 999px; color: #decf9c; font-size: 8px; letter-spacing: 0.08em; text-transform: uppercase; }
+.journey-instance-card p { color: #d8cfbd; }
+.journey-instance-options { display: grid; gap: 6px; margin-top: 9px; }
+.journey-instance-options button { display: grid; gap: 2px; min-height: 44px; margin: 0; padding: 8px 10px; text-align: left; }
+.journey-instance-options button strong { font-size: 10px; }
+.journey-instance-options button span { color: #c5b9a4; font-size: 9px; line-height: 1.35; }
+.journey-instance-options button small { color: #f3cf69; font-size: 8px; }
+.journey-continue-button { border-color: #6bc485; background: #21603b; }
+.adventure-discoveries-panel { margin: 0; }
+
 .adventure-map-layout {
     display: grid;
     grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr);
@@ -323,7 +606,6 @@ h1 { text-align: center; color: #ffcc66; margin: 5px 0 15px 0; font-size: 24px; 
 
 .adventure-map-panel,
 .exploration-detail,
-.adventure-bounty-panel,
 .adventure-guild-panel {
     margin-bottom: 0;
     border: 1px solid #4a3b2c;
@@ -497,196 +779,6 @@ h1 { text-align: center; color: #ffcc66; margin: 5px 0 15px 0; font-size: 24px; 
 .adventure-encounter-report p { margin: 2px 0; color: #d7c0a8; font-size: 9px; }
 .adventure-encounter-report small { color: #8498a3; font-size: 8px; text-transform: capitalize; }
 
-.adventure-board-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr);
-    gap: 12px;
-}
-
-.contract-board-help {
-    margin: -3px 0 11px;
-    color: #c9b9a8;
-    font-size: 12px;
-    line-height: 1.5;
-}
-.bounty-list { display: grid; gap: 11px; }
-.bounty-card {
-    min-width: 0;
-    padding: 13px;
-    border: 1px solid #6b5845;
-    border-left: 5px solid #b08b52;
-    border-radius: 5px;
-    background: #18130f;
-    box-shadow: 0 5px 12px rgba(0, 0, 0, 0.22);
-}
-.bounty-card.is-active { border-left-color: #55b7e8; }
-.bounty-card.is-claimable { border-left-color: #4ddb78; background: #152119; }
-.bounty-card.is-completed { border-left-color: #8b8177; background: #171513; }
-.bounty-card.is-locked { border-left-color: #75695e; }
-.bounty-card-copy { min-width: 0; }
-.bounty-card-header {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    align-items: start;
-    margin-bottom: 8px;
-}
-.bounty-badges { display: flex; flex-wrap: wrap; gap: 5px; }
-.contract-status-badge,
-.contract-type-badge {
-    display: inline-flex;
-    align-items: center;
-    min-height: 22px;
-    padding: 2px 7px;
-    border: 1px solid #806a50;
-    border-radius: 999px;
-    color: #f0ddba;
-    background: #2b2118;
-    font-size: 10px;
-    font-weight: bold;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-}
-.contract-status-badge.status-active { border-color: #4a9fc8; color: #c9ecff; background: #173344; }
-.contract-status-badge.status-claimable { border-color: #439c5c; color: #c9f7d3; background: #173622; }
-.contract-status-badge.status-completed { border-color: #756b62; color: #d7cec4; background: #28231f; }
-.contract-status-badge.status-locked { border-color: #665d55; color: #c1b7ad; background: #24201d; }
-.contract-type-badge { color: #c8bcae; border-color: #5e5145; background: transparent; }
-.bounty-contract-pay {
-    display: grid;
-    flex: 0 0 auto;
-    gap: 1px;
-    text-align: right;
-}
-.bounty-contract-pay small { color: #b8a897; font-size: 10px; text-transform: uppercase; }
-.bounty-contract-pay strong { color: #f7d56f; font-size: 16px; }
-.bounty-card h4 { margin: 0 0 6px; color: #f4d58a; font-size: 15px; line-height: 1.3; }
-.bounty-card p { margin: 0; font-size: 12px; line-height: 1.5; }
-.bounty-description { color: #e2d6c6; }
-.bounty-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px 12px;
-    margin-top: 8px !important;
-    color: #bfb0a1;
-}
-.bounty-meta span { position: relative; }
-.bounty-meta span + span::before {
-    position: absolute;
-    left: -8px;
-    color: #7f7165;
-    content: '•';
-}
-.contract-section-label {
-    display: block;
-    margin-bottom: 6px;
-    color: #d9bb7d;
-    font-size: 10px;
-    font-weight: bold;
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
-}
-.contract-objective-block,
-.contract-next-step {
-    margin-top: 11px;
-    padding: 10px;
-    border: 1px solid #5b4a3b;
-    border-radius: 4px;
-    background: #211a14;
-}
-.contract-next-step {
-    border-left: 4px solid #d4a84c;
-    background: #261e14;
-}
-.contract-next-step p { color: #f3e7d4; }
-.contract-next-step p span { margin-right: 4px; color: #f2c75c; font-weight: bold; }
-.contract-objectives-complete {
-    margin-top: 11px;
-    padding: 10px;
-    border: 1px solid #468558;
-    border-radius: 4px;
-    color: #bdf2c8;
-    background: #16301e;
-    font-size: 12px;
-    font-weight: bold;
-}
-.contract-objectives-disclosure {
-    margin-top: 7px;
-    border: 1px solid #58483a;
-    border-radius: 4px;
-    background: #17130f;
-}
-.contract-objectives-disclosure summary {
-    display: flex;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 9px 10px;
-    color: #d8cbbb;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: bold;
-}
-.contract-objectives-disclosure summary span { color: #a99a8b; }
-.bounty-objectives {
-    display: grid;
-    gap: 5px;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    color: #ded2c3;
-    font-size: 12px;
-}
-.contract-objectives-disclosure .bounty-objectives { padding: 2px 10px 10px; }
-.bounty-objectives li {
-    display: grid;
-    grid-template-columns: 18px minmax(0, 1fr) auto;
-    gap: 7px;
-    align-items: start;
-    padding: 6px 7px;
-    border-radius: 3px;
-    line-height: 1.45;
-}
-.bounty-objectives li.is-next { color: #fff0c9; background: #312515; }
-.bounty-objectives li.is-complete { color: #b7ddbf; }
-.objective-marker { color: #d9ad4f; font-weight: bold; text-align: center; }
-.is-complete .objective-marker { color: #70d789; }
-.objective-state {
-    min-width: 36px;
-    color: #d9c8b4;
-    font-size: 10px;
-    font-weight: bold;
-    text-align: right;
-    text-transform: uppercase;
-}
-.bounty-action-row {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    align-items: center;
-    margin-top: 11px;
-    padding-top: 10px;
-    border-top: 1px solid #4d4035;
-}
-.bounty-route-pay,
-.bounty-action-note { color: #b9ab9c; font-size: 11px; line-height: 1.4; }
-.bounty-action-row button { min-height: 40px; min-width: 150px; margin: 0; padding: 9px 12px; }
-.contract-history {
-    border: 1px solid #574b40;
-    border-radius: 4px;
-    background: #171411;
-}
-.contract-history > summary {
-    padding: 11px 12px;
-    color: #d7ccbf;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: bold;
-}
-.contract-history-list { display: grid; gap: 7px; padding: 0 8px 8px; }
-.bounty-card.is-history { padding: 10px; box-shadow: none; }
-.bounty-card.is-history h4 { margin-bottom: 2px; font-size: 13px; }
-.bounty-history-meta { color: #b7aa9d; }
-
 .town-activity-card {
     display: grid;
     gap: 7px;
@@ -814,19 +906,15 @@ h1 { text-align: center; color: #ffcc66; margin: 5px 0 15px 0; font-size: 24px; 
 
 @media (max-width: 820px) {
     .adventure-map-layout,
-    .adventure-board-grid { grid-template-columns: 1fr; }
+    .town-exploration-layout { grid-template-columns: 1fr; }
     .exploration-detail { min-height: 0; }
     .tavern-return-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .town-scene-guide { max-height: none; }
 }
 
 @media (max-width: 520px) {
     .exploration-map { min-height: 310px; }
     .adventure-location-node { min-width: 76px; max-width: 100px; font-size: 9px; }
-    .bounty-card { padding: 11px; }
-    .bounty-action-row { flex-direction: column; align-items: stretch; }
-    .bounty-action-row button { width: 100%; min-height: 44px; }
-    .bounty-meta { display: grid; gap: 3px; }
-    .bounty-meta span + span::before { display: none; }
     .tavern-return-heading { flex-direction: column; }
     .tavern-return-actions { width: 100%; justify-content: stretch; }
     .tavern-return-actions button { flex: 1; min-height: 44px; }
@@ -834,6 +922,36 @@ h1 { text-align: center; color: #ffcc66; margin: 5px 0 15px 0; font-size: 24px; 
     .tavern-return-reactions-disclosure { grid-column: auto; }
     .activity-log-heading { align-items: flex-start; }
     .activity-log-heading button { min-height: 40px; }
+    .town-screen-heading,
+    .adventure-screen-heading { align-items: stretch; flex-direction: column; }
+    .town-screen-heading button,
+    .adventure-screen-heading button { flex: 1; min-height: 44px; }
+    .town-scene-heading { flex-direction: column; }
+    .town-scene-heading > span { display: none; }
+    .town-nearby-npcs button { flex: 1 1 calc(33.333% - 6px); min-height: 44px; }
+    .dialogue-overlay {
+        bottom: 0;
+        width: 100vw;
+        max-height: 82vh;
+        gap: 10px;
+        padding: 10px;
+        border-right: 0;
+        border-bottom: 0;
+        border-left: 0;
+        border-radius: 0;
+    }
+    .dialogue-portrait-frame { flex-basis: 76px; width: 76px; height: 76px; }
+    #dialogue-portrait-canvas { width: 72px; height: 72px; }
+    #dialogue-speaker-name { font-size: 13px; }
+    #dialogue-text-content { min-height: 40px; font-size: 12px; }
+    .dialogue-choice-menu { grid-template-columns: 1fr; }
+    .dialogue-choice { min-height: 46px; }
+    .town-shop-overlay,
+    .world-map-overlay { padding: 0; }
+    .town-shop-window,
+    .world-map-dialog { width: 100vw; max-height: 100vh; min-height: 100%; border-right: 0; border-left: 0; border-radius: 0; }
+    .world-map-expanded { min-height: 66vh; }
+    .world-map-expanded .adventure-location-node { min-width: 78px; }
 }
 #wallet-display { background: #1a1512; padding: 8px; margin-bottom: 8px; border-radius: 4px; border: 1px dashed #ffcc66; font-size: 12px; line-height: 1.5; }
 
@@ -1531,7 +1649,7 @@ summary:focus-visible,
     border: 0;
 }
 
-/* Keep the Knight and pet in one column so roster height cannot separate them. */
+/* Keep the Knight profile independent from the backpack and party cards. */
 .knight-dashboard-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));

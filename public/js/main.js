@@ -320,16 +320,25 @@ function getPlayerAttackables() {
 }
 
 let combatVictoryPresentationStarted = false;
+let combatStartedFromJourney = false;
+let expeditionRewardReturnPending = false;
+
+function getActiveExpeditionJourney() {
+    return player
+        && player.adventure
+        && player.adventure.activeJourney
+        || null;
+}
 
 function isAtExpeditionDestination() {
-    const journey = player
-        && player.adventure
-        && player.adventure.activeJourney;
-    return !!(
-        journey
-        && journey.phase === 'AT_DESTINATION'
-        && journey.reachedDestination === true
-    );
+    const journey = getActiveExpeditionJourney();
+    return !!(journey && journey.phase === 'AT_DESTINATION');
+}
+
+function shouldResumeExpeditionJourneyAfterVictory() {
+    // The server keeps the journey alive at destination stops and between
+    // road instances. Rewards stay in escrow until the safe return clears it.
+    return !!getActiveExpeditionJourney();
 }
 
 function presentCombatVictory() {
@@ -355,9 +364,9 @@ function presentCombatVictory() {
 
     setTimeout(() => {
         if (gameState !== "COMBAT") return;
-        // Outbound rewards remain in expedition escrow. Let the player inspect
-        // the authored destination before choosing when to begin the return.
-        if (isAtExpeditionDestination()) {
+        // Any remaining journey means another road instance, destination stop,
+        // or return leg still needs attention. Do not expose escrow loot yet.
+        if (shouldResumeExpeditionJourneyAfterVictory()) {
             if (typeof saveGame === 'function') saveGame();
             if (typeof transitionToTown === 'function') transitionToTown();
             return;
@@ -1733,15 +1742,10 @@ socket.on('townReceipt', (receipt) => {
     }
 
     // Play the correct sound effect based on what we just bought/did
-    if (receipt.action === 'trainPet' || receipt.action === 'resetStats' || receipt.action === 'allocateStat') {
+    if (receipt.action === 'resetStats' || receipt.action === 'allocateStat') {
         if (typeof playRetroSound === 'function') playRetroSound('statUp');
     } else if (receipt.action === 'drinkBrew') {
         if (typeof playRetroSound === 'function') playRetroSound('chug');
-    } else if (receipt.action === 'adoptPet') {
-        // === HIDE THE MENU UPON SUCCESSFUL SERVER PURCHASE ===
-        if (typeof playRetroSound === 'function') playRetroSound('coin');
-        let adoptionUI = document.getElementById('pet-adoption-ui');
-        if (adoptionUI) adoptionUI.style.display = "none";
     } else {
         if (typeof playRetroSound === 'function') playRetroSound('coin');
     }
@@ -1799,8 +1803,7 @@ if (data.item) {
         player.pendingLoot = player.pendingLoot || [];
         player.pendingLoot.push(data.item);
 
-        if (data.isPet) logMessage(`🐾 ${data.petName || (player.pet && player.pet.name) || "Companion"} joyfully dug up a hidden treasure!`);
-        else logMessage(`🎁 Found ${data.item.name} [${data.item.rarity}].`);
+        logMessage(`🎁 Found ${data.item.name} [${data.item.rarity}].`);
     }
 
     if (document.getElementById("loot-screen").style.display === "block") {
@@ -1929,6 +1932,7 @@ socket.on('combatDeployed', (serverCombatState) => {
 
     // Sync browser state to the Server's command
     player.statusEffects = {};
+    combatStartedFromJourney = !!getActiveExpeditionJourney();
     gameState = 'COMBAT';
 
     // STRICT GAME LOGIC: Always start waiting for the server's ATB tick
@@ -2758,7 +2762,6 @@ function setGameState(state) {
         && player.adventure.activeJourney;
     const unavailableAwayStates = new Set([
         'TOWN',
-        'MERCHANT',
         'VAULT',
         'MINIGAME_LUMBER',
         'MINIGAME_FISHING',
@@ -2774,10 +2777,14 @@ function setGameState(state) {
     // Remember where we just came from
     let previousState = gameState;
 
+    if (previousState === 'TOWN' && state !== 'TOWN' && typeof teardownWalkableTown === 'function') {
+        teardownWalkableTown();
+    }
+
     gameState = state;
 
     // Play the door sound when shifting to a non-combat environment
-    if (state === 'VAULT' || state === 'TOWN' || state === 'MERCHANT' || state === 'ADVENTURES') {
+    if (state === 'VAULT' || state === 'TOWN' || state === 'ADVENTURES') {
         if (typeof playRetroSound === 'function') playRetroSound('door');
     }
 

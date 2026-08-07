@@ -75,7 +75,6 @@ function makePlayer(overrides = {}) {
         roster: { companions: [], activeIds: [] },
         statusEffects: {},
         activeBuffs: [],
-        pet: { adopted: false, level: 1 },
         ...overrides
     };
 }
@@ -108,7 +107,7 @@ test('adventure state is server-authored and starting a route deploys its resolv
 
     harness.socket.dispatch('requestAdventureState');
     const initial = harness.socket.lastPayload('adventureState');
-    assert.equal(initial.schemaVersion, 2);
+    assert.equal(initial.schemaVersion, 3);
     assert.ok(initial.routes.some(route => route.id === 'route_old_road'));
 
     harness.socket.timeline.length = 0;
@@ -553,4 +552,44 @@ test('watchhouse preparation requires the finale contract and cannot change away
         harness.player.world.chapters.chapter_one.finale.selectedPreparationOptionId,
         'warded_approach'
     );
+});
+
+test('router resolves noncombat journey choices and completes a distance-three return outside combat rewards', () => {
+    const { finalizeCombatVictory } = require('../combatRewards.js');
+    const harness = createHarness();
+
+    harness.socket.dispatch('startExpedition', { routeId: 'route_pine_trail' });
+    assert.equal(harness.socket.lastPayload('adventureReceipt').combatDeployed, false);
+    let current = harness.player.adventure.activeJourney.currentInstance;
+    assert.ok(['puzzle', 'npc'].includes(current.type));
+    harness.socket.dispatch('resolveJourneyInstance', { optionId: current.options[0].id, pendingGold: 9999 });
+    let receipt = harness.socket.lastPayload('adventureReceipt');
+    assert.equal(receipt.outcome, 'combat_pending');
+    assert.equal(receipt.combatDeployed, false);
+    harness.socket.dispatch('continueJourney');
+    assert.equal(harness.socket.lastPayload('adventureReceipt').combatDeployed, true);
+    const outboundCombat = finalizeCombatVictory(harness.socket.id, {
+        activePlayers: harness.activePlayers,
+        activeCombats: harness.activeCombats,
+        io: harness.io
+    });
+    assert.equal(outboundCombat.adventureOutcome.outcome, 'destination_reached');
+    assert.equal(harness.player.adventure.discoveredLocationIds.includes('pine_trail'), true);
+
+    harness.socket.dispatch('beginExpeditionReturn');
+    assert.equal(harness.socket.lastPayload('adventureReceipt').combatDeployed, true);
+    const returnCombat = finalizeCombatVictory(harness.socket.id, {
+        activePlayers: harness.activePlayers,
+        activeCombats: harness.activeCombats,
+        io: harness.io
+    });
+    assert.equal(returnCombat.adventureOutcome.outcome, 'journey_continues');
+    current = harness.player.adventure.activeJourney.currentInstance;
+    harness.socket.dispatch('resolveJourneyInstance', { optionId: current.options[0].id });
+    receipt = harness.socket.lastPayload('adventureReceipt');
+    assert.equal(receipt.outcome, 'safe_return');
+    assert.equal(receipt.combatDeployed, false);
+    assert.equal(harness.player.adventure.activeJourney, null);
+    assert.ok(receipt.worldProgress);
+    assert.equal(harness.player.adventure.latestReturnReport.rewardGold, receipt.rewardGold);
 });

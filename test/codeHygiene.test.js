@@ -90,8 +90,7 @@ const allowedNonRuntimeExports = {
     ],
     'combatRewards.js': [
         'EXPEDITION_DEFEAT_GOLD',
-        'EXPEDITION_CAPTAIN_GOLD',
-        'rollPetVictoryLoot'
+        'EXPEDITION_CAPTAIN_GOLD'
     ],
     'combatTurnRecovery.js': [
         'PASS_STAMINA_RATIO_PER_UNUSED_ACTION',
@@ -146,7 +145,7 @@ const nonRuntimeExportReasons = {
     'combatParties.js': 'Party control queries retained for party-state diagnostics and unit tests.',
     'combatPlayback.js': 'Playback timing and lock controls retained for recovery tests.',
     'combatResources.js': 'Named balance constants retained as the resource-system configuration surface.',
-    'combatRewards.js': 'Reward constants and pet-loot rolling retained for deterministic reward tests.',
+    'combatRewards.js': 'Reward balance constants retained for deterministic combat and expedition tests.',
     'combatTurnRecovery.js': 'Recovery constant and calculator retained for turn-recovery tests.',
     'companionRoster.js': 'ID generation and hiring predicates retained for roster-domain tests.',
     'equipmentHandRules.js': 'Hand-rule predicates retained for equipment validation tests.',

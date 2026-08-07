@@ -39,6 +39,38 @@ async function isVisible(locator) {
     return locator.isVisible().catch(() => false);
 }
 
+async function walkToTownNpc(page, npcName) {
+    const npcButton = page.locator('#town-nearby-npcs').getByRole('button', {
+        name: new RegExp(`${npcName}$`, 'i')
+    });
+    await npcButton.waitFor({ state: 'visible', timeout: 15000 });
+    await npcButton.click();
+    await page.locator('#dialogue-overlay').waitFor({ state: 'visible', timeout: 15000 });
+    await page.locator('#dialogue-speaker-name').filter({ hasText: npcName }).waitFor();
+}
+
+async function chooseTownDialogue(page, name) {
+    const choice = page.locator('#dialogue-choice-menu').getByRole('button', { name });
+    await choice.waitFor({ state: 'visible', timeout: 15000 });
+    await choice.click();
+}
+
+async function readWalletGold(page) {
+    const goldText = await page.locator('#static-gold-display').textContent();
+    return {
+        text: goldText,
+        value: Number(String(goldText).match(/\d+/)?.[0] || 0)
+    };
+}
+
+async function waitForWalletGold(page, minimum) {
+    await page.waitForFunction(expected => {
+        const text = document.querySelector('#static-gold-display')?.textContent || '';
+        return Number(text.match(/\d+/)?.[0] || 0) >= expected;
+    }, minimum, { timeout: 15000 });
+    return readWalletGold(page);
+}
+
 async function moveFreshKnightOneTile(page) {
     const canvas = page.locator('#gameCanvas');
     const box = await canvas.boundingBox();
@@ -162,8 +194,16 @@ test('fresh account completes the Old Road discovery and safe-return loop in a r
     await page.getByRole('button', { name: /Adventures/ }).waitFor({ timeout: 15000 });
     assert.equal(await goldWallet.isVisible(), true);
 
-    await page.getByRole('button', { name: /Adventures/ }).click();
-    await page.getByRole('heading', { name: 'Missing Kegs' }).waitFor();
+    await page.locator('#nav-town').click();
+    await page.locator('#town-screen').waitFor({ state: 'visible', timeout: 15000 });
+    await walkToTownNpc(page, 'Kreg');
+    await chooseTownDialogue(page, /^Accept quest: Missing Kegs\b/);
+    await page.locator('#dialogue-choice-menu')
+        .getByRole('button', { name: /^Quest underway: Missing Kegs\b/ })
+        .waitFor({ state: 'visible', timeout: 15000 });
+    await chooseTownDialogue(page, 'Leave');
+
+    await page.locator('#nav-adventures').click();
     const oldRoadNode = page.getByRole('button', { name: /Old Road\. Open - Unscouted\./ });
     const pineTrailNode = page.getByRole('button', { name: /Pine Trail\. Open - Unscouted\./ });
     await oldRoadNode.waitFor();
@@ -180,7 +220,6 @@ test('fresh account completes the Old Road discovery and safe-return loop in a r
     await oldRoadNode.click();
     await explorationDetail.getByRole('heading', { name: 'Old Road' }).waitFor();
     assert.equal(await explorationDetail.getByRole('button', { name: 'Set Out for Old Road', exact: true }).isEnabled(), true);
-    await page.getByRole('button', { name: 'Accept Missing Kegs', exact: true }).click();
     await explorationDetail.getByRole('button', { name: 'Set Out for Old Road', exact: true }).click();
 
     await finishFreshBanditCombat(page, username);
@@ -198,29 +237,37 @@ test('fresh account completes the Old Road discovery and safe-return loop in a r
     }
     await page.getByRole('button', { name: 'Return to Tavern', exact: true }).click();
 
-    await page.getByRole('heading', { name: 'First Safe Return: The Old Road' }).waitFor({ timeout: 15000 });
-    await page.getByText(/Missing Kegs:.*ready to claim/).waitFor();
-    await page.getByRole('button', { name: 'Open Contract Board', exact: true }).click();
-    await page.getByRole('button', { name: 'Claim Missing Kegs - 75g', exact: true }).click();
-    const completedContracts = page.getByText('Completed contracts (1)', { exact: true });
-    await completedContracts.waitFor();
+    await page.locator('#town-screen').waitFor({ state: 'visible', timeout: 15000 });
+    await page.locator('#loot-screen').waitFor({ state: 'hidden', timeout: 15000 });
+    const safeReturnGold = await waitForWalletGold(page, 35);
+    assert.ok(safeReturnGold.value >= 35, `expected claimed safe-return rewards, saw ${safeReturnGold.text}`);
+
+    await walkToTownNpc(page, 'Kreg');
+    await chooseTownDialogue(page, /^Turn in quest: Missing Kegs\b/);
+    const paidGold = await waitForWalletGold(page, safeReturnGold.value + 75);
+    await page.locator('#dialogue-choice-menu')
+        .getByRole('button', { name: 'Talk', exact: true })
+        .waitFor({ state: 'visible', timeout: 15000 });
     assert.equal(
-        await completedContracts.evaluate(element => element === document.activeElement),
-        true,
-        'claiming a contract should move focus to completed contract history'
+        await page.locator('#dialogue-choice-menu')
+            .getByRole('button', { name: /^Turn in quest: Missing Kegs\b/ })
+            .count(),
+        0,
+        'Missing Kegs should disappear from Kreg\'s turn-in choices after payment'
     );
-    await page.getByRole('button', { name: 'Return to Town', exact: true }).click();
+    await chooseTownDialogue(page, 'Leave');
 
-    await page.getByRole('heading', { name: "Mara's Quartermaster Stall" }).waitFor();
-    await page.getByText('Quartermaster Stall Open', { exact: true }).first().waitFor();
-    await page.getByRole('button', { name: /Round Shield —/ }).click();
-    await page.getByText('Collected: Round Shield', { exact: true }).waitFor();
-    await page.getByRole('heading', { name: 'Town Diversions' }).waitFor();
-    await page.getByRole('button', { name: 'Visit Timber Camp', exact: true }).waitFor();
-    await page.getByRole('button', { name: 'Trade for Timber Crate', exact: true }).waitFor();
-
-    const goldText = await page.locator('#static-gold-display').textContent();
-    const gold = Number(String(goldText).match(/\d+/)?.[0] || 0);
-    assert.ok(gold >= 75, `expected contract payout in wallet, saw ${goldText}`);
+    await walkToTownNpc(page, 'Mara');
+    await chooseTownDialogue(page, 'Shop');
+    const shop = page.locator('#town-shop-overlay');
+    await shop.waitFor({ state: 'visible', timeout: 15000 });
+    await shop.getByRole('heading', { name: /Mara.*Road Stock/ }).waitFor();
+    await shop.getByRole('button', { name: /Round Shield/ }).waitFor();
+    assert.equal(
+        await page.getByRole('heading', { name: "Mara's Quartermaster Stall" }).count(),
+        0,
+        'the retired Quartermaster panel should not replace Mara\'s dialogue shop'
+    );
+    assert.ok(paidGold.value >= safeReturnGold.value + 75, `expected contract payout in wallet, saw ${paidGold.text}`);
     assert.deepEqual(browserErrors, []);
 });

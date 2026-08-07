@@ -4,11 +4,13 @@ const assert = require('node:assert/strict');
 const {
     beginExpedition,
     beginReturnTrip,
+    continueJourney,
     calculatePartyPower,
     getAdventureSnapshot,
     getPartyPowerBand,
     normalizeAdventureState,
     reconcileAdventureProgression,
+    resolveJourneyInstance,
     resolveRouteEncounterSelection,
     resolveRouteEncounterPool
 } = require('../adventureState.js');
@@ -63,14 +65,26 @@ function prepareWatchhouse(knight, optionId = 'warded_approach') {
     };
 }
 
-test('unknown branch nodes, routes, coordinates, and internal route stats stay out of a fresh snapshot', () => {
+test('unknown branch nodes are silhouetted while routes and internal route stats stay hidden', () => {
     const snapshot = getAdventureSnapshot(player());
 
-    assert.deepEqual(locationIds(snapshot), ['pub_hub', 'old_road', 'pine_trail']);
+    assert.deepEqual(locationIds(snapshot), [
+        'pub_hub',
+        'old_road',
+        'pine_trail',
+        'burnt_heath',
+        'toll_crossing',
+        'ruined_watchhouse'
+    ]);
     assert.deepEqual(routeIds(snapshot), ['route_old_road', 'route_pine_trail']);
     assert.deepEqual(Object.keys(snapshot.adventure.routeStats), ['route_old_road', 'route_pine_trail']);
-    assert.equal(snapshot.locations.some(location => location.id === 'burnt_heath'), false);
-    assert.equal(snapshot.locations.some(location => location.id === 'ruined_watchhouse'), false);
+    ['burnt_heath', 'toll_crossing', 'ruined_watchhouse'].forEach(locationId => {
+        const location = snapshot.locations.find(candidate => candidate.id === locationId);
+        assert.equal(location.discovered, false);
+        assert.equal(location.silhouetted, true);
+        assert.equal(location.name, 'Unknown Area');
+        assert.equal(location.description, null);
+    });
     assert.equal(snapshot.routes.some(route => route.id === 'route_toll_crossing'), false);
     snapshot.routes.forEach(route => {
         assert.equal(Object.hasOwn(route, 'encounterIds'), false);
@@ -167,7 +181,9 @@ test('watchhouse routes require a prepared finale and its active contract even w
     reconcileAdventureProgression(knight);
     const started = beginExpedition(knight, 'route_heath_watchhouse', { random: () => 0 });
     assert.equal(started.success, true);
-    assert.equal(started.encounterId, 'watchhouse_breach_heath_prepared');
+    assert.equal(started.currentInstance.type, 'weather');
+    resolveJourneyInstance(knight, started.currentInstance.options[0].id);
+    assert.equal(continueJourney(knight).encounterId, 'watchhouse_breach_heath_prepared');
 });
 
 test('a defeated or completed finale cannot replay the captain while an existing return journey remains valid', () => {

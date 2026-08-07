@@ -4,6 +4,8 @@ const assert = require('node:assert/strict');
 const {
     beginExpedition,
     beginReturnTrip,
+    continueJourney,
+    resolveJourneyInstance,
     getAdventureSnapshot,
     reconcileAdventureProgression
 } = require('../adventureState.js');
@@ -17,7 +19,9 @@ const {
     resolveDestinationInteraction,
     acceptChapterOneContract,
     claimChapterOneContract,
-    selectChapterOneFinalePreparation
+    selectChapterOneFinalePreparation,
+    advanceChapterOneDiscovery,
+    advanceChapterOneSafeReturn
 } = require('../chapterOneWorld.js');
 
 const SOCKET_ID = 'chapter-one-full-journey';
@@ -45,8 +49,7 @@ function makeFreshPlayer() {
         stash: [],
         roster: { companions: [], activeIds: [] },
         statusEffects: {},
-        activeBuffs: [],
-        pet: { adopted: false, level: 1 }
+        activeBuffs: []
     };
 }
 
@@ -88,12 +91,52 @@ function winStartedLeg(player, started, io) {
     return victory;
 }
 
+function applyNoncombatWorldProgress(player, outcome) {
+    if (outcome.outcome === 'destination_reached') {
+        advanceChapterOneDiscovery(player, {
+            locationId: outcome.journey.destinationLocationId,
+            routeId: outcome.journey.routeId
+        });
+    }
+    if (outcome.outcome === 'safe_return') {
+        const progress = advanceChapterOneSafeReturn(player, outcome.routeId);
+        if (player.adventure.latestReturnReport) {
+            player.adventure.latestReturnReport.worldContractUpdates = progress.completedObjectiveIds || [];
+            player.adventure.latestReturnReport.rewardChoiceOffered = progress.rewardChoiceOffered === true;
+        }
+    }
+    return outcome;
+}
+
+function finishDirection(player, started, io, expectedEncounterId) {
+    let victory = { adventureOutcome: started };
+    let outcome = started;
+    let pendingCombat = started.combatRequired ? started : null;
+    let firstEncounterId = null;
+    while (!['destination_reached', 'safe_return'].includes(outcome.outcome)) {
+        const journey = player.adventure.activeJourney;
+        assert.ok(journey, `Journey ended before arrival: ${JSON.stringify(outcome)}`);
+        if (journey.currentInstance.kind === 'combat') {
+            const continued = pendingCombat || continueJourney(player);
+            if (!firstEncounterId) firstEncounterId = continued.encounterId;
+            victory = winStartedLeg(player, continued, io);
+            outcome = victory.adventureOutcome;
+            pendingCombat = null;
+        } else {
+            outcome = applyNoncombatWorldProgress(
+                player,
+                resolveJourneyInstance(player, journey.currentInstance.options[0].id)
+            );
+        }
+    }
+    if (expectedEncounterId) assert.equal(firstEncounterId, expectedEncounterId);
+    return { ...victory, adventureOutcome: outcome };
+}
+
 function reachDestination(player, routeId, io, expectedEncounterId) {
     const started = beginExpedition(player, routeId, { random: () => 0 });
     assert.equal(started.success, true, started.message || started.code);
-    if (expectedEncounterId) assert.equal(started.encounterId, expectedEncounterId);
-
-    const victory = winStartedLeg(player, started, io);
+    const victory = finishDirection(player, started, io, expectedEncounterId);
     assert.equal(victory.adventureOutcome.outcome, 'destination_reached');
     assert.equal(player.adventure.activeJourney.routeId, routeId);
     assert.equal(player.adventure.activeJourney.phase, 'AT_DESTINATION');
@@ -103,9 +146,7 @@ function reachDestination(player, routeId, io, expectedEncounterId) {
 function returnSafely(player, io, expectedEncounterId) {
     const started = beginReturnTrip(player, { random: () => 0 });
     assert.equal(started.success, true, started.message || started.code);
-    if (expectedEncounterId) assert.equal(started.encounterId, expectedEncounterId);
-
-    const victory = winStartedLeg(player, started, io);
+    const victory = finishDirection(player, started, io, expectedEncounterId);
     assert.equal(victory.adventureOutcome.outcome, 'safe_return');
     assert.equal(player.adventure.activeJourney, null);
     assert.ok(player.pendingGold > 0, 'safe-return gold was not placed in expedition escrow');
@@ -148,7 +189,7 @@ test('a fresh knight can complete Chapter One through both branches and the prep
     reachDestination(player, 'route_burnt_heath', io, 'hedge_fire');
     assert.equal(contract(player, 'ashes_on_the_heath').objectives.defeat_heath_signalers.complete, true);
     assert.equal(resolveDestinationInteraction(player, 'trace_heath_signal', 60).success, true);
-    returnSafely(player, io, 'heath_smoke_screen');
+    returnSafely(player, io, 'hedge_fire');
     assert.equal(contract(player, 'ashes_on_the_heath').status, 'claimable');
     assert.equal(claimChapterOneContract(player, 'ashes_on_the_heath', 70).success, true);
 
@@ -217,7 +258,7 @@ test('a fresh knight can complete Chapter One through both branches and the prep
 
     assert.equal(
         io.emitted.filter(entry => entry.eventName === 'adventureProgress').length,
-        10,
-        'five round trips should publish progress for both combat legs'
+        14,
+        'distance-scaled round trips should publish progress for every combat leg'
     );
 });

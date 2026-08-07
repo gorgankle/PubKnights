@@ -1,11 +1,11 @@
-// --- EXPEDITION MAP & CONTRACT BOARD ---
+// --- EXPEDITION MAP & TOWN QUESTS ---
 // The browser selects only catalog IDs. Routes, encounters, progress, and rewards
 // are always resolved by the server.
 
 let adventureViewSnapshot = null;
 let selectedAdventureRouteId = null;
 let adventureRequestPending = false;
-let pendingClaimedContractFocusId = null;
+let worldMapPreviousFocus = null;
 
 function asAdventureList(value) {
     if (Array.isArray(value)) return value;
@@ -94,6 +94,8 @@ function applyAdventurePayload(payload, options = {}) {
             adventure: adventure || getClientAdventureState(),
             locations,
             routes,
+            allLocations: rawLocations,
+            allRoutes: rawRoutes,
             contracts,
             world,
             partyPower: snapshot && snapshot.partyPower && typeof snapshot.partyPower === 'object'
@@ -110,8 +112,9 @@ function applyAdventurePayload(payload, options = {}) {
     adventureRequestPending = false;
     if (options.persist === true && typeof saveGame === 'function') saveGame();
     renderTownWorldState();
-    renderAdventureBoard();
+    renderAdventureScreen();
     renderTavernReturnReport();
+    if (typeof renderWalkableTown === 'function') renderWalkableTown();
 }
 
 function requestAdventureState() {
@@ -356,40 +359,25 @@ function renderTavernReturnPortrait() {
     }
 }
 
-function openTavernAdventureBoard() {
-    if (typeof setGameState === 'function') setGameState('ADVENTURES');
+function openTavernKregConversation() {
+    if (typeof setGameState === 'function') setGameState('TOWN');
     if (typeof setTimeout !== 'function') return;
     setTimeout(() => {
-        const panel = document.querySelector('.adventure-bounty-panel');
-        if (!panel) return;
-        const heading = panel.querySelector('h3');
-        const focusTarget = heading || panel;
-        focusTarget.setAttribute('tabindex', '-1');
-        if (typeof focusTarget.focus === 'function') focusTarget.focus({ preventScroll: true });
-        if (typeof panel.scrollIntoView === 'function') {
-            const reducedMotion = typeof window !== 'undefined'
-                && typeof window.matchMedia === 'function'
-                && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-            panel.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
-        }
+        if (typeof walkToTownNpc === 'function') walkToTownNpc('kreg');
     }, 0);
 }
 
 function openChapterOneTownService(actionId) {
     if (actionId !== 'review_watchhouse_preparations') return;
-    if (typeof setGameState === 'function') setGameState('ADVENTURES');
-    const preparations = document.getElementById('chapter-preparation-list');
-    if (preparations && typeof preparations.scrollIntoView === 'function') {
-        preparations.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    if (typeof setGameState === 'function') setGameState('TOWN');
+    if (typeof logMessage === 'function') logMessage('Review the watchhouse plan with Tilda, Marlow, or Kreg.');
 }
 
 function reviewTavernCrewGear() {
     if (typeof setGameState === 'function') setGameState('TOWN');
-    const stall = document.getElementById('quartermaster-panel');
-    if (stall && typeof stall.scrollIntoView === 'function') {
-        stall.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    if (typeof setTimeout === 'function') setTimeout(() => {
+        if (typeof walkToTownNpc === 'function') walkToTownNpc('mara');
+    }, 0);
 }
 
 function renderTavernReturnReport() {
@@ -566,7 +554,7 @@ function selectAdventureRoute(routeId) {
     if (!route) return;
     selectedAdventureRouteId = route.id;
     if (typeof playRetroSound === 'function') playRetroSound('menu');
-    renderAdventureBoard();
+    renderAdventureScreen();
     if (
         typeof window !== 'undefined'
         && typeof window.matchMedia === 'function'
@@ -588,19 +576,59 @@ function selectAdventureRoute(routeId) {
     }
 }
 
+function selectExpandedWorldMapRoute(routeId) {
+    const activeJourney = getClientAdventureState().activeJourney || null;
+    closeWorldMap();
+    if (!activeJourney && typeof setGameState === 'function') {
+        setGameState('ADVENTURES');
+    }
+    selectAdventureRoute(routeId);
+    if (typeof setTimeout !== 'function') return;
+    setTimeout(() => {
+        const detail = document.getElementById('exploration-detail');
+        if (!detail) return;
+        const focusTarget = detail.querySelector('h3') || detail;
+        focusTarget.setAttribute('tabindex', '-1');
+        if (typeof focusTarget.focus === 'function') {
+            focusTarget.focus({ preventScroll: true });
+        }
+        if (typeof detail.scrollIntoView === 'function') {
+            detail.scrollIntoView({ block: 'start' });
+        }
+    }, 0);
+}
+
 function startSelectedExpedition() {
     const route = getAdventureRoute(selectedAdventureRouteId);
     if (!route || !isRouteUnlocked(route) || adventureRequestPending) return;
     adventureRequestPending = true;
-    renderAdventureBoard();
+    renderAdventureScreen();
     socket.emit('startExpedition', { routeId: route.id });
 }
 
 function beginExpeditionReturn() {
     if (adventureRequestPending) return;
     adventureRequestPending = true;
-    renderAdventureBoard();
+    renderAdventureScreen();
     socket.emit('beginExpeditionReturn');
+}
+
+function continueAdventureJourney() {
+    if (adventureRequestPending) return;
+    const journey = getClientAdventureState().activeJourney;
+    if (!journey || journey.combatPending !== true) return;
+    adventureRequestPending = true;
+    renderAdventureScreen();
+    socket.emit('continueJourney');
+}
+
+function resolveAdventureJourneyInstance(optionId) {
+    if (!optionId || adventureRequestPending) return;
+    const journey = getClientAdventureState().activeJourney;
+    if (!journey || !journey.currentInstance || journey.currentInstance.kind === 'combat') return;
+    adventureRequestPending = true;
+    renderAdventureScreen();
+    socket.emit('resolveJourneyInstance', { optionId });
 }
 
 function abandonExpedition() {
@@ -608,29 +636,28 @@ function abandonExpedition() {
     if (!adventure.activeJourney || adventureRequestPending) return;
     if (!confirm('Abandon this expedition? The safe-return bonus and current contract delivery will be forfeited.')) return;
     adventureRequestPending = true;
-    renderAdventureBoard();
+    renderAdventureScreen();
     socket.emit('abandonExpedition');
 }
 
 function acceptAdventureContract(contractId) {
     if (!contractId || adventureRequestPending) return;
     adventureRequestPending = true;
-    renderAdventureBoard();
+    renderAdventureScreen();
     socket.emit('acceptContract', { contractId });
 }
 
 function claimAdventureContract(contractId) {
     if (!contractId || adventureRequestPending) return;
-    pendingClaimedContractFocusId = contractId;
     adventureRequestPending = true;
-    renderAdventureBoard();
+    renderAdventureScreen();
     socket.emit('claimContract', { contractId });
 }
 
 function resolveAdventureDestinationInteraction(interactionId) {
     if (!interactionId || adventureRequestPending) return;
     adventureRequestPending = true;
-    renderAdventureBoard();
+    renderAdventureScreen();
     socket.emit('resolveDestinationInteraction', { interactionId });
 }
 
@@ -944,18 +971,26 @@ function renderTownWorldState() {
     });
 }
 
-function renderExplorationMap(activeJourney) {
-    const map = document.getElementById('exploration-map');
+function renderExplorationMapInto(map, activeJourney, options = {}) {
     if (!map) return;
     map.innerHTML = '';
 
-    if (!adventureViewSnapshot || adventureViewSnapshot.locations.length === 0) {
-        map.innerHTML = '<div class="exploration-map-empty">Road records are unavailable. Reopen the Adventure Board to try again.</div>';
+    const expanded = options.expanded === true;
+    const locations = adventureViewSnapshot
+        ? (expanded
+            ? (adventureViewSnapshot.allLocations || adventureViewSnapshot.locations)
+            : adventureViewSnapshot.locations)
+        : [];
+    const routes = adventureViewSnapshot
+        ? (expanded
+            ? (adventureViewSnapshot.allRoutes || adventureViewSnapshot.routes)
+            : adventureViewSnapshot.routes)
+        : [];
+    if (!locations || locations.length === 0) {
+        map.innerHTML = '<div class="exploration-map-empty">Road records are unavailable. Ask around town and try again.</div>';
         return;
     }
 
-    const locations = adventureViewSnapshot.locations;
-    const routes = adventureViewSnapshot.routes;
     const positions = new Map();
     locations.forEach((location, index) => {
         positions.set(location.id, getLocationPosition(location, index, locations.length));
@@ -975,7 +1010,7 @@ function renderExplorationMap(activeJourney) {
         line.setAttribute('x2', to.x);
         line.setAttribute('y2', to.y);
         let className = 'exploration-route-line';
-        if (!isRouteUnlocked(route)) className += ' is-locked';
+        if (!isCurrentChapterCatalogItem(route) || !isRouteUnlocked(route)) className += ' is-locked';
         if (activeJourney && activeJourney.routeId === route.id) className += ' is-active';
         line.setAttribute('class', className);
         svg.appendChild(line);
@@ -987,8 +1022,11 @@ function renderExplorationMap(activeJourney) {
         const destinationRoutes = routes.filter(route => getRouteDestinationId(route) === location.id);
         const destinationRoute = choosePreferredRouteToLocation(location.id);
         const isHome = !!(location.isHome || /pub|tavern/i.test(location.id || ''));
-        const discovered = location.discovered !== false;
-        const unlocked = isHome || destinationRoutes.some(isRouteUnlocked);
+        const currentChapter = isCurrentChapterCatalogItem(location);
+        const discovered = currentChapter && location.discovered !== false;
+        const unlocked = discovered && (isHome || destinationRoutes.some(route => (
+            isCurrentChapterCatalogItem(route) && isRouteUnlocked(route)
+        )));
         const isSelected = destinationRoutes.some(route => route.id === selectedAdventureRouteId);
         const isActive = activeJourney && (
             activeJourney.destinationLocationId === location.id
@@ -1006,20 +1044,88 @@ function renderExplorationMap(activeJourney) {
         if (!unlocked) node.className += ' is-locked';
         if (availability) node.className += ` ${availability.className}`;
         if (!discovered) node.className += ' is-hidden';
+        if (expanded && !discovered) node.className += ' is-silhouetted';
         node.style.left = `${position.x}%`;
         node.style.top = `${position.y}%`;
         node.disabled = !discovered || isHome || !destinationRoute;
-        const symbol = discovered ? (location.symbol || location.icon || (isHome ? 'PUB' : 'X')) : '?';
-        const name = discovered ? (location.name || location.id) : 'Unknown Road';
+        const symbol = discovered ? (location.symbol || location.icon || (isHome ? 'PUB' : 'X')) : '◆';
+        const name = discovered ? (location.name || location.id) : 'Undiscovered Area';
         const status = isHome
             ? 'Home'
-            : (availability ? availability.label : (unlocked ? 'Open' : 'Locked'));
+            : (discovered
+                ? (availability ? availability.label : (unlocked ? 'Open' : 'Locked'))
+                : 'Silhouette');
         const canSelect = discovered && !isHome && !!destinationRoute;
         node.setAttribute('aria-label', `${name}. ${status}.${canSelect ? ' Select for route details.' : ''}`);
         node.innerHTML = `<span class="node-symbol">${escapeAdventureHtml(symbol)}</span><span class="node-name">${escapeAdventureHtml(name)}</span><span class="node-status">${escapeAdventureHtml(status)}</span>`;
-        if (destinationRoute && discovered) node.onclick = () => selectAdventureRoute(destinationRoute.id);
+        if (destinationRoute && discovered) {
+            node.onclick = expanded
+                ? () => selectExpandedWorldMapRoute(destinationRoute.id)
+                : () => selectAdventureRoute(destinationRoute.id);
+        }
         map.appendChild(node);
     });
+}
+
+function renderExplorationMap(activeJourney) {
+    renderExplorationMapInto(document.getElementById('exploration-map'), activeJourney);
+    const overlay = document.getElementById('world-map-overlay');
+    if (overlay && !overlay.hidden) {
+        renderExplorationMapInto(
+            document.getElementById('world-map-expanded'),
+            activeJourney,
+            { expanded: true }
+        );
+    }
+}
+
+function handleWorldMapKeydown(event) {
+    const overlay = document.getElementById('world-map-overlay');
+    if (!overlay || overlay.hidden) return;
+    if (event.key === 'Escape') {
+        event.preventDefault();
+        closeWorldMap();
+        return;
+    }
+    if (event.key !== 'Tab') return;
+    const focusables = Array.from(overlay.querySelectorAll('button:not(:disabled)'));
+    if (!focusables.length) return;
+    const activeIndex = focusables.indexOf(document.activeElement);
+    if (event.shiftKey && activeIndex <= 0) {
+        event.preventDefault();
+        focusables[focusables.length - 1].focus({ preventScroll: true });
+    } else if (!event.shiftKey && activeIndex === focusables.length - 1) {
+        event.preventDefault();
+        focusables[0].focus({ preventScroll: true });
+    }
+}
+
+function openWorldMap() {
+    if (typeof document === 'undefined') return;
+    const overlay = document.getElementById('world-map-overlay');
+    if (!overlay) return;
+    worldMapPreviousFocus = document.activeElement;
+    overlay.hidden = false;
+    renderExplorationMapInto(
+        document.getElementById('world-map-expanded'),
+        getClientAdventureState().activeJourney || null,
+        { expanded: true }
+    );
+    overlay.addEventListener('keydown', handleWorldMapKeydown);
+    const closeButton = document.getElementById('world-map-close');
+    if (closeButton && typeof closeButton.focus === 'function') closeButton.focus({ preventScroll: true });
+}
+
+function closeWorldMap() {
+    if (typeof document === 'undefined') return;
+    const overlay = document.getElementById('world-map-overlay');
+    if (!overlay) return;
+    overlay.hidden = true;
+    overlay.removeEventListener('keydown', handleWorldMapKeydown);
+    if (worldMapPreviousFocus && typeof worldMapPreviousFocus.focus === 'function') {
+        worldMapPreviousFocus.focus({ preventScroll: true });
+    }
+    worldMapPreviousFocus = null;
 }
 
 function renderEncounterReportsMarkup(route) {
@@ -1051,6 +1157,58 @@ function renderEncounterReportsMarkup(route) {
         : ''}`;
 }
 
+function getJourneyProgressPresentation(journey) {
+    const legCount = Math.max(1, Number(journey && journey.legCount) || 1);
+    const legIndex = Math.max(1, Math.min(legCount, Number(journey && journey.legIndex) || 1));
+    const direction = String(journey && journey.direction || 'OUTBOUND').toUpperCase() === 'RETURN'
+        ? 'Return journey'
+        : 'Outward journey';
+    return {
+        legIndex,
+        legCount,
+        direction,
+        percent: Math.max(4, Math.round((legIndex / legCount) * 100))
+    };
+}
+
+function renderJourneyProgressMarkup(journey) {
+    const progress = getJourneyProgressPresentation(journey);
+    return `
+        <div class="journey-progress-card" aria-label="${escapeAdventureHtml(progress.direction)}, leg ${progress.legIndex} of ${progress.legCount}">
+            <div class="journey-progress-heading"><strong>${escapeAdventureHtml(progress.direction)}</strong><span>Leg ${progress.legIndex} / ${progress.legCount}</span></div>
+            <div class="journey-progress-track" aria-hidden="true"><span style="width:${progress.percent}%"></span></div>
+            <small>${progress.legCount === 1 ? 'A short road with one travel instance.' : `${progress.legCount - progress.legIndex} travel instance${progress.legCount - progress.legIndex === 1 ? '' : 's'} remain on this leg.`}</small>
+        </div>`;
+}
+
+function renderJourneyInstanceMarkup(journey) {
+    const instance = journey && journey.currentInstance;
+    if (!instance) return '';
+    const type = String(instance.type || instance.kind || 'event').replace(/[-_]+/g, ' ');
+    const isCombat = instance.kind === 'combat' || instance.type === 'combat';
+    const options = asAdventureList(instance.options);
+    return `
+        <section class="journey-instance-card" aria-labelledby="journey-instance-title">
+            <div class="journey-instance-header">
+                <h4 id="journey-instance-title">${escapeAdventureHtml(instance.title || 'Road Encounter')}</h4>
+                <span class="journey-instance-type">${escapeAdventureHtml(type)}</span>
+            </div>
+            <p>${escapeAdventureHtml(instance.description || 'Something on the road needs the party’s attention.')}</p>
+            ${isCombat && journey.combatPending === true
+                ? '<button type="button" id="continue-journey-btn" class="journey-continue-button">Continue to Encounter</button>'
+                : ''}
+            ${!isCombat && options.length ? `<div class="journey-instance-options">${options.map(option => `
+                <button type="button" data-journey-option-id="${escapeAdventureHtml(option.id)}">
+                    <strong>${escapeAdventureHtml(option.label || option.id)}</strong>
+                    ${option.description ? `<span>${escapeAdventureHtml(option.description)}</span>` : ''}
+                    ${Math.max(0, Number(option.costGold) || 0) > 0 ? `<small>Costs ${Math.max(0, Number(option.costGold) || 0)}g</small>` : ''}
+                </button>`).join('')}</div>` : ''}
+            ${isCombat && journey.combatPending !== true
+                ? '<p class="adventure-muted">The combat encounter is being resolved.</p>'
+                : ''}
+        </section>`;
+}
+
 function renderExplorationDetail(activeJourney) {
     const detail = document.getElementById('exploration-detail');
     if (!detail) return;
@@ -1060,7 +1218,7 @@ function renderExplorationDetail(activeJourney) {
         const destination = getAdventureLocation(destinationId);
         const destinationName = destination ? destination.name : 'the destination';
         const phase = String(activeJourney.phase || '').toUpperCase();
-        const atDestination = phase === 'AT_DESTINATION' || activeJourney.reachedDestination === true;
+        const atDestination = phase === 'AT_DESTINATION';
         const escrow = getExpeditionEscrowSummary(
             typeof player !== 'undefined' ? player : null
         );
@@ -1070,7 +1228,9 @@ function renderExplorationDetail(activeJourney) {
             <p><b>${escapeAdventureHtml(destinationName)}</b></p>
             <p>${atDestination
                 ? 'The outward leg is complete. Rewards and contract progress are secured only after the party survives the return to the pub.'
-                : 'The party is committed to this travel leg.'}</p>
+                : `${String(activeJourney.direction || 'OUTBOUND').toUpperCase() === 'RETURN' ? 'The party is making its way home.' : 'The party is advancing toward its destination.'} Resolve each road instance to continue.`}</p>
+            ${atDestination ? '' : renderJourneyProgressMarkup(activeJourney)}
+            ${atDestination ? '' : renderJourneyInstanceMarkup(activeJourney)}
             ${atDestination ? `
                 <div class="expedition-escrow-summary">
                     <strong>Expedition escrow at risk</strong><br>
@@ -1088,6 +1248,17 @@ function renderExplorationDetail(activeJourney) {
                 button.getAttribute('data-destination-interaction-id')
             );
         });
+        detail.querySelectorAll('[data-journey-option-id]').forEach(button => {
+            button.disabled = adventureRequestPending;
+            button.onclick = () => resolveAdventureJourneyInstance(
+                button.getAttribute('data-journey-option-id')
+            );
+        });
+        const continueButton = document.getElementById('continue-journey-btn');
+        if (continueButton) {
+            continueButton.disabled = adventureRequestPending;
+            continueButton.onclick = continueAdventureJourney;
+        }
         const returnButton = document.getElementById('begin-return-trip-btn');
         if (returnButton) {
             returnButton.disabled = adventureRequestPending;
@@ -1120,7 +1291,7 @@ function renderExplorationDetail(activeJourney) {
 
     detail.innerHTML = `
         <h3>${escapeAdventureHtml(destination ? destination.name : route.name || route.id)}</h3>
-        <p>${escapeAdventureHtml((destination && destination.description) || route.description || 'Route description unavailable. Reopen the Adventure Board to refresh its road record.')}</p>
+        <p>${escapeAdventureHtml((destination && destination.description) || route.description || 'Route description unavailable. Reopen the journey screen to refresh its road record.')}</p>
         ${unlocked ? `<div class="route-open-callout ${escapeAdventureHtml(availability.className)}">
             <strong>${escapeAdventureHtml(availability.label)}</strong>
             <span>No contract is required for this route. Use Set Out below to begin the trip.</span>
@@ -1224,184 +1395,8 @@ function getContractObjectivePresentation(contract) {
     });
 }
 
-function renderContractObjectiveItemsMarkup(objectives, nextObjectiveIndex) {
-    return `<ul class="bounty-objectives">${objectives.map((objective, index) => {
-        const isNext = !objective.complete && index === nextObjectiveIndex;
-        const stateLabel = objective.complete
-            ? 'Done'
-            : (objective.target > 1 ? `${objective.progress}/${objective.target}` : (isNext ? 'Next' : ''));
-        return `
-            <li class="${objective.complete ? 'is-complete' : ''}${isNext ? ' is-next' : ''}">
-                <span class="objective-marker" aria-hidden="true">${objective.complete ? '&#10003;' : (isNext ? '&rarr;' : '&#9675;')}</span>
-                <span class="objective-copy"><span class="sr-only">${objective.complete ? 'Complete' : 'Incomplete'}: </span>${escapeAdventureHtml(objective.description)}</span>
-                ${stateLabel ? `<span class="objective-state">${escapeAdventureHtml(stateLabel)}</span>` : ''}
-            </li>
-        `;
-    }).join('')}</ul>`;
-}
-
-function renderContractObjectivesMarkup(contract) {
-    const objectives = getContractObjectivePresentation(contract);
-    if (!objectives.length) return '';
-    const completedCount = objectives.filter(objective => objective.complete).length;
-    if (completedCount === objectives.length) {
-        return '<div class="contract-objectives-complete"><span aria-hidden="true">&#10003;</span> All objectives complete</div>';
-    }
-    const nextObjectiveIndex = objectives.findIndex(objective => !objective.complete);
-    if (objectives.length >= 4) {
-        const nextObjective = objectives[nextObjectiveIndex];
-        return `
-            <div class="contract-next-step">
-                <span class="contract-section-label">Next step</span>
-                <p><span aria-hidden="true">&rarr;</span> ${escapeAdventureHtml(nextObjective.description)}${nextObjective.target > 1 ? ` <b>${nextObjective.progress}/${nextObjective.target}</b>` : ''}</p>
-            </div>
-            <details class="contract-objectives-disclosure">
-                <summary>View all objectives <span>${completedCount}/${objectives.length}</span></summary>
-                ${renderContractObjectiveItemsMarkup(objectives, nextObjectiveIndex)}
-            </details>
-        `;
-    }
-    return `
-        <div class="contract-objective-block">
-            <span class="contract-section-label">Steps</span>
-            ${renderContractObjectiveItemsMarkup(objectives, nextObjectiveIndex)}
-        </div>
-    `;
-}
-
-function createContractCard(contract, adventure, options = {}) {
-    const view = getContractStatusPresentation(contract);
-    const compact = options.compact === true;
-    const title = contract.title || contract.id || 'Untitled contract';
-    const safeDomId = String(contract.id || title).replace(/[^a-z0-9_-]+/gi, '-');
-    const titleId = `contract-title-${safeDomId}`;
-    const rewardGold = Math.max(0, Number(contract.rewardGold) || 0);
-    const contractRouteIds = [...new Set([
-        contract.routeId,
-        ...asAdventureList(contract.routeIds)
-    ].filter(Boolean))];
-    const contractRoutes = contractRouteIds.map(getAdventureRoute).filter(Boolean);
-    const routeName = contractRoutes.length
-        ? contractRoutes.map(route => route.name).join(' / ')
-        : 'Route revealed by the contract';
-    const dangerLabels = [...new Set(contractRoutes
-        .map(route => route.dangerLabel || route.danger)
-        .filter(Boolean))];
-    const danger = dangerLabels.length ? dangerLabels.join(' / ') : 'Uncertain';
-    const issuer = contract.issuerName || 'Pub contract board';
-    const typeLabel = contract.repeatable === true || contract.type === 'repeatable'
-        ? 'Repeatable'
-        : 'Story';
-
-    const card = document.createElement('article');
-    card.className = `bounty-card is-${view.status}${compact ? ' is-history' : ''}`;
-    card.setAttribute('aria-labelledby', titleId);
-    const copy = document.createElement('div');
-    copy.className = 'bounty-card-copy';
-    copy.innerHTML = `
-        <header class="bounty-card-header">
-            <div class="bounty-badges">
-                <span class="contract-status-badge ${view.className}">${escapeAdventureHtml(view.label)}</span>
-                <span class="contract-type-badge">${escapeAdventureHtml(typeLabel)}</span>
-            </div>
-            <span class="bounty-contract-pay"><small>Contract pay</small><strong>${rewardGold}g</strong></span>
-        </header>
-        <h4 id="${escapeAdventureHtml(titleId)}">${escapeAdventureHtml(title)}</h4>
-        ${compact ? `
-            <p class="bounty-history-meta">Issued by ${escapeAdventureHtml(issuer)}</p>
-        ` : `
-            <p class="bounty-description">${escapeAdventureHtml(contract.description || 'Complete the posted objectives and return safely.')}</p>
-            <p class="bounty-meta">
-                <span>From ${escapeAdventureHtml(issuer)}</span>
-                <span>${escapeAdventureHtml(routeName)}</span>
-                <span>${escapeAdventureHtml(danger)} danger</span>
-            </p>
-            ${renderContractObjectivesMarkup(contract)}
-        `}
-    `;
-    card.appendChild(copy);
-
-    if (!compact) {
-        const actionRow = document.createElement('footer');
-        actionRow.className = 'bounty-action-row';
-        const routePay = document.createElement('span');
-        routePay.className = 'bounty-route-pay';
-        routePay.textContent = `Road return: ${getContractRoutePayPresentation(contractRoutes)}`;
-        actionRow.appendChild(routePay);
-
-        if (view.status === 'claimable' || view.status === 'available') {
-            const button = document.createElement('button');
-            button.type = 'button';
-            if (view.status === 'claimable') {
-                button.textContent = `Claim ${title} - ${rewardGold}g`;
-                button.onclick = () => claimAdventureContract(contract.id);
-            } else {
-                button.textContent = `Accept ${title}`;
-                button.onclick = () => acceptAdventureContract(contract.id);
-            }
-            if (adventureRequestPending || (adventure && adventure.activeJourney)) button.disabled = true;
-            actionRow.appendChild(button);
-        } else {
-            const note = document.createElement('span');
-            note.className = 'bounty-action-note';
-            note.textContent = view.status === 'active'
-                ? 'Follow the highlighted next step.'
-                : 'Requirements not met yet.';
-            actionRow.appendChild(note);
-        }
-        card.appendChild(actionRow);
-    }
-    return card;
-}
-
-function renderBountyBoard(adventure) {
-    const list = document.getElementById('bounty-list');
-    if (!list) return;
-    const contracts = adventureViewSnapshot
-        ? (adventureViewSnapshot.contracts || [])
-        : [];
-    if (!contracts.length) {
-        list.innerHTML = '<p class="adventure-muted">No contracts have been posted yet.</p>';
-        return;
-    }
-    const sortedContracts = sortAdventureContracts(contracts);
-    const currentContracts = sortedContracts.filter(contract => getContractStatus(contract) !== 'completed');
-    const completedContracts = sortedContracts.filter(contract => getContractStatus(contract) === 'completed');
-
-    list.innerHTML = '';
-    currentContracts.forEach(contract => {
-        list.appendChild(createContractCard(contract, adventure));
-    });
-    if (completedContracts.length) {
-        const history = document.createElement('details');
-        history.className = 'contract-history';
-        const summary = document.createElement('summary');
-        summary.className = 'contract-history-summary';
-        summary.textContent = `Completed contracts (${completedContracts.length})`;
-        history.appendChild(summary);
-        const historyList = document.createElement('div');
-        historyList.className = 'contract-history-list';
-        completedContracts.forEach(contract => {
-            historyList.appendChild(createContractCard(contract, adventure, { compact: true }));
-        });
-        history.appendChild(historyList);
-        list.appendChild(history);
-
-        const claimedContractIsNowComplete = completedContracts.some(
-            contract => contract && contract.id === pendingClaimedContractFocusId
-        );
-        if (claimedContractIsNowComplete) {
-            pendingClaimedContractFocusId = null;
-            setTimeout(() => {
-                const focusTarget = document.querySelector('.contract-history-summary');
-                if (focusTarget && typeof focusTarget.focus === 'function') focusTarget.focus();
-            }, 0);
-        }
-    }
-}
-
 function updateAdventureNavigation(activeJourney) {
-    ['nav-town', 'nav-tavern', 'nav-vault'].forEach(id => {
+    ['nav-town', 'nav-vault'].forEach(id => {
         const button = document.getElementById(id);
         if (button) button.disabled = !!activeJourney;
     });
@@ -1415,7 +1410,7 @@ function updateAdventureNavigation(activeJourney) {
     });
 }
 
-function renderAdventureBoard() {
+function renderAdventureScreen() {
     const map = document.getElementById('exploration-map');
     if (!map) return;
     if (!adventureViewSnapshot) {
@@ -1451,15 +1446,14 @@ function renderAdventureBoard() {
             ? selectedDestination.name
             : (selectedRoute && selectedRoute.name);
         banner.textContent = activeJourney
-            ? `The party is away from the pub. Complete the return leg to bank its travel reward and advance relevant contract objectives.${powerSummary}`
+            ? `The party is away from the pub. Resolve the current road instance and complete the return journey to bank its rewards.${powerSummary}`
             : (safeReturns === 0
-                ? `Both roads marked Open are available from the start. ${selectedName ? `${selectedName} is selected; review its briefing and press Set Out.` : 'Select either road to review it.'} Contracts are optional.${powerSummary}`
-                : `Choose a road freely. Encounter reports describe possibilities, not a prescribed order.${powerSummary}`);
+                ? `Both roads marked Open are available from the start. ${selectedName ? `${selectedName} is selected; review its briefing and press Set Out.` : 'Select either road to review it.'} Speak with townsfolk for quests before departing.${powerSummary}`
+                : `Choose a road freely. Encounter reports describe possibilities; townsfolk handle quests and payment.${powerSummary}`);
     }
 
     renderExplorationMap(activeJourney);
     renderExplorationDetail(activeJourney);
-    renderBountyBoard(adventure);
     updateAdventureNavigation(activeJourney);
 }
 
@@ -1467,10 +1461,40 @@ if (typeof socket !== 'undefined' && socket) {
     socket.on('adventureState', applyAdventurePayload);
     socket.on('adventureReceipt', payload => {
         applyAdventurePayload(payload);
-        if (payload && payload.success === false) pendingClaimedContractFocusId = null;
+        if (typeof resumeTownNpcConversationAfterReceipt === 'function') {
+            resumeTownNpcConversationAfterReceipt();
+        }
         if (payload && payload.message && typeof logMessage === 'function') logMessage(payload.message);
         if (payload && payload.success === false && typeof playRetroSound === 'function') playRetroSound('error');
         if (payload && payload.success !== false && typeof saveGame === 'function') saveGame();
+        const activeJourney = getClientAdventureState().activeJourney || null;
+        if (
+            payload
+            && payload.success !== false
+            && payload.outcome === 'safe_return'
+            && !activeJourney
+        ) {
+            const rewardState = payload.updatedPlayer || player;
+            const rewards = getExpeditionEscrowSummary(rewardState);
+            const hasUnclaimedRewards = rewards.gold > 0
+                || rewards.xp > 0
+                || rewards.lootCount > 0;
+            if (hasUnclaimedRewards && typeof expeditionRewardReturnPending !== 'undefined') {
+                expeditionRewardReturnPending = true;
+            }
+            if (typeof setGameState === 'function') setGameState('TOWN');
+            const restoreReturnRewards = () => {
+                const restored = restoreUnclaimedRewardClaim(rewardState);
+                if (!restored && typeof expeditionRewardReturnPending !== 'undefined') {
+                    expeditionRewardReturnPending = false;
+                }
+            };
+            if (typeof setTimeout === 'function') {
+                setTimeout(restoreReturnRewards, 0);
+            } else {
+                restoreReturnRewards();
+            }
+        }
     });
     socket.on('adventureProgress', payload => {
         // The server owns the actual save data. Trigger its secure persistence
@@ -1491,7 +1515,28 @@ if (typeof socket !== 'undefined' && socket) {
         // A safe return is persisted before its rewards are claimed. Reopen
         // the normal claim overlay after login so those rewards cannot become
         // invisible or be mistaken for fresh expedition escrow.
-        setTimeout(() => restoreUnclaimedRewardClaim(serverSaveData), 0);
+        const loginRewards = getExpeditionEscrowSummary(serverSaveData);
+        const hasLoginRewards = loginRewards.gold > 0
+            || loginRewards.xp > 0
+            || loginRewards.lootCount > 0;
+        const canRestorePendingRewards = !!(
+            serverSaveData
+            && serverSaveData.adventure
+            && !serverSaveData.adventure.activeJourney
+            && hasLoginRewards
+        );
+        const returningFromExpedition = canRestorePendingRewards
+            && !!serverSaveData.adventure.latestReturnReport;
+        if (returningFromExpedition && typeof expeditionRewardReturnPending !== 'undefined') {
+            expeditionRewardReturnPending = true;
+        }
+        setTimeout(() => {
+            if (!canRestorePendingRewards) return;
+            const restored = restoreUnclaimedRewardClaim(serverSaveData);
+            if (!restored && typeof expeditionRewardReturnPending !== 'undefined') {
+                expeditionRewardReturnPending = false;
+            }
+        }, 0);
     });
 }
 

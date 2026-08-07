@@ -290,10 +290,9 @@ function refreshSystemUI() {
         // Tab Panels
         const knightScreen = document.getElementById("knight-screen");
         const townScreen = document.getElementById("town-screen");
-        const merchantScreen = document.getElementById("merchant-screen");
         const adventuresScreen = document.getElementById("adventures-screen");
 
-        if (!townVaultView || !combatScreen || !vaultScreen || !wallet || !townScreen || !merchantScreen) return;
+        if (!townVaultView || !combatScreen || !vaultScreen || !wallet || !townScreen) return;
 
         // === GOLD ECONOMY DISPLAY ===
         let animG = (uiMemory.gold !== -1 && player.gold > uiMemory.gold) ? 'resource-pop' : '';
@@ -523,7 +522,6 @@ const combatInvList = document.getElementById("combat-inventory-list");
 // Hide ALL tabs first to ensure a clean slate
             if (knightScreen) knightScreen.style.display = "none";
             townScreen.style.display = "none";
-            merchantScreen.style.display = "none";
             if (adventuresScreen) adventuresScreen.style.display = "none";
             vaultScreen.style.display = "none";
 			
@@ -546,13 +544,12 @@ if (hopsScreen) hopsScreen.style.display = "none";
             } else if (gameState === 'TOWN') {
                 townScreen.style.display = "block";
                 document.getElementById('nav-town').classList.add('active-tab');
-            } else if (gameState === 'MERCHANT') {
-                merchantScreen.style.display = "block";
-                document.getElementById('nav-tavern').classList.add('active-tab');
+                if (typeof renderTownWorldState === 'function') renderTownWorldState();
+                if (typeof renderWalkableTown === 'function') renderWalkableTown();
             } else if (gameState === 'ADVENTURES') {
                 if (adventuresScreen) adventuresScreen.style.display = "block";
                 document.getElementById('nav-adventures').classList.add('active-tab');
-                if (typeof renderAdventureBoard === 'function') renderAdventureBoard();
+                if (typeof renderAdventureScreen === 'function') renderAdventureScreen();
             } else if (gameState === 'VAULT') {
                 vaultScreen.style.display = "block";
                 document.getElementById('nav-vault').classList.add('active-tab');
@@ -760,7 +757,7 @@ if (hopsScreen) hopsScreen.style.display = "none";
                 `;
             }
 
-            if (gameState === 'KNIGHT' || gameState === 'TOWN' || gameState === 'VAULT' || gameState === 'MERCHANT' || gameState === 'ADVENTURES') {
+            if (gameState === 'KNIGHT' || gameState === 'TOWN' || gameState === 'VAULT' || gameState === 'ADVENTURES') {
                 if (typeof renderMainScreenSprites === 'function') renderMainScreenSprites();
             }
 
@@ -945,68 +942,7 @@ function renderMainScreenSprites() {
         }
     }
 
-    // 2. Render Pet onto Canvas (Leave this untouched below)
-    const petCanvas = document.getElementById('main-pet-canvas');
-    const petAdoptionUI = document.getElementById('pet-adoption-ui');
-    const petHeader = document.getElementById('pet-header-name');
-    const openAdoptionBtn = document.getElementById('open-adoption-btn');
-    
-    if (petCanvas && typeof renderPetCanvas === 'function') {
-        renderPetCanvas(petCanvas);
-        
-        // THIS IS THE LINE THAT WAS MISSING!
-        if (player.pet && player.pet.adopted) {
-            if (openAdoptionBtn) openAdoptionBtn.style.display = "none";
-            
-            // Show the Edit & Train buttons ONLY if the adoption UI is currently closed
-            let editBtn = document.getElementById('edit-pet-btn');
-            let trainBtn = document.getElementById('train-pet-btn');
-            
-            if (editBtn && petAdoptionUI && petAdoptionUI.style.display === "none") {
-                editBtn.style.display = "block";
-                if (trainBtn) {
-                    trainBtn.style.display = "block";
-                    trainBtn.innerText = `\u{1F9B4} Feed Kibble (Lvl ${player.pet.level || 1})`;
-                }
-            } else {
-                if (trainBtn) trainBtn.style.display = "none";
-            }
-            
-            petCanvas.style.display = "block"; 
-            if (petHeader) {
-                petHeader.innerText = player.pet.name;
-                petHeader.style.color = "#ffcc66";
-            }
-        } else {
-            // Keeps the "Companion" default state until the player clicks the button
-            if (petHeader && petHeader.innerText !== "Adopt Pet") {
-                petHeader.innerText = "Companion";
-                petHeader.style.color = "#bbaaa0";
-            }
-        }
-    }
 }
-
-// === WARDROBE & PET EDITING LOGIC ===
-
-window.openAdoptionMenu = function() {
-    document.getElementById('open-adoption-btn').style.display = "none";
-    document.getElementById('pet-adoption-ui').style.display = "block";
-    document.getElementById('main-pet-canvas').style.display = "block";
-    
-    // Ensure the button says Adopt if they haven't adopted yet
-    let confirmBtn = document.getElementById('confirm-pet-btn');
-    if (confirmBtn) {
-        confirmBtn.innerText = "Adopt (10g)";
-        confirmBtn.onclick = adoptPet;
-    }
-
-    const petHeader = document.getElementById('pet-header-name');
-    if (petHeader) {
-        petHeader.innerText = "Adopt Pet";
-        petHeader.style.color = "#2ecc71";
-    }
-};
 
 function toggleWardrobe() {
     const ui = document.getElementById('knight-wardrobe-ui');
@@ -1033,70 +969,6 @@ function cycleTownAppearance(part) {
     saveGame();
     if (typeof playRetroSound === 'function') playRetroSound('menu');
 }
-function editPetMenu() {
-    document.getElementById('edit-pet-btn').style.display = "none";
-    document.getElementById('pet-adoption-ui').style.display = "block";
-    
-    // Pre-fill their current name into the box so they can edit it
-    document.getElementById('pet-name-input').value = player.pet.name;
-    
-    // Change the Adopt button into a Save button!
-    let confirmBtn = document.getElementById('confirm-pet-btn');
-    if (confirmBtn) {
-        confirmBtn.innerText = "Save Changes";
-        confirmBtn.onclick = savePetEdits;
-    }
-    
-    if (typeof playRetroSound === 'function') playRetroSound('menu');
-}
-
-function savePetEdits() {
-    let nameVal = document.getElementById('pet-name-input').value.trim();
-    if(nameVal) player.pet.name = nameVal;
-    
-    document.getElementById('pet-adoption-ui').style.display = "none";
-    document.getElementById('edit-pet-btn').style.display = "block";
-    
-    saveGame();
-    refreshSystemUI(); // Restores the UI state and updates the headers
-    if (typeof playRetroSound === 'function') playRetroSound('coin');
-}
-
-
-
-
-
-// === MISSING: PET CYCLING ENGINE ===
-window.cyclePetAppearance = function(part) {
-    // 1. Safety check: ensure the pet object exists
-    if (!player.pet) player.pet = { adopted: false, name: "Companion" };
-    
-    // 2. Define the visual options (We can add more of these in pet-assets.js later!)
-    const petOptions = {
-    type: ['dog', 'cat'],
-    furColor: ['brown', 'gray', 'orange', 'white', 'black', 'golden', 'cream'], 
-    collarColor: ['red', 'blue', 'green', 'yellow', 'purple', 'pink']
-    };
-
-    if (!petOptions[part]) return;
-
-    // 3. Find the current style and cycle to the next one
-    let currentVal = player.pet[part];
-    
-    // If the pet doesn't have a value yet, default to the first one
-    if (!currentVal) currentVal = petOptions[part][0];
-    
-    let currentIndex = petOptions[part].indexOf(currentVal);
-    let nextIndex = (currentIndex + 1) % petOptions[part].length;
-    
-    // 4. Apply the new visual and save
-    player.pet[part] = petOptions[part][nextIndex];
-    saveGame();
-
-    // 5. REDRAW THE CANVAS! (This is what makes the UI actually update)
-    if (typeof renderMainScreenSprites === 'function') renderMainScreenSprites();
-    if (typeof playRetroSound === 'function') playRetroSound('menu');
-};
 
 function renderCombatModal(filter = 'DRINK') {
     const modal = document.getElementById('combat-backpack-modal');

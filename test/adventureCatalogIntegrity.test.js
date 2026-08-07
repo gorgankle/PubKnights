@@ -4,7 +4,8 @@ const assert = require('node:assert/strict');
 const {
     LocationCatalog,
     RouteCatalog,
-    AuthoredEncounterCatalog
+    AuthoredEncounterCatalog,
+    JourneyInstanceCatalog
 } = require('../adventureCatalog.js');
 const { CombatMapTemplates } = require('../combatMapTemplates.js');
 const { NpcDatabase } = require('../public/js/npc-database.js');
@@ -49,6 +50,34 @@ test('every authored encounter references a deployable map, enemy, and named spa
             assert.ok(NpcDatabase[enemy.id], `${encounter.id} references unknown enemy ${enemy.id}`);
             assert.ok(spawns.has(enemy.spawnId), `${encounter.id} references unknown spawn ${enemy.spawnId}`);
         });
+    });
+});
+
+test('journey instance choices and route stop references are immutable and server-authored', () => {
+    const representedTypes = new Set();
+    Object.values(JourneyInstanceCatalog).forEach(instance => {
+        representedTypes.add(instance.type);
+        assert.ok(['event', 'stop'].includes(instance.kind));
+        assert.ok(instance.title && instance.description);
+        assert.ok(Array.isArray(instance.options) && instance.options.length >= 2);
+        instance.options.forEach(option => {
+            assert.ok(option.id && option.label && option.resultMessage);
+            assert.equal(Object.isFrozen(option.effects), true);
+        });
+    });
+    assert.deepEqual(
+        [...representedTypes].sort(),
+        ['camp', 'npc', 'puzzle', 'waypoint', 'weather']
+    );
+    Object.values(RouteCatalog).forEach(route => {
+        (route.journeyInstanceIds || []).forEach(instanceId => {
+            assert.ok(JourneyInstanceCatalog[instanceId], `${route.id} references unknown ${instanceId}`);
+        });
+        if (route.waypointInstanceId) {
+            const stop = JourneyInstanceCatalog[route.waypointInstanceId];
+            assert.ok(stop, `${route.id} references an unknown waypoint`);
+            assert.equal(stop.kind, 'stop');
+        }
     });
 });
 

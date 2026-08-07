@@ -32,8 +32,7 @@ maxInventorySlots: 5, backpackUpgrades: 0,
     
 // === MULTI-BUFF ARRAYS ADDED HERE ===
     activeCombatBuff: null, activeBuffs: [],
-    
-// === NEW: PET STATE ===
+
     // supply cart automation retired
 };
 
@@ -248,12 +247,6 @@ function getVaultUpgradeCost() {
     return { gold: Math.floor(175 * Math.pow(1.2, upg)) };
 }
 
-function getPetTrainingCost() {
-    let level = player.pet ? (player.pet.level || 1) : 1;
-    let upg = level - 1;
-    return { gold: Math.floor(750 * Math.pow(1.2, upg)) };
-}
-
 // === REPLACED ===
 function saveGame(manualNotify = false) {
     // Failsafe: Don't try to save if they aren't fully logged in yet
@@ -274,8 +267,7 @@ function saveGame(manualNotify = false) {
         equipment: player.equipment, inventory: player.inventory, stash: player.stash,
         roster: player.roster,
 		maxInventorySlots: player.maxInventorySlots, backpackUpgrades: player.backpackUpgrades,
-        activeCombatBuff: player.activeCombatBuff, activeBuffs: player.activeBuffs,
-        pet: player.pet
+        activeCombatBuff: player.activeCombatBuff, activeBuffs: player.activeBuffs
     };
     
     // Emit the save data directly to the Node server!

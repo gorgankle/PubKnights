@@ -1,4 +1,4 @@
-// Native 32x32 enemies, town characters, minigame props, terrain, pets, and icons.
+// Native 32x32 enemies, town characters, minigame props, terrain, and icons.
 
 const WorldOverhaulSpecs = {
     humanoids: {
@@ -571,56 +571,6 @@ if (typeof window !== 'undefined') {
     window.drawWorldActorSprite = drawWorldActorSprite;
 }
 
-function makePetOverhaulSprite(type) {
-    return createNativeOverhaulSprite(painter => {
-        const { set, rect, frame, line, points, ellipse } = painter;
-
-        if (type === 'dog') {
-            ellipse(16, 17, 7, 6, 'o');
-            ellipse(16, 17, 6, 5, 'f');
-            ellipse(9, 16, 4, 6, 'o');
-            ellipse(23, 16, 4, 6, 'o');
-            rect(11, 22, 11, 7, 'f');
-            frame(11, 22, 11, 7, 'o');
-            rect(11, 22, 11, 2, 'c');
-            rect(12, 28, 4, 4, 'f');
-            rect(18, 28, 4, 4, 'f');
-            frame(12, 28, 4, 4, 'o');
-            frame(18, 28, 4, 4, 'o');
-            set(14, 16, 'b');
-            set(19, 16, 'b');
-            set(16, 20, 'b');
-            points([[13, 19], [19, 19]], 'w');
-        } else {
-            points([[10, 10], [12, 5], [15, 10], [18, 10], [21, 5], [23, 10]], 'o');
-            ellipse(16, 16, 7, 7, 'o');
-            ellipse(16, 16, 6, 6, 'f');
-            rect(11, 22, 11, 7, 'f');
-            frame(11, 22, 11, 7, 'o');
-            rect(11, 22, 11, 2, 'c');
-            rect(12, 28, 4, 4, 'f');
-            rect(18, 28, 4, 4, 'f');
-            frame(12, 28, 4, 4, 'o');
-            frame(18, 28, 4, 4, 'o');
-            line(22, 25, 28, 20, 'o', 3);
-            line(28, 20, 27, 14, 'f', 2);
-            set(14, 15, 'b');
-            set(19, 15, 'b');
-            set(16, 19, 'b');
-            points([[12, 18], [20, 18]], 'w');
-        }
-    });
-}
-
-const PetOverhaulMatrices = {
-    dog: makePetOverhaulSprite('dog'),
-    cat: makePetOverhaulSprite('cat')
-};
-
-if (typeof PetMatrices !== 'undefined') {
-    Object.assign(PetMatrices, PetOverhaulMatrices);
-}
-
 // Inventory and consumable icon registry.
 function makeCenteredOverhaulIcon(matrix, padding = 4) {
     const occupied = [];
@@ -901,7 +851,6 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         WorldOverhaulSpecs,
         WorldOverhaulMatrices,
-        PetOverhaulMatrices,
         makeHumanoidWorldSprite,
         makeCaskWorldSprite,
         makeMimicWorldSprite,

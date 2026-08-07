@@ -6,6 +6,7 @@ const vm = require('node:vm');
 
 const root = path.resolve(__dirname, '..');
 const source = fs.readFileSync(path.join(root, 'public', 'js', 'expeditions.js'), 'utf8');
+const townSource = fs.readFileSync(path.join(root, 'public', 'js', 'town-exploration.js'), 'utf8');
 const {
     buildTavernReturnPresentation,
     getContractObjectivePresentation,
@@ -60,8 +61,10 @@ function createClientHarness(search = '?mute=1') {
         console,
         events,
         pendingLoot: [],
+        expeditionRewardReturnPending: false,
         player: { adventure: {}, pendingGold: 0, pendingXp: 0, pendingLoot: [] },
         showLootScreen: () => events.push('loot-claim'),
+        setGameState: state => events.push(`state:${state}`),
         setTimeout: callback => callback(),
         window: { location: { search } },
         socket: {
@@ -75,7 +78,7 @@ function createClientHarness(search = '?mute=1') {
     });
     vm.runInContext(`${source}
         renderTownWorldState = () => events.push('town');
-        renderAdventureBoard = () => events.push('board');
+        renderAdventureScreen = () => events.push('journey');
         renderTavernReturnReport = () => events.push('return-report');
         saveGame = () => events.push('save');
         globalThis.__chapterOneUi = {
@@ -86,6 +89,8 @@ function createClientHarness(search = '?mute=1') {
             purchaseStock: purchaseChapterOneStock,
             recruitNpc: recruitChapterOneNpc,
             resetPending: () => { adventureRequestPending = false; },
+            continueJourney: continueAdventureJourney,
+            resolveJourneyInstance: resolveAdventureJourneyInstance,
             resolveInteraction: resolveAdventureDestinationInteraction,
             selectFinalePreparation: selectChapterOneFinalePreparation
         };
@@ -118,7 +123,7 @@ test('Chapter One contracts take priority and deferred catalog nodes stay off th
     assert.deepEqual(snapshot.contracts.map(contract => contract.id), ['missing_kegs']);
     assert.deepEqual(snapshot.partyPower, { score: 17, bandId: 'seasoned' });
     assert.equal(Object.hasOwn(snapshot, 'bounties'), false);
-    assert.deepEqual(harness.events, ['save', 'town', 'board', 'return-report']);
+    assert.deepEqual(harness.events, ['save', 'town', 'journey', 'return-report']);
 });
 
 test('contract, destination, and reward actions emit identifier-only payloads', () => {
@@ -165,6 +170,29 @@ test('contract, destination, and reward actions emit identifier-only payloads', 
         {
             eventName: 'selectChapterOneFinalePreparation',
             payload: { optionId: 'warded_approach' }
+        }
+    ]);
+});
+
+test('journey instance actions use the minimal finalized socket contract', () => {
+    const harness = createClientHarness();
+    harness.context.player.adventure.activeJourney = {
+        combatPending: true,
+        currentInstance: { kind: 'combat' }
+    };
+    harness.context.__chapterOneUi.continueJourney();
+    harness.context.__chapterOneUi.resetPending();
+    harness.context.player.adventure.activeJourney = {
+        combatPending: false,
+        currentInstance: { kind: 'event', options: [{ id: 'wait_out_storm' }] }
+    };
+    harness.context.__chapterOneUi.resolveJourneyInstance('wait_out_storm');
+
+    assert.deepEqual(plain(harness.emissions), [
+        { eventName: 'continueJourney' },
+        {
+            eventName: 'resolveJourneyInstance',
+            payload: { optionId: 'wait_out_storm' }
         }
     ]);
 });
@@ -222,7 +250,10 @@ test('login restores the authoritative claim overlay for safe-return rewards', (
         pendingGold: 35,
         pendingXp: 12,
         pendingLoot: [{ id: 'road_relic' }],
-        adventure: { activeJourney: null }
+        adventure: {
+            activeJourney: null,
+            latestReturnReport: { outcome: 'safe_return', routeId: 'route_old_road' }
+        }
     });
 
     assert.deepEqual(plain(harness.context.pendingLoot), [{ id: 'road_relic' }]);
@@ -230,6 +261,66 @@ test('login restores the authoritative claim overlay for safe-return rewards', (
     assert.deepEqual(plain(harness.emissions), [{
         eventName: 'requestAdventureState'
     }]);
+    assert.equal(harness.context.expeditionRewardReturnPending, true);
+});
+
+test('login blocks active-journey escrow while restoring generic completed-combat rewards', () => {
+    const activeHarness = createClientHarness();
+    activeHarness.listeners.loginSuccess({
+        pendingGold: 35,
+        pendingXp: 12,
+        pendingLoot: [{ id: 'journey_escrow' }],
+        adventure: {
+            activeJourney: { phase: 'RETURNING' },
+            latestReturnReport: { outcome: 'safe_return' }
+        }
+    });
+    assert.deepEqual(activeHarness.events, []);
+    assert.equal(activeHarness.context.expeditionRewardReturnPending, false);
+
+    const unrelatedHarness = createClientHarness();
+    unrelatedHarness.listeners.loginSuccess({
+        pendingGold: 35,
+        pendingXp: 12,
+        pendingLoot: [{ id: 'unrelated_reward' }],
+        adventure: { activeJourney: null, latestReturnReport: null }
+    });
+    assert.deepEqual(unrelatedHarness.events, ['loot-claim']);
+    assert.equal(unrelatedHarness.context.expeditionRewardReturnPending, false);
+    assert.deepEqual(
+        plain(unrelatedHarness.context.pendingLoot),
+        [{ id: 'unrelated_reward' }]
+    );
+});
+
+test('a final noncombat safe return enters town and exposes escrow rewards immediately', () => {
+    const harness = createClientHarness();
+    harness.context.player.adventure.activeJourney = {
+        direction: 'RETURN',
+        phase: 'RETURNING',
+        currentInstance: { kind: 'event', type: 'weather' }
+    };
+    harness.listeners.adventureReceipt({
+        success: true,
+        outcome: 'safe_return',
+        updatedPlayer: {
+            adventure: { activeJourney: null },
+            pendingGold: 28,
+            pendingXp: 9,
+            pendingLoot: [{ id: 'road_cache' }]
+        }
+    });
+
+    assert.deepEqual(harness.events, [
+        'town',
+        'journey',
+        'return-report',
+        'save',
+        'state:TOWN',
+        'loot-claim'
+    ]);
+    assert.equal(harness.context.expeditionRewardReturnPending, true);
+    assert.deepEqual(plain(harness.context.pendingLoot), [{ id: 'road_cache' }]);
 });
 
 test('return report resolves world objective updates and surfaces the waiting kit', () => {
@@ -288,15 +379,20 @@ test('destination rendering always keeps the independent return action', () => {
 test('finale planning, route context, and epilogue copy use projected chapter fields', () => {
     assert.match(source, /option\.selectable !== false/);
     assert.match(source, /Accept Finale Contract First/);
-    assert.match(source, /contract\.routeIds/);
+    assert.match(source, /allLocations: rawLocations/);
+    assert.match(source, /allRoutes: rawRoutes/);
+    assert.match(source, /is-silhouetted/);
     assert.match(source, /chapter\.epilogue && chapter\.epilogue\.description/);
     assert.match(source, /chapter\.nextRegion && chapter\.nextRegion\.description/);
     assert.doesNotMatch(source, /textContent = chapter\.epilogue \|\|/);
 });
 
-test('Tilda and Marlow services link deliberately to the preparation board', () => {
-    assert.match(source, /data-town-service-action/);
-    assert.match(source, /function openChapterOneTownService\(actionId\)/);
-    assert.match(source, /actionId !== 'review_watchhouse_preparations'/);
-    assert.match(source, /setGameState\('ADVENTURES'\)/);
+test('Tilda and Marlow preparation services stay in the NPC town conversation', () => {
+    const serviceHandler = source.match(/function openChapterOneTownService\(actionId\) \{([\s\S]*?)\n\}/);
+    assert.ok(serviceHandler);
+    assert.match(serviceHandler[1], /actionId !== 'review_watchhouse_preparations'/);
+    assert.match(serviceHandler[1], /setGameState\('TOWN'\)/);
+    assert.doesNotMatch(serviceHandler[1], /ADVENTURES/);
+    assert.match(townSource, /\['kreg', 'tilda', 'marlow'\]\.includes\(npcId\)/);
+    assert.match(townSource, /selectChapterOneFinalePreparation\(option\.id\)/);
 });

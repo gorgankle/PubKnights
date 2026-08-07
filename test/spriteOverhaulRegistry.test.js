@@ -73,12 +73,7 @@ function loadCompleteOverhaul() {
                 pantsColor: 'dark',
                 bootsColor: 'leather'
             },
-            equipment: {},
-            pet: {
-                type: 'dog',
-                furColor: 'brown',
-                collarColor: 'red'
-            }
+            equipment: {}
         }
     });
 
@@ -88,13 +83,11 @@ function loadCompleteOverhaul() {
         'item-assets.js',
         'npc-assets.js',
         'map-assets.js',
-        'icon-assets.js',
-        'pet-assets.js'
+        'icon-assets.js'
     ].forEach(filename => runScript(context, filename));
 
     vm.runInContext(`
         globalThis.__legacySpriteRefs = Object.fromEntries(Object.entries(SpriteMatrices));
-        globalThis.__legacyPetRefs = Object.fromEntries(Object.entries(PetMatrices));
     `, context);
 
     runScript(context, 'sprite-overhaul.js');
@@ -180,12 +173,12 @@ test('the item compatibility registry preserves legacy tool ordering without dup
     assert.equal(Array.from(result.values).every(value => value === undefined), true);
 });
 
-test('character, NPC, and pet compatibility registries keep their public order', () => {
+test('character and NPC compatibility registries keep their public order', () => {
     const context = vm.createContext({
         window: { addEventListener() {} },
         setTimeout() {}
     });
-    ['character-creator.js', 'npc-assets.js', 'pet-assets.js']
+    ['character-creator.js', 'npc-assets.js']
         .forEach(filename => runScript(context, filename));
 
     const result = vm.runInContext(`(() => {
@@ -193,15 +186,13 @@ test('character, NPC, and pet compatibility registries keep their public order',
         const npcKeys = ${JSON.stringify(NPC_COMPATIBILITY_KEYS)};
         return {
             spriteKeys: Object.keys(SpriteMatrices),
-            petKeys: Object.keys(PetMatrices),
             unresolvedCharacters: characterKeys
                 .filter(key => SpriteMatrices[key] !== undefined),
             unresolvedNpcPlaceholders: npcKeys
                 .filter(key => key !== 'icon_peanut')
                 .filter(key => SpriteMatrices[key] !== undefined),
             peanutIsNative: SpriteMatrices.icon_peanut.length === 32
-                && SpriteMatrices.icon_peanut.every(row => row.length === 32),
-            petValues: Object.values(PetMatrices)
+                && SpriteMatrices.icon_peanut.every(row => row.length === 32)
         };
     })()`, context);
 
@@ -209,11 +200,9 @@ test('character, NPC, and pet compatibility registries keep their public order',
         Array.from(result.spriteKeys),
         CHARACTER_COMPATIBILITY_KEYS.concat(NPC_COMPATIBILITY_KEYS)
     );
-    assert.deepEqual(Array.from(result.petKeys), ['dog', 'cat']);
     assert.deepEqual(Array.from(result.unresolvedCharacters), []);
     assert.deepEqual(Array.from(result.unresolvedNpcPlaceholders), []);
     assert.equal(result.peanutIsNative, true);
-    assert.equal(Array.from(result.petValues).every(value => value === undefined), true);
 });
 
 test('the combined icon implementation preserves its separate public activation point', () => {
@@ -248,7 +237,6 @@ test('native registries replace every compatibility family without reordering it
         return {
             characterOrder: spriteKeys.filter(key => characterKeys.includes(key)),
             npcOrder: spriteKeys.filter(key => npcKeys.includes(key)),
-            petOrder: Object.keys(PetMatrices),
             bodiesMatch:
                 SpriteMatrices.body_male === CorePlayerSampleMatrices.body_core_male
                 && SpriteMatrices.body_female === CorePlayerSampleMatrices.body_core_female,
@@ -263,37 +251,29 @@ test('native registries replace every compatibility family without reordering it
             worldNpcMismatches: npcKeys
                 .filter(key => key !== 'icon_peanut')
                 .filter(key => SpriteMatrices[key] !== WorldOverhaulMatrices[key]),
-            petsMatch:
-                PetMatrices.dog === PetOverhaulMatrices.dog
-                && PetMatrices.cat === PetOverhaulMatrices.cat,
             peanutMatches: SpriteMatrices.icon_peanut === IconOverhaulMatrices.icon_peanut
         };
     })()`, context);
 
     assert.deepEqual(Array.from(result.characterOrder), CHARACTER_COMPATIBILITY_KEYS);
     assert.deepEqual(Array.from(result.npcOrder), NPC_COMPATIBILITY_KEYS);
-    assert.deepEqual(Array.from(result.petOrder), ['dog', 'cat']);
     assert.equal(result.bodiesMatch, true);
     assert.equal(result.eyesMatch, true);
     assert.deepEqual(Array.from(result.hairMismatches), []);
     assert.deepEqual(Array.from(result.worldNpcMismatches), []);
-    assert.equal(result.petsMatch, true);
     assert.equal(result.peanutMatches, true);
 });
 
-test('the native overhaul replaces every legacy sprite and pet matrix', () => {
+test('the native overhaul replaces every legacy sprite matrix', () => {
     const context = loadCompleteOverhaul();
     const result = vm.runInContext(`(() => ({
         legacySpriteCount: Object.keys(__legacySpriteRefs).length,
         unchangedSprites: Object.keys(__legacySpriteRefs)
-            .filter(key => __legacySpriteRefs[key] === SpriteMatrices[key]),
-        unchangedPets: Object.keys(__legacyPetRefs)
-            .filter(key => __legacyPetRefs[key] === PetMatrices[key])
+            .filter(key => __legacySpriteRefs[key] === SpriteMatrices[key])
     }))()`, context);
 
     assert.ok(result.legacySpriteCount > 0);
     assert.equal(result.unchangedSprites.length, 0);
-    assert.equal(result.unchangedPets.length, 0);
 });
 
 test('the complete sprite registry is native 32x32 and palette-valid', () => {
@@ -338,20 +318,13 @@ test('equipment icons omit runtime-only hair eraser pixels', () => {
     assert.equal(leakingIconIds.length, 0);
 });
 
-test('world and pet overhaul registries cover their complete legacy families', () => {
+test('world and icon overhaul registries cover their complete families', () => {
     const context = loadCompleteOverhaul();
     const result = vm.runInContext(`(() => ({
         worldCount: Object.keys(WorldOverhaulMatrices).length,
-        iconCount: Object.keys(IconOverhaulMatrices).length,
-        petCount: Object.keys(PetOverhaulMatrices).length,
-        petKeys: Array.from(new Set(Object.values(PetOverhaulMatrices).flat(2))).sort()
+        iconCount: Object.keys(IconOverhaulMatrices).length
     }))()`, context);
 
     assert.equal(result.worldCount, 32);
     assert.ok(result.iconCount >= 100);
-    assert.equal(result.petCount, 2);
-    assert.equal(
-        result.petKeys.every(key => ['.', 'b', 'c', 'f', 'o', 'w'].includes(key)),
-        true
-    );
 });

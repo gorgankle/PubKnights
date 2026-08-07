@@ -5,14 +5,23 @@ const crypto = require('crypto');
 const {
     LocationCatalog,
     RouteCatalog,
-    AuthoredEncounterCatalog
+    AuthoredEncounterCatalog,
+    JourneyInstanceCatalog
 } = require('./adventureCatalog.js');
 const { getChapterOneWorldSnapshot } = require('./chapterOneWorld.js');
 const { WorldContractCatalog } = require('./worldCatalog.js');
+const { getMaxHp, getMaxStamina } = require('./combatMath.js');
 
-const ADVENTURE_SCHEMA_VERSION = 2;
+const ADVENTURE_SCHEMA_VERSION = 3;
 const MAX_ROUTE_ENCOUNTER_HISTORY = 3;
-const JOURNEY_PHASES = new Set(['OUTBOUND_COMBAT', 'AT_DESTINATION', 'RETURN_COMBAT']);
+const MAX_JOURNEY_INSTANCE_HISTORY = 24;
+const JOURNEY_PHASES = new Set([
+    'OUTBOUND_COMBAT',
+    'OUTBOUND_EVENT',
+    'AT_DESTINATION',
+    'RETURN_COMBAT',
+    'RETURN_EVENT'
+]);
 const RESOLVED_FINALE_STATUSES = new Set(['defeated', 'completed']);
 const RESOLVED_CHAPTER_STATUSES = new Set(['epilogue', 'completed']);
 const PARTY_POWER_STAT_KEYS = Object.freeze(['vitality', 'maxStamina', 'offense', 'defense', 'speed']);
@@ -182,6 +191,143 @@ function normalizeRouteStats(source) {
 function getRouteEncounterIds(route) {
     return (route && Array.isArray(route.encounterIds) ? route.encounterIds : [])
         .filter(encounterId => AuthoredEncounterCatalog[encounterId]);
+}
+
+function getRouteLegCount(routeOrId) {
+    const route = typeof routeOrId === 'string' ? RouteCatalog[routeOrId] : routeOrId;
+    if (!route) return 1;
+    const distance = Math.max(1, Math.ceil(Number(route.distance) || 1));
+    // Chapter One uses a compact 1-4 distance scale. Keeping short roads at one
+    // instance preserves the original first outing while moderate and long
+    // roads gain meaningful travel. The cap keeps future routes manageable.
+    return Math.min(6, Math.max(1, distance - 1));
+}
+
+function getJourneyLegKind(legIndex, legCount, direction = 'OUTBOUND') {
+    if (legCount <= 1) return 'combat';
+    if (legCount === 2) {
+        return direction === 'OUTBOUND'
+            ? (legIndex === 2 ? 'combat' : 'noncombat')
+            : (legIndex === 1 ? 'combat' : 'noncombat');
+    }
+    if (legIndex === 1) return 'combat';
+    if (legIndex === legCount) return 'combat';
+    return 'noncombat';
+}
+
+function getJourneyInstancePublicSummary(entry) {
+    if (!entry || typeof entry !== 'object') return null;
+    if (entry.kind === 'combat') {
+        const encounter = AuthoredEncounterCatalog[entry.encounterId];
+        if (!encounter) return null;
+        return {
+            id: entry.instanceId,
+            kind: 'combat',
+            type: 'combat',
+            title: encounter.name,
+            description: 'Hostile forces block this leg of the journey.',
+            options: []
+        };
+    }
+
+    const definition = JourneyInstanceCatalog[entry.definitionId];
+    if (!definition) return null;
+    return {
+        id: entry.instanceId,
+        kind: definition.kind,
+        type: definition.type,
+        title: definition.title,
+        description: definition.description,
+        options: definition.options.map(option => {
+            const summary = {
+                id: option.id,
+                label: option.label,
+                description: option.description
+            };
+            if (nonNegativeInt(option.costGold) > 0) summary.costGold = nonNegativeInt(option.costGold);
+            return summary;
+        })
+    };
+}
+
+function normalizeJourneyItineraryEntry(source, route, legIndex) {
+    if (!source || typeof source !== 'object' || Array.isArray(source)) return null;
+    const encounterId = typeof source.encounterId === 'string' ? source.encounterId : null;
+    if (encounterId && getRouteEncounterIds(route).includes(encounterId)) {
+        return {
+            instanceId: `leg_${legIndex}_combat`,
+            kind: 'combat',
+            type: 'combat',
+            encounterId,
+            preparationId: typeof source.preparationId === 'string'
+                ? source.preparationId.slice(0, 40)
+                : null
+        };
+    }
+    const definitionId = typeof source.definitionId === 'string'
+        ? source.definitionId
+        : source.journeyInstanceId;
+    const definition = JourneyInstanceCatalog[definitionId];
+    if (!definition) return null;
+    return {
+        instanceId: `leg_${legIndex}_${definition.type}`,
+        kind: definition.kind,
+        type: definition.type,
+        definitionId: definition.id
+    };
+}
+
+function normalizeJourneyItinerary(source, route, legCount, direction) {
+    if (!Array.isArray(source) || source.length !== legCount) return null;
+    const normalized = source.map((entry, index) => (
+        normalizeJourneyItineraryEntry(entry, route, index + 1)
+    ));
+    if (normalized.some(entry => !entry)) return null;
+    if (normalized.some((entry, index) => (
+        (getJourneyLegKind(index + 1, legCount, direction) === 'combat') !== (entry.kind === 'combat')
+    ))) return null;
+    return normalized;
+}
+
+function normalizeJourneyInstanceHistory(source) {
+    return (Array.isArray(source) ? source : []).reduce((history, entry) => {
+        if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return history;
+        const direction = String(entry.direction || '').toUpperCase();
+        const kind = String(entry.kind || '').toLowerCase();
+        const type = String(entry.type || '').toLowerCase();
+        const legIndex = Math.max(1, nonNegativeInt(entry.legIndex, 1));
+        if (!['OUTBOUND', 'RETURN'].includes(direction)) return history;
+        if (!['combat', 'event', 'stop'].includes(kind)) return history;
+        const record = {
+            direction,
+            legIndex,
+            kind,
+            type: type.slice(0, 24),
+            instanceId: typeof entry.instanceId === 'string'
+                ? entry.instanceId.slice(0, 100)
+                : `${kind}:${legIndex}`
+        };
+        if (typeof entry.optionId === 'string') record.optionId = entry.optionId.slice(0, 60);
+        const resolvedAt = cleanTimestamp(entry.resolvedAt);
+        if (resolvedAt) record.resolvedAt = resolvedAt;
+        history.push(record);
+        return history;
+    }, []).slice(-MAX_JOURNEY_INSTANCE_HISTORY);
+}
+
+function setJourneyCurrentLeg(journey, legIndex, options = {}) {
+    const entry = journey && Array.isArray(journey.itinerary)
+        ? journey.itinerary[legIndex - 1]
+        : null;
+    if (!journey || !entry) return false;
+    journey.legIndex = legIndex;
+    journey.currentInstanceId = entry.instanceId;
+    journey.currentInstance = getJourneyInstancePublicSummary(entry);
+    journey.currentEncounterId = entry.kind === 'combat' ? entry.encounterId : null;
+    journey.preparationId = entry.kind === 'combat' ? (entry.preparationId || null) : null;
+    journey.phase = `${journey.direction}_${entry.kind === 'combat' ? 'COMBAT' : 'EVENT'}`;
+    journey.combatPending = entry.kind === 'combat' && options.combatPending === true;
+    return true;
 }
 
 function getWorldFactSet(player, options = {}) {
@@ -467,7 +613,7 @@ function normalizeActiveJourney(source, player) {
         ? source.currentEncounterId
         : source.encounterId;
     if (!route || !JOURNEY_PHASES.has(phase)) return null;
-    if (phase !== 'AT_DESTINATION' && !AuthoredEncounterCatalog[encounterId]) return null;
+    if (phase.endsWith('_COMBAT') && !getRouteEncounterIds(route).includes(encounterId)) return null;
 
     const partyPower = Number.isFinite(Number(source.partyPower))
         ? Math.max(0, Math.floor(Number(source.partyPower)))
@@ -478,26 +624,78 @@ function normalizeActiveJourney(source, player) {
     const partyPowerBandId = PartyPowerBandCatalog.some(band => band.id === requestedBandId)
         ? requestedBandId
         : getPartyPowerBand(partyPower).id;
-    const preparationId = typeof source.preparationId === 'string'
-        ? source.preparationId.slice(0, 40)
-        : null;
-
-    return {
+    const legCount = getRouteLegCount(route);
+    const instanceHistory = normalizeJourneyInstanceHistory(source.instanceHistory);
+    const base = {
         journeyId: typeof source.journeyId === 'string' && source.journeyId
             ? source.journeyId.slice(0, 80)
             : `journey_${crypto.randomBytes(8).toString('hex')}`,
         routeId: route.id,
         originLocationId: route.expeditionOriginLocationId || route.fromLocationId,
         destinationLocationId: route.toLocationId,
-        phase,
-        direction: phase === 'RETURN_COMBAT' ? 'RETURN' : (phase === 'OUTBOUND_COMBAT' ? 'OUTBOUND' : null),
-        reachedDestination: phase !== 'OUTBOUND_COMBAT',
-        currentEncounterId: phase === 'AT_DESTINATION' ? null : encounterId,
         partyPower,
         partyPowerBandId,
-        preparationId,
+        legCount,
+        instanceHistory,
+        lastCombatEncounterId: getRouteEncounterIds(route).includes(source.lastCombatEncounterId)
+            ? source.lastCombatEncounterId
+            : (getRouteEncounterIds(route).includes(encounterId) ? encounterId : null),
         startedAt: cleanTimestamp(source.startedAt) || Date.now()
     };
+
+    if (phase === 'AT_DESTINATION') {
+        return {
+            ...base,
+            phase: 'AT_DESTINATION',
+            direction: null,
+            reachedDestination: true,
+            legIndex: legCount,
+            itinerary: [],
+            currentInstanceId: null,
+            currentInstance: null,
+            currentEncounterId: null,
+            preparationId: null,
+            combatPending: false
+        };
+    }
+
+    const direction = phase.startsWith('RETURN') ? 'RETURN' : 'OUTBOUND';
+    let itinerary = normalizeJourneyItinerary(source.itinerary, route, legCount, direction);
+    const fallbackSelection = getRouteEncounterIds(route).includes(encounterId)
+        ? {
+            encounterId,
+            partyPower,
+            partyPowerBandId,
+            preparationId: typeof source.preparationId === 'string'
+                ? source.preparationId.slice(0, 40)
+                : null
+        }
+        : null;
+    if (!itinerary) {
+        itinerary = buildJourneyItinerary(route, player, {
+            adventure: player && player.adventure,
+            direction,
+            partyPower,
+            partyPowerBandId,
+            random: () => 0
+        }, fallbackSelection);
+    }
+    if (!itinerary || itinerary.length !== legCount) return null;
+
+    const requestedLegIndex = Math.trunc(Number(source.legIndex));
+    const legIndex = Number.isFinite(requestedLegIndex)
+        ? Math.max(1, Math.min(legCount, requestedLegIndex))
+        : 1;
+    const journey = {
+        ...base,
+        direction,
+        reachedDestination: direction === 'RETURN',
+        itinerary
+    };
+    if (!setJourneyCurrentLeg(journey, legIndex, {
+        combatPending: source.combatPending === true
+    })) return null;
+    return journey;
 }
 
 function getEncounterPublicSummary(encounterId) {
@@ -538,7 +736,9 @@ function normalizeWorldContractUpdates(source) {
 function createReturnReport(journey, outcome, details = {}, now = Date.now()) {
     const route = journey && RouteCatalog[journey.routeId];
     if (!route || !['safe_return', 'expedition_failed'].includes(outcome)) return null;
-    const encounter = getEncounterPublicSummary(journey.currentEncounterId);
+    const encounter = getEncounterPublicSummary(
+        journey.currentEncounterId || journey.lastCombatEncounterId
+    );
 
     return {
         reportId: `return_${crypto.randomBytes(8).toString('hex')}`,
@@ -677,7 +877,11 @@ function normalizeAdventureState(player, options = {}) {
         applyAdventureProgressionRequirements(player, adventure, options);
     }
 
-    if (adventure.activeJourney && adventure.activeJourney.currentEncounterId) {
+    if (
+        adventure.activeJourney
+        && adventure.activeJourney.currentEncounterId
+        && adventure.activeJourney.combatPending !== true
+    ) {
         const routeHistory = adventure.routeEncounterHistory[adventure.activeJourney.routeId] || [];
         if (routeHistory[routeHistory.length - 1] !== adventure.activeJourney.currentEncounterId) {
             recordRouteEncounter(
@@ -840,10 +1044,87 @@ function chooseRouteEncounter(route, player, options, history = []) {
     };
 }
 
+function chooseJourneyDefinitionId(route, direction, options, legIndex, legCount) {
+    const guaranteedWaypointLeg = legCount >= 3 ? Math.ceil(legCount / 2) : null;
+    if (legIndex === guaranteedWaypointLeg) {
+        return JourneyInstanceCatalog[route.waypointInstanceId]
+            ? route.waypointInstanceId
+            : 'roadside_camp';
+    }
+    const directionalIds = direction === 'RETURN' && Array.isArray(route.returnJourneyInstanceIds)
+        ? route.returnJourneyInstanceIds
+        : route.journeyInstanceIds;
+    const eligibleIds = (Array.isArray(directionalIds) ? directionalIds : [])
+        .filter(instanceId => JourneyInstanceCatalog[instanceId]);
+    const pool = eligibleIds.length
+        ? eligibleIds
+        : ['pine_waystone_riddle', 'lost_pine_trader', 'watchhouse_stormfront'];
+    const random = getRandomFunction(options);
+    const roll = Number(random());
+    const bounded = Number.isFinite(roll) ? Math.max(0, Math.min(0.999999999, roll)) : 0;
+    return pool[Math.floor(bounded * pool.length)];
+}
+
+function buildJourneyItinerary(route, player, options = {}, initialSelection = null) {
+    if (!route) return null;
+    const legCount = getRouteLegCount(route);
+    const direction = String(options.direction || 'OUTBOUND').toUpperCase() === 'RETURN'
+        ? 'RETURN'
+        : 'OUTBOUND';
+    const adventure = options.adventure || (player && player.adventure) || createInitialAdventureState();
+    const routeHistory = Array.isArray(adventure.routeEncounterHistory && adventure.routeEncounterHistory[route.id])
+        ? adventure.routeEncounterHistory[route.id]
+        : [];
+    const virtualHistory = routeHistory.slice();
+    const itinerary = [];
+    let firstSelection = initialSelection;
+
+    for (let legIndex = 1; legIndex <= legCount; legIndex += 1) {
+        if (getJourneyLegKind(legIndex, legCount, direction) === 'combat') {
+            const selection = firstSelection || chooseRouteEncounter(route, player, {
+                ...options,
+                adventure,
+                direction
+            }, virtualHistory);
+            firstSelection = null;
+            if (!selection || !getRouteEncounterIds(route).includes(selection.encounterId)) return null;
+            itinerary.push({
+                instanceId: `leg_${legIndex}_combat`,
+                kind: 'combat',
+                type: 'combat',
+                encounterId: selection.encounterId,
+                preparationId: selection.preparationId || null
+            });
+            virtualHistory.push(selection.encounterId);
+            continue;
+        }
+
+        const definitionId = chooseJourneyDefinitionId(
+            route,
+            direction,
+            options,
+            legIndex,
+            legCount
+        );
+        const definition = JourneyInstanceCatalog[definitionId];
+        if (!definition) return null;
+        itinerary.push({
+            instanceId: `leg_${legIndex}_${definition.type}`,
+            kind: definition.kind,
+            type: definition.type,
+            definitionId: definition.id
+        });
+    }
+    return itinerary;
+}
+
 function buildExpeditionContext(journey) {
     return {
         journeyId: journey.journeyId,
         routeId: journey.routeId,
+        instanceId: journey.currentInstanceId,
+        legIndex: journey.legIndex,
+        legCount: journey.legCount,
         fromLocationId: journey.direction === 'RETURN'
             ? journey.destinationLocationId
             : journey.originLocationId,
@@ -903,32 +1184,48 @@ function beginExpedition(player, routeId, options = {}) {
     if (!selection) {
         return { success: false, code: 'EMPTY_ROUTE', message: 'That route has no valid encounter reports.' };
     }
-    const { encounterId } = selection;
+    const itinerary = buildJourneyItinerary(route, player, {
+        ...options,
+        adventure,
+        direction: 'OUTBOUND',
+        partyPower: selection.partyPower,
+        partyPowerBandId: selection.partyPowerBandId
+    }, selection);
+    if (!itinerary) {
+        return { success: false, code: 'EMPTY_ROUTE', message: 'That route could not produce a complete journey.' };
+    }
 
     const journey = {
         journeyId: `journey_${crypto.randomBytes(8).toString('hex')}`,
         routeId: route.id,
         originLocationId: route.expeditionOriginLocationId || route.fromLocationId,
         destinationLocationId: route.toLocationId,
-        phase: 'OUTBOUND_COMBAT',
         direction: 'OUTBOUND',
         reachedDestination: false,
-        currentEncounterId: encounterId,
         partyPower: selection.partyPower,
         partyPowerBandId: selection.partyPowerBandId,
-        preparationId: selection.preparationId,
+        legCount: itinerary.length,
+        itinerary,
+        instanceHistory: [],
+        lastCombatEncounterId: null,
         startedAt: Date.now()
     };
-    recordRouteEncounter(adventure, route.id, encounterId);
+    setJourneyCurrentLeg(journey, 1, { combatPending: false });
+    recordRouteEncounter(adventure, route.id, journey.currentEncounterId);
     adventure.activeJourney = journey;
-    return {
+    const result = {
         success: true,
         outcome: 'outbound_started',
-        message: `The party sets out for ${LocationCatalog[route.toLocationId].name}.`,
+        message: `The party sets out for ${LocationCatalog[route.toLocationId].name} (${journey.legCount} travel instance${journey.legCount === 1 ? '' : 's'}).`,
         journey: clone(journey),
-        encounterId,
-        expeditionContext: buildExpeditionContext(journey)
+        currentInstance: clone(journey.currentInstance),
+        combatRequired: journey.currentInstance.kind === 'combat'
     };
+    if (result.combatRequired) {
+        result.encounterId = journey.currentEncounterId;
+        result.expeditionContext = buildExpeditionContext(journey);
+    }
+    return result;
 }
 
 function beginReturnTrip(player, options = {}) {
@@ -955,19 +1252,63 @@ function beginReturnTrip(player, options = {}) {
         adventure.routeEncounterHistory[route.id]
     );
     if (!selection) return { success: false, code: 'EMPTY_ROUTE', message: 'The return route has no valid encounter reports.' };
-    const { encounterId } = selection;
+    const itinerary = buildJourneyItinerary(route, player, {
+        ...options,
+        adventure,
+        direction: 'RETURN',
+        partyPower: journey.partyPower,
+        partyPowerBandId: journey.partyPowerBandId
+    }, selection);
+    if (!itinerary) return { success: false, code: 'EMPTY_ROUTE', message: 'The return route could not produce a complete journey.' };
 
-    recordRouteEncounter(adventure, route.id, encounterId);
-    journey.phase = 'RETURN_COMBAT';
     journey.direction = 'RETURN';
-    journey.currentEncounterId = encounterId;
-    journey.preparationId = selection.preparationId;
+    journey.itinerary = itinerary;
+    journey.legCount = itinerary.length;
+    setJourneyCurrentLeg(journey, 1, { combatPending: false });
+    recordRouteEncounter(adventure, route.id, journey.currentEncounterId);
     return {
         success: true,
         outcome: 'return_started',
-        message: `The party begins the return from ${LocationCatalog[route.toLocationId].name}.`,
+        message: `The party begins the ${journey.legCount}-instance return from ${LocationCatalog[route.toLocationId].name}.`,
         journey: clone(journey),
-        encounterId,
+        currentInstance: clone(journey.currentInstance),
+        combatRequired: true,
+        encounterId: journey.currentEncounterId,
+        expeditionContext: buildExpeditionContext(journey)
+    };
+}
+
+function continueJourney(player) {
+    const adventure = normalizeAdventureState(player, { recoverInterruptedJourney: false });
+    const journey = adventure.activeJourney;
+    if (!journey) {
+        return { success: false, code: 'NO_ACTIVE_JOURNEY', message: 'There is no expedition to continue.' };
+    }
+    if (!journey.currentInstance || journey.currentInstance.kind !== 'combat') {
+        return {
+            success: false,
+            code: 'JOURNEY_CHOICE_REQUIRED',
+            message: 'Resolve the current journey event before continuing.',
+            currentInstance: journey.currentInstance ? clone(journey.currentInstance) : null
+        };
+    }
+    if (journey.combatPending !== true) {
+        return {
+            success: false,
+            code: 'COMBAT_ALREADY_STARTED',
+            message: 'This journey combat has already started.'
+        };
+    }
+    journey.combatPending = false;
+    recordRouteEncounter(adventure, journey.routeId, journey.currentEncounterId);
+    return {
+        success: true,
+        outcome: 'combat_started',
+        message: `The party advances into leg ${journey.legIndex} of ${journey.legCount}.`,
+        journey: clone(journey),
+        currentInstance: clone(journey.currentInstance),
+        combatRequired: true,
+        encounterId: journey.currentEncounterId,
         expeditionContext: buildExpeditionContext(journey)
     };
 }
@@ -977,7 +1318,11 @@ function contextMatchesJourney(journey, context) {
     return context.journeyId === journey.journeyId
         && context.routeId === journey.routeId
         && String(context.direction || '').toUpperCase() === journey.direction
-        && context.encounterId === journey.currentEncounterId;
+        && context.encounterId === journey.currentEncounterId
+        && context.instanceId === journey.currentInstanceId
+        && Number(context.legIndex) === journey.legIndex
+        && Number(context.legCount) === journey.legCount
+        && journey.combatPending !== true;
 }
 
 function applyFirstReturnUnlocks(adventure, route) {
@@ -991,33 +1336,23 @@ function applyFirstReturnUnlocks(adventure, route) {
     adventure.unlockedRouteIds = uniqueKnownIds(adventure.unlockedRouteIds, RouteCatalog);
 }
 
-function resolveExpeditionCombatVictory(player, context) {
-    const adventure = normalizeAdventureState(player, { recoverInterruptedJourney: false });
-    const journey = adventure.activeJourney;
-    if (!journey || !contextMatchesJourney(journey, context)) {
-        return { success: false, code: 'STALE_JOURNEY', message: 'This combat no longer belongs to the active expedition.' };
-    }
+function recordJourneyInstanceCompletion(journey, optionId = null) {
+    if (!journey || !journey.currentInstance) return;
+    if (!Array.isArray(journey.instanceHistory)) journey.instanceHistory = [];
+    const record = {
+        direction: journey.direction,
+        legIndex: journey.legIndex,
+        instanceId: journey.currentInstanceId,
+        kind: journey.currentInstance.kind,
+        type: journey.currentInstance.type,
+        resolvedAt: Date.now()
+    };
+    if (typeof optionId === 'string' && optionId) record.optionId = optionId;
+    journey.instanceHistory.push(record);
+    journey.instanceHistory = journey.instanceHistory.slice(-MAX_JOURNEY_INSTANCE_HISTORY);
+}
 
-    if (journey.phase === 'OUTBOUND_COMBAT' && journey.direction === 'OUTBOUND') {
-        journey.phase = 'AT_DESTINATION';
-        journey.direction = null;
-        journey.reachedDestination = true;
-        journey.currentEncounterId = null;
-        if (!adventure.discoveredLocationIds.includes(journey.destinationLocationId)) {
-            adventure.discoveredLocationIds.push(journey.destinationLocationId);
-        }
-        return {
-            success: true,
-            outcome: 'destination_reached',
-            message: `${LocationCatalog[journey.destinationLocationId].name} reached. The return reward is not secured yet.`,
-            journey: clone(journey)
-        };
-    }
-
-    if (journey.phase !== 'RETURN_COMBAT' || journey.direction !== 'RETURN') {
-        return { success: false, code: 'INVALID_JOURNEY_PHASE', message: 'This expedition leg cannot be completed.' };
-    }
-
+function completeSafeReturn(player, adventure, journey) {
     const route = RouteCatalog[journey.routeId];
     const stats = adventure.routeStats[route.id];
     const firstReturn = stats.successfulRoundTrips === 0;
@@ -1050,6 +1385,160 @@ function resolveExpeditionCombatVictory(player, context) {
     };
 }
 
+function reachJourneyDestination(adventure, journey) {
+    journey.phase = 'AT_DESTINATION';
+    journey.direction = null;
+    journey.reachedDestination = true;
+    journey.legIndex = journey.legCount;
+    journey.itinerary = [];
+    journey.currentInstanceId = null;
+    journey.currentInstance = null;
+    journey.currentEncounterId = null;
+    journey.preparationId = null;
+    journey.combatPending = false;
+    if (!adventure.discoveredLocationIds.includes(journey.destinationLocationId)) {
+        adventure.discoveredLocationIds.push(journey.destinationLocationId);
+    }
+    return {
+        success: true,
+        outcome: 'destination_reached',
+        message: `${LocationCatalog[journey.destinationLocationId].name} reached. The return reward is not secured yet.`,
+        journey: clone(journey),
+        currentInstance: null,
+        combatRequired: false
+    };
+}
+
+function advanceJourneyAfterInstance(player, adventure, journey) {
+    if (journey.legIndex >= journey.legCount) {
+        return journey.direction === 'OUTBOUND'
+            ? reachJourneyDestination(adventure, journey)
+            : completeSafeReturn(player, adventure, journey);
+    }
+
+    const nextLegIndex = journey.legIndex + 1;
+    if (!setJourneyCurrentLeg(journey, nextLegIndex, { combatPending: true })) {
+        return { success: false, code: 'INVALID_ITINERARY', message: 'The next journey instance is unavailable.' };
+    }
+    const combatRequired = journey.currentInstance.kind === 'combat';
+    return {
+        success: true,
+        outcome: combatRequired ? 'combat_pending' : 'journey_continues',
+        message: combatRequired
+            ? `Leg ${journey.legIndex} of ${journey.legCount} is a combat encounter. Continue when the party is ready.`
+            : `${journey.currentInstance.title} awaits on leg ${journey.legIndex} of ${journey.legCount}.`,
+        journey: clone(journey),
+        currentInstance: clone(journey.currentInstance),
+        combatRequired,
+        requiresContinue: combatRequired
+    };
+}
+
+function getJourneyStatMaximum(player, selector) {
+    const safePlayer = {
+        ...(player && typeof player === 'object' ? player : {}),
+        equipment: player && player.equipment && typeof player.equipment === 'object'
+            ? player.equipment
+            : {}
+    };
+    return Math.max(1, nonNegativeInt(selector(safePlayer), 1));
+}
+
+function applyJourneyOptionEffects(player, effects = {}) {
+    const maxHp = getJourneyStatMaximum(player, getMaxHp);
+    const maxStamina = getJourneyStatMaximum(player, getMaxStamina);
+    const beforeHp = Math.min(maxHp, nonNegativeInt(player.hp, maxHp));
+    const beforeStamina = Math.min(maxStamina, nonNegativeInt(player.stamina, maxStamina));
+    const goldCost = nonNegativeInt(effects.goldCost);
+    const pendingGoldAdded = nonNegativeInt(effects.pendingGold);
+    const pendingXpAdded = nonNegativeInt(effects.pendingXp);
+    const restoreHp = nonNegativeInt(effects.restoreHp);
+    const restoreStamina = nonNegativeInt(effects.restoreStamina);
+    const staminaCost = nonNegativeInt(effects.staminaCost);
+
+    player.gold = Math.max(0, nonNegativeInt(player.gold) - goldCost);
+    player.pendingGold = nonNegativeInt(player.pendingGold) + pendingGoldAdded;
+    player.pendingXp = nonNegativeInt(player.pendingXp) + pendingXpAdded;
+    player.hp = Math.min(maxHp, beforeHp + restoreHp);
+    player.stamina = Math.min(maxStamina, Math.max(0, beforeStamina - staminaCost) + restoreStamina);
+
+    return {
+        goldSpent: goldCost,
+        pendingGoldAdded,
+        pendingXpAdded,
+        hpRestored: Math.max(0, player.hp - beforeHp),
+        staminaRestored: Math.max(0, player.stamina - beforeStamina),
+        staminaSpent: Math.max(0, beforeStamina - player.stamina)
+    };
+}
+
+function resolveJourneyInstance(player, optionId) {
+    const adventure = normalizeAdventureState(player, { recoverInterruptedJourney: false });
+    const journey = adventure.activeJourney;
+    if (!journey) {
+        return { success: false, code: 'NO_ACTIVE_JOURNEY', message: 'There is no expedition event to resolve.' };
+    }
+    const entry = Array.isArray(journey.itinerary)
+        ? journey.itinerary[journey.legIndex - 1]
+        : null;
+    if (!entry || entry.kind === 'combat') {
+        return {
+            success: false,
+            code: 'NOT_NONCOMBAT_INSTANCE',
+            message: 'The current journey instance must be resolved in combat.'
+        };
+    }
+    const definition = JourneyInstanceCatalog[entry.definitionId];
+    const option = definition && definition.options.find(candidate => candidate.id === optionId);
+    if (!option) {
+        return {
+            success: false,
+            code: 'INVALID_JOURNEY_OPTION',
+            message: 'That choice is not available for the current journey instance.'
+        };
+    }
+    const goldCost = nonNegativeInt(option.effects && option.effects.goldCost);
+    if (goldCost > nonNegativeInt(player.gold)) {
+        return {
+            success: false,
+            code: 'INSUFFICIENT_GOLD',
+            message: `This choice requires ${goldCost} gold.`
+        };
+    }
+
+    const resolvedInstance = clone(journey.currentInstance);
+    const effects = applyJourneyOptionEffects(player, option.effects);
+    recordJourneyInstanceCompletion(journey, option.id);
+    const transition = advanceJourneyAfterInstance(player, adventure, journey);
+    if (!transition.success) return transition;
+    return {
+        ...transition,
+        message: `${option.resultMessage} ${transition.message}`,
+        resolvedInstance,
+        selectedOption: {
+            id: option.id,
+            label: option.label,
+            result: option.result
+        },
+        effects
+    };
+}
+
+function resolveExpeditionCombatVictory(player, context) {
+    const adventure = normalizeAdventureState(player, { recoverInterruptedJourney: false });
+    const journey = adventure.activeJourney;
+    if (!journey || !contextMatchesJourney(journey, context)) {
+        return { success: false, code: 'STALE_JOURNEY', message: 'This combat no longer belongs to the active expedition.' };
+    }
+    if (!journey.phase.endsWith('_COMBAT') || !['OUTBOUND', 'RETURN'].includes(journey.direction)) {
+        return { success: false, code: 'INVALID_JOURNEY_PHASE', message: 'This expedition leg cannot be completed.' };
+    }
+
+    journey.lastCombatEncounterId = journey.currentEncounterId;
+    recordJourneyInstanceCompletion(journey);
+    return advanceJourneyAfterInstance(player, adventure, journey);
+}
+
 function failActiveExpedition(player, reason = 'failed') {
     const adventure = normalizeAdventureState(player, { recoverInterruptedJourney: false });
     const journey = failJourneyRecord(adventure, reason);
@@ -1072,6 +1561,7 @@ function getAdventureSnapshot(player) {
     const publicAdventure = clone(adventure);
     delete publicAdventure.routeEncounterHistory;
     delete publicAdventure.observedEncounterIdsByRoute;
+    if (publicAdventure.activeJourney) delete publicAdventure.activeJourney.itinerary;
     publicAdventure.unlockedRouteIds = publicAdventure.unlockedRouteIds.filter(routeId => {
         const route = RouteCatalog[routeId];
         return route && getFinaleRouteLaunchGate(player, route).allowed;
@@ -1092,20 +1582,34 @@ function getAdventureSnapshot(player) {
             .filter(([routeId]) => discoveredRouteIds.has(routeId))
     );
     const locations = Object.values(LocationCatalog)
-        .filter(location => (
-            location.chapterStatus === 'active'
-            && discoveredLocationIds.has(location.id)
-        ))
-        .map(location => ({
-            id: location.id,
-            name: location.name,
-            symbol: location.symbol,
-            mapPosition: clone(location.mapPosition),
-            description: location.description,
-            isHome: location.id === 'pub_hub',
-            discovered: true,
-            unlocked: publicAdventure.unlockedLocationIds.includes(location.id)
-        }));
+        .filter(location => location.chapterStatus === 'active')
+        .map(location => {
+            const discovered = discoveredLocationIds.has(location.id);
+            if (!discovered) {
+                return {
+                    id: location.id,
+                    name: 'Unknown Area',
+                    symbol: '?',
+                    mapPosition: clone(location.mapPosition),
+                    description: null,
+                    isHome: false,
+                    discovered: false,
+                    unlocked: false,
+                    silhouetted: true
+                };
+            }
+            return {
+                id: location.id,
+                name: location.name,
+                symbol: location.symbol,
+                mapPosition: clone(location.mapPosition),
+                description: location.description,
+                isHome: location.id === 'pub_hub',
+                discovered: true,
+                unlocked: publicAdventure.unlockedLocationIds.includes(location.id),
+                silhouetted: false
+            };
+        });
     const routes = Object.values(RouteCatalog)
         .filter(route => (
             route.chapterStatus === 'active'
@@ -1127,6 +1631,7 @@ function getAdventureSnapshot(player) {
                 toLocationId: route.toLocationId,
                 distance: route.distance,
                 distanceLabel: route.distanceLabel,
+                legCount: getRouteLegCount(route),
                 danger: route.danger,
                 dangerLabel: route.dangerLabel,
                 routeRole: route.routeRole || 'expedition',
@@ -1175,6 +1680,8 @@ module.exports = {
     getAdventureSnapshot,
     beginExpedition,
     beginReturnTrip,
+    continueJourney,
+    resolveJourneyInstance,
     resolveExpeditionCombatVictory,
     failActiveExpedition,
     hasActiveJourney,

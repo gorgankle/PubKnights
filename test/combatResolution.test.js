@@ -114,7 +114,6 @@ function createContext({ enemyCount = 1, playerOverrides = {} } = {}) {
 const defeatSources = [
     { label: 'player', source: { uid: 'player_0', name: 'Knight', kind: 'player' }, cause: 'weapon' },
     { label: 'mercenary', source: { uid: 'ally_merc_1', name: 'Mira', kind: 'companion' }, cause: 'weapon' },
-    { label: 'legacy pet', source: { uid: 'ally_pet', name: 'Biscuit', kind: 'pet' }, cause: 'attack' },
     { label: 'allied NPC', source: { uid: 'ally_kreg', name: 'Kreg', kind: 'npc' }, cause: 'attack' },
     { label: 'poison', source: { uid: 'player_0', name: 'Knight', kind: 'player' }, cause: 'poison' }
 ];
@@ -177,7 +176,7 @@ test('poison preserves its original source for the shared resolver', () => {
     assert.equal(harness.enemies[0].defeatedBy.cause, 'poison');
 });
 
-test('an adopted level-100 pet retrieves loot after victory without entering combat', t => {
+test('legacy standalone pet data cannot create combat loot', t => {
     const originalRandom = Math.random;
     Math.random = () => 0;
     t.after(() => { Math.random = originalRandom; });
@@ -190,43 +189,12 @@ test('an adopted level-100 pet retrieves loot after victory without entering com
     const result = resolveActorDefeat(harness.socketId, harness.enemies[0], harness.context, {
         sourceActor: { uid: 'player_0', name: 'Knight', kind: 'player' }
     });
-    const petEvent = harness.emitted.find(event => event.eventName === 'killConfirmed' && event.payload.isPet);
-
     assert.equal(result.combatComplete, true);
-    assert.equal(harness.player.pendingLoot.length, 1);
-    assert.equal(harness.player.pendingLoot[0].id, 'scavengers_mitts');
-    assert.equal(petEvent.payload.petName, 'Biscuit');
+    assert.deepEqual(harness.player.pendingLoot, []);
+    assert.equal(harness.emitted.some(event => event.payload && event.payload.isPet), false);
 });
 
-test('pet retrieval happens after rogue theft resolves', t => {
-    const originalRandom = Math.random;
-    Math.random = () => 0.99;
-    t.after(() => { Math.random = originalRandom; });
-
-    const existingLoot = { id: 'existing_prize', name: 'Existing Prize', rarity: 'Epic' };
-    const harness = createContext({
-        playerOverrides: {
-            pendingLoot: [existingLoot],
-            pet: { adopted: true, name: 'Biscuit', type: 'dog', level: 100 }
-        }
-    });
-    harness.combat.zone = 'CELLARS';
-    harness.combat.activeLevel = 20;
-    harness.combat.actors.push({
-        uid: 'rogue_1', kind: 'npc', controller: 'ai_rogue', teamId: 'ROGUE',
-        name: 'Cellar Dweller', hp: 10, maxHp: 10, alive: true, stealsBossLoot: true, x: 2, y: 2
-    });
-
-    resolveActorDefeat(harness.socketId, harness.enemies[0], harness.context, {
-        sourceActor: { uid: 'player_0', name: 'Knight', kind: 'player' }
-    });
-
-    assert.deepEqual(harness.player.pendingLoot.map(item => item.id), ['alpha_collar']);
-    const theftEvent = harness.emitted.find(event => event.eventName === 'rogueLootTheft');
-    assert.equal(theftEvent.payload.itemName, 'Existing Prize');
-});
-
-test('encounters deploy active mercenaries but never deploy adopted pets', () => {
+test('encounters deploy active party companions', () => {
     const companion = {
         instanceId: 'merc_test_1',
         templateId: 'starter_mercenary',
@@ -237,13 +205,11 @@ test('encounters deploy active mercenaries but never deploy adopted pets', () =>
         equipment: { weapon: null, helmet: null, armor: null, gloves: null, boots: null }
     };
     const player = makePlayer({
-        pet: { adopted: true, name: 'Biscuit', type: 'dog', level: 10 },
         roster: { companions: [companion], activeIds: [companion.instanceId] }
     });
 
     const combat = createCombatEncounter(player, { zoneChoice: 'WILDERNESS', activeLevel: 1 });
 
     assert.ok(combat);
-    assert.equal(combat.actors.some(actor => actor.kind === 'pet'), false);
     assert.equal(combat.actors.filter(actor => actor.kind === 'companion').length, 1);
 });

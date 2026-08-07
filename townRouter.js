@@ -6,7 +6,6 @@ const crypto = require('crypto');
 const { ItemDatabase } = require('./public/js/items.js');
 const { LootTables } = require('./public/js/lootTables.js');
 const {
-    sanitizePetCosmetics,
     sanitizeToken,
     clampInt,
     getArrayIndex
@@ -464,26 +463,7 @@ module.exports = function(socket, _io, activePlayers, activeCombats) {
             recordMinigameEvent(p, data);
             return;
         }
-        if (data.action === 'adoptPet') {
-            if (p.pet && p.pet.adopted) return socket.emit('townReceipt', { success: false, message: "\u274C You already have a companion." });
-            
-            if (p.gold >= 10) {
-                p.gold -= 10;
-                const petCosmetics = sanitizePetCosmetics(data, p.pet);
-                p.pet = {
-                    adopted: true,
-                    level: 1,
-                    name: petCosmetics.name,
-                    type: petCosmetics.type,
-                    furColor: petCosmetics.furColor,
-                    collarColor: petCosmetics.collarColor
-                };
-                socket.emit('townReceipt', { success: true, action: 'adoptPet', updatedPlayer: p, message: `\u{1F415} You have officially adopted ${p.pet.name}!` });
-            } else {
-                socket.emit('townReceipt', { success: false, message: "\u274C Insufficient funds to adopt a companion (Requires 10 Gold)." });
-            }
-        }
-        else if (data.action === 'setActiveCompanion') {
+        if (data.action === 'setActiveCompanion') {
             if (activeCombats && activeCombats[socket.id]) {
                 return socket.emit('townReceipt', { success: false, action: 'setActiveCompanion', message: 'Mercenary rosters can only be changed outside combat.' });
             }
@@ -571,18 +551,6 @@ module.exports = function(socket, _io, activePlayers, activeCombats) {
                 training: result,
                 message: result.message
             });
-        }
-        // 4. PET TRAINING
-        else if (data.action === 'trainPet') {
-            p.pet = p.pet || { adopted: false, level: 1 };
-            let level = p.pet.level || 1;
-            let upg = level - 1;
-            let costG = Math.floor(750 * Math.pow(1.2, upg));
-
-            if (p.gold >= costG) {
-                p.gold -= costG; p.pet.level = level + 1;
-                socket.emit('townReceipt', { success: true, action: 'trainPet', updatedPlayer: p, message: `Fed pet! Scavenging increased to Level ${p.pet.level}!` });
-            } else socket.emit('townReceipt', { success: false, message: 'Insufficient gold to train your companion.' });
         }
         else if (data.action === 'upgradeVault') {
             let currentSlots = p.vaultSlots || 10;

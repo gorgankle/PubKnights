@@ -560,6 +560,107 @@ const HumanoidActorVisualProfiles = Object.freeze({
             }
         }
     }),
+    npc_mara: makeHumanoidVisualProfile({
+        label: 'Mara',
+        profileGroup: 'special',
+        stanceProfile: 'standard',
+        attackClip: 'bash',
+        appearance: {
+            gender: 'female',
+            skin: 'deep',
+            hairStyle: 'hair_braid',
+            hairColor: 'black',
+            eyes: 'eyes_gold',
+            shirtColor: 'brown',
+            pantsColor: 'umber',
+            bootsColor: 'leather'
+        },
+        equipment: {
+            helmet: null,
+            armor: { spriteId: 'armor_tunic' },
+            gloves: { spriteId: 'work_gloves' },
+            boots: { spriteId: 'sturdy_boots' },
+            weapon: null,
+            offhand: null
+        }
+    }),
+    npc_elowen: makeHumanoidVisualProfile({
+        label: 'Elowen',
+        profileGroup: 'special',
+        stanceProfile: 'agile',
+        attackClip: 'shoot',
+        appearance: {
+            gender: 'female',
+            skin: 'tan',
+            hairStyle: 'hair_braid',
+            hairColor: 'auburn',
+            eyes: 'eyes_green',
+            shirtColor: 'olive',
+            pantsColor: 'brown',
+            bootsColor: 'suede'
+        },
+        equipment: {
+            helmet: { spriteId: 'wilderness_cloak' },
+            armor: { spriteId: 'armor_beastmaster' },
+            gloves: { spriteId: 'poachers_grips' },
+            boots: { spriteId: 'boots_hide' },
+            weapon: { spriteId: 'weap_bow' },
+            offhand: null
+        }
+    }),
+    npc_tilda: makeHumanoidVisualProfile({
+        label: 'Tilda',
+        profileGroup: 'special',
+        stanceProfile: 'standard',
+        attackClip: 'cast',
+        appearance: {
+            gender: 'female',
+            skin: 'pale',
+            hairStyle: 'hair_waves',
+            hairColor: 'silver',
+            eyes: 'eyes_purple',
+            shirtColor: 'purple',
+            pantsColor: 'navy',
+            bootsColor: 'black'
+        },
+        equipment: {
+            helmet: null,
+            armor: { spriteId: 'flannel_shirt' },
+            gloves: { spriteId: 'work_gloves' },
+            boots: { spriteId: 'muddy_boots' },
+            weapon: { spriteId: 'weap_apprentice_staff' },
+            offhand: null
+        },
+        overrides: {
+            layers: { weapon: 'underHands' },
+            anchors: { cast: { release: [0, -1] } }
+        }
+    }),
+    npc_marlow: makeHumanoidVisualProfile({
+        label: 'Marlow',
+        profileGroup: 'special',
+        stanceProfile: 'armored',
+        attackClip: 'slash',
+        defensiveClip: 'shield_block',
+        appearance: {
+            gender: 'male',
+            skin: 'deep',
+            hairStyle: 'hair_buzzcut',
+            hairColor: 'silver',
+            eyes: 'eyes_brown',
+            shirtColor: 'burgundy',
+            pantsColor: 'charcoal',
+            bootsColor: 'black'
+        },
+        equipment: {
+            helmet: { spriteId: 'helm_rusty_coif' },
+            armor: { spriteId: 'armor_tankard' },
+            gloves: { spriteId: 'gloves_leather_mitts' },
+            boots: { spriteId: 'sturdy_boots' },
+            weapon: { spriteId: 'weap_machete' },
+            offhand: { spriteId: 'offhand_captains_shield' }
+        }
+    }),
     shield_guard_captain: makeHumanoidVisualProfile({
         label: 'Shielded Guard Captain',
         profileGroup: 'advanced',
@@ -718,6 +819,10 @@ const STANDARD_HUMANOID_NPC_PROFILE_IDS = Object.freeze([
 
 const SPECIAL_HUMANOID_NPC_PROFILE_IDS = Object.freeze([
     'npc_kreg',
+    'npc_mara',
+    'npc_elowen',
+    'npc_tilda',
+    'npc_marlow',
     'cellar_dweller'
 ]);
 

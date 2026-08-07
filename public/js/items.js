@@ -83,7 +83,7 @@ const ItemDatabase = {
     },
 	
 	
-    // === PET DROPS ===
+	// === SCAVENGER GEAR ===
     "bone_fetch_club": { 
         id: "bone_fetch_club", name: "Ancient Fetching Bone", slot: "weapon", type: "Club", rarity: "Unique", 
         offense: 30, attackRange: 1, value: 500, spriteId: "weap_bone",

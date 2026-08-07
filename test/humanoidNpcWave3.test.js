@@ -508,10 +508,17 @@ test('four stance profiles merge sparse anchors into six-slot visual profiles', 
     );
 });
 
-test('five advanced prototypes and Kreg expose their intended shared loadouts', () => {
+test('advanced prototypes and named town NPCs expose their intended shared loadouts', () => {
     assert.deepEqual(
         [...SPECIAL_HUMANOID_NPC_PROFILE_IDS],
-        ['npc_kreg', 'cellar_dweller']
+        [
+            'npc_kreg',
+            'npc_mara',
+            'npc_elowen',
+            'npc_tilda',
+            'npc_marlow',
+            'cellar_dweller'
+        ]
     );
     assert.deepEqual(
         [...ADVANCED_HUMANOID_PROTOTYPE_PROFILE_IDS],

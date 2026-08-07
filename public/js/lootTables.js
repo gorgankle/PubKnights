@@ -312,19 +312,6 @@ const LootTables = {
         ]
     },
 
-// === PET SCAVENGING ===
-"pet_scavenge": {
-        xpDrop: 0,
-        dropChance: 1.0, 
-        pools: [
-            { itemId: "scavengers_mitts", weight: 45 },   // 45% - Most common find
-            { itemId: "chewed_stompers", weight: 25 },    // 25% - Uncommon
-            { itemId: "bone_fetch_club", weight: 15 },    // 15% - Rare
-            { itemId: "beastmaster_tunic", weight: 10 },  // 10% - Epic
-            { itemId: "alpha_collar", weight: 5 }         // 5% - The Relic Jackpot!
-        ]
-    }, // <--- CHANGED TO A COMMA!
-
 // === GAMBLE CRATES ===
     "timber_crate": {
         pools: [
