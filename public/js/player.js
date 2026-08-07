@@ -233,12 +233,8 @@ function getPlayerMaxStamina() { return getEffectiveStat(player, 'maxStamina') *
 
 function getPlayerSwiftness() { return Math.max(1, Math.min(12, getEffectiveStat(player, 'speed'))); } // Re-wired to Speed!
 function getPlayerTotalPower() { return Math.max(1, getEffectiveStat(player, 'offense')); }
-function getPlayerAccuracy() { return Math.max(1, getEffectiveStat(player, 'offense')); } // Obfuscated
 function getPlayerDeflectChance() { return Math.max(0, Math.min(75, getEffectiveStat(player, 'defense'))); }
 // ============================================
-// Aliases used by other scripts
-function getPlayerMoveRange() { return getPlayerSwiftness(); }
-function getPlayerTotalAttack() { return getPlayerTotalPower(); }
 
 // === ECONOMY MATH HELPERS (MUST MATCH SERVER.JS) ===
 function getBackpackUpgradeCost() {

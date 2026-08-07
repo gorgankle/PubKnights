@@ -17,7 +17,6 @@ const COMPANION_EQUIPMENT_SLOTS = Object.freeze([
 const COMPANION_POCKET_COUNT = 1;
 const MAX_ROSTER_COMPANIONS = 6;
 const MAX_SELECTED_COMPANIONS = 3;
-const MAX_ACTIVE_COMPANIONS = MAX_SELECTED_COMPANIONS;
 const MAX_COMPANION_LEVEL = 50;
 
 function createCompanionInstanceId() {
@@ -194,7 +193,6 @@ module.exports = {
     COMPANION_POCKET_COUNT,
     MAX_ROSTER_COMPANIONS,
     MAX_SELECTED_COMPANIONS,
-    MAX_ACTIVE_COMPANIONS,
     createCompanionInstanceId,
     normalizeRosterState,
     findCompanionByInstanceId,

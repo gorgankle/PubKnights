@@ -396,12 +396,6 @@ function consumeActorIntent(actor) {
     return cloneIntent(intent);
 }
 
-function clearActorIntent(actor) {
-    if (!getPendingActorIntent(actor)) return false;
-    delete actor.pendingIntent;
-    return true;
-}
-
 function interruptActorIntent(actor, details = {}) {
     const intent = getPendingActorIntent(actor);
     const forced = details.force === true || details.interruptsIntent === true;
@@ -503,7 +497,6 @@ module.exports = {
     canResolveActorIntent,
     actorOccupiesIntentTiles,
     consumeActorIntent,
-    clearActorIntent,
     interruptActorIntent,
     consumeActorReaction,
     clearExpiredActorReactions,

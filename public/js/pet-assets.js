@@ -26,41 +26,11 @@ const petAppearanceOptions = {
     collarColor: ['red', 'blue', 'green', 'yellow', 'purple', 'pink'] // <-- Added this!
 };
 
-// Pet source art stays floor-anchored before sharing the same deterministic
-// legacy 24x24 -> runtime 32x32 normalization as characters and equipment.
-function buildPetSprite(stringArray) {
-    return normalizeSpriteMatrix(stringArray, { verticalAnchor: 'bottom' });
-}
-
+// Compatibility keys retain the public tool order. The native pet matrices
+// are installed by sprite-overhaul-world.js before rendering begins.
 const PetMatrices = {
-// Cute, Scaled-Down Proportional Dog (Floppy Ears, Front-Facing)
-    'dog': buildPetSprite([
-        ".........oooooo.........",
-        "........offffffo........",
-        "......oooffffffooo......",
-        "......ofofbffbfofo......",
-        "......ofoffwwffofo......",
-        "......ofofwbbwfofo......",
-        "......oooccccccooo......",
-        "........offffffo........",
-        "........offffffofo......",
-        "........owwoowwo........",
-        "........oooooooo........"]),
-    
-// Cute, Scaled-Down Proportional Cat (Pointy Ears, Front-Facing, Curled Tail)
-    'cat': buildPetSprite([
-        ".....oo..........oo.....",
-        ".....ofo........ofo.....",
-        "......offooooooffo......",
-        "......offffffffffo......",
-        "......offbffffbffo......",
-        "......offffwwffffo......",
-        ".......ooccccccoo.......",
-        "........offffffo..oo....",
-        "........offffffo.ofo....",
-        "........owwoowwooofo....",
-        "........oooooooooooo...."
-    ])
+    dog: undefined,
+    cat: undefined
 };
 
 function renderPetCanvas(canvasEl) {

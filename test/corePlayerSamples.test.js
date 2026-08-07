@@ -33,19 +33,54 @@ function loadSampleContext() {
     return context;
 }
 
-test('core player studies are native 32x32 matrices', () => {
+test('core player studies preserve registry order and resolve to native matrices', () => {
     const context = loadSampleContext();
-    const result = vm.runInContext(`(() => ({
-        sampleSize: CORE_PLAYER_SAMPLE_SIZE,
-        matrixCount: Object.keys(CorePlayerSampleMatrices).length,
-        allNative: Object.values(CorePlayerSampleMatrices).every(matrix =>
-            matrix.length === 32 && matrix.every(row => row.length === 32)
-        )
-    }))()`, context);
+    const result = vm.runInContext(`(() => {
+        const keys = Object.keys(CorePlayerSampleMatrices);
+        const isNative = matrix => matrix
+            && matrix.length === 32
+            && matrix.every(row => row.length === 32);
+        return {
+            sampleSize: CORE_PLAYER_SAMPLE_SIZE,
+            keys,
+            unresolvedKeys: keys.filter(key => !CorePlayerSampleMatrices[key]),
+            nonNativeKeys: keys.filter(key => !isNative(CorePlayerSampleMatrices[key])),
+            blankKeys: keys.filter(key =>
+                CorePlayerSampleMatrices[key].flat().every(value => value === '.')
+            )
+        };
+    })()`, context);
 
     assert.equal(result.sampleSize, 32);
-    assert.equal(result.matrixCount, 24);
-    assert.equal(result.allNative, true);
+    assert.deepEqual(Array.from(result.keys), [
+        'body_core_male',
+        'body_core_female',
+        'face_core',
+        'hair_core_cropped',
+        'hair_core_braid',
+        'hair_core_waves',
+        'hair_core_topknot',
+        'outfit_core_apron',
+        'outfit_core_jerkin',
+        'outfit_core_scout',
+        'outfit_core_brewer',
+        'hair_core_messy',
+        'hair_core_spiky',
+        'hair_core_long',
+        'hair_core_bob',
+        'hair_core_mohawk',
+        'hair_core_ponytail',
+        'hair_core_undercut',
+        'hair_core_twintails',
+        'hair_core_bald',
+        'hair_core_curly',
+        'hair_core_halfup',
+        'hair_core_slickback',
+        'hair_core_locs'
+    ]);
+    assert.deepEqual(Array.from(result.unresolvedKeys), []);
+    assert.deepEqual(Array.from(result.nonNativeKeys), []);
+    assert.deepEqual(Array.from(result.blankKeys), ['hair_core_bald']);
 });
 
 test('every core player pixel resolves through the shared palette', () => {

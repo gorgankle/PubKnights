@@ -9,13 +9,25 @@ function read(relativePath) {
     return fs.readFileSync(path.join(root, relativePath), 'utf8');
 }
 
+function readJavaScriptDirectory(relativeDirectory) {
+    return fs.readdirSync(path.join(root, relativeDirectory))
+        .filter(fileName => fileName.endsWith('.js'))
+        .sort()
+        .map(fileName => read(path.join(relativeDirectory, fileName)))
+        .join('\n');
+}
+
 test('retired town handlers and chumming state stay outside the production runtime', () => {
     const townRouter = read('townRouter.js');
+    const combatRuntime = [
+        read('combatRouter.js'),
+        readJavaScriptDirectory('combatRouter')
+    ].join('\n');
     const runtime = [
         townRouter,
         read('server.js'),
         read('adventureRouter.js'),
-        read('combatRouter.js'),
+        combatRuntime,
         read('combatRewards.js'),
         read('combatDefeat.js'),
         read('public/js/player.js'),
@@ -48,8 +60,8 @@ test('retired town handlers and chumming state stay outside the production runti
     assert.doesNotMatch(runtime, /happyHourTicks/);
     assert.doesNotMatch(runtime, /id=["']upgrades-screen["']/);
     assert.doesNotMatch(runtime, /Town Hall/i);
-    assert.doesNotMatch(read('combatRouter.js'), /socket\.on\(['"]deployToCombat/);
-    assert.doesNotMatch(read('combatRouter.js'), /PUBKNIGHTS_LEGACY_DEPLOYMENTS/);
+    assert.doesNotMatch(combatRuntime, /socket\.on\(['"]deployToCombat/);
+    assert.doesNotMatch(combatRuntime, /PUBKNIGHTS_LEGACY_DEPLOYMENTS/);
 });
 
 test('minigame currencies and the complete crate pipeline remain production features', () => {

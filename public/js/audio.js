@@ -44,7 +44,6 @@ function initAudio() {
         }
     }
 }
-
 // === NEW: MULTI-TRACK 32-STEP SEQUENCER PLAYLIST ===
 const musicTracks = [
     {
@@ -785,17 +784,4 @@ function playRetroSound(type) {
             osc.start(now); osc.stop(now + 1.25);
             return; 
     }
-}
-
-function queueMusicTrack(trackName) {
-    const nextIndex = musicTracks.findIndex(track => track.name === trackName);
-    if (nextIndex < 0) return false;
-    activeTrackIndex = nextIndex;
-    tempo = musicTracks[activeTrackIndex].tempo;
-    currentNote = 0;
-    currentPhraseIndex = 0;
-    currentLoopCount = 0;
-    const display = document.getElementById("current-track-name");
-    if (display) display.innerText = `🎵 Trk ${activeTrackIndex + 1}: ${musicTracks[activeTrackIndex].name}`;
-    return true;
 }

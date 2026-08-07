@@ -278,11 +278,6 @@ function syncCombatViews(combat, player) {
     return combat;
 }
 
-function getActorByUid(combat, uid) {
-    if (!combat || !Array.isArray(combat.actors)) return null;
-    return combat.actors.find(actor => actor.uid === uid) || null;
-}
-
 function getAliveActors(combat) {
     return (combat && Array.isArray(combat.actors) ? combat.actors : []).filter(isActorAlive);
 }
@@ -381,7 +376,6 @@ module.exports = {
     syncPlayerActor,
     syncCombatViews,
     getPlayerActor,
-    getActorByUid,
     getAliveActors,
     getEnemyActors,
     getAliveRogueActors,

@@ -13,13 +13,6 @@ function upgradeVaultCapacity() {
     socket.emit('townAction', { action: 'upgradeVault' });
 }
 
-
-// Brews are combat actions only.
-function drinkBrewFromInventory(idx) {
-    logMessage("Brews can only be consumed from the combat backpack.");
-    if (typeof playRetroSound === 'function') playRetroSound('error');
-}
-
 // === CRATE UNBOXING LOGIC ===
 function openCrate(index, crateId) {
     const crateItem = player && player.inventory ? player.inventory[index] : null;

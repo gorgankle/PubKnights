@@ -104,11 +104,6 @@ function sanitizeChatMessage(value, maxLength = 100) {
     return escapeHtml(cleanString(value, maxLength));
 }
 
-function sanitizeTitle(value, maxLength = 30) {
-    const title = cleanString(value, maxLength, 'Untitled');
-    return title ? escapeHtml(title) : 'Untitled';
-}
-
 function sanitizeToken(value, fallback) {
     if (typeof value !== 'string') return fallback;
     const normalized = value.trim();
@@ -170,29 +165,6 @@ function sanitizeZoneId(value) {
     return token;
 }
 
-function sanitizeUGCContent(type, contentData) {
-    if (!Array.isArray(contentData)) return null;
-
-    if (type === 'ART') {
-        if (contentData.length > 576) return null;
-        return contentData.map(cell => sanitizeToken(cell, '.'));
-    }
-
-    if (type === 'MUSIC') {
-        if (contentData.length > 32) return null;
-        return contentData.map(step => {
-            if (!step || typeof step !== 'object' || Array.isArray(step)) return {};
-            return Object.fromEntries(
-                Object.entries(step)
-                    .slice(0, 16)
-                    .map(([key, value]) => [sanitizeToken(key, 'note'), clampInt(value, 0, 127, 0)])
-            );
-        });
-    }
-
-    return null;
-}
-
 module.exports = {
     DEFAULT_APPEARANCE,
     APPEARANCE_OPTIONS,
@@ -204,13 +176,11 @@ module.exports = {
     cleanString,
     escapeHtml,
     sanitizeChatMessage,
-    sanitizeTitle,
     sanitizeToken,
     sanitizeAppearance,
     sanitizePetCosmetics,
     clampInt,
     getArrayIndex,
     escapeRegExp,
-    sanitizeZoneId,
-    sanitizeUGCContent
+    sanitizeZoneId
 };

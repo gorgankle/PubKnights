@@ -137,19 +137,6 @@ function getItemTooltip(item) {
     return html;
 }
 
-function showSpecialSkillTooltip(e) {
-    const weapon = typeof getActiveCombatantWeapon === 'function'
-        ? getActiveCombatantWeapon()
-        : player.equipment.weapon;
-    if (weapon && weapon.combat && weapon.combat.special) {
-        const cost = Math.max(0, Number(weapon.combat.special.staminaCost) || 0);
-        let text = `<h3>⚔️ Weapon Skill Deployment</h3>` + getWeaponSpecialDesc(weapon) + `<br><br>⚡ Cost: <b>${cost} Stamina</b>`;
-        showTooltip(text, e);
-    } else {
-        showTooltip(`<h3>⚔️ Fists Burst</h3>No weapon profile map locked.<br><br>⚡ Cost: <b>15 Stamina</b>`, e);
-    }
-}
-
 function showTooltip(htmlContent, e) {
     const tt = document.getElementById("game-tooltip");
     if (tt) { tt.innerHTML = htmlContent; tt.style.display = "block"; moveTooltip(e); }
@@ -203,11 +190,6 @@ function moveTooltip(e) {
     // Apply the smart coordinates
     tt.style.left = posX + "px";
     tt.style.top = posY + "px";
-}
-
-function hideTooltip() { 
-    const tt = document.getElementById("game-tooltip"); 
-    if (tt) tt.style.display = "none"; 
 }
 
 			//The Tooltip Logic & Combat Safety

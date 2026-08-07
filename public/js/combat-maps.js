@@ -24,12 +24,3 @@ function hasLineOfSight(x1, y1, x2, y2) {
         if (e2 < dx) { err += dx; cy += sy; }
     }
 }
-
-// === LOBOTOMIZED MAP REQUEST ===
-function transitionToCombat(zoneChoice = 'WILDERNESS') {
-    // We do NO math here. We just ask the server to build the map and beam it down.
-    socket.emit('deployToCombat', {
-        zoneChoice: zoneChoice,
-        activeLevel: (zoneChoice === 'CELLARS') ? player.selectedCellarLevel : player.selectedWildernessLevel
-    });
-}

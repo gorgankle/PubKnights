@@ -1098,12 +1098,6 @@ window.cyclePetAppearance = function(part) {
     if (typeof playRetroSound === 'function') playRetroSound('menu');
 };
 
-function updateTownUI(data) {
-    // Reserved for future server-only Town data payloads.
-
-}
-
-
 function renderCombatModal(filter = 'DRINK') {
     const modal = document.getElementById('combat-backpack-modal');
     const grid = document.getElementById('combat-modal-grid');

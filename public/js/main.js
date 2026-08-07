@@ -1501,7 +1501,6 @@ socket.on('serverTick', (serverData) => {
     if (typeof serverData.gold === 'number') player.gold = serverData.gold;
 
     refreshSystemUI();
-    updateTownUI(serverData);
 });
 // === SERVER-AUTHORITATIVE COMBAT DISPATCH (UNIFIED ENGINE) ===
 socket.on('combatResult', (result) => {

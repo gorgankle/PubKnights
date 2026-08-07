@@ -21,7 +21,6 @@ const {
     canDismissCompanion
 } = require('./companionRoster.js');
 const {
-    getMercenaryTrainingQuote,
     trainMercenaryOneLevel
 } = require('./mercenaryProgression.js');
 const {
@@ -207,7 +206,7 @@ function claimMinigameSession(player, type, sessionId) {
 
 // 3. Export the setup function that server.js will call
 // We "inject" the live socket and the master activePlayers memory object here.
-module.exports = function(socket, io, activePlayers, activeCombats) {
+module.exports = function(socket, _io, activePlayers, activeCombats) {
 
     // --- SERVER-AUTHORITATIVE INVENTORY & VAULT ---
     socket.on('inventoryAction', (data) => {

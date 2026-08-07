@@ -4,9 +4,7 @@ const mongoose = require('mongoose');
 const {
     normalizeUsername,
     sanitizeChatMessage,
-    sanitizeTitle,
     sanitizeZoneId,
-    sanitizeUGCContent,
     clampInt,
     getArrayIndex,
     escapeRegExp

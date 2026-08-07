@@ -82,7 +82,7 @@ function preparePlayerForAdventureCombat(player) {
     player.activeCombatBuff = null;
 }
 
-function deployResolvedEncounter(socket, io, player, activeCombats, action, result) {
+function deployResolvedEncounter(socket, player, activeCombats, action, result) {
     const encounterId = sanitizeToken(result && result.encounterId, '');
     if (!encounterId) return { deployed: false, combat: null };
 
@@ -187,7 +187,6 @@ module.exports = function registerAdventureRouter(
 
         const deployment = deployResolvedEncounter(
             socket,
-            io,
             player,
             activeCombats,
             action,

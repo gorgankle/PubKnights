@@ -15,7 +15,6 @@ const {
 } = require('./worldCatalog.js');
 const {
     ensureWorldState,
-    normalizeWorldState,
     FINALE_STATUSES,
     worldRequirementsMet,
     getAvailableTownServiceIds,

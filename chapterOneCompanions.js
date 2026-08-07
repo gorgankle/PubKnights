@@ -8,10 +8,6 @@ const {
     normalizeRosterState
 } = require('./companionRoster.js');
 
-const CHAPTER_ONE_COMPANION_IDS = Object.freeze({
-    MARLOW: 'marlow'
-});
-
 const ChapterOneCompanionCatalog = Object.freeze({
     marlow: Object.freeze({
         id: 'marlow',
@@ -128,7 +124,6 @@ function recruitChapterOneCompanion(player, companionId) {
 }
 
 module.exports = {
-    CHAPTER_ONE_COMPANION_IDS,
     ChapterOneCompanionCatalog,
     getNamedCompanion,
     recruitChapterOneCompanion

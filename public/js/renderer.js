@@ -305,7 +305,6 @@ window.clearSpriteCache = function(spriteKey) {
 
 
 // === NEW: VISUAL EFFECTS ARRAYS ===
-let activeProjectiles = [];
 let activeExplosions = [];
 
 // === NEW: CLIENT-SIDE LINE OF EFFECT MATH ===
@@ -1336,140 +1335,149 @@ function buildNpcTooltipHtml(mob) {
            intentHtml;
 }
 
-canvas.addEventListener("mouseleave", function() {
-    hoverTile = {x: -1, y: -1};
-    hideTooltip();
-});
-canvas.addEventListener("mousemove", function(e) {
-    if (gameState !== 'COMBAT') return;
-    const r = canvas.getBoundingClientRect();
+(function initializeCombatCanvasInteractions(combatCanvas) {
+    if (!combatCanvas || typeof combatCanvas.addEventListener !== 'function') return;
 
-    // === NEW: MOBILE SCALING MATH ===
-    const scaleX = canvas.width / r.width;
-    const scaleY = canvas.height / r.height;
-
-    const tx = Math.floor(((e.clientX - r.left) * scaleX) / currentTileSize);
-    const ty = Math.floor(((e.clientY - r.top) * scaleY) / currentTileSize);
-    // ================================
-
-   let cols = currentGridSize.cols || currentGridSize || 8;
-    let rows = currentGridSize.rows || currentGridSize || 8;
-    if (tx < 0 || tx >= cols || ty < 0 || ty >= rows) {
+    combatCanvas.addEventListener("mouseleave", function() {
         hoverTile = {x: -1, y: -1};
         hideTooltip();
-        return;
-    }
+    });
+    combatCanvas.addEventListener("mousemove", function(e) {
+        if (gameState !== 'COMBAT') return;
+        const r = combatCanvas.getBoundingClientRect();
 
-    // Keep invalid destinations visible so dashed feedback explains the rejection.
-    if (combatPhase === 'TARGETING') {
-        hoverTile = {x: tx, y: ty};
-    }
+        // === NEW: MOBILE SCALING MATH ===
+        const scaleX = combatCanvas.width / r.width;
+        const scaleY = combatCanvas.height / r.height;
 
-    let mob = [...(enemies || []), ...(rogues || []), ...(allies || [])].find(em => { let s = em.size || 1; return em.alive && tx >= em.x && tx < em.x + s && ty >= em.y && ty < em.y + s; });
+        const tx = Math.floor(((e.clientX - r.left) * scaleX) / currentTileSize);
+        const ty = Math.floor(((e.clientY - r.top) * scaleY) / currentTileSize);
+        // ================================
 
-    if (mob) {
-        showTooltip(buildNpcTooltipHtml(mob), e);
-    } else {
-        hideTooltip();
-    }
-});
-
-canvas.addEventListener("click", function(e) {
-    if (gameState !== 'COMBAT' || currentTurn !== 'PLAYER') return;
-    const r = canvas.getBoundingClientRect();
-
-    // === NEW: MOBILE SCALING MATH ===
-    const scaleX = canvas.width / r.width;
-    const scaleY = canvas.height / r.height;
-
-    const tx = Math.floor(((e.clientX - r.left) * scaleX) / currentTileSize);
-    const ty = Math.floor(((e.clientY - r.top) * scaleY) / currentTileSize);
-    // ================================
-
-    let cols = currentGridSize.cols || currentGridSize || 8;
-    let rows = currentGridSize.rows || currentGridSize || 8;
-    if (tx < 0 || tx >= cols || ty < 0 || ty >= rows) return;
-
-    // Use the same range/LoS profile used by the renderer.
-    if (combatPhase === 'TARGETING') {
-        const activePosForTarget = typeof getActiveCombatantPosition === 'function' ? getActiveCombatantPosition() : { x: player.x, y: player.y, size: 1 };
-        const validity = getCombatTileTargetValidity(activePosForTarget, tx, ty, getCombatTargetProfile());
-
-        if (validity.valid) {
-            if (typeof executeTargetAction === 'function') executeTargetAction(tx, ty);
-        } else {
-            logMessage(validity.inRange ? "Target blocked by obstacles." : "Target outside action range.");
-            if (typeof playRetroSound === 'function') playRetroSound('error');
+        let cols = currentGridSize.cols || currentGridSize || 8;
+        let rows = currentGridSize.rows || currentGridSize || 8;
+        if (tx < 0 || tx >= cols || ty < 0 || ty >= rows) {
+            hoverTile = {x: -1, y: -1};
+            hideTooltip();
+            return;
         }
 
-        hoverTile = {x: -1, y: -1};
-        return;
-    }
-    let clickedMonster = getPlayerAttackables().find(em => { let s = em.size || 1; return em.alive && tx >= em.x && tx < em.x + s && ty >= em.y && ty < em.y + s; });
+        // Keep invalid destinations visible so dashed feedback explains the rejection.
+        if (combatPhase === 'TARGETING') {
+            hoverTile = {x: tx, y: ty};
+        }
 
-    if (combatPhase === 'ACTION_READY') {
-        if (clickedMonster) {
-            const activePosForAttack = typeof getActiveCombatantPosition === 'function' ? getActiveCombatantPosition() : { x: player.x, y: player.y, size: 1 };
-            const validity = getCombatActorTargetValidity(clickedMonster, activePosForAttack, getCombatTargetProfile());
+        let mob = [...(enemies || []), ...(rogues || []), ...(allies || [])].find(em => { let s = em.size || 1; return em.alive && tx >= em.x && tx < em.x + s && ty >= em.y && ty < em.y + s; });
+
+        if (mob) {
+            showTooltip(buildNpcTooltipHtml(mob), e);
+        } else {
+            hideTooltip();
+        }
+    });
+
+    combatCanvas.addEventListener("click", function(e) {
+        if (gameState !== 'COMBAT' || currentTurn !== 'PLAYER') return;
+        const r = combatCanvas.getBoundingClientRect();
+
+        // === NEW: MOBILE SCALING MATH ===
+        const scaleX = combatCanvas.width / r.width;
+        const scaleY = combatCanvas.height / r.height;
+
+        const tx = Math.floor(((e.clientX - r.left) * scaleX) / currentTileSize);
+        const ty = Math.floor(((e.clientY - r.top) * scaleY) / currentTileSize);
+        // ================================
+
+        let cols = currentGridSize.cols || currentGridSize || 8;
+        let rows = currentGridSize.rows || currentGridSize || 8;
+        if (tx < 0 || tx >= cols || ty < 0 || ty >= rows) return;
+
+        // Use the same range/LoS profile used by the renderer.
+        if (combatPhase === 'TARGETING') {
+            const activePosForTarget = typeof getActiveCombatantPosition === 'function' ? getActiveCombatantPosition() : { x: player.x, y: player.y, size: 1 };
+            const validity = getCombatTileTargetValidity(activePosForTarget, tx, ty, getCombatTargetProfile());
+
             if (validity.valid) {
-                selectedEnemy = clickedMonster;
-                pendingMove = null;
-                logMessage(`Target Locked: ${clickedMonster.name}.`);
+                if (typeof executeTargetAction === 'function') executeTargetAction(tx, ty);
             } else {
-                logMessage(validity.inRange ? "No line of sight to target." : "Target outside weapon range.");
+                logMessage(validity.inRange ? "Target blocked by obstacles." : "Target outside action range.");
                 if (typeof playRetroSound === 'function') playRetroSound('error');
             }
-            refreshSystemUI();
-            if (typeof drawGrid === 'function') drawGrid();
+
+            hoverTile = {x: -1, y: -1};
             return;
         }
+        let clickedMonster = getPlayerAttackables().find(em => { let s = em.size || 1; return em.alive && tx >= em.x && tx < em.x + s && ty >= em.y && ty < em.y + s; });
 
-        const activePos = typeof getActiveCombatantPosition === 'function' ? getActiveCombatantPosition() : { x: player.x, y: player.y, size: 1 };
-        if (tx === activePos.x && ty === activePos.y) {
-            pendingMove = null;
-            logMessage("Use Rest to hold position and recover stamina.");
-            refreshSystemUI();
-            return;
-        }
-
-if (isValidPlayerMovePath(tx, ty)) {
-            // Note: We removed the manual mapObstacles check because isValidPlayerMovePath handles it!
-
-            if (pendingMove && pendingMove.x === tx && pendingMove.y === ty) {
-                let activePosForMove = typeof getActiveCombatantPosition === 'function' ? getActiveCombatantPosition() : { x: player.x, y: player.y, size: 1 };
-                let dist = getGridDistance(activePosForMove.x, activePosForMove.y, tx, ty, activePosForMove.size || 1);
-                let swiftness = typeof getActiveCombatantMoveRange === 'function' ? getActiveCombatantMoveRange() : getPlayerSwiftness();
-			    let moveStaminaCost = Math.floor((dist / swiftness) * 5);
-                if ((typeof getActiveCombatantStamina === 'function' ? getActiveCombatantStamina() : player.stamina) < moveStaminaCost) {
-                    logMessage(`❌ Legs are too heavy. Not enough stamina (${moveStaminaCost} required).`); playRetroSound('error');
-                    pendingMove = null; return;
+        if (combatPhase === 'ACTION_READY') {
+            if (clickedMonster) {
+                const activePosForAttack = typeof getActiveCombatantPosition === 'function' ? getActiveCombatantPosition() : { x: player.x, y: player.y, size: 1 };
+                const validity = getCombatActorTargetValidity(clickedMonster, activePosForAttack, getCombatTargetProfile());
+                if (validity.valid) {
+                    selectedEnemy = clickedMonster;
+                    pendingMove = null;
+                    logMessage(`Target Locked: ${clickedMonster.name}.`);
+                } else {
+                    logMessage(validity.inRange ? "No line of sight to target." : "Target outside weapon range.");
+                    if (typeof playRetroSound === 'function') playRetroSound('error');
                 }
-                if (typeof applyActiveCombatantLocalMove === 'function') applyActiveCombatantLocalMove(tx, ty, moveStaminaCost);
-                else { player.stamina -= moveStaminaCost; player.x = tx; player.y = ty; }
-                pendingMove = null;
-                logMessage(`🏃 Strided to [${tx}, ${ty}] (Cost: ${moveStaminaCost} Stamina).`);
-
-                if (typeof playRetroSound === 'function') playRetroSound('step');
-
-                // === NEW: INSTANT SERVER SYNC ===
-                if (typeof resetEquipmentAttackUiState === 'function') {
-                    resetEquipmentAttackUiState();
-                }
-                combatPhase = 'WAITING_FOR_SERVER';
                 refreshSystemUI();
-                socket.emit('combatMove', { actorUid: (typeof activeCombatActorUid !== 'undefined' ? activeCombatActorUid : 'player_0'), tx: tx, ty: ty });
-            } else {
-                pendingMove = {x: tx, y: ty};
-                let activePosForMove = typeof getActiveCombatantPosition === 'function' ? getActiveCombatantPosition() : { x: player.x, y: player.y, size: 1 };
-                let dist = getGridDistance(activePosForMove.x, activePosForMove.y, tx, ty, activePosForMove.size || 1);
-                let swiftness = typeof getActiveCombatantMoveRange === 'function' ? getActiveCombatantMoveRange() : getPlayerSwiftness();
-                let estCost = Math.floor((dist / swiftness) * 5);
-                logMessage(`📍 Target marked. Click again to confirm movement (Costs ${estCost} Stamina).`);
+                if (typeof drawGrid === 'function') drawGrid();
+                return;
             }
-        } else { logMessage("❌ Outside stride capabilities."); playRetroSound('error'); }
-    }
-});
 
+            const activePos = typeof getActiveCombatantPosition === 'function' ? getActiveCombatantPosition() : { x: player.x, y: player.y, size: 1 };
+            if (tx === activePos.x && ty === activePos.y) {
+                pendingMove = null;
+                logMessage("Use Rest to hold position and recover stamina.");
+                refreshSystemUI();
+                return;
+            }
 
-// === BOOTSTRAP INITIALIZER: RUN THE LOOP PIPELINE ===
-requestAnimationFrame(updateAnimationEngine);
+            if (isValidPlayerMovePath(tx, ty)) {
+                // Note: We removed the manual mapObstacles check because isValidPlayerMovePath handles it!
+
+                if (pendingMove && pendingMove.x === tx && pendingMove.y === ty) {
+                    let activePosForMove = typeof getActiveCombatantPosition === 'function' ? getActiveCombatantPosition() : { x: player.x, y: player.y, size: 1 };
+                    let dist = getGridDistance(activePosForMove.x, activePosForMove.y, tx, ty, activePosForMove.size || 1);
+                    let swiftness = typeof getActiveCombatantMoveRange === 'function' ? getActiveCombatantMoveRange() : getPlayerSwiftness();
+                    let moveStaminaCost = Math.floor((dist / swiftness) * 5);
+                    if ((typeof getActiveCombatantStamina === 'function' ? getActiveCombatantStamina() : player.stamina) < moveStaminaCost) {
+                        logMessage(`❌ Legs are too heavy. Not enough stamina (${moveStaminaCost} required).`); playRetroSound('error');
+                        pendingMove = null; return;
+                    }
+                    if (typeof applyActiveCombatantLocalMove === 'function') applyActiveCombatantLocalMove(tx, ty, moveStaminaCost);
+                    else { player.stamina -= moveStaminaCost; player.x = tx; player.y = ty; }
+                    pendingMove = null;
+                    logMessage(`🏃 Strided to [${tx}, ${ty}] (Cost: ${moveStaminaCost} Stamina).`);
+
+                    if (typeof playRetroSound === 'function') playRetroSound('step');
+
+                    // === NEW: INSTANT SERVER SYNC ===
+                    if (typeof resetEquipmentAttackUiState === 'function') {
+                        resetEquipmentAttackUiState();
+                    }
+                    combatPhase = 'WAITING_FOR_SERVER';
+                    refreshSystemUI();
+                    socket.emit('combatMove', { actorUid: (typeof activeCombatActorUid !== 'undefined' ? activeCombatActorUid : 'player_0'), tx: tx, ty: ty });
+                } else {
+                    pendingMove = {x: tx, y: ty};
+                    let activePosForMove = typeof getActiveCombatantPosition === 'function' ? getActiveCombatantPosition() : { x: player.x, y: player.y, size: 1 };
+                    let dist = getGridDistance(activePosForMove.x, activePosForMove.y, tx, ty, activePosForMove.size || 1);
+                    let swiftness = typeof getActiveCombatantMoveRange === 'function' ? getActiveCombatantMoveRange() : getPlayerSwiftness();
+                    let estCost = Math.floor((dist / swiftness) * 5);
+                    logMessage(`📍 Target marked. Click again to confirm movement (Costs ${estCost} Stamina).`);
+                }
+            } else { logMessage("❌ Outside stride capabilities."); playRetroSound('error'); }
+        }
+    });
+
+    // The animation heartbeat belongs to the live combat canvas. Asset tools
+    // load this renderer for drawing helpers but do not provide combat state.
+    requestAnimationFrame(updateAnimationEngine);
+})(
+    typeof document === 'undefined'
+    || typeof document.getElementById !== 'function'
+        ? null
+        : document.getElementById('gameCanvas')
+);

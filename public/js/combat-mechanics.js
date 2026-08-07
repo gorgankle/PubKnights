@@ -2,7 +2,6 @@
 
 // Make sure these three lines only appear ONCE at the top of the file!
 let activeTargetIndex   = -1;
-let previousCombatPhase = 'ACTION_READY';
 let pendingLoot = [];
 let equipmentAttackMenuOpen = false;
 let equipmentAttackMenuActorUid = null;
@@ -41,10 +40,6 @@ function getActiveCombatantWeapon() {
     return getActiveCombatantEquipment().weapon || null;
 }
 
-function getActiveCombatantOffhand() {
-    return getActiveCombatantEquipment().offhand || null;
-}
-
 function getActiveCombatantStamina() {
     const actor = getActiveCombatant();
     return actor && typeof actor.stamina === 'number' ? actor.stamina : player.stamina;
@@ -53,11 +48,6 @@ function getActiveCombatantStamina() {
 function getActiveCombatantMoveRange() {
     const actor = getActiveCombatant();
     return Math.max(1, Math.min(12, actor && actor.speed ? actor.speed : getPlayerSwiftness()));
-}
-
-function getActiveCombatantName() {
-    const actor = getActiveCombatant();
-    return actor && actor.name ? actor.name : 'Knight';
 }
 
 function getActiveCompanionRosterEntry() {
@@ -620,10 +610,6 @@ function executeCombatAction(actionType) {
         
         return; 
     }
-}
-
-function endPlayerTurn() {
-    executeCombatAction('end');
 }
 
 function fleeCombat() {

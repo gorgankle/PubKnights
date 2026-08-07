@@ -281,211 +281,35 @@ function buildSprite(stringArray, options) {
     return normalizeSpriteMatrix(stringArray, options);
 }
 
-const eyeMatrix = buildSprite([
-    "........................",
-    "........................",
-    "........................",
-    "........................",
-    "........................",
-    "......Z....Z............"
-]);
-
+// Compatibility keys retain the legacy insertion order used by the public tools.
+// sprite-overhaul.js installs the native 32x32 matrices later in each page.
 const SpriteMatrices = {
-    // --- LEGACY 24x24 SOURCE: MALE ANATOMY (NORMALIZED TO 32x32) ---
-    body_male: buildSprite([
-        "........................",
-        "........................",
-        "........................",
-        "......SSSSSS............",
-        ".....SSSSSSSS...........",
-        ".....SSSSSSSS...........",
-        ".....SSSSSSSS...........",
-        "......SS@@SS............",
-        ".......SSSS.............",
-        "...UUUUUUUUUUUU.........",
-        "...UUUUUUUUUUUU.........",
-        "...UU.UUUUUU.UU.........",
-        "...SS.UUUUUU.SS.........",
-        "...SS.UUUUUU.SS.........",
-        "...SS.UUUUUU.SS.........",
-        "......UUUUUU............",
-        "......PPPPPP............",
-        ".....PPPPPPPP...........",
-        ".....PPPPPPPP...........",
-        ".....PPP..PPP...........",
-        ".....PPP..PPP...........",
-        ".....PPP..PPP...........",
-        "....DDDD..DDDD..........",
-        "....DDDD..DDDD.........."
-    ]),
-    
-    // --- LEGACY 24x24 SOURCE: FEMALE ANATOMY (NORMALIZED TO 32x32) ---
-    body_female: buildSprite([
-        "........................",
-        "........................",
-        "........................",
-        "......SSSSSS............",
-        ".....SSSSSSSS...........",
-        ".....SSSSSSSS...........",
-        ".....SSSSSSSS...........",
-        "......SS@@SS............",
-        ".......SSSS.............",
-        "....UUUUUUUUUU..........",
-        "...UUUUUUUUUUUU.........",
-        "...UU.UUUUUU.UU.........",
-        "...SS.UUUUUU.SS.........",
-        "...SS..UUUU..SS.........",
-        "...SS..UUUU..SS.........",
-        "......PPPPPP............",
-        ".....PPPPPPPP...........",
-        ".....PPPPPPPP...........",
-        ".....PPPPPPPP...........",
-        ".....PPP..PPP...........",
-        ".....PPP..PPP...........",
-        ".....PPP..PPP...........",
-        "....DDDD..DDDD..........",
-        "....DDDD..DDDD.........."
-    ]),
-
-    // --- LEGACY 24x24 SOURCE: HAIRSTYLES (NORMALIZED TO 32x32) ---
-    hair_messy: buildSprite([
-        "........................",
-        "........................",
-        "........................",
-        ".....HHHHHHHH...........",
-        "....HHHHHHHHHH..........",
-        "...HH........HH.........",
-        "...HH........HH.........",
-        "...H..........H........."
-    ]),
-    hair_long: buildSprite([
-    "........................",
-    "........................",
-    "......HHHHHH............",
-    ".....HHHHHHHH...........",
-    "....HHHHHHHHHH..........",
-    "....HH......HH..........",
-    "....HH......HH..........",
-    "....HH......HH..........",
-    "....HH......HH..........",
-    "....HH......HH..........",
-    ".....H......H...........",
-    ".....H......H...........",
-
-]),
-    hair_bob: buildSprite([
-        "........................",
-        "........................",
-        "........................",
-        ".....HHHHHHHH...........",
-        "....HHHHHHHHHH..........",
-        "...HH........HH.........",
-        "...HH........HH.........",
-        "....H........H.........."
-    ]),
-    hair_braid: buildSprite([
-        "........................",
-        "........................",
-        "........................",
-        ".....HHHHHHHH...........",
-        "....HHHHHHHHHH..........",
-        "....H........HH.........",
-        "....H.........H.........",
-        ".............HH.........",
-        "............HH..........",
-        "............HH..........",
-        ".............HH.........",
-        "............HH.........."
-    ]),
-    hair_spiky: buildSprite([
-        "........................",
-        "........................",
-        "..HHH........HHH........",
-        "...HHHHHHHHHHHH.........",
-        "....H........H..........",
-        "...HH........HH.........",
-        "...H..........H........."
-    ]),
-    hair_buzzcut: buildSprite([
-        "........................",
-        "........................",
-        "........................",
-        "......HHHHHH............",
-        ".....H......H..........."
-    ]),
-    hair_mohawk: buildSprite([
-        "........................",
-        "........................",
-        "........HH..............",
-        "......HHHHHH............",
-        ".....H......H..........."
-    ]),
-    hair_undercut: buildSprite([
-        "........................",
-        "........................",
-        "......HHHHHH............",
-        ".....HHHHHHHH...........",
-        ".....H......H..........."
-    ]),
-    hair_topknot: buildSprite([
-        "........................",
-        "........................",
-        ".......HH...............",
-        "......HHHHHHHH..........",
-        ".....HHHHHHHH...........",
-        "...HHH......HH..........",
-        "....H........H..........",
-        "....H........H.........."
-    ]),
-    hair_curly: buildSprite([
-        "........................",
-        "........................",
-        "....HHHHHHHHHH..........",
-        "...HHHHHHHHHHHH.........",
-        "...HH........HH.........",
-        "...HH........HH.........",
-        "...HH........HH.........",
-        "....H........H.........."
-    ]),
-    hair_twintails: buildSprite([
-        "........................",
-        "........................",
-        "........................",
-        ".....HHHHHHHH...........",
-        "....HHHHHHHHHH..........",
-        "...HHH......HHH.........",
-        "....HH......HH..........",
-        "....HH......HH..........",
-        "..H.HH......HH.H........",
-        "..HHH........HHH........",
-        "........................"
-    ]),
-    hair_ponytail: buildSprite([
-        "........................",
-        "........................",
-        "........................",
-        ".....HHHHHHHHH..........",
-        "....HH.......HH.........",
-        "....H........HH.........",
-        "....H........HH.........",
-        ".....H......HH..........",
-        "..........HH............",
-        "..........HH............",
-        "..........HHH..........."
-    ]),
-    hair_bald: buildSprite([]),
-
-    // --- LEGACY 24x24 SOURCE: DYNAMIC EYES (NORMALIZED TO 32x32) ---
-    eyes_blue: eyeMatrix,
-    eyes_green: eyeMatrix,
-    eyes_brown: eyeMatrix,
-    eyes_red: eyeMatrix,
-    eyes_purple: eyeMatrix,
-    eyes_gold: eyeMatrix,
-    eyes_grey: eyeMatrix,
-    eyes_black: eyeMatrix,
-    eyes_white: eyeMatrix
+    body_male: undefined,
+    body_female: undefined,
+    hair_messy: undefined,
+    hair_long: undefined,
+    hair_bob: undefined,
+    hair_braid: undefined,
+    hair_spiky: undefined,
+    hair_buzzcut: undefined,
+    hair_mohawk: undefined,
+    hair_undercut: undefined,
+    hair_topknot: undefined,
+    hair_curly: undefined,
+    hair_twintails: undefined,
+    hair_ponytail: undefined,
+    hair_bald: undefined,
+    eyes_blue: undefined,
+    eyes_green: undefined,
+    eyes_brown: undefined,
+    eyes_red: undefined,
+    eyes_purple: undefined,
+    eyes_gold: undefined,
+    eyes_grey: undefined,
+    eyes_black: undefined,
+    eyes_white: undefined
 };
+
 function drawProceduralSprite(
     context,
     matrix,

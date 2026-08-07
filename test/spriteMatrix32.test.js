@@ -104,13 +104,10 @@ test('drawProceduralSprite renders against the 32-cell grid', () => {
     assert.deepEqual(fills, [[62, 62, 2, 2]]);
 });
 
-test('character, equipment, NPC, map, icon, and pet registries all expose 32x32 matrices', () => {
+test('compatibility registries preserve legacy order without duplicate matrices', () => {
     const scripts = [
         'character-creator.js',
-        'item-assets.js',
         'npc-assets.js',
-        'map-assets.js',
-        'icon-assets.js',
         'pet-assets.js'
     ];
     const context = vm.createContext({
@@ -126,15 +123,61 @@ test('character, equipment, NPC, map, icon, and pet registries all expose 32x32 
     const result = vm.runInContext(`(() => {
         const is32 = matrix => matrix.length === 32 && matrix.every(row => row.length === 32);
         return {
-            spriteCount: Object.keys(SpriteMatrices).length,
-            petCount: Object.keys(PetMatrices).length,
-            spritesAre32: Object.values(SpriteMatrices).every(is32),
-            petsAre32: Object.values(PetMatrices).every(is32)
+            spriteKeys: Object.keys(SpriteMatrices),
+            petKeys: Object.keys(PetMatrices),
+            definedSpriteKeys: Object.keys(SpriteMatrices)
+                .filter(key => SpriteMatrices[key] !== undefined),
+            peanutIs32: is32(SpriteMatrices.icon_peanut),
+            petValuesArePlaceholders: Object.values(PetMatrices)
+                .every(matrix => matrix === undefined)
         };
     })()`, context);
 
-    assert.ok(result.spriteCount > 50);
-    assert.equal(result.petCount, 2);
-    assert.equal(result.spritesAre32, true);
-    assert.equal(result.petsAre32, true);
+    assert.deepEqual(Array.from(result.spriteKeys), [
+        'body_male',
+        'body_female',
+        'hair_messy',
+        'hair_long',
+        'hair_bob',
+        'hair_braid',
+        'hair_spiky',
+        'hair_buzzcut',
+        'hair_mohawk',
+        'hair_undercut',
+        'hair_topknot',
+        'hair_curly',
+        'hair_twintails',
+        'hair_ponytail',
+        'hair_bald',
+        'eyes_blue',
+        'eyes_green',
+        'eyes_brown',
+        'eyes_red',
+        'eyes_purple',
+        'eyes_gold',
+        'eyes_grey',
+        'eyes_black',
+        'eyes_white',
+        'npc_kreg',
+        'goblin_axeling',
+        'peanut_slinger',
+        'icon_peanut',
+        'magic_banana',
+        'wild_ravager',
+        'publing',
+        'alpha_poacher',
+        'wilderness_overlord',
+        'corrupted_cask',
+        'pub_crawl_mimic',
+        'chummed_mimic',
+        'vintage_behemoth',
+        'enraged_gorilla',
+        'spectral_barfly',
+        'mash_crawler',
+        'eldritch_keg'
+    ]);
+    assert.deepEqual(Array.from(result.petKeys), ['dog', 'cat']);
+    assert.deepEqual(Array.from(result.definedSpriteKeys), ['icon_peanut']);
+    assert.equal(result.peanutIs32, true);
+    assert.equal(result.petValuesArePlaceholders, true);
 });

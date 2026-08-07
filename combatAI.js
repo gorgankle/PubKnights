@@ -62,7 +62,7 @@ function setActorHp(actor, player, value) {
     return nextHp;
 }
 
-function defeatActor(socketId, combat, player, actor, activeCombats, onActorDefeated, turnEvents, sourceActor) {
+function defeatActor(socketId, player, actor, activeCombats, onActorDefeated, turnEvents, sourceActor) {
     if (isPlayerActor(actor)) {
         actor.hp = 0;
         actor.alive = false;
@@ -508,7 +508,7 @@ function attackTarget(socketId, combat, player, actor, target, activeCombats, on
             ...(interruptedIntent ? { interruptedIntent } : {})
         }
     );
-    if (killed) defeatActor(socketId, combat, player, target, activeCombats, onActorDefeated, turnEvents, actor);
+    if (killed) defeatActor(socketId, player, target, activeCombats, onActorDefeated, turnEvents, actor);
     return true;
 }
 
@@ -582,7 +582,7 @@ function performGuardAction(combat, actor, player, profile, turnEvents) {
     return true;
 }
 
-function shouldActorGuard(actor, profile, activation) {
+function shouldActorGuard(profile, activation) {
     if (!profile || !profile.guard) return false;
     const every = Math.max(1, Math.trunc(Number(profile.guard.every) || 1));
     return ((Math.max(1, activation) - 1) % every) === 0;
@@ -900,7 +900,7 @@ function executeRangedProfileTurn(
     return turnEvents;
 }
 
-function executeHealerTurn(socketId, combat, player, actor, activeCombats, onActorDefeated) {
+function executeHealerTurn(socketId, combat, player, actor, activeCombats) {
     const turnEvents = [];
     const playerTarget = (combat.actors || []).find(candidate => candidate.kind === 'player');
     const playerMaxHp = getMaxHp(player);
@@ -978,14 +978,14 @@ function executeActorTurn(socketId, combat, player, actor, activeCombats, onActo
     if (pendingIntentEvents !== null) return pendingIntentEvents;
 
     if (actor.controller === 'ai_healer') {
-        return executeHealerTurn(socketId, combat, player, actor, activeCombats, onActorDefeated);
+        return executeHealerTurn(socketId, combat, player, actor, activeCombats);
     }
 
     clearExpiredActorReactions(actor);
     const profile = getActorAiProfile(actor);
     const profileActivation = getActorProfileActivation(actor);
     if (
-        shouldActorGuard(actor, profile, profileActivation)
+        shouldActorGuard(profile, profileActivation)
         && selectAttackTarget(combat, actor, player)
     ) {
         const guardEvents = [];

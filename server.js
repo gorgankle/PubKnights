@@ -1,7 +1,6 @@
 ﻿require('dotenv').config();
 const express = require('express');
 const http = require('http');
-const path = require('path');
 const { Server } = require('socket.io');
 const mongoose = require('mongoose');
 
@@ -40,8 +39,7 @@ const {
     verifyPassword,
     needsPasswordUpgrade,
     sanitizeAppearance,
-    sanitizePetCosmetics,
-    sanitizeToken
+    sanitizePetCosmetics
 } = require('./serverSecurity.js');
 
 
@@ -90,26 +88,6 @@ playerSchema.index(
 
 const Player = mongoose.model('Player', playerSchema);
 
-// === USER GENERATED CONTENT (UGC) SCHEMA ===
-const ugcSchema = new mongoose.Schema({
-    authorUsername: { type: String, required: true },
-    type: { type: String, enum: ['ART', 'MUSIC'], required: true },
-    title: { type: String, default: 'Untitled Masterpiece' },
-    // data payload: For ART, this will be your 24x24 matrix. For MUSIC, the 32-step track sequence.
-    contentData: { type: mongoose.Schema.Types.Mixed, required: true },
-    likes: { type: Number, default: 0 }, // Future-proofing for social sharing
-}, { timestamps: true });
-
-// === NEW: COMPOUND GALLERY INDEX ===
-// This perfectly matches your .find().sort() query, making gallery loads instant.
-ugcSchema.index({ authorUsername: 1, createdAt: -1 });
-
-// Future-proofing: In case you ever want a "Global Recent Art" feed
-ugcSchema.index({ type: 1, createdAt: -1 });
-// ===================================
-
-const UGC = mongoose.model('UGC', ugcSchema);
-
 const RETIRED_ITEM_IDS = new Set(['bomb_small', 'bomb_heavy', 'scroll_fireball', 'scroll_poison_shot']);
 
 // === THE AUTOMATED ITEM LONGEVITY SANITIZER (STRICT HYDRATION) ===
@@ -133,19 +111,24 @@ function sanitizeItemSchema(savedItem) {
     return hydratedItem;
 }
 
+function stripTransientPlayerState(playerState) {
+    delete playerState.activeMinigame;
+    delete playerState._lastMinigameClaim;
+    delete playerState.tradeStaging;
+    delete playerState.tradeResources;
+    delete playerState.tradeLocked;
+    delete playerState.tradeConfirmed;
+    delete playerState.activeTradePartner;
+    delete playerState.currentZone;
+    delete playerState.socialX;
+    delete playerState.socialY;
+    return playerState;
+}
+
 function createSaveSnapshot(playerState) {
     const snapshot = JSON.parse(JSON.stringify(playerState || {}));
 
-    delete snapshot.activeMinigame;
-    delete snapshot._lastMinigameClaim;
-    delete snapshot.tradeStaging;
-    delete snapshot.tradeResources;
-    delete snapshot.tradeLocked;
-    delete snapshot.tradeConfirmed;
-    delete snapshot.activeTradePartner;
-    delete snapshot.currentZone;
-    delete snapshot.socialX;
-    delete snapshot.socialY;
+    stripTransientPlayerState(snapshot);
     migrateSaveData(snapshot);
 
     return snapshot;
@@ -250,16 +233,7 @@ function hydratePlayerData(playerDoc) {
     pd.friends = playerDoc.friends || [];
     pd.ignored = playerDoc.ignored || [];
     migrateLifetimeXp(pd);
-    delete pd.activeMinigame;
-    delete pd._lastMinigameClaim;
-    delete pd.tradeStaging;
-    delete pd.tradeResources;
-    delete pd.tradeLocked;
-    delete pd.tradeConfirmed;
-    delete pd.activeTradePartner;
-    delete pd.currentZone;
-    delete pd.socialX;
-    delete pd.socialY;
+    stripTransientPlayerState(pd);
     if (!pd.equipment || typeof pd.equipment !== 'object') {
         pd.equipment = {};
     }
@@ -360,11 +334,6 @@ function getPublicCombatMapTemplates() {
 
     return publicTemplates;
 }
-
-// Serve the index.html file from the root directory
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
 
 app.get('/api/combat-map-templates', (req, res) => {
     if (process.env.PUBKNIGHTS_CREATOR_TOOLS !== '1') return res.sendStatus(404);
@@ -497,7 +466,7 @@ if (data.saveData) {
         injectTownRouter(socket, io, activePlayers, activeCombats);
         injectAdventureRouter(socket, io, activePlayers, activeCombats, persistAuthoritativePlayer);
         injectCombatRouter(socket, io, activePlayers, activeCombats, persistAuthoritativePlayer);
-        injectSocialRouter(socket, io, activePlayers, activeCombats);
+        injectSocialRouter(socket, io, activePlayers);
 
 
         // === RESTORED: DISCONNECT HANDLER ===
