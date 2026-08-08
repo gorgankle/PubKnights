@@ -161,19 +161,19 @@ function handleItemDrop(event, toIndex, toType) {
         }
         // 7. Mercenary equipment -> Knight backpack
         else if (fromType === 'companion-equipment' && toType === 'backpack') {
-            if (typeof unequipCompanionItem !== 'function'
+            if (typeof requestCompanionUnequip !== 'function'
                 || !dragData.instanceId
                 || !EQUIPPABLE_ITEM_SLOTS.includes(dragData.slotKey)) return;
-            unequipCompanionItem(dragData.instanceId, dragData.slotKey);
+            requestCompanionUnequip(dragData.instanceId, dragData.slotKey);
         }
         // 8. Mercenary pocket -> Knight backpack
         else if (fromType === 'companion-pocket' && toType === 'backpack') {
-            if (typeof removeCompanionPocketItem !== 'function'
+            if (typeof requestCompanionPocketRemoval !== 'function'
                 || !dragData.instanceId
                 || !Number.isInteger(dragData.pocketIndex)
                 || dragData.pocketIndex < 0
                 || dragData.pocketIndex > 0) return;
-            removeCompanionPocketItem(dragData.instanceId, dragData.pocketIndex);
+            requestCompanionPocketRemoval(dragData.instanceId, dragData.pocketIndex);
         }
     } catch (err) {
         console.error("Data transfer stream failure:", err);

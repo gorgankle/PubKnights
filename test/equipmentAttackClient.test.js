@@ -240,14 +240,14 @@ test('combat page loads the shared contract and exposes an upward Equipment Atta
     assert.match(uiRenderSource, /heading\.setAttribute\('role', 'presentation'\)/);
     assert.match(uiRenderSource, /option\.setAttribute\('aria-disabled'/);
     assert.doesNotMatch(html, /id="heavy-btn"/);
-    assert.match(html, /href="style\.css\?v=14"/);
+    assert.match(html, /href="style\.css\?v=17"/);
     assert.match(html, /src="js\/items\.js\?v=6"/);
-    assert.match(html, /src="js\/main\.js\?v=25"/);
+    assert.match(html, /src="js\/main\.js\?v=27"/);
     assert.match(html, /src="js\/ui-tooltips\.js\?v=7"/);
-    assert.match(html, /src="js\/ui-render\.js\?v=16"/);
+    assert.match(html, /src="js\/ui-render\.js\?v=18"/);
     assert.match(html, /src="js\/renderer\.js\?v=14"/);
     assert.match(html, /src="js\/combat-animation\.js\?v=10"/);
-    assert.match(html, /src="js\/combat-mechanics\.js\?v=16"/);
+    assert.match(html, /src="js\/combat-mechanics\.js\?v=17"/);
     assert.match(css, /\.equipment-attack-control\s*\{[\s\S]*?position:\s*relative/);
     assert.match(css, /\.equipment-attack-menu\s*\{[\s\S]*?position:\s*absolute/);
     assert.match(css, /\.equipment-attack-menu\s*\{[\s\S]*?bottom:\s*calc\(100% \+ 7px\)/);

@@ -14,8 +14,8 @@ function loadInventoryScript() {
         console: { error: (...args) => errors.push(args) },
         hideTooltip: () => {},
         openCrate: () => {},
-        unequipCompanionItem: (instanceId, slotKey) => companionActions.push({ action: 'unequip', instanceId, slotKey }),
-        removeCompanionPocketItem: (instanceId, pocketIndex) => companionActions.push({ action: 'removePocket', instanceId, pocketIndex })
+        requestCompanionUnequip: (instanceId, slotKey) => companionActions.push({ action: 'unequip', instanceId, slotKey }),
+        requestCompanionPocketRemoval: (instanceId, pocketIndex) => companionActions.push({ action: 'removePocket', instanceId, pocketIndex })
     };
     const source = fs.readFileSync(path.join(__dirname, '../public/js/inventory.js'), 'utf8');
     vm.runInNewContext(source, context);

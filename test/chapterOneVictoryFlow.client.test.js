@@ -35,7 +35,7 @@ test('every unfinished expedition combat resumes the journey without opening esc
     );
 });
 
-test('return routing distinguishes journey stops, combat/noncombat expeditions, and legacy combat', () => {
+test('return routing sends active journeys to Roads and every cleared combat to Town', () => {
     const transitionStart = combatSource.indexOf('window.transitionToTown = function()');
     assert.notEqual(transitionStart, -1);
     const transitionSource = combatSource.slice(transitionStart);
@@ -81,7 +81,7 @@ test('return routing distinguishes journey stops, combat/noncombat expeditions, 
     context.expeditionRewardReturnPending = false;
     context.window.transitionToTown();
 
-    assert.deepEqual(observedStates, ['ADVENTURES', 'TOWN', 'TOWN', 'KNIGHT']);
+    assert.deepEqual(observedStates, ['ADVENTURES', 'TOWN', 'TOWN', 'TOWN']);
     assert.equal(context.combatStartedFromJourney, false, 'combat provenance is single-use state');
     assert.equal(context.expeditionRewardReturnPending, false, 'return-reward provenance is single-use state');
 });

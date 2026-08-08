@@ -36,6 +36,7 @@ function extractFunction(source, functionName, nextFunctionName) {
 function makePointerHarness() {
     const observations = {
         closed: 0,
+        destinationId: null,
         path: null,
         selectedNpcId: null,
         startedPath: null,
@@ -56,6 +57,10 @@ function makePointerHarness() {
         getTownNpcRecords() {
             return context.npcs;
         },
+        getTownDestinationRecords() {
+            return context.destinations;
+        },
+        destinations: [],
         npcs: [],
         startTownPath(pathToWalk) {
             observations.startedPath = pathToWalk.map(tile => ({ ...tile }));
@@ -63,14 +68,18 @@ function makePointerHarness() {
         stopTownWalking() {
             observations.stopped += 1;
         },
-        townPendingNpcId: 'previous-npc',
+        townPendingArrival: { kind: 'npc', id: 'previous-npc' },
         townPlayerPosition: { x: 15, y: 16 },
+        townSelectedDestinationId: null,
         townSelectedNpcId: 'previous-npc',
         updateTownStatus(message) {
             observations.status = message;
         },
         walkToTownNpc(npcId) {
             observations.selectedNpcId = npcId;
+        },
+        walkToTownDestination(destinationId) {
+            observations.destinationId = destinationId;
         }
     });
     const handlerSource = extractFunction(
@@ -132,6 +141,24 @@ test('every townsfolk placement has a reachable interaction tile', () => {
     });
 });
 
+test('every town destination has a reachable interaction tile', () => {
+    const blocked = town.getTownBlockedTileSet();
+    const start = { x: 15, y: 16 };
+
+    Object.entries(town.TOWN_DESTINATION_PLACEMENTS).forEach(([destinationId, destination]) => {
+        const candidates = [];
+        for (let y = destination.y - town.TOWN_INTERACTION_RANGE; y <= destination.y + town.TOWN_INTERACTION_RANGE; y += 1) {
+            for (let x = destination.x - town.TOWN_INTERACTION_RANGE; x <= destination.x + town.TOWN_INTERACTION_RANGE; x += 1) {
+                if (Math.abs(destination.x - x) + Math.abs(destination.y - y) > town.TOWN_INTERACTION_RANGE) continue;
+                if (!town.isTownTileWalkable(x, y, blocked)) continue;
+                const route = town.findTownPath(start, { x, y }, blocked);
+                if (route.length || (x === start.x && y === start.y)) candidates.push(route);
+            }
+        }
+        assert.ok(candidates.length > 0, `${destinationId} must be approachable without crossing scenery`);
+    });
+});
+
 test('scaled mobile pointer taps use a forgiving NPC hit target and cancel the old route', () => {
     const harness = makePointerHarness();
     const rect = { left: 10, top: 20, width: 360, height: 216 };
@@ -157,8 +184,34 @@ test('scaled mobile pointer taps use a forgiving NPC hit target and cancel the o
 
     assert.equal(harness.observations.selectedNpcId, 'mara');
     assert.equal(harness.observations.stopped, 1);
-    assert.equal(harness.context.townPendingNpcId, null);
+    assert.equal(harness.context.townPendingArrival, null);
     assert.equal(harness.observations.path, null, 'an NPC tap must not become a floor path');
+});
+
+test('scaled mobile pointer taps prioritize forgiving destination hit targets', () => {
+    const harness = makePointerHarness();
+    const rect = { left: 10, top: 20, width: 360, height: 216 };
+    const canvas = {
+        width: 720,
+        height: 432,
+        getBoundingClientRect() {
+            return rect;
+        }
+    };
+    harness.context.destinations = [{ id: 'community', x: 0, y: 8 }];
+    const point = clientPointForLogical(rect, canvas, 18, 8 * 24 + 12);
+
+    harness.handle({
+        ...point,
+        button: 0,
+        currentTarget: canvas,
+        isPrimary: true,
+        preventDefault() {}
+    });
+
+    assert.equal(harness.observations.destinationId, 'community');
+    assert.equal(harness.context.townPendingArrival, null);
+    assert.equal(harness.observations.path, null, 'a destination tap must not become a floor path');
 });
 
 test('scaled floor taps resolve the same logical destination while invalid pointers are ignored', () => {
@@ -198,7 +251,7 @@ test('scaled floor taps resolve the same logical destination while invalid point
 });
 
 test('town and classic dialogue controls expose mobile-sized and keyboard-operable alternatives', () => {
-    assert.match(styles, /#town-exploration-canvas\s*\{[\s\S]*?touch-action:\s*none;/);
+    assert.match(styles, /#town-exploration-canvas\s*\{[\s\S]*?touch-action:\s*(?:none|pan-y);/);
     assert.match(styles, /\.town-nearby-npcs button\s*\{[\s\S]*?min-height:\s*44px;/);
     assert.match(html, /id="town-exploration-canvas"[^>]+tabindex="0"[^>]+Arrow keys or WASD/);
     assert.match(html, /id="dialogue-overlay"[^>]+role="dialog"[^>]+aria-modal="true"[^>]+tabindex="-1"/);
@@ -216,11 +269,16 @@ test('town and classic dialogue controls expose mobile-sized and keyboard-operab
     assert.match(townSource, /data-town-shop-id/);
     assert.match(townSource, /hadListFocus[\s\S]{0,800}focusTarget\.focus/);
     assert.match(townSource, /focusedNpcId[\s\S]{0,800}replacement\.focus/);
+    assert.match(townSource, /focusedDestinationId[\s\S]{0,1000}replacement\.focus/);
+    assert.match(townSource, /data-town-destination-id[\s\S]{0,800}walkToTownDestination/);
+    assert.match(townSource, /arrival\.kind === 'destination'[\s\S]{0,100}activateTownDestination/);
+    assert.match(townSource, /addEventListener\('pointerup', handleTownCanvasPointerUp\)/);
+    assert.match(townSource, /distance > 10[\s\S]{0,80}townPointerGesture\.moved = true/);
 });
 
 test('town navigation cleans up fixed overlays and all gameplay actions remain identifier-only', () => {
     assert.match(mainSource, /previousState === 'TOWN'[\s\S]{0,100}teardownWalkableTown\(\)/);
-    assert.match(townSource, /function teardownWalkableTown\(\)[\s\S]{0,220}stopTownWalking\(\)[\s\S]{0,220}closeTownShop\(false\)/);
+    assert.match(townSource, /function teardownWalkableTown\(\)[\s\S]{0,300}stopTownWalking\(\)[\s\S]{0,300}townPendingArrival = null[\s\S]{0,300}closeTownShop\(false\)/);
     assert.doesNotMatch(townSource, /socket\.emit\(/);
 
     assert.match(expeditionSource, /socket\.emit\('acceptContract', \{ contractId \}\)/);

@@ -2,14 +2,15 @@
 // Handles all Community Square multiplayer logic, rendering, and interaction.
 
 let currentSocialZone = null;
+let expectedSocialZone = null;
 let playersInRoom = {};
 let socialAnimationLoop = null;
 
 // === 1. CORE ROUTING & UI ===
 function joinMultiplayerZone(zoneId) {
     if (currentSocialZone === zoneId) return; 
-    document.getElementById('social-view').style.display = 'grid'; 
-    
+    expectedSocialZone = zoneId;
+
     // FIX: Safely grab the bare variable without the window. prefix!
     let myName = "Unknown Knight";
     if (typeof currentUsername !== 'undefined') {
@@ -19,8 +20,16 @@ function joinMultiplayerZone(zoneId) {
     socket.emit('joinZone', { zoneId: zoneId, username: myName });
 }
 
-function leaveMultiplayerZone(skipTabSwitch = false) {
+function leaveMultiplayerZone(skipStateChange = false) {
+    // A manual leave routes through the central game-state lifecycle. That
+    // lifecycle calls back with skipStateChange=true to perform cleanup once.
+    if (!skipStateChange && typeof gameState !== 'undefined' && gameState === 'COMMUNITY') {
+        if (typeof returnToMainHub === 'function') returnToMainHub();
+        else if (typeof setGameState === 'function') setGameState('TOWN');
+        return;
+    }
     socket.emit('joinZone', { zoneId: null }); // Passing null forces a clean exit
+    expectedSocialZone = null;
     currentSocialZone = null;
     playersInRoom = {};
     
@@ -30,11 +39,17 @@ function leaveMultiplayerZone(skipTabSwitch = false) {
     updateSocialPlayerList();
     stopSocialRenderLoop();
     closeInspect();
-    
-    // Only force a UI change if we manually clicked the [Leave Zone] button!
-    if (!skipTabSwitch) {
-        switchTab('town-vault-view'); 
-    }
+    closeSocialHubModal();
+}
+
+function getSocialNotificationButton() {
+    return document.getElementById('community-social-button')
+        || document.getElementById('global-social-button');
+}
+
+function closeSocialHubModal() {
+    const modal = document.getElementById('global-social-modal');
+    if (modal) modal.style.display = 'none';
 }
 
 function sendSocialChat() {
@@ -79,6 +94,7 @@ function startSocialRenderLoop() {
 
 function stopSocialRenderLoop() {
     if (socialAnimationLoop) cancelAnimationFrame(socialAnimationLoop);
+    socialAnimationLoop = null;
 }
 
 function renderSocialZone() {
@@ -252,6 +268,13 @@ function closeInspect() {
 
 // === 4. SOCKET LISTENERS ===
 socket.on('zoneJoined', (data) => {
+    if (
+        !data
+        || data.zoneId !== expectedSocialZone
+        || (typeof gameState !== 'undefined' && gameState !== 'COMMUNITY')
+    ) {
+        return;
+    }
     currentSocialZone = data.zoneId;
     playersInRoom = {};
     data.players.forEach(p => playersInRoom[p.id] = p);
@@ -262,17 +285,20 @@ socket.on('zoneJoined', (data) => {
 });
 
 socket.on('playerJoinedZone', (playerData) => {
+    if (!currentSocialZone || (typeof gameState !== 'undefined' && gameState !== 'COMMUNITY')) return;
     playersInRoom[playerData.id] = playerData;
     updateSocialPlayerList();
 });
 
 socket.on('playerLeftZone', (data) => {
+    if (!currentSocialZone) return;
     delete playersInRoom[data.id];
     updateSocialPlayerList();
 });
 
 // NEW: Catch movement and update coordinates!
 socket.on('playerMoved', (data) => {
+    if (!currentSocialZone) return;
     if (playersInRoom[data.id]) {
         playersInRoom[data.id].x = data.x;
         playersInRoom[data.id].y = data.y;
@@ -449,7 +475,7 @@ socket.on('receivePM', (data) => {
     
     let modal = document.getElementById('global-social-modal');
     if (modal && modal.style.display === 'none') {
-        let btn = document.getElementById('global-social-button');
+        let btn = getSocialNotificationButton();
         if (btn) btn.classList.add('social-glow-alert');
         if (typeof playRetroSound === 'function') playRetroSound('click'); 
     } else {
@@ -477,7 +503,7 @@ window.toggleSocialHub = function() {
 
     if (modal.style.display === 'none') {
         modal.style.display = 'flex';
-        let btn = document.getElementById('global-social-button');
+        let btn = getSocialNotificationButton();
         if (btn) btn.classList.remove('social-glow-alert');
         
         switchSocialHubTab('pms'); 

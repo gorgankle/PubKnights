@@ -20,6 +20,8 @@ const COMPANION_UI_LEVEL_GROWTH = Object.freeze({ vitality: 0.5, offense: 0.5, d
 const COMPANION_UI_MAX_SELECTED = 3;
 const COMPANION_UI_MAX_ROSTER = 6;
 const COMPANION_UI_TRAINING_GOLD_PER_TARGET_LEVEL = 150;
+let partyInventoryActionPending = false;
+let partyInventoryPendingRequest = null;
 
 function getSelectedCompanionIds(activeIds) {
     const sourceIds = Array.isArray(activeIds) ? activeIds : [];
@@ -31,6 +33,186 @@ function isCompanionPocketEligible(item) {
         COMPANION_UI_EQUIPMENT_SLOTS.includes(item.slot)
         || (item.slot === 'consumable' && item.combat)
     ));
+}
+
+function isPartyRosterManagementLocked() {
+    return !!(
+        typeof player !== 'undefined'
+        && player
+        && player.adventure
+        && player.adventure.activeJourney
+    );
+}
+
+function getSelectedPartyCompanion() {
+    const roster = typeof player !== 'undefined' && player && player.roster;
+    const companions = roster && Array.isArray(roster.companions) ? roster.companions : [];
+    if (!companions.length) return null;
+    return companions.find(companion => companion.instanceId === window.selectedCompanionInstanceId)
+        || companions.find(companion => Array.isArray(roster.activeIds) && roster.activeIds.includes(companion.instanceId))
+        || companions[0];
+}
+
+function getPartyBackpackActionPresentations(item) {
+    if (!item) return [];
+    const actions = [];
+    if (COMPANION_UI_EQUIPMENT_SLOTS.includes(item.slot)) {
+        actions.push({ action: 'equip', label: `Equip ${COMPANION_UI_SLOT_LABELS[item.slot] || 'Gear'}` });
+    }
+    if (isCompanionPocketEligible(item)) {
+        actions.push({ action: 'pocket', label: 'Put in Pocket' });
+    }
+    return actions;
+}
+
+function getPartyBackpackActionPresentation(item) {
+    return getPartyBackpackActionPresentations(item)[0] || null;
+}
+
+function restorePartyFocus(...focusKeys) {
+    if (typeof document === 'undefined' || typeof document.querySelectorAll !== 'function') return;
+    const candidates = Array.from(document.querySelectorAll('[data-party-focus-key]'));
+    const target = focusKeys
+        .filter(Boolean)
+        .map(key => candidates.find(candidate => (
+            candidate.dataset.partyFocusKey === key
+            && candidate.disabled !== true
+            && candidate.getAttribute('aria-disabled') !== 'true'
+        )))
+        .find(Boolean);
+    if (target && typeof target.focus === 'function') target.focus({ preventScroll: true });
+}
+
+function setPartyInventoryActionPending(isPending, message) {
+    partyInventoryActionPending = !!isPending;
+    if (typeof document === 'undefined') return;
+    const list = document.getElementById('party-inventory-list');
+    if (list) {
+        list.setAttribute('aria-busy', partyInventoryActionPending ? 'true' : 'false');
+        list.querySelectorAll('.party-backpack-action').forEach(button => {
+            button.disabled = partyInventoryActionPending || button.dataset.partyActionUnavailable === 'true';
+        });
+        list.querySelectorAll('[data-party-draggable="true"]').forEach(slot => {
+            slot.draggable = !partyInventoryActionPending;
+        });
+    }
+    const equipmentPanel = document.getElementById('companion-equipment-panel');
+    if (equipmentPanel && typeof equipmentPanel.querySelectorAll === 'function') {
+        equipmentPanel.setAttribute('aria-busy', partyInventoryActionPending ? 'true' : 'false');
+        equipmentPanel.querySelectorAll('[data-party-inventory-control="true"]').forEach(control => {
+            control.setAttribute('aria-disabled', partyInventoryActionPending ? 'true' : 'false');
+            control.draggable = !partyInventoryActionPending && control.dataset.hasStoredItem === 'true';
+        });
+    }
+    const status = document.getElementById('party-inventory-status');
+    if (status && message) status.textContent = message;
+}
+
+function beginPartyInventoryAction(request, invoke) {
+    if (partyInventoryActionPending || !request || typeof invoke !== 'function') return false;
+    partyInventoryPendingRequest = request;
+    setPartyInventoryActionPending(true, request.message);
+    try {
+        invoke();
+        return true;
+    } catch (error) {
+        partyInventoryPendingRequest = null;
+        setPartyInventoryActionPending(false, 'The party equipment request could not be sent.');
+        throw error;
+    }
+}
+
+function activatePartyBackpackItem(inventoryIndex, requestedAction = null) {
+    if (partyInventoryActionPending) return false;
+    if (typeof gameState !== 'undefined' && gameState === 'COMBAT') {
+        reportCompanionDropError('Party equipment cannot be changed during combat.');
+        return false;
+    }
+    const companion = getSelectedPartyCompanion();
+    const inventory = typeof player !== 'undefined' && player && Array.isArray(player.inventory)
+        ? player.inventory
+        : [];
+    const item = inventory[inventoryIndex];
+    const presentations = getPartyBackpackActionPresentations(item);
+    const presentation = presentations.find(entry => entry.action === requestedAction)
+        || (!requestedAction ? presentations[0] : null);
+    if (!companion) {
+        reportCompanionDropError('Select a companion before assigning backpack items.');
+        return false;
+    }
+    if (!item || !presentation) {
+        reportCompanionDropError('That item cannot be assigned to a companion.');
+        return false;
+    }
+
+    const receiptAction = presentation.action === 'equip' ? 'equipCompanion' : 'storeCompanionPocket';
+    const focusKey = `party-backpack:${inventoryIndex}:${presentation.action}`;
+    const fallbackFocusKey = presentation.action === 'equip'
+        ? `companion:${companion.instanceId}:slot:${item.slot}`
+        : `companion:${companion.instanceId}:pocket:0`;
+    return beginPartyInventoryAction({
+        action: receiptAction,
+        focusKey,
+        fallbackFocusKey,
+        message: `${presentation.label}: ${item.name || 'item'} for ${companion.name || 'companion'}...`
+    }, () => {
+        if (presentation.action === 'equip') equipCompanionItem(companion.instanceId, inventoryIndex);
+        else storeCompanionPocketItem(companion.instanceId, inventoryIndex, 0);
+    });
+}
+
+function requestCompanionEquip(instanceId, inventoryIndex, slotKey, itemName = 'gear') {
+    return beginPartyInventoryAction({
+        action: 'equipCompanion',
+        focusKey: `companion:${instanceId}:slot:${slotKey}`,
+        fallbackFocusKey: `companion:${instanceId}:equipment`,
+        message: `Equipping ${itemName}...`
+    }, () => equipCompanionItem(instanceId, inventoryIndex));
+}
+
+function requestCompanionUnequip(instanceId, slotKey) {
+    return beginPartyInventoryAction({
+        action: 'unequipCompanion',
+        focusKey: `companion:${instanceId}:slot:${slotKey}`,
+        fallbackFocusKey: `companion:${instanceId}:equipment`,
+        message: `Returning ${COMPANION_UI_SLOT_LABELS[slotKey] || 'gear'} to the shared backpack...`
+    }, () => unequipCompanionItem(instanceId, slotKey));
+}
+
+function requestCompanionPocketStore(instanceId, inventoryIndex, pocketIndex = 0, itemName = 'item') {
+    return beginPartyInventoryAction({
+        action: 'storeCompanionPocket',
+        focusKey: `companion:${instanceId}:pocket:${pocketIndex}`,
+        fallbackFocusKey: `companion:${instanceId}:pocket:${pocketIndex}`,
+        message: `Storing ${itemName} in the companion pocket...`
+    }, () => storeCompanionPocketItem(instanceId, inventoryIndex, pocketIndex));
+}
+
+function requestCompanionPocketRemoval(instanceId, pocketIndex = 0) {
+    return beginPartyInventoryAction({
+        action: 'removeCompanionPocket',
+        focusKey: `companion:${instanceId}:pocket:${pocketIndex}`,
+        fallbackFocusKey: `companion:${instanceId}:equipment`,
+        message: 'Returning the pocket item to the shared backpack...'
+    }, () => removeCompanionPocketItem(instanceId, pocketIndex));
+}
+
+function completePartyInventoryAction(receipt) {
+    if (!partyInventoryPendingRequest || !receipt || receipt.action !== partyInventoryPendingRequest.action) {
+        return false;
+    }
+    const completedRequest = partyInventoryPendingRequest;
+    partyInventoryPendingRequest = null;
+    const message = receipt && receipt.message
+        ? receipt.message
+        : (receipt && receipt.success === false ? 'The item could not be assigned.' : 'Party equipment updated.');
+    setPartyInventoryActionPending(false, message);
+    if (receipt.success === false) {
+        restorePartyFocus(completedRequest.focusKey, completedRequest.fallbackFocusKey);
+    } else {
+        restorePartyFocus(completedRequest.fallbackFocusKey, completedRequest.focusKey);
+    }
+    return true;
 }
 
 function getCompanionUiStat(companion, statKey) {
@@ -62,6 +244,42 @@ function makeCompanionButton(label, className, handler) {
     return button;
 }
 
+function identifyPartyFocusTarget(element, focusKey, companionId = '') {
+    if (!element) return element;
+    if (!element.dataset) element.dataset = {};
+    element.dataset.partyFocusKey = focusKey;
+    if (companionId) element.dataset.partyCompanionId = companionId;
+    return element;
+}
+
+function capturePartyFocus(...roots) {
+    if (typeof document === 'undefined' || !document.activeElement) return null;
+    const active = document.activeElement;
+    const ownsFocus = roots.filter(Boolean).some(root => (
+        root === active || (typeof root.contains === 'function' && root.contains(active))
+    ));
+    if (!ownsFocus) return null;
+    const owner = typeof active.closest === 'function'
+        ? active.closest('[data-party-companion-id]')
+        : null;
+    return {
+        focusKey: active.dataset && active.dataset.partyFocusKey,
+        companionId: (active.dataset && active.dataset.partyCompanionId)
+            || (owner && owner.dataset.partyCompanionId)
+            || ''
+    };
+}
+
+function restoreRenderedPartyFocus(focusState) {
+    if (!focusState) return;
+    restorePartyFocus(
+        focusState.focusKey,
+        focusState.companionId ? `companion:${focusState.companionId}:equipment` : '',
+        focusState.companionId ? `companion:${focusState.companionId}:status` : '',
+        'party-roster:fill'
+    );
+}
+
 function addCompanionItemTooltip(element, item) {
     if (!item || typeof showTooltip !== 'function' || typeof getItemTooltip !== 'function') return;
     element.addEventListener('mouseenter', event => showTooltip(getItemTooltip(item), event));
@@ -72,18 +290,23 @@ function addCompanionItemTooltip(element, item) {
 function renderCompanionRosterUI(companions, activeIds) {
     const partyList = document.getElementById('party-roster-list');
     if (!partyList) return;
+    const equipmentPanel = document.getElementById('companion-equipment-panel');
+    const focusState = capturePartyFocus(partyList, equipmentPanel);
     partyList.innerHTML = '';
     activeIds = getSelectedCompanionIds(activeIds);
+    const managementLocked = isPartyRosterManagementLocked();
 
     const toolbar = document.createElement('div');
     toolbar.className = 'companion-roster-toolbar';
     const status = document.createElement('span');
     status.textContent = `Active ${activeIds.length}/${COMPANION_UI_MAX_SELECTED} • Roster ${companions.length}/${COMPANION_UI_MAX_ROSTER}`;
     const fillButton = makeCompanionButton('Fill Party', 'companion-activate-button', fillActiveCompanions);
-    fillButton.disabled = activeIds.length >= COMPANION_UI_MAX_SELECTED
+    identifyPartyFocusTarget(fillButton, 'party-roster:fill');
+    fillButton.disabled = managementLocked || activeIds.length >= COMPANION_UI_MAX_SELECTED
         || !companions.some(companion => !activeIds.includes(companion.instanceId));
     const benchAllButton = makeCompanionButton('Bench All', 'companion-bench-button', benchAllCompanions);
-    benchAllButton.disabled = activeIds.length === 0;
+    identifyPartyFocusTarget(benchAllButton, 'party-roster:bench-all');
+    benchAllButton.disabled = managementLocked || activeIds.length === 0;
     toolbar.append(status, fillButton, benchAllButton);
     partyList.appendChild(toolbar);
 
@@ -93,6 +316,7 @@ function renderCompanionRosterUI(companions, activeIds) {
         empty.textContent = 'No companions have joined your company yet. Meet people in town and on the roads.';
         partyList.appendChild(empty);
         renderCompanionEquipmentPanel(companions, activeIds);
+        restoreRenderedPartyFocus(focusState);
         return;
     }
 
@@ -101,6 +325,7 @@ function renderCompanionRosterUI(companions, activeIds) {
         const isSelected = window.selectedCompanionInstanceId === companion.instanceId;
         const row = document.createElement('div');
         row.className = 'companion-roster-row' + (isActive ? ' is-active' : '') + (isSelected ? ' is-selected' : '');
+        row.dataset.partyCompanionId = companion.instanceId;
 
         const summary = document.createElement('div');
         summary.className = 'companion-roster-summary';
@@ -115,15 +340,28 @@ function renderCompanionRosterUI(companions, activeIds) {
 
         const controls = document.createElement('div');
         controls.className = 'companion-roster-controls';
-        controls.appendChild(makeCompanionButton('Equipment', 'companion-gear-button', () => selectCompanionEquipment(companion.instanceId)));
+        const equipmentButton = makeCompanionButton('Equipment', 'companion-gear-button', () => selectCompanionEquipment(companion.instanceId));
+        identifyPartyFocusTarget(equipmentButton, `companion:${companion.instanceId}:equipment`, companion.instanceId);
+        equipmentButton.setAttribute('aria-label', `${companion.name || 'Mercenary'}: show equipment`);
+        equipmentButton.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+        controls.appendChild(equipmentButton);
         if (isActive) {
-            controls.appendChild(makeCompanionButton('Bench', 'companion-bench-button', () => benchCompanion(companion.instanceId)));
+            const bench = makeCompanionButton('Bench', 'companion-bench-button', () => benchCompanion(companion.instanceId));
+            identifyPartyFocusTarget(bench, `companion:${companion.instanceId}:status`, companion.instanceId);
+            bench.setAttribute('aria-label', `${companion.name || 'Mercenary'}: bench companion`);
+            bench.disabled = managementLocked;
+            controls.appendChild(bench);
         } else {
             const activate = makeCompanionButton('Activate', 'companion-activate-button', () => setActiveCompanion(companion.instanceId));
-            activate.disabled = activeIds.length >= COMPANION_UI_MAX_SELECTED;
+            identifyPartyFocusTarget(activate, `companion:${companion.instanceId}:status`, companion.instanceId);
+            activate.setAttribute('aria-label', `${companion.name || 'Mercenary'}: activate companion`);
+            activate.disabled = managementLocked || activeIds.length >= COMPANION_UI_MAX_SELECTED;
             controls.appendChild(activate);
         }
         const dismiss = makeCompanionButton('Dismiss', 'companion-danger-button', () => dismissCompanion(companion.instanceId, companion.name));
+        identifyPartyFocusTarget(dismiss, `companion:${companion.instanceId}:dismiss`, companion.instanceId);
+        dismiss.setAttribute('aria-label', `${companion.name || 'Mercenary'}: dismiss companion`);
+        dismiss.disabled = managementLocked;
         controls.appendChild(dismiss);
 
         row.append(summary, controls);
@@ -131,6 +369,7 @@ function renderCompanionRosterUI(companions, activeIds) {
     });
 
     renderCompanionEquipmentPanel(companions, activeIds);
+    restoreRenderedPartyFocus(focusState);
 }
 
 function readCompanionBackpackDrop(event) {
@@ -152,23 +391,25 @@ function reportCompanionDropError(message) {
 }
 
 function handleCompanionEquipmentDrop(event, instanceId, slotKey) {
+    if (partyInventoryActionPending) return;
     const dropped = readCompanionBackpackDrop(event);
     if (!dropped) return;
     if (!COMPANION_UI_EQUIPMENT_SLOTS.includes(slotKey) || dropped.item.slot !== slotKey) {
         reportCompanionDropError('Drop ' + (COMPANION_UI_SLOT_LABELS[slotKey] || 'matching gear') + ' into this slot.');
         return;
     }
-    equipCompanionItem(instanceId, dropped.index);
+    requestCompanionEquip(instanceId, dropped.index, slotKey, dropped.item.name || 'gear');
 }
 
 function handleCompanionPocketDrop(event, instanceId, pocketIndex) {
+    if (partyInventoryActionPending) return;
     const dropped = readCompanionBackpackDrop(event);
     if (!dropped) return;
     if (!isCompanionPocketEligible(dropped.item)) {
         reportCompanionDropError('Pockets hold equipment or combat consumables.');
         return;
     }
-    storeCompanionPocketItem(instanceId, dropped.index, pocketIndex);
+    requestCompanionPocketStore(instanceId, dropped.index, pocketIndex, dropped.item.name || 'item');
 }
 
 function createCompanionPaperdollEmptyCell() {
@@ -181,19 +422,19 @@ function createCompanionPaperdollEmptyCell() {
 function bindCompanionStoredItemSlot(slot, item, dragIndex, dragType, dragMetadata, removeItem) {
     if (!item) return;
 
-    slot.draggable = true;
+    slot.draggable = !partyInventoryActionPending;
     if (typeof handleItemDragStart === 'function') {
         slot.ondragstart = event => handleItemDragStart(event, dragIndex, dragType, dragMetadata);
     }
 
     const remove = event => {
+        if (partyInventoryActionPending) return;
         if (event && typeof event.preventDefault === 'function') event.preventDefault();
         if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
         removeItem();
     };
 
-    if (typeof bindInventoryDoubleClick === 'function') bindInventoryDoubleClick(slot, remove);
-    else slot.ondblclick = remove;
+    slot.onclick = remove;
 
     slot.tabIndex = 0;
     slot.onkeydown = event => {
@@ -212,10 +453,14 @@ function createCompanionPaperdollSlot(selected, slotKey) {
         ? handleItemDragOver
         : event => event.preventDefault();
     slot.ondrop = event => handleCompanionEquipmentDrop(event, selected.instanceId, slotKey);
-    slot.setAttribute('role', 'button');
+    slot.setAttribute('role', item ? 'button' : 'group');
+    slot.tabIndex = item ? 0 : -1;
+    slot.dataset.partyInventoryControl = 'true';
+    slot.dataset.hasStoredItem = item ? 'true' : 'false';
+    identifyPartyFocusTarget(slot, `companion:${selected.instanceId}:slot:${slotKey}`, selected.instanceId);
     slot.setAttribute('aria-label', item
-        ? label + ': ' + item.name + '. Double-click or drag to the Knight\'s backpack to remove.'
-        : label + ': empty. Drag matching gear here from the Knight\'s backpack.');
+        ? label + ': ' + item.name + '. Tap, click, or press Enter to return it to the shared backpack.'
+        : label + ': empty. Use a matching item\'s Equip action in the shared backpack.');
     slot.title = slot.getAttribute('aria-label');
 
     const imageUrl = item && typeof getItemSpriteURL === 'function' ? getItemSpriteURL(item) : '';
@@ -234,7 +479,7 @@ function createCompanionPaperdollSlot(selected, slotKey) {
         slotKey,
         'companion-equipment',
         { instanceId: selected.instanceId, slotKey },
-        () => unequipCompanionItem(selected.instanceId, slotKey)
+        () => requestCompanionUnequip(selected.instanceId, slotKey)
     );
     addCompanionItemTooltip(slot, item);
     return slot;
@@ -250,10 +495,14 @@ function createCompanionPocketSlot(selected, pocketIndex) {
         ? handleItemDragOver
         : event => event.preventDefault();
     slot.ondrop = event => handleCompanionPocketDrop(event, selected.instanceId, pocketIndex);
-    slot.setAttribute('role', 'button');
+    slot.setAttribute('role', item ? 'button' : 'group');
+    slot.tabIndex = item ? 0 : -1;
+    slot.dataset.partyInventoryControl = 'true';
+    slot.dataset.hasStoredItem = item ? 'true' : 'false';
+    identifyPartyFocusTarget(slot, `companion:${selected.instanceId}:pocket:${pocketIndex}`, selected.instanceId);
     slot.setAttribute('aria-label', item
-        ? 'Pocket ' + pocketNumber + ': ' + item.name + '. Double-click or drag to the Knight\'s backpack to remove.'
-        : 'Pocket ' + pocketNumber + ': empty. Drag equipment or a combat consumable here.');
+        ? 'Pocket ' + pocketNumber + ': ' + item.name + '. Tap, click, or press Enter to return it to the shared backpack.'
+        : 'Pocket ' + pocketNumber + ': empty. Use an item\'s Put in Pocket action in the shared backpack.');
     slot.title = slot.getAttribute('aria-label');
 
     const imageUrl = item && typeof getItemSpriteURL === 'function' ? getItemSpriteURL(item) : '';
@@ -272,7 +521,7 @@ function createCompanionPocketSlot(selected, pocketIndex) {
         pocketIndex,
         'companion-pocket',
         { instanceId: selected.instanceId, pocketIndex },
-        () => removeCompanionPocketItem(selected.instanceId, pocketIndex)
+        () => requestCompanionPocketRemoval(selected.instanceId, pocketIndex)
     );
     addCompanionItemTooltip(slot, item);
     return slot;
@@ -328,7 +577,8 @@ function renderCompanionEquipmentPanel(companions, activeIds) {
         'companion-activate-button',
         () => trainMercenary(selected.instanceId)
     );
-    train.disabled = level >= trainingCap || player.gold < trainingCost;
+    identifyPartyFocusTarget(train, `companion:${selected.instanceId}:train`, selected.instanceId);
+    train.disabled = isPartyRosterManagementLocked() || level >= trainingCap || player.gold < trainingCost;
     training.append(progressWrap, train);
 
     const slots = document.createElement('div');
@@ -347,11 +597,20 @@ function renderCompanionEquipmentPanel(companions, activeIds) {
 
     const equipmentHelp = document.createElement('p');
     equipmentHelp.className = 'companion-equipment-help';
-    equipmentHelp.textContent = 'Drag matching gear or pocket items from the Knight\'s backpack. Double-click or drag equipped items back to remove them.';
+    equipmentHelp.textContent = 'Use the shared backpack actions or drag matching gear into a slot. Press Enter on equipped items to return them.';
 
     const equipmentLayout = document.createElement('div');
     equipmentLayout.className = 'companion-equipment-layout';
     equipmentLayout.append(slots, equipmentHelp);
 
     panel.append(header, statLine, training, equipmentLayout);
+}
+
+if (typeof window !== 'undefined') {
+    window.activatePartyBackpackItem = activatePartyBackpackItem;
+    window.completePartyInventoryAction = completePartyInventoryAction;
+    window.getPartyBackpackActionPresentation = getPartyBackpackActionPresentation;
+    window.getPartyBackpackActionPresentations = getPartyBackpackActionPresentations;
+    window.requestCompanionUnequip = requestCompanionUnequip;
+    window.requestCompanionPocketRemoval = requestCompanionPocketRemoval;
 }

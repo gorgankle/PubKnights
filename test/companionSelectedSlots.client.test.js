@@ -36,7 +36,9 @@ function loadPlayerApi() {
 class FakeElement {
     constructor(tagName) {
         this.tagName = tagName;
+        this.attributes = {};
         this.children = [];
+        this.dataset = {};
         this.disabled = false;
         this.textContent = '';
         this._innerHTML = '';
@@ -61,6 +63,14 @@ class FakeElement {
     }
 
     addEventListener() {}
+
+    getAttribute(name) {
+        return this.attributes[name] ?? null;
+    }
+
+    setAttribute(name, value) {
+        this.attributes[name] = String(value);
+    }
 }
 
 test('client normalization preserves the first three valid selected mercenaries', () => {

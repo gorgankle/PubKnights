@@ -12,6 +12,39 @@ const TOWN_NPC_PLACEMENTS = Object.freeze({
     marlow: Object.freeze({ x: 22, y: 15 })
 });
 
+const TOWN_DESTINATION_PLACEMENTS = Object.freeze({
+    roads: Object.freeze({
+        id: 'roads',
+        name: 'Roads',
+        description: 'Review routes and set out on an expedition.',
+        x: 15,
+        y: 17,
+        hitX: 15,
+        hitY: 15.5,
+        state: 'ADVENTURES'
+    }),
+    vault: Object.freeze({
+        id: 'vault',
+        name: 'Vault',
+        description: 'Store equipment and manage the town vault.',
+        x: 29,
+        y: 8,
+        hitX: 27,
+        hitY: 8,
+        state: 'VAULT'
+    }),
+    community: Object.freeze({
+        id: 'community',
+        name: 'Community',
+        description: 'Meet other knights in the community square.',
+        x: 0,
+        y: 8,
+        hitX: 2,
+        hitY: 8,
+        state: 'COMMUNITY'
+    })
+});
+
 const TOWN_STATIC_NPCS = Object.freeze({
     kreg: Object.freeze({ id: 'kreg', name: 'Kreg', role: 'Innkeeper and contract keeper' }),
     elowen: Object.freeze({ id: 'elowen', name: 'Elowen', role: 'Trail warden and field observer' }),
@@ -20,13 +53,15 @@ const TOWN_STATIC_NPCS = Object.freeze({
     marlow: Object.freeze({ id: 'marlow', name: 'Marlow', role: 'Retired road sergeant' })
 });
 
-let townPlayerPosition = { x: 15, y: 16 };
+let townPlayerPosition = { x: 15, y: 8 };
 let townSelectedNpcId = null;
+let townSelectedDestinationId = null;
 let townPathTimer = null;
-let townPendingNpcId = null;
+let townPendingArrival = null;
 let townOpenShopNpcId = null;
 let townShopPreviousFocus = null;
 let townAwaitingNpcReceiptId = null;
+let townPointerGesture = null;
 
 function asTownList(value) {
     if (Array.isArray(value)) return value;
@@ -63,6 +98,10 @@ function getTownNpcRecords() {
     }));
 }
 
+function getTownDestinationRecords() {
+    return Object.values(TOWN_DESTINATION_PLACEMENTS).map(destination => ({ ...destination }));
+}
+
 function getTownBlockedTileSet() {
     const blocked = new Set();
     const block = (x, y) => blocked.add(`${x},${y}`);
@@ -83,6 +122,7 @@ function getTownBlockedTileSet() {
             }
         });
     getTownNpcRecords().forEach(npc => block(npc.x, npc.y));
+    getTownDestinationRecords().forEach(destination => block(destination.x, destination.y));
     return blocked;
 }
 
@@ -127,17 +167,21 @@ function findTownPath(start, target, blocked = getTownBlockedTileSet()) {
     return [];
 }
 
-function getTownNpcDistance(npc, position = townPlayerPosition) {
-    return npc ? Math.abs(npc.x - position.x) + Math.abs(npc.y - position.y) : Infinity;
+function getTownInteractionDistance(target, position = townPlayerPosition) {
+    return target ? Math.abs(target.x - position.x) + Math.abs(target.y - position.y) : Infinity;
 }
 
-function getTownNpcApproachPath(npc) {
-    if (!npc) return [];
+function getTownNpcDistance(npc, position = townPlayerPosition) {
+    return getTownInteractionDistance(npc, position);
+}
+
+function getTownApproachPath(target) {
+    if (!target) return [];
     const blocked = getTownBlockedTileSet();
     const targets = [];
-    for (let y = npc.y - TOWN_INTERACTION_RANGE; y <= npc.y + TOWN_INTERACTION_RANGE; y += 1) {
-        for (let x = npc.x - TOWN_INTERACTION_RANGE; x <= npc.x + TOWN_INTERACTION_RANGE; x += 1) {
-            const distance = Math.abs(npc.x - x) + Math.abs(npc.y - y);
+    for (let y = target.y - TOWN_INTERACTION_RANGE; y <= target.y + TOWN_INTERACTION_RANGE; y += 1) {
+        for (let x = target.x - TOWN_INTERACTION_RANGE; x <= target.x + TOWN_INTERACTION_RANGE; x += 1) {
+            const distance = Math.abs(target.x - x) + Math.abs(target.y - y);
             if (distance > TOWN_INTERACTION_RANGE || !isTownTileWalkable(x, y, blocked)) continue;
             const path = findTownPath(townPlayerPosition, { x, y }, blocked);
             if (path.length || (x === townPlayerPosition.x && y === townPlayerPosition.y)) {
@@ -147,6 +191,10 @@ function getTownNpcApproachPath(npc) {
     }
     targets.sort((left, right) => left.distance - right.distance || left.y - right.y || left.x - right.x);
     return targets.length ? targets[0].path : [];
+}
+
+function getTownNpcApproachPath(npc) {
+    return getTownApproachPath(npc);
 }
 
 function stopTownWalking() {
@@ -160,21 +208,42 @@ function updateTownStatus(message) {
     if (status) status.textContent = message;
 }
 
-function startTownPath(path, npcId = null) {
+function activateTownDestination(destinationId) {
+    const destination = getTownDestinationRecords()
+        .find(candidate => candidate.id === destinationId);
+    if (!destination) return;
+    if (getTownInteractionDistance(destination) > TOWN_INTERACTION_RANGE) {
+        walkToTownDestination(destinationId);
+        return;
+    }
+    townSelectedDestinationId = destinationId;
+    updateTownStatus(`Entering ${destination.name}.`);
+    if (typeof setGameState === 'function') setGameState(destination.state);
+}
+
+function dispatchTownArrival(arrival) {
+    if (!arrival || !arrival.id) return;
+    if (arrival.kind === 'destination') activateTownDestination(arrival.id);
+    else if (arrival.kind === 'npc') openTownNpcDialogue(arrival.id);
+}
+
+function startTownPath(path, arrival = null) {
     stopTownWalking();
-    townPendingNpcId = npcId;
+    townPendingArrival = arrival;
     const remaining = Array.isArray(path) ? [...path] : [];
     if (!remaining.length) {
-        if (npcId) openTownNpcDialogue(npcId);
+        const immediateArrival = townPendingArrival;
+        townPendingArrival = null;
+        dispatchTownArrival(immediateArrival);
         return;
     }
     const step = () => {
         const next = remaining.shift();
         if (!next) {
             townPathTimer = null;
-            const arrivalNpcId = townPendingNpcId;
-            townPendingNpcId = null;
-            if (arrivalNpcId) openTownNpcDialogue(arrivalNpcId);
+            const arrivalTarget = townPendingArrival;
+            townPendingArrival = null;
+            dispatchTownArrival(arrivalTarget);
             return;
         }
         townPlayerPosition = { x: next.x, y: next.y };
@@ -187,14 +256,40 @@ function startTownPath(path, npcId = null) {
 function walkToTownNpc(npcId) {
     const npc = getTownNpcRecords().find(candidate => candidate.id === npcId);
     if (!npc) return;
+    stopTownWalking();
+    townPendingArrival = null;
+    townSelectedDestinationId = null;
     townSelectedNpcId = npcId;
+    if (typeof closeDialogueOverlay === 'function') closeDialogueOverlay(false);
+    closeTownShop(false);
     const path = getTownNpcApproachPath(npc);
     updateTownStatus(`Walking to ${npc.name}.`);
     if (!path.length && getTownNpcDistance(npc) > TOWN_INTERACTION_RANGE) {
         updateTownStatus(`There is no clear path to ${npc.name}.`);
         return;
     }
-    startTownPath(path, npcId);
+    startTownPath(path, { kind: 'npc', id: npcId });
+}
+
+function walkToTownDestination(destinationId) {
+    const destination = getTownDestinationRecords()
+        .find(candidate => candidate.id === destinationId);
+    if (!destination) return;
+    stopTownWalking();
+    townPendingArrival = null;
+    townSelectedNpcId = null;
+    townSelectedDestinationId = destinationId;
+    if (typeof closeDialogueOverlay === 'function') closeDialogueOverlay(false);
+    closeTownShop(false);
+    const path = getTownApproachPath(destination);
+    updateTownStatus(`Walking to ${destination.name}.`);
+    if (!path.length && getTownInteractionDistance(destination) > TOWN_INTERACTION_RANGE) {
+        updateTownStatus(`There is no clear path to ${destination.name}.`);
+        renderWalkableTown();
+        return;
+    }
+    renderWalkableTown();
+    startTownPath(path, { kind: 'destination', id: destinationId });
 }
 
 function getTownContractStatus(contract) {
@@ -276,6 +371,40 @@ function drawTownSceneBackground(context, canvas) {
     context.fillText('THE WAYWARD TANKARD', canvas.width / 2, 18);
 }
 
+function drawTownDestination(context, destination) {
+    if (!destination) return;
+    const tile = TOWN_SCENE.tileSize;
+    const centerX = destination.x * tile + tile / 2;
+    const centerY = destination.y * tile + tile / 2;
+    context.save();
+    context.lineWidth = 2;
+    context.font = 'bold 9px monospace';
+    context.textAlign = 'center';
+    if (destination.id === 'roads') {
+        context.fillStyle = '#213847';
+        context.strokeStyle = '#76a9c9';
+        context.fillRect(centerX - 45, centerY - 29, 90, 27);
+        context.strokeRect(centerX - 45, centerY - 29, 90, 27);
+        context.fillStyle = '#d7edf6';
+        context.fillText('ROADS', centerX, centerY - 11);
+    } else if (destination.id === 'vault') {
+        context.fillStyle = '#3f3824';
+        context.strokeStyle = '#d2b85f';
+        context.fillRect(TOWN_SCENE.columns * tile - 23, centerY - 31, 22, 62);
+        context.strokeRect(TOWN_SCENE.columns * tile - 23, centerY - 31, 22, 62);
+        context.fillStyle = '#f0d98b';
+        context.fillText('VAULT', centerX - 52, centerY + 3);
+    } else {
+        context.fillStyle = '#283a31';
+        context.strokeStyle = '#75c998';
+        context.fillRect(1, centerY - 31, 22, 62);
+        context.strokeRect(1, centerY - 31, 22, 62);
+        context.fillStyle = '#b9efd0';
+        context.fillText('COMMUNITY', centerX + 58, centerY + 3);
+    }
+    context.restore();
+}
+
 function drawTownActor(context, actor, x, y, label, marker) {
     const size = TOWN_SCENE.tileSize * 1.35;
     const drawX = x * TOWN_SCENE.tileSize - (size - TOWN_SCENE.tileSize) / 2;
@@ -327,6 +456,31 @@ function renderTownQuickNpcButtons(npcs) {
     }
 }
 
+function renderTownDestinationShortcuts(destinations) {
+    if (typeof document === 'undefined') return;
+    const list = document.getElementById('town-destination-shortcuts');
+    if (!list) return;
+    const previouslyFocused = document.activeElement;
+    const focusedDestinationId = previouslyFocused && list.contains(previouslyFocused)
+        ? previouslyFocused.getAttribute('data-town-destination-id')
+        : null;
+    list.innerHTML = destinations.map(destination => (
+        `<button type="button" data-town-destination-id="${escapeTownHtml(destination.id)}"${townSelectedDestinationId === destination.id ? ' class="is-selected"' : ''} aria-label="${escapeTownHtml(`${destination.name}: ${destination.description}`)}">${escapeTownHtml(destination.name)}</button>`
+    )).join('');
+    list.querySelectorAll('[data-town-destination-id]').forEach(button => {
+        button.onclick = () => walkToTownDestination(
+            button.getAttribute('data-town-destination-id')
+        );
+    });
+    if (focusedDestinationId) {
+        const replacement = Array.from(list.querySelectorAll('[data-town-destination-id]'))
+            .find(button => button.getAttribute('data-town-destination-id') === focusedDestinationId);
+        if (replacement && typeof replacement.focus === 'function') {
+            replacement.focus({ preventScroll: true });
+        }
+    }
+}
+
 function renderWalkableTown() {
     if (typeof document === 'undefined') return;
     const canvas = document.getElementById('town-exploration-canvas');
@@ -335,6 +489,8 @@ function renderWalkableTown() {
     if (!context) return;
     context.imageSmoothingEnabled = false;
     drawTownSceneBackground(context, canvas);
+    const destinations = getTownDestinationRecords();
+    destinations.forEach(destination => drawTownDestination(context, destination));
     const npcs = getTownNpcRecords();
     const actors = npcs.map(npc => ({
         x: npc.x,
@@ -369,6 +525,7 @@ function renderWalkableTown() {
         entry.marker
     ));
     renderTownQuickNpcButtons(npcs);
+    renderTownDestinationShortcuts(destinations);
     if (townOpenShopNpcId) renderOpenTownShop();
 }
 
@@ -719,7 +876,8 @@ function openTownNpcDialogue(npcId) {
         return;
     }
     townSelectedNpcId = npcId;
-    townPendingNpcId = null;
+    townSelectedDestinationId = null;
+    townPendingArrival = null;
     updateTownStatus(`Talking to ${npc.name}. Choose a response in the dialogue box.`);
     renderWalkableTown();
     showTownNpcMainMenu(npcId);
@@ -728,7 +886,7 @@ function openTownNpcDialogue(npcId) {
 function closeTownNpcDialogue() {
     if (typeof document === 'undefined') return;
     stopTownWalking();
-    townPendingNpcId = null;
+    townPendingArrival = null;
     closeTownShop(false);
     leaveTownNpcConversation();
 }
@@ -754,12 +912,26 @@ function handleTownCanvasPointer(event) {
     const rect = canvas.getBoundingClientRect();
     if (!(rect.width > 0) || !(rect.height > 0) || !Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) return;
     stopTownWalking();
-    townPendingNpcId = null;
+    townPendingArrival = null;
     const logicalX = (event.clientX - rect.left) * canvas.width / rect.width;
     const logicalY = (event.clientY - rect.top) * canvas.height / rect.height;
     const x = Math.floor(logicalX / TOWN_SCENE.tileSize);
     const y = Math.floor(logicalY / TOWN_SCENE.tileSize);
     const minimumHitRadius = Math.max(24, 22 * canvas.width / rect.width);
+    const destination = getTownDestinationRecords()
+        .map(candidate => ({
+            candidate,
+            distance: Math.hypot(
+                logicalX - ((candidate.hitX ?? candidate.x) * TOWN_SCENE.tileSize + TOWN_SCENE.tileSize / 2),
+                logicalY - ((candidate.hitY ?? candidate.y) * TOWN_SCENE.tileSize + TOWN_SCENE.tileSize / 2)
+            )
+        }))
+        .filter(entry => entry.distance <= minimumHitRadius)
+        .sort((left, right) => left.distance - right.distance)[0];
+    if (destination) {
+        walkToTownDestination(destination.candidate.id);
+        return;
+    }
     const npc = getTownNpcRecords()
         .map(candidate => ({
             candidate,
@@ -775,6 +947,7 @@ function handleTownCanvasPointer(event) {
         return;
     }
     townSelectedNpcId = null;
+    townSelectedDestinationId = null;
     closeTownNpcDialogue();
     const path = findTownPath(townPlayerPosition, { x, y });
     if (path.length || (x === townPlayerPosition.x && y === townPlayerPosition.y)) {
@@ -785,10 +958,45 @@ function handleTownCanvasPointer(event) {
     }
 }
 
+function handleTownCanvasPointerDown(event) {
+    if (!event || event.isPrimary === false || (Number.isFinite(event.button) && event.button !== 0)) return;
+    if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) return;
+    townPointerGesture = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        moved: false
+    };
+}
+
+function handleTownCanvasPointerMove(event) {
+    if (!townPointerGesture || !event || event.pointerId !== townPointerGesture.pointerId) return;
+    const distance = Math.hypot(
+        event.clientX - townPointerGesture.startX,
+        event.clientY - townPointerGesture.startY
+    );
+    if (distance > 10) townPointerGesture.moved = true;
+}
+
+function handleTownCanvasPointerUp(event) {
+    if (!townPointerGesture || !event || event.pointerId !== townPointerGesture.pointerId) return;
+    const gesture = townPointerGesture;
+    townPointerGesture = null;
+    if (gesture.moved) return;
+    handleTownCanvasPointer(event);
+}
+
+function handleTownCanvasPointerCancel(event) {
+    if (!townPointerGesture || !event || event.pointerId !== townPointerGesture.pointerId) return;
+    townPointerGesture = null;
+}
+
 function teardownWalkableTown() {
     stopTownWalking();
-    townPendingNpcId = null;
+    townPendingArrival = null;
+    townPointerGesture = null;
     townSelectedNpcId = null;
+    townSelectedDestinationId = null;
     townAwaitingNpcReceiptId = null;
     if (typeof closeDialogueOverlay === 'function') closeDialogueOverlay(false);
     closeTownShop(false);
@@ -817,7 +1025,10 @@ function initializeWalkableTown() {
     const canvas = document.getElementById('town-exploration-canvas');
     if (!canvas || canvas.dataset.townInputReady === 'true') return;
     canvas.dataset.townInputReady = 'true';
-    canvas.addEventListener('pointerdown', handleTownCanvasPointer);
+    canvas.addEventListener('pointerdown', handleTownCanvasPointerDown);
+    canvas.addEventListener('pointermove', handleTownCanvasPointerMove);
+    canvas.addEventListener('pointerup', handleTownCanvasPointerUp);
+    canvas.addEventListener('pointercancel', handleTownCanvasPointerCancel);
     canvas.addEventListener('keydown', handleTownCanvasKeydown);
     renderWalkableTown();
 }
@@ -833,6 +1044,7 @@ if (typeof document !== 'undefined') {
 if (typeof window !== 'undefined') {
     window.renderWalkableTown = renderWalkableTown;
     window.walkToTownNpc = walkToTownNpc;
+    window.walkToTownDestination = walkToTownDestination;
     window.openTownNpcDialogue = openTownNpcDialogue;
     window.closeTownNpcDialogue = closeTownNpcDialogue;
     window.openTownShop = openTownShop;
@@ -846,6 +1058,7 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         TOWN_SCENE,
         TOWN_INTERACTION_RANGE,
+        TOWN_DESTINATION_PLACEMENTS,
         TOWN_NPC_PLACEMENTS,
         findTownPath,
         getTownBlockedTileSet,

@@ -460,6 +460,9 @@ test('disconnect recovery clears combat and returns to login without retaining a
         },
         hideTooltip() {
             calls.tooltipHide++;
+        },
+        setGameState(state) {
+            context.gameState = state;
         }
     });
     vm.runInContext(
@@ -538,7 +541,7 @@ test('town cleanup invalidates delayed combat playback before clearing animation
     assert.ok(transitionStart >= 0);
     const transitionSource = combatMechanicsSource.slice(transitionStart);
     const stateExitIndex = transitionSource.indexOf(
-        "setGameState('KNIGHT')"
+        "setGameState('TOWN')"
     );
     const generationIndex = transitionSource.indexOf(
         'combatPlaybackGeneration += 1'

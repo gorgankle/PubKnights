@@ -968,8 +968,7 @@ window.transitionToTown = function() {
             && player.adventure
             && player.adventure.activeJourney;
         if (activeJourney) setGameState('ADVENTURES');
-        else if (returningFromExpedition) setGameState('TOWN');
-        else setGameState('KNIGHT');
+        else setGameState('TOWN');
     }
     if (typeof combatPlaybackGeneration !== 'undefined') {
         combatPlaybackGeneration += 1;
@@ -1008,7 +1007,7 @@ window.transitionToTown = function() {
         : (
             returningFromExpedition
                 ? "The party returned safely to town."
-                : "Returned to the Knight screen."
+                : "Returned to town."
         ));
     if (typeof combatStartedFromJourney !== 'undefined') {
         combatStartedFromJourney = false;

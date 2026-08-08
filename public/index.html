@@ -6,7 +6,7 @@
 	<!-- NEW: Mobile Viewport Scaling -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pub Knights - Beta v0.9(Modular Refactor)</title>
-    <link rel="stylesheet" href="style.css?v=14">
+    <link rel="stylesheet" href="style.css?v=17">
 	
 	<!-- === NEW: MOBILE DRAG & DROP POLYFILL === -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/default.css">
@@ -106,27 +106,9 @@
 <!-- === GLOBAL WALLET (Always Visible) === -->
         <div id="wallet-display" style="width: 100%; box-sizing: border-box;">Synchronizing UI elements...</div>
 
-        <style>
-    /* 1. Tell the flex container it is allowed to wrap */
-    .nav-bar {
-        flex-wrap: wrap; 
-    }
-    
-    /* 2. On mobile screens, force a 3x2 grid layout */
-    @media (max-width: 650px) {
-        .nav-bar button {
-            flex: 1 1 30%; /* Forces 3 buttons per row */
-            font-size: 11px; /* Scales text down to prevent clipping */
-            padding: 8px 2px;
-        }
-    }
-</style>
-<div id="top-nav-bar" class="nav-bar" style="display: none;">
-    <button id="nav-knight" onclick="setGameState('KNIGHT')">🛡️ Knight</button>
-    <button id="nav-town" onclick="setGameState('TOWN')">🏕️ Town</button>
-    <button id="nav-adventures" onclick="setGameState('ADVENTURES')">⚔️ Adventures</button>
-    <button id="nav-vault" onclick="setGameState('VAULT')">🏦 Vault</button>
-    <button id="tab-social" onclick="switchTab('social-view'); joinMultiplayerZone('ZONE_HUB');">🏰 Community</button>
+<div id="top-nav-bar" class="nav-bar" style="display: none;" role="navigation" aria-label="Knight and party">
+    <button id="nav-knight" type="button" aria-controls="knight-screen" onclick="setGameState('KNIGHT')">🛡️ Knight</button>
+    <button id="nav-party" type="button" aria-controls="party-screen" onclick="setGameState('PARTY')">⚔️ Party</button>
 </div>
         
         <div id="combat-screen" class="panel" style="display: none; width: 1000px; margin: 0 auto; padding: 15px; box-sizing: border-box;">
@@ -201,7 +183,7 @@
 <div id="vault-screen" class="panel" style="display: none; width: 100%; margin-bottom: 0; min-height: 486px; flex-direction: column; gap: 10px;">
     
     <div class="dashboard-panel" style="background: #1a1512; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; margin-bottom: 5px; border: 1px solid #4a3b2c;">
-        <span style="color: #ffcc66; font-weight: bold; font-size:15px;">🏦 Grand Town Vault</span>
+        <h2 id="vault-screen-title" tabindex="-1" style="color: #ffcc66; font-weight: bold; font-size:15px; margin: 0;">🏦 Grand Town Vault</h2>
         <button onclick="setGameState('TOWN')" style="background: #c0392b; margin:0; padding:6px 14px; font-size: 12px;">↩ Return to Town</button>
     </div>
 
@@ -337,54 +319,12 @@
             
 <!-- === DEDICATED KNIGHT SCREEN (GRID REFACTOR) === -->
 <div id="knight-screen" class="panel" style="display: none; width: 100%; margin-bottom: 0; min-height: 486px; flex-direction: column; gap: 10px;">
-    
-    <div id="level-up-panel" style="margin-bottom: 0;"></div>
+    <div class="dashboard-panel utility-screen-heading">
+        <div><span class="town-screen-kicker">Company records</span><h2 id="knight-screen-title" tabindex="-1">Knight</h2></div>
+        <button id="knight-return-hub-btn" type="button" onclick="returnToMainHub()">Return to Town</button>
+    </div>
 
-    <section id="tavern-return-report" class="dashboard-panel tavern-return-report" role="region" aria-labelledby="tavern-return-title" hidden>
-        <div class="tavern-return-heading">
-            <div class="tavern-return-heading-copy" aria-live="polite" aria-atomic="true">
-                <div class="tavern-return-label-row">
-                    <span class="tavern-return-kicker">Latest word at the bar</span>
-                    <span id="tavern-return-outcome" class="tavern-return-outcome">Return report</span>
-                </div>
-                <h3 id="tavern-return-title">Back at the Pub</h3>
-                <p id="tavern-return-summary"></p>
-            </div>
-            <div class="tavern-return-actions">
-                <button type="button" onclick="reviewTavernCrewGear()">Visit Mara's Stall</button>
-                <button type="button" onclick="openTavernKregConversation()">Talk to Kreg</button>
-            </div>
-        </div>
-        <div class="tavern-return-body">
-            <div class="tavern-return-primary">
-                <div class="tavern-return-comment">
-                    <canvas id="tavern-return-kreg-canvas" width="64" height="64" aria-label="Kreg"></canvas>
-                    <div><strong>Kreg</strong><p id="tavern-return-kreg-copy"></p></div>
-                </div>
-                <div id="tavern-return-companion" class="tavern-return-comment" hidden>
-                    <span class="tavern-return-crew-mark" aria-hidden="true">M</span>
-                    <div><strong id="tavern-return-companion-name">Mercenary</strong><p id="tavern-return-companion-copy"></p></div>
-                </div>
-            </div>
-            <div class="tavern-return-journey">
-                <span class="tavern-return-section-label">Journey at a glance</span>
-                <dl class="tavern-return-facts">
-                    <dt>Road</dt><dd id="tavern-return-route"></dd>
-                    <dt>Danger</dt><dd id="tavern-return-danger"></dd>
-                    <dt>Encounter</dt><dd id="tavern-return-encounter"></dd>
-                    <dt>Enemies</dt><dd id="tavern-return-enemies"></dd>
-                </dl>
-                <div id="tavern-return-contract-block" class="tavern-return-contract-block" hidden>
-                    <span class="tavern-return-section-label">Next actions</span>
-                    <ul id="tavern-return-contracts" class="tavern-return-contracts"></ul>
-                </div>
-            </div>
-            <details id="tavern-return-reactions-details" class="tavern-return-reactions-disclosure" hidden>
-                <summary>Other voices at the bar <span id="tavern-return-reaction-count"></span></summary>
-                <div id="tavern-return-npc-reactions" class="tavern-return-npc-reactions"></div>
-            </details>
-        </div>
-    </section>
+    <div id="level-up-panel" style="margin-bottom: 0;"></div>
 
     <div class="knight-dashboard-grid">
 
@@ -438,19 +378,48 @@
 
         </div> <!-- End Knight Profile Column -->
 
-        <!-- MODULE 3: Party Roster -->
-        <div class="dashboard-panel" id="party-roster-panel" style="margin-bottom: 0; display: flex; flex-direction: column;">
-            <h3 style="color: #2ecc71; border-bottom: 1px dashed #27ae60;">Party Roster</h3>
-            <div id="party-roster-list" style="background: #110d0a; padding: 12px; border-radius: 4px; border: 1px solid #3a2f26; min-height: 120px; display: grid; align-content: start; gap: 10px;"></div>
-            <div id="companion-equipment-panel" hidden></div>
-        </div>
-        <!-- MODULE 4: Knight's Backpack -->
+        <!-- MODULE 2: Knight's Backpack -->
         <div class="dashboard-panel" id="main-backpack-panel" style="margin-bottom: 0; display: flex; flex-direction: column;">
             <h3 style="color: #3498db; border-bottom: 1px dashed #2980b9;">🎒 Knight's Backpack</h3>
             <div id="inventory-list" style="background: #110d0a; padding: 10px; border-radius: 4px; border: 1px solid #3a2f26; min-height: 74px; flex-grow: 1;"></div>
         </div>
 
+        <section class="dashboard-panel knight-quest-log-panel" id="knight-quest-log-panel" aria-labelledby="knight-quest-log-title">
+            <div class="quest-log-heading">
+                <div><span class="town-screen-kicker">Road ledger</span><h3 id="knight-quest-log-title">Quest Log</h3></div>
+                <span>Accept and turn in quests with townsfolk.</span>
+            </div>
+            <div id="knight-quest-log-list" class="knight-quest-log-list" aria-live="polite" aria-busy="true">
+                <p class="adventure-muted">Consulting the town ledger...</p>
+            </div>
+        </section>
+
     </div> <!-- End Grid Container -->
+</div>
+
+<!-- === PARTY SCREEN === -->
+<div id="party-screen" class="panel" style="display: none; width: 100%; margin-bottom: 0; min-height: 486px; flex-direction: column; gap: 10px;">
+    <div class="dashboard-panel utility-screen-heading">
+        <div><span class="town-screen-kicker">Your company</span><h2 id="party-screen-title" tabindex="-1">Knight &amp; Party</h2></div>
+        <button id="party-return-hub-btn" type="button" onclick="returnToMainHub()">Return to Town</button>
+    </div>
+    <p id="party-away-notice" class="party-away-notice" role="status" hidden>Roster changes pause while the company is traveling. Carried equipment can still be reassigned between road instances.</p>
+    <div class="party-dashboard-grid">
+        <div class="dashboard-panel" id="party-roster-panel" style="margin-bottom: 0; display: flex; flex-direction: column;">
+            <div class="party-panel-heading"><h3>Party Roster</h3><span>Choose up to three active companions.</span></div>
+            <div id="party-roster-list" style="background: #110d0a; padding: 12px; border-radius: 4px; border: 1px solid #3a2f26; min-height: 120px; display: grid; align-content: start; gap: 10px;"></div>
+            <div id="companion-equipment-panel" hidden></div>
+        </div>
+        <div class="dashboard-panel" id="party-backpack-panel" style="margin-bottom: 0; display: flex; flex-direction: column;">
+            <div class="party-panel-heading">
+                <h3>Shared Backpack (<span id="party-inv-count">0</span> slots used)</h3>
+                <span id="party-backpack-help">Select a companion, then use Equip or Pocket on an item.</span>
+            </div>
+            <p id="party-inventory-status" class="sr-only" role="status" aria-live="polite"></p>
+            <div id="party-inventory-list" aria-label="Shared backpack items for the selected companion"></div>
+            <p class="party-recruitment-note">New companions join through people you meet in town and on the roads.</p>
+        </div>
+    </div>
 </div>
 
 
@@ -460,10 +429,56 @@
     <div class="dashboard-panel town-screen-heading">
         <div>
             <span class="town-screen-kicker">The Wayward Tankard</span>
-            <strong>Town &amp; Tavern</strong>
+            <h2 id="town-screen-title" tabindex="-1">Town &amp; Tavern</h2>
         </div>
         <button type="button" class="world-map-open-button" onclick="openWorldMap()">World Map</button>
     </div>
+
+    <section id="tavern-return-report" class="dashboard-panel tavern-return-report" role="region" aria-labelledby="tavern-return-title" hidden>
+        <div class="tavern-return-heading">
+            <div class="tavern-return-heading-copy" aria-live="polite" aria-atomic="true">
+                <div class="tavern-return-label-row">
+                    <span class="tavern-return-kicker">Latest word at the bar</span>
+                    <span id="tavern-return-outcome" class="tavern-return-outcome">Return report</span>
+                </div>
+                <h3 id="tavern-return-title">Back at the Pub</h3>
+                <p id="tavern-return-summary"></p>
+            </div>
+            <div class="tavern-return-actions">
+                <button type="button" onclick="reviewTavernCrewGear()">Visit Mara's Stall</button>
+                <button type="button" onclick="openTavernKregConversation()">Talk to Kreg</button>
+            </div>
+        </div>
+        <div class="tavern-return-body">
+            <div class="tavern-return-primary">
+                <div class="tavern-return-comment">
+                    <canvas id="tavern-return-kreg-canvas" width="64" height="64" aria-label="Kreg"></canvas>
+                    <div><strong>Kreg</strong><p id="tavern-return-kreg-copy"></p></div>
+                </div>
+                <div id="tavern-return-companion" class="tavern-return-comment" hidden>
+                    <span class="tavern-return-crew-mark" aria-hidden="true">M</span>
+                    <div><strong id="tavern-return-companion-name">Mercenary</strong><p id="tavern-return-companion-copy"></p></div>
+                </div>
+            </div>
+            <div class="tavern-return-journey">
+                <span class="tavern-return-section-label">Journey at a glance</span>
+                <dl class="tavern-return-facts">
+                    <dt>Road</dt><dd id="tavern-return-route"></dd>
+                    <dt>Danger</dt><dd id="tavern-return-danger"></dd>
+                    <dt>Encounter</dt><dd id="tavern-return-encounter"></dd>
+                    <dt>Enemies</dt><dd id="tavern-return-enemies"></dd>
+                </dl>
+                <div id="tavern-return-contract-block" class="tavern-return-contract-block" hidden>
+                    <span class="tavern-return-section-label">Next actions</span>
+                    <ul id="tavern-return-contracts" class="tavern-return-contracts"></ul>
+                </div>
+            </div>
+            <details id="tavern-return-reactions-details" class="tavern-return-reactions-disclosure" hidden>
+                <summary>Other voices at the bar <span id="tavern-return-reaction-count"></span></summary>
+                <div id="tavern-return-npc-reactions" class="tavern-return-npc-reactions"></div>
+            </details>
+        </div>
+    </section>
 
     <div class="town-exploration-layout">
         <section class="dashboard-panel town-scene-panel" aria-labelledby="town-scene-title">
@@ -477,6 +492,8 @@
             <canvas id="town-exploration-canvas" width="720" height="432" tabindex="0" aria-label="Walkable tavern. Tap or click a floor tile to move; tap a townsfolk to talk. Arrow keys or WASD also move, and Enter talks."></canvas>
             <p id="town-scene-status" class="town-scene-status" role="status" aria-live="polite">Tap the floor to walk, or tap a townsfolk to approach them.</p>
             <div id="town-nearby-npcs" class="town-nearby-npcs" aria-label="Townsfolk shortcuts"></div>
+            <div class="town-destination-heading"><strong>Town locations</strong><span>Walk to an entrance</span></div>
+            <div id="town-destination-shortcuts" class="town-destination-shortcuts" aria-label="Town location shortcuts"></div>
         </section>
 
         <aside id="town-world-panel" class="dashboard-panel town-scene-guide" aria-labelledby="town-guide-title">
@@ -521,7 +538,7 @@
 <!-- === ROADS & EXPEDITIONS SCREEN === -->
 <div id="adventures-screen" class="panel" style="display: none; width: 100%; margin-bottom: 0; min-height: 486px; flex-direction: column; gap: 10px;">
     <div class="dashboard-panel adventure-screen-heading">
-        <span>Roads &amp; Expeditions</span>
+            <h2 id="adventures-screen-title" tabindex="-1">Roads &amp; Expeditions</h2>
         <div>
             <button type="button" class="world-map-open-button" onclick="openWorldMap()">World Map</button>
             <button id="adventure-return-town-btn" onclick="setGameState('TOWN')">Return to Town</button>
@@ -594,10 +611,13 @@
 <div id="social-view" class="game-screen" style="display:none; max-width: 1080px; margin: 0 auto; gap: 15px; padding-top: 20px;">
     
     <div class="panel" style="display: flex; flex-direction: column; position: relative; margin-bottom: 0;">
-        <h3 style="color: #f1c40f; border-bottom: 1px dashed #634e3d; padding-bottom: 10px; margin-top: 0; display: flex; justify-content: space-between;">
-            <span>📍 Central Hub</span>
-            <span style="font-size: 12px; color: #bbaaa0; cursor: pointer;" onclick="leaveMultiplayerZone()">[Leave Zone]</span>
-        </h3>
+        <div class="community-screen-heading">
+            <h2 id="community-screen-title" tabindex="-1">📍 Community Square</h2>
+            <div>
+                <button id="community-social-button" type="button" onclick="toggleSocialHub()">Friends &amp; Messages</button>
+                <button type="button" onclick="returnToMainHub()">Return to Town</button>
+            </div>
+        </div>
         
         <canvas id="social-canvas" width="600" height="400" style="background: #1a1512; border: 2px solid #634e3d; width: 100%; height: auto; aspect-ratio: 3/2; image-rendering: pixelated;"></canvas>
 
@@ -788,25 +808,25 @@
     <script src="js/sprite-overhaul-icons.js?v=2"></script>
 	<script src="/socket.io/socket.io.js"></script>
 
-    <script src="js/main.js?v=25"></script>
-    <script src="js/inventory.js?v=6"></script>
+    <script src="js/main.js?v=27"></script>
+    <script src="js/inventory.js?v=7"></script>
 
 <!-- UI, Tooltips & Graphics Output -->
     <script src="js/ui-tooltips.js?v=7"></script>
-    <script src="js/companion-ui.js?v=5"></script>
-    <script src="js/ui-render.js?v=16"></script>
+    <script src="js/companion-ui.js?v=7"></script>
+    <script src="js/ui-render.js?v=18"></script>
     <script src="js/renderer.js?v=14"></script>       <!-- RENDERS DATA -->
 	<script src="js/fx-engine.js?v=3"></script>
 	<script src="js/dialogue.js?v=5"></script>
-	<script src="js/social.js?v=4"></script>
+	<script src="js/social.js?v=6"></script>
 
 
 <!-- Game Systems & Logic -->
-    <script src="js/login.js?v=3"></script>
+    <script src="js/login.js?v=4"></script>
     <script src="js/combat-maps.js"></script>
-    <script src="js/expeditions.js?v=9"></script>
-    <script src="js/town-exploration.js?v=1"></script>
-    <script src="js/combat-mechanics.js?v=16"></script>
+    <script src="js/expeditions.js?v=11"></script>
+    <script src="js/town-exploration.js?v=3"></script>
+    <script src="js/combat-mechanics.js?v=17"></script>
     <script src="js/town-actions.js?v=4"></script>
 	<script src="js/minigames.js"></script>
 	<script src="js/spellbook.js"></script> 
@@ -824,10 +844,6 @@
         border-color: #f39c12 !important;
     }
 </style>
-
-<div id="global-social-button" onclick="toggleSocialHub()" style="position: fixed; bottom: 20px; right: 20px; z-index: 1000; background: #8e44ad; color: white; padding: 12px 18px; border-radius: 50px; border: 2px solid #9b59b6; cursor: pointer; font-weight: bold; box-shadow: 0 4px 8px rgba(0,0,0,0.5); transition: transform 0.2s;">
-    📬 Social / Friends
-</div>
 
 <div id="global-social-modal" style="display: none; position: fixed; bottom: 70px; right: 20px; z-index: 1000; width: 300px; height: 400px; background: #221a14; border: 2px solid #8e44ad; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.8); flex-direction: column; overflow: hidden;">
     

@@ -10,11 +10,18 @@ function enterGameUI() {
     const staticGold = document.getElementById('static-gold-display');
     if (staticGold) staticGold.hidden = false;
     
-    // Force the default UI tab.
-    gameState = 'KNIGHT';
-    
-    // Kick off the initial UI render now that the engine is active
-    refreshSystemUI();
+    const activeJourney = player
+        && player.adventure
+        && player.adventure.activeJourney;
+    const initialState = activeJourney ? 'ADVENTURES' : 'TOWN';
+
+    // Route through the same lifecycle used by every in-game screen change.
+    if (typeof setGameState === 'function') {
+        setGameState(initialState);
+    } else {
+        gameState = initialState;
+        refreshSystemUI();
+    }
 }
 
 function attemptLogin() {

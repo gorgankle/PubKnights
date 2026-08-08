@@ -168,7 +168,7 @@ function loadHarness() {
     vm.runInContext(inventorySource, context);
     vm.runInContext(companionUiSource, context);
     vm.runInContext(
-        'globalThis.__companionEquipmentTestApi = { renderCompanionEquipmentPanel, handleItemDragStart };',
+        'globalThis.__companionEquipmentTestApi = { renderCompanionEquipmentPanel, handleItemDragStart, completePartyInventoryAction };',
         context
     );
 
@@ -213,6 +213,7 @@ test('backpack drops equip matching mercenary gear and fill the pocket', () => {
         eventName: 'inventoryAction',
         payload: { action: 'equipCompanion', instanceId: 'merc_1', index: 0 }
     }]);
+    api.completePartyInventoryAction({ success: true, action: 'equipCompanion' });
 
     emitted.length = 0;
     const pocket = findAll(panel, element => element.dataset.companionPocketIndex === '0')[0];
@@ -224,6 +225,7 @@ test('backpack drops equip matching mercenary gear and fill the pocket', () => {
         eventName: 'inventoryAction',
         payload: { action: 'storeCompanionPocket', instanceId: 'merc_1', index: 1, pocketIndex: 0 }
     }]);
+    api.completePartyInventoryAction({ success: true, action: 'storeCompanionPocket' });
 
     emitted.length = 0;
     const bootsSlot = findAll(panel, element => element.dataset.companionSlot === 'boots')[0];

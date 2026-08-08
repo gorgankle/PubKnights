@@ -628,7 +628,7 @@ function recoverDiscardedSocketSession() {
 
     // Change state before cancellation callbacks run so an abandoned movie
     // cannot put the client back into an actionable combat phase.
-    gameState = 'LOGIN';
+    setGameState('LOGIN');
     currentTurn = 'ENEMY';
     combatPhase = 'DISCONNECTED';
     activeCombatActorUid = null;
@@ -1729,16 +1729,18 @@ socket.on('ATB_READY', (payload = {}) => {
 
 // === SERVER-AUTHORITATIVE ECONOMY RECEIPT ===
 socket.on('townReceipt', (receipt) => {
-    // If the server rejected the action
-    if (!receipt.success) {
-        logMessage(receipt.message);
-        if (typeof playRetroSound === 'function') playRetroSound('error');
-        return;
-    }
-
-    // Instantly overwrite our local variables with the server's master copy!
+    if (!receipt) return;
+    // Rejected commands may still carry a newer authoritative snapshot.
     if (receipt.updatedPlayer) {
         Object.assign(player, receipt.updatedPlayer);
+    }
+
+    // If the server rejected the action
+    if (!receipt.success) {
+        if (receipt.message) logMessage(receipt.message);
+        if (typeof playRetroSound === 'function') playRetroSound('error');
+        refreshSystemUI();
+        return;
     }
 
     // Play the correct sound effect based on what we just bought/did
@@ -1757,15 +1759,30 @@ socket.on('townReceipt', (receipt) => {
 
 // === SERVER-AUTHORITATIVE INVENTORY RECEIPT ===
 socket.on('inventoryReceipt', (receipt) => {
+    const completePartyAction = () => {
+        if (
+            typeof window !== 'undefined'
+            && typeof window.completePartyInventoryAction === 'function'
+        ) {
+            window.completePartyInventoryAction(receipt);
+        }
+    };
+    if (!receipt) {
+        completePartyAction();
+        return;
+    }
+    // Rejected commands may still carry a newer authoritative snapshot.
+    if (receipt.updatedPlayer) {
+        Object.assign(player, receipt.updatedPlayer);
+    }
+
     // If the server rejected the action (e.g. bag full)
     if (!receipt.success) {
         if (receipt.message) logMessage(receipt.message);
         if (typeof playRetroSound === 'function') playRetroSound('error');
+        refreshSystemUI();
+        completePartyAction();
         return;
-    }
-
-    if (receipt.updatedPlayer) {
-        Object.assign(player, receipt.updatedPlayer);
     }
 
     // UPDATED: Added 'takeLoot' to the coin sound triggers
@@ -1785,6 +1802,7 @@ socket.on('inventoryReceipt', (receipt) => {
     // Save to DB and re-render the visual UI grids
     if (typeof saveGame === 'function') saveGame();
     refreshSystemUI();
+    completePartyAction();
 });
 
 // === SERVER-AUTHORITATIVE ESCROW CATCHERS ===
@@ -1933,8 +1951,6 @@ socket.on('combatDeployed', (serverCombatState) => {
     // Sync browser state to the Server's command
     player.statusEffects = {};
     combatStartedFromJourney = !!getActiveExpeditionJourney();
-    gameState = 'COMBAT';
-
     // STRICT GAME LOGIC: Always start waiting for the server's ATB tick
     currentTurn = 'ENEMY';
     combatPhase = 'WAITING_FOR_ATB';
@@ -1966,8 +1982,8 @@ socket.on('combatDeployed', (serverCombatState) => {
     else if (activeCombatZone === 'ABYSS') logMessage(`🌌 Descended to Abyss Depth ${player.abyssDepth || 1}. The pressure is crushing.`);
     else if (activeCombatZone === 'CELLARS' && (player.selectedCellarLevel || player.cellarLevel) === 20) logMessage("⚠️ THE FLOOR TREMBLES! An ancient, corrupted mega-cask awakens from its slumber!");
 
-    // Force the browser to draw the server's map
-    refreshSystemUI();
+    // Force the browser to draw the server's map through the single screen router.
+    setGameState('COMBAT');
     drawGrid();
     window.scrollTo(0, 0);
 });
@@ -2698,7 +2714,7 @@ socket.on('enemyTurnReceipt', (receipt) => {
 // Global Game States
 let currentGridSize = 8;
 let currentTileSize = 60;
-let gameState = 'KNIGHT';
+let gameState = 'LOGIN';
 let currentTurn = 'PLAYER';
 let combatPhase = 'WAITING_FOR_ATB';
 let combatActionsRemaining = 0;
@@ -2763,6 +2779,7 @@ function setGameState(state) {
     const unavailableAwayStates = new Set([
         'TOWN',
         'VAULT',
+        'COMMUNITY',
         'MINIGAME_LUMBER',
         'MINIGAME_FISHING',
         'MINIGAME_HOPS'
@@ -2781,20 +2798,58 @@ function setGameState(state) {
         teardownWalkableTown();
     }
 
+    if (
+        previousState === 'COMMUNITY'
+        && state !== 'COMMUNITY'
+        && typeof leaveMultiplayerZone === 'function'
+    ) {
+        leaveMultiplayerZone(true);
+    }
+
     gameState = state;
 
+    if (
+        state === 'COMMUNITY'
+        && previousState !== 'COMMUNITY'
+        && typeof joinMultiplayerZone === 'function'
+    ) {
+        joinMultiplayerZone('ZONE_HUB');
+    }
+
     // Play the door sound when shifting to a non-combat environment
-    if (state === 'VAULT' || state === 'TOWN' || state === 'ADVENTURES') {
+    if (state === 'VAULT' || state === 'TOWN' || state === 'ADVENTURES' || state === 'COMMUNITY') {
         if (typeof playRetroSound === 'function') playRetroSound('door');
     }
 
     refreshSystemUI();
 
-    // NEW: Only auto-scroll for major screen changes, ignoring right-column tab swaps
-    if (state === 'VAULT' || previousState === 'VAULT') {
-        window.scrollTo(0, 0);
+    if (state !== previousState && typeof document !== 'undefined') {
+        const headingIdByState = {
+            TOWN: 'town-screen-title',
+            KNIGHT: 'knight-screen-title',
+            PARTY: 'party-screen-title',
+            ADVENTURES: 'adventures-screen-title',
+            VAULT: 'vault-screen-title',
+            COMMUNITY: 'community-screen-title'
+        };
+        const heading = document.getElementById(headingIdByState[state]);
+        if (heading && typeof heading.focus === 'function') {
+            heading.focus({ preventScroll: true });
+        }
+        if (typeof window !== 'undefined' && typeof window.scrollTo === 'function') {
+            window.scrollTo(0, 0);
+        }
     }
 }
+
+function returnToMainHub() {
+    const activeJourney = player
+        && player.adventure
+        && player.adventure.activeJourney;
+    setGameState(activeJourney ? 'ADVENTURES' : 'TOWN');
+}
+
+if (typeof window !== 'undefined') window.returnToMainHub = returnToMainHub;
 
 // === NEW: MOBILE TOOLTIP DISMISSAL ===
 document.addEventListener("touchstart", function(e) {

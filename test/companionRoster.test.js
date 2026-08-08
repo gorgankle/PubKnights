@@ -290,6 +290,7 @@ test('companion gear changes are rejected during combat', () => {
 
     const receipt = harness.socket.lastPayload('inventoryReceipt');
     assert.equal(receipt.success, false);
+    assert.equal(receipt.action, 'equipCompanion');
     assert.match(receipt.message, /outside combat/i);
     assert.equal(player.inventory[0].id, 'new_sword');
 });

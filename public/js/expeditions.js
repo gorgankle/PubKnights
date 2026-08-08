@@ -114,6 +114,7 @@ function applyAdventurePayload(payload, options = {}) {
     renderTownWorldState();
     renderAdventureScreen();
     renderTavernReturnReport();
+    renderKnightQuestLog();
     if (typeof renderWalkableTown === 'function') renderWalkableTown();
 }
 
@@ -503,6 +504,309 @@ function getLocationPosition(location, index, count) {
     };
 }
 
+function comparePlayerMapPathScores(left, right) {
+    if (left.distance !== right.distance) return left.distance - right.distance;
+    if (left.hops !== right.hops) return left.hops - right.hops;
+    if (left.signature === right.signature) return 0;
+    return left.signature < right.signature ? -1 : 1;
+}
+
+function findPlayerMapRoutePrefix(routes, locationsById, startLocationId, targetLocationId, excludedRouteId) {
+    if (!startLocationId || !targetLocationId) return null;
+    if (startLocationId === targetLocationId) return [startLocationId];
+
+    const adjacency = new Map();
+    const addEdge = (fromLocationId, toLocationId, route) => {
+        if (!adjacency.has(fromLocationId)) adjacency.set(fromLocationId, []);
+        adjacency.get(fromLocationId).push({
+            toLocationId,
+            routeId: route.id,
+            distance: Math.max(1, Number(route.distance) || 1)
+        });
+    };
+    asAdventureList(routes)
+        .filter(route => (
+            route
+            && route.id !== excludedRouteId
+            && isCurrentChapterCatalogItem(route)
+            && isRouteUnlocked(route)
+        ))
+        .sort((left, right) => String(left.id).localeCompare(String(right.id)))
+        .forEach(route => {
+            const fromLocationId = getRouteOriginId(route);
+            const toLocationId = getRouteDestinationId(route);
+            const fromLocation = locationsById.get(fromLocationId);
+            const toLocation = locationsById.get(toLocationId);
+            if (
+                !fromLocation
+                || !toLocation
+                || fromLocation.discovered === false
+                || toLocation.discovered === false
+            ) return;
+            addEdge(fromLocationId, toLocationId, route);
+            if (route.bidirectional === true) addEdge(toLocationId, fromLocationId, route);
+        });
+    adjacency.forEach(edges => {
+        edges.sort((left, right) => String(left.routeId).localeCompare(String(right.routeId)));
+    });
+
+    const firstScore = { distance: 0, hops: 0, signature: '' };
+    const bestScores = new Map([[startLocationId, firstScore]]);
+    const previousLocations = new Map();
+    const queue = [{ locationId: startLocationId, ...firstScore }];
+    while (queue.length) {
+        queue.sort(comparePlayerMapPathScores);
+        const current = queue.shift();
+        const bestCurrent = bestScores.get(current.locationId);
+        if (!bestCurrent || comparePlayerMapPathScores(current, bestCurrent) !== 0) continue;
+        if (current.locationId === targetLocationId) break;
+
+        (adjacency.get(current.locationId) || []).forEach(edge => {
+            const nextScore = {
+                distance: current.distance + edge.distance,
+                hops: current.hops + 1,
+                signature: `${current.signature}|${edge.routeId}`
+            };
+            const previousBest = bestScores.get(edge.toLocationId);
+            if (previousBest && comparePlayerMapPathScores(nextScore, previousBest) >= 0) return;
+            bestScores.set(edge.toLocationId, nextScore);
+            previousLocations.set(edge.toLocationId, current.locationId);
+            queue.push({ locationId: edge.toLocationId, ...nextScore });
+        });
+    }
+    if (!bestScores.has(targetLocationId)) return null;
+
+    const path = [targetLocationId];
+    let cursor = targetLocationId;
+    while (cursor !== startLocationId && path.length <= locationsById.size) {
+        cursor = previousLocations.get(cursor);
+        if (!cursor) return null;
+        path.unshift(cursor);
+    }
+    return path[0] === startLocationId ? path : null;
+}
+
+function interpolatePlayerMapPath(locationIds, positions, progress) {
+    const points = locationIds
+        .map(locationId => ({ locationId, position: positions.get(locationId) }))
+        .filter(point => !!point.position);
+    if (points.length < 2) return null;
+    const segments = [];
+    let totalLength = 0;
+    for (let index = 1; index < points.length; index += 1) {
+        const from = points[index - 1];
+        const to = points[index];
+        const length = Math.hypot(
+            to.position.x - from.position.x,
+            to.position.y - from.position.y
+        );
+        if (length <= 0) continue;
+        segments.push({ from, to, length });
+        totalLength += length;
+    }
+    if (!segments.length || totalLength <= 0) return null;
+
+    const targetDistance = Math.max(0, Math.min(1, progress)) * totalLength;
+    let traversed = 0;
+    for (let index = 0; index < segments.length; index += 1) {
+        const segment = segments[index];
+        const isLast = index === segments.length - 1;
+        if (!isLast && targetDistance > traversed + segment.length) {
+            traversed += segment.length;
+            continue;
+        }
+        const segmentProgress = Math.max(
+            0,
+            Math.min(1, (targetDistance - traversed) / segment.length)
+        );
+        return {
+            x: segment.from.position.x
+                + ((segment.to.position.x - segment.from.position.x) * segmentProgress),
+            y: segment.from.position.y
+                + ((segment.to.position.y - segment.from.position.y) * segmentProgress),
+            fromLocationId: segment.from.locationId,
+            toLocationId: segment.to.locationId
+        };
+    }
+    return null;
+}
+
+function getPlayerMapMarkerState(locations, activeJourney, routes = []) {
+    const mapLocations = asAdventureList(locations).filter(location => (
+        location && typeof location.id === 'string' && location.id
+    ));
+    if (!mapLocations.length) return null;
+
+    const positions = new Map();
+    mapLocations.forEach((location, index) => {
+        positions.set(location.id, getLocationPosition(location, index, mapLocations.length));
+    });
+    const locationsById = new Map(mapLocations.map(location => [location.id, location]));
+    const findLocation = locationId => locationsById.get(locationId) || null;
+    const homeCandidate = mapLocations.find(location => (
+        location.isHome || /pub|tavern/i.test(location.id || '')
+    ));
+    const homeLocation = homeCandidate && homeCandidate.discovered !== false
+        ? homeCandidate
+        : (mapLocations.find(location => location.discovered !== false) || null);
+    const journey = activeJourney && typeof activeJourney === 'object' ? activeJourney : null;
+    const destinationLocation = journey
+        ? findLocation(journey.destinationLocationId || journey.destinationId)
+        : null;
+    const phase = String(journey && journey.phase || '').toUpperCase();
+
+    if (
+        journey
+        && phase === 'AT_DESTINATION'
+        && destinationLocation
+        && destinationLocation.discovered !== false
+    ) {
+        const position = positions.get(destinationLocation.id);
+        return {
+            ...position,
+            atLocation: true,
+            traveling: false,
+            locationId: destinationLocation.id,
+            label: `You are at ${destinationLocation.name || destinationLocation.id}.`
+        };
+    }
+
+    const returning = String(journey && journey.direction || '').toUpperCase() === 'RETURN';
+    const activeRoute = journey
+        ? asAdventureList(routes).find(route => route && route.id === journey.routeId)
+        : null;
+    const routeOrigin = activeRoute ? findLocation(getRouteOriginId(activeRoute)) : null;
+    const routeDestination = activeRoute ? findLocation(getRouteDestinationId(activeRoute)) : null;
+    const hasVisibleRouteEndpoints = !!(
+        routeOrigin
+        && routeDestination
+        && routeOrigin.discovered !== false
+        && routeDestination.discovered !== false
+    );
+    if (journey && activeRoute && hasVisibleRouteEndpoints) {
+        const journeyOriginId = journey.originLocationId
+            || journey.originId
+            || (homeLocation && homeLocation.id);
+        const prefix = findPlayerMapRoutePrefix(
+            routes,
+            locationsById,
+            journeyOriginId,
+            routeOrigin.id,
+            activeRoute.id
+        );
+        const outboundPath = prefix
+            ? [...prefix, routeDestination.id]
+            : [routeOrigin.id, routeDestination.id];
+        const travelPath = returning ? [...outboundPath].reverse() : outboundPath;
+        const legCount = Math.max(1, Math.trunc(Number(journey.legCount) || 1));
+        const legIndex = Math.max(
+            1,
+            Math.min(legCount, Math.trunc(Number(journey.legIndex) || 1))
+        );
+        const mapPosition = interpolatePlayerMapPath(
+            travelPath,
+            positions,
+            legIndex / (legCount + 1)
+        );
+        if (mapPosition) {
+            const segmentFrom = findLocation(mapPosition.fromLocationId);
+            const segmentTo = findLocation(mapPosition.toLocationId);
+            return {
+                x: mapPosition.x,
+                y: mapPosition.y,
+                atLocation: false,
+                traveling: true,
+                locationId: null,
+                legIndex,
+                legCount,
+                direction: returning ? 'RETURN' : 'OUTBOUND',
+                label: `${returning ? 'You are traveling home' : 'You are traveling outward'}, leg ${legIndex} of ${legCount}, between ${segmentFrom.name || segmentFrom.id} and ${segmentTo.name || segmentTo.id}.`
+            };
+        }
+    }
+
+    if (journey) return null;
+    const fallbackPosition = homeLocation && positions.get(homeLocation.id);
+    if (!homeLocation || !fallbackPosition) return null;
+    return {
+        ...fallbackPosition,
+        atLocation: true,
+        traveling: false,
+        locationId: homeLocation.id,
+        label: `You are at ${homeLocation.name || homeLocation.id}.`
+    };
+}
+
+function drawPlayerMapMarkerSprite(canvas) {
+    if (!canvas || typeof canvas.getContext !== 'function') return;
+    const context = canvas.getContext('2d');
+    if (!context) return;
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.imageSmoothingEnabled = false;
+    const actor = typeof player !== 'undefined' && player
+        ? { ...player, kind: 'player', uid: player.uid || 'player_0' }
+        : {
+            kind: 'player',
+            uid: 'player_0',
+            name: 'Knight',
+            appearance: {},
+            equipment: {}
+        };
+    let renderer = null;
+    if (typeof drawWorldActorSprite === 'function') {
+        renderer = drawWorldActorSprite(context, actor, 0, 0, canvas.width);
+    }
+    if (!renderer && typeof drawHumanoidActorWorld === 'function') {
+        const profile = drawHumanoidActorWorld(context, actor, 0, 0, canvas.width);
+        if (profile) renderer = 'humanoid-paperdoll';
+    }
+    if (!renderer) {
+        const scale = Math.max(2, Math.floor(canvas.width / 16));
+        const centerX = Math.floor((canvas.width - (4 * scale)) / 2);
+        const top = Math.max(1, Math.floor(canvas.height * 0.13));
+        context.fillStyle = '#e3bd95';
+        context.fillRect(centerX + scale, top, 2 * scale, 2 * scale);
+        context.fillStyle = '#f1c40f';
+        context.fillRect(centerX, top + (2 * scale), 4 * scale, 5 * scale);
+        context.fillStyle = '#6f4b2d';
+        context.fillRect(centerX, top + (7 * scale), scale, 3 * scale);
+        context.fillRect(centerX + (3 * scale), top + (7 * scale), scale, 3 * scale);
+        renderer = 'fallback-pixel';
+    }
+    if (canvas.dataset) canvas.dataset.renderer = renderer;
+}
+
+function renderPlayerMapMarker(map, locations, activeJourney, routes) {
+    if (!map || typeof document === 'undefined') return;
+    const state = getPlayerMapMarkerState(locations, activeJourney, routes);
+    if (!state) return;
+
+    const marker = document.createElement('div');
+    marker.className = `world-map-player-marker ${state.atLocation ? 'is-at-location' : 'is-traveling'}`;
+    marker.style.left = `${state.x}%`;
+    marker.style.top = `${state.y}%`;
+    marker.setAttribute('role', 'img');
+    marker.setAttribute('aria-label', state.label);
+    marker.title = state.label;
+    marker.dataset.locationId = state.locationId || 'road';
+
+    const canvas = document.createElement('canvas');
+    canvas.className = 'world-map-player-sprite';
+    canvas.width = 32;
+    canvas.height = 32;
+    canvas.setAttribute('aria-hidden', 'true');
+    marker.appendChild(canvas);
+
+    const label = document.createElement('span');
+    label.className = 'world-map-player-label';
+    label.setAttribute('aria-hidden', 'true');
+    label.textContent = 'YOU';
+    marker.appendChild(label);
+
+    map.appendChild(marker);
+    drawPlayerMapMarkerSprite(canvas);
+}
+
 function isRouteUnlocked(route) {
     if (!route || route.locked === true || route.unlocked === false || route.available === false) return false;
     return route.unlocked === true || route.available === true;
@@ -579,10 +883,15 @@ function selectAdventureRoute(routeId) {
 function selectExpandedWorldMapRoute(routeId) {
     const activeJourney = getClientAdventureState().activeJourney || null;
     closeWorldMap();
-    if (!activeJourney && typeof setGameState === 'function') {
-        setGameState('ADVENTURES');
-    }
     selectAdventureRoute(routeId);
+    if (!activeJourney
+        && typeof gameState !== 'undefined'
+        && gameState === 'TOWN'
+        && typeof walkToTownDestination === 'function') {
+        walkToTownDestination('roads');
+        return;
+    }
+    if (!activeJourney && typeof setGameState === 'function') setGameState('ADVENTURES');
     if (typeof setTimeout !== 'function') return;
     setTimeout(() => {
         const detail = document.getElementById('exploration-detail');
@@ -1065,6 +1374,7 @@ function renderExplorationMapInto(map, activeJourney, options = {}) {
         }
         map.appendChild(node);
     });
+    renderPlayerMapMarker(map, locations, activeJourney, routes);
 }
 
 function renderExplorationMap(activeJourney) {
@@ -1395,11 +1705,88 @@ function getContractObjectivePresentation(contract) {
     });
 }
 
+function getKnightQuestLogGuidance(contract, view, objectives) {
+    const issuerName = String(contract && contract.issuerName || 'the quest giver');
+    const rewardGold = Math.max(0, Number(contract && contract.rewardGold) || 0);
+    if (view.status === 'claimable') {
+        return `Return to ${issuerName} in Town to turn in this quest and collect ${rewardGold}g.`;
+    }
+    if (view.status === 'active') {
+        const nextObjective = objectives.find(objective => !objective.complete);
+        return nextObjective
+            ? `Next: ${nextObjective.description}`
+            : `Report back to ${issuerName} in Town when the quest is ready.`;
+    }
+    if (view.status === 'available') {
+        return `Speak with ${issuerName} in Town to accept this quest.`;
+    }
+    if (view.status === 'completed') {
+        const completedCount = Math.max(0, Number(contract && contract.completedCount) || 0);
+        return completedCount > 1
+            ? `Completed ${completedCount} times for ${issuerName}.`
+            : `Completed for ${issuerName}.`;
+    }
+    return 'This quest is not currently available.';
+}
+
+function renderKnightQuestLog() {
+    if (typeof document === 'undefined') return;
+    const list = document.getElementById('knight-quest-log-list');
+    if (!list) return;
+
+    if (!adventureViewSnapshot) {
+        list.setAttribute('aria-busy', 'true');
+        list.innerHTML = '<p class="knight-quest-log-state" role="status">Consulting the quest ledger...</p>';
+        return;
+    }
+    list.setAttribute('aria-busy', 'false');
+
+    const contracts = sortAdventureContracts(
+        getSnapshotContracts(adventureViewSnapshot, adventureViewSnapshot)
+    );
+    if (!contracts.length) {
+        list.innerHTML = '<p class="knight-quest-log-state">No quests are recorded yet. Speak with townsfolk to find work.</p>';
+        return;
+    }
+
+    list.innerHTML = contracts.map(contract => {
+        const view = getContractStatusPresentation(contract);
+        const objectives = getContractObjectivePresentation(contract);
+        const issuerName = contract && contract.issuerName || 'Unknown quest giver';
+        const rewardGold = Math.max(0, Number(contract && contract.rewardGold) || 0);
+        const objectiveMarkup = objectives.length
+            ? `<ul class="knight-quest-objectives">${objectives.map(objective => `
+                <li class="${objective.complete ? 'is-complete' : 'is-pending'}">
+                    <span>${escapeAdventureHtml(objective.description)}</span>
+                    <strong>${objective.progress}/${objective.target}</strong>
+                </li>
+            `).join('')}</ul>`
+            : '<p class="knight-quest-objectives-empty">No objectives are recorded for this quest.</p>';
+        const guidance = getKnightQuestLogGuidance(contract, view, objectives);
+        return `
+            <article class="knight-quest-entry ${escapeAdventureHtml(view.className)}"
+                data-contract-id="${escapeAdventureHtml(contract && contract.id || '')}"
+                data-contract-status="${escapeAdventureHtml(view.status)}">
+                <header class="knight-quest-entry-heading">
+                    <div>
+                        <span class="knight-quest-issuer">Quest from ${escapeAdventureHtml(issuerName)}</span>
+                        <h4>${escapeAdventureHtml(contract && contract.title || contract && contract.id || 'Quest')}</h4>
+                    </div>
+                    <span class="knight-quest-status">${escapeAdventureHtml(view.label)}</span>
+                </header>
+                <p class="knight-quest-description">${escapeAdventureHtml(contract && contract.description || 'No quest description is available.')}</p>
+                <div class="knight-quest-meta">
+                    <span>Reward: ${rewardGold}g</span>
+                    <span>${objectives.filter(objective => objective.complete).length}/${objectives.length} objectives</span>
+                </div>
+                ${objectiveMarkup}
+                <p class="knight-quest-guidance">${escapeAdventureHtml(guidance)}</p>
+            </article>
+        `;
+    }).join('');
+}
+
 function updateAdventureNavigation(activeJourney) {
-    ['nav-town', 'nav-vault'].forEach(id => {
-        const button = document.getElementById(id);
-        if (button) button.disabled = !!activeJourney;
-    });
     const returnButton = document.getElementById('adventure-return-town-btn');
     if (returnButton) {
         returnButton.disabled = !!activeJourney;
@@ -1540,6 +1927,10 @@ if (typeof socket !== 'undefined' && socket) {
     });
 }
 
+if (typeof window !== 'undefined') {
+    window.renderKnightQuestLog = renderKnightQuestLog;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         buildTavernReturnPresentation,
@@ -1549,7 +1940,9 @@ if (typeof module !== 'undefined' && module.exports) {
         getContractObjectivePresentation,
         getContractRoutePayPresentation,
         getContractStatusPresentation,
+        renderKnightQuestLog,
         getExpeditionEscrowSummary,
+        getPlayerMapMarkerState,
         getRouteAvailabilityPresentation,
         getReturnNpcReactions,
         getSnapshotContracts,

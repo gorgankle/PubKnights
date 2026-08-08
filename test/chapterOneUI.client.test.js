@@ -13,6 +13,7 @@ const {
     getContractRoutePayPresentation,
     getContractStatusPresentation,
     getExpeditionEscrowSummary,
+    getPlayerMapMarkerState,
     getRouteAvailabilityPresentation,
     getSnapshotContracts,
     getWorldContractUpdates,
@@ -49,6 +50,190 @@ test('fresh route presentation distinguishes an open unscouted road from a locke
         encounterReports: [{ encounterId: 'alley_robbery' }],
         unconfirmedEncounterCount: 1
     }).label, 'Open - Partial Intel');
+});
+
+test('player map marker anchors at locations and follows multi-leg travel progress', () => {
+    const locations = [
+        {
+            id: 'pub_hub',
+            name: 'The Pub',
+            isHome: true,
+            discovered: true,
+            mapPosition: { x: 10, y: 70 }
+        },
+        {
+            id: 'old_road',
+            name: 'Old Road',
+            discovered: true,
+            mapPosition: { x: 70, y: 30 }
+        }
+    ];
+    const routes = [{
+        id: 'route_old_road',
+        fromLocationId: 'pub_hub',
+        toLocationId: 'old_road'
+    }];
+
+    assert.deepEqual(plain(getPlayerMapMarkerState(locations, null)), {
+        x: 10,
+        y: 70,
+        atLocation: true,
+        traveling: false,
+        locationId: 'pub_hub',
+        label: 'You are at The Pub.'
+    });
+    assert.deepEqual(plain(getPlayerMapMarkerState(locations, {
+        routeId: 'route_old_road',
+        originLocationId: 'pub_hub',
+        destinationLocationId: 'old_road',
+        direction: 'OUTBOUND',
+        phase: 'OUTBOUND',
+        legIndex: 2,
+        legCount: 3
+    }, routes)), {
+        x: 40,
+        y: 50,
+        atLocation: false,
+        traveling: true,
+        locationId: null,
+        legIndex: 2,
+        legCount: 3,
+        direction: 'OUTBOUND',
+        label: 'You are traveling outward, leg 2 of 3, between The Pub and Old Road.'
+    });
+    const returning = plain(getPlayerMapMarkerState(locations, {
+        routeId: 'route_old_road',
+        originLocationId: 'pub_hub',
+        destinationLocationId: 'old_road',
+        direction: 'RETURN',
+        phase: 'RETURNING',
+        legIndex: 1,
+        legCount: 2
+    }, routes));
+    assert.ok(Math.abs(returning.x - 50) < 0.000001);
+    assert.ok(Math.abs(returning.y - (130 / 3)) < 0.000001);
+    assert.deepEqual({ ...returning, x: 50, y: 130 / 3 }, {
+        x: 50,
+        y: 130 / 3,
+        atLocation: false,
+        traveling: true,
+        locationId: null,
+        legIndex: 1,
+        legCount: 2,
+        direction: 'RETURN',
+        label: 'You are traveling home, leg 1 of 2, between Old Road and The Pub.'
+    });
+    assert.deepEqual(plain(getPlayerMapMarkerState(locations, {
+        destinationLocationId: 'old_road',
+        phase: 'AT_DESTINATION'
+    })), {
+        x: 70,
+        y: 30,
+        atLocation: true,
+        traveling: false,
+        locationId: 'old_road',
+        label: 'You are at Old Road.'
+    });
+});
+
+test('player map marker follows a discovered route prefix without cutting across the map', () => {
+    const locations = [
+        { id: 'pub_hub', name: 'The Pub', isHome: true, discovered: true, mapPosition: { x: 10, y: 50 } },
+        { id: 'pine_trail', name: 'Pine Trail', discovered: true, mapPosition: { x: 40, y: 50 } },
+        { id: 'burnt_heath', name: 'Burnt Heath', discovered: true, mapPosition: { x: 90, y: 50 } }
+    ];
+    const routes = [
+        {
+            id: 'route_pine_trail',
+            fromLocationId: 'pub_hub',
+            toLocationId: 'pine_trail',
+            distance: 3,
+            unlocked: true
+        },
+        {
+            id: 'route_burnt_heath',
+            fromLocationId: 'pine_trail',
+            toLocationId: 'burnt_heath',
+            distance: 4,
+            unlocked: true
+        }
+    ];
+    const journey = {
+        routeId: 'route_burnt_heath',
+        originLocationId: 'pub_hub',
+        destinationLocationId: 'burnt_heath',
+        direction: 'OUTBOUND',
+        phase: 'OUTBOUND',
+        legIndex: 1,
+        legCount: 3
+    };
+
+    const firstLeg = plain(getPlayerMapMarkerState(locations, journey, routes));
+    assert.equal(firstLeg.x, 30);
+    assert.equal(firstLeg.y, 50);
+    assert.equal(firstLeg.label, 'You are traveling outward, leg 1 of 3, between The Pub and Pine Trail.');
+
+    const lastLeg = plain(getPlayerMapMarkerState(locations, {
+        ...journey,
+        legIndex: 99
+    }, routes));
+    assert.equal(lastLeg.legIndex, 3);
+    assert.equal(lastLeg.x, 70);
+    assert.equal(lastLeg.label, 'You are traveling outward, leg 3 of 3, between Pine Trail and Burnt Heath.');
+
+    const returnLeg = plain(getPlayerMapMarkerState(locations, {
+        ...journey,
+        direction: 'RETURN',
+        phase: 'RETURNING',
+        legIndex: 1
+    }, routes));
+    assert.equal(returnLeg.x, 70);
+    assert.equal(returnLeg.label, 'You are traveling home, leg 1 of 3, between Burnt Heath and Pine Trail.');
+
+    const hiddenGeometry = locations.map(location => (
+        location.id === 'pine_trail' ? { ...location, discovered: false } : location
+    ));
+    assert.equal(getPlayerMapMarkerState(hiddenGeometry, journey, routes), null);
+});
+
+test('player map marker chooses a deterministic unlocked prefix and safely falls back to the active edge', () => {
+    const locations = [
+        { id: 'pub_hub', name: 'The Pub', isHome: true, discovered: true, mapPosition: { x: 10, y: 50 } },
+        { id: 'route_a', name: 'Route A', discovered: true, mapPosition: { x: 20, y: 50 } },
+        { id: 'route_b', name: 'Route B', discovered: true, mapPosition: { x: 20, y: 80 } },
+        { id: 'gateway', name: 'Gateway', discovered: true, mapPosition: { x: 40, y: 50 } },
+        { id: 'secret', name: 'Unknown Area', discovered: false, mapPosition: { x: 25, y: 40 } },
+        { id: 'destination', name: 'Destination', discovered: true, mapPosition: { x: 90, y: 50 } }
+    ];
+    const prefixRoutes = [
+        { id: 'route_home_a', fromLocationId: 'pub_hub', toLocationId: 'route_a', distance: 2, unlocked: true },
+        { id: 'route_a_gateway', fromLocationId: 'route_a', toLocationId: 'gateway', distance: 2, unlocked: true },
+        { id: 'route_home_b', fromLocationId: 'pub_hub', toLocationId: 'route_b', distance: 9, unlocked: true },
+        { id: 'route_gateway_b', fromLocationId: 'gateway', toLocationId: 'route_b', distance: 1, unlocked: true, bidirectional: true },
+        { id: 'route_hidden_shortcut_a', fromLocationId: 'pub_hub', toLocationId: 'secret', distance: 1, unlocked: true },
+        { id: 'route_hidden_shortcut_b', fromLocationId: 'secret', toLocationId: 'gateway', distance: 1, unlocked: true },
+        { id: 'route_destination', fromLocationId: 'gateway', toLocationId: 'destination', distance: 4, unlocked: true }
+    ];
+    const journey = {
+        routeId: 'route_destination',
+        originLocationId: 'pub_hub',
+        destinationLocationId: 'destination',
+        direction: 'OUTBOUND',
+        phase: 'OUTBOUND',
+        legIndex: 1,
+        legCount: 3
+    };
+
+    const weightedPath = plain(getPlayerMapMarkerState(locations, journey, prefixRoutes));
+    assert.equal(weightedPath.x, 30);
+    assert.equal(weightedPath.y, 50);
+    assert.equal(weightedPath.label, 'You are traveling outward, leg 1 of 3, between Route A and Gateway.');
+
+    const activeRouteOnly = prefixRoutes.filter(route => route.id === 'route_destination');
+    const fallback = plain(getPlayerMapMarkerState(locations, journey, activeRouteOnly));
+    assert.equal(fallback.x, 52.5);
+    assert.equal(fallback.y, 50);
+    assert.equal(fallback.label, 'You are traveling outward, leg 1 of 3, between Gateway and Destination.');
 });
 
 function createClientHarness(search = '?mute=1') {

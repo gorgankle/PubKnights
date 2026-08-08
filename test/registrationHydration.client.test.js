@@ -26,6 +26,7 @@ test('fresh registration hydrates the live client from the server-owned starter 
     let normalized = 0;
     let rendered = 0;
     let adventureRequests = 0;
+    const routedStates = [];
     const context = vm.createContext({
         player,
         document: { getElementById: id => elements.get(id) },
@@ -37,6 +38,7 @@ test('fresh registration hydrates the live client from the server-owned starter 
         requestAdventureState() { adventureRequests += 1; },
         renderPaperDoll() { rendered += 1; },
         refreshSystemUI() {},
+        setGameState(state) { routedStates.push(state); },
         saveGame() {},
         alert() {}
     });
@@ -63,6 +65,46 @@ test('fresh registration hydrates the live client from the server-owned starter 
 
     context.finalizeCharacter();
     assert.equal(elements.get('char-creation-screen').style.display, 'none');
+    assert.equal(elements.get('main-game-container').style.display, 'flex');
+    assert.equal(elements.get('static-gold-display').hidden, false);
+    assert.deepEqual(routedStates, ['TOWN']);
+});
+
+test('login resumes an active journey instead of placing the party in town', () => {
+    const handlers = {};
+    const elements = new Map([
+        ['char-name-input', { value: 'Road Knight' }],
+        ['login-screen', { style: {} }],
+        ['char-creation-screen', { style: {} }],
+        ['main-game-container', { style: {} }],
+        ['static-gold-display', { hidden: true }]
+    ]);
+    const routedStates = [];
+    const player = {};
+    const context = vm.createContext({
+        player,
+        document: { getElementById: id => elements.get(id) },
+        socket: {
+            on(eventName, handler) { handlers[eventName] = handler; },
+            emit() {}
+        },
+        normalizeClientPlayerContainers() {},
+        renderPaperDoll() {},
+        requestAdventureState() {},
+        setGameState(state) { routedStates.push(state); },
+        saveGame() {},
+        alert() {}
+    });
+    vm.runInContext(loginSource, context, { filename: 'login.js' });
+
+    handlers.loginSuccess({
+        username: 'Road Knight',
+        adventure: {
+            activeJourney: { routeId: 'old_road', phase: 'OUTBOUND' }
+        }
+    });
+
+    assert.deepEqual(routedStates, ['ADVENTURES']);
     assert.equal(elements.get('main-game-container').style.display, 'flex');
     assert.equal(elements.get('static-gold-display').hidden, false);
 });

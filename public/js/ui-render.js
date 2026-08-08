@@ -5,58 +5,21 @@ let uiMemory = { gold: -1 }
 
 // === UI NAVIGATION ENGINE ===
 function switchTab(tabId) {
-    // 1. GHOSTING: Auto-leave the multiplayer zone if we navigate away to any other tab!
-    if (tabId !== 'social-view' && typeof currentSocialZone !== 'undefined' && currentSocialZone) {
-        if (typeof leaveMultiplayerZone === 'function') {
-            leaveMultiplayerZone(true); // True prevents an infinite loop!
-        }
-    }
+    const stateByLegacyView = {
+        'town-vault-view': 'TOWN',
+        'social-view': 'COMMUNITY',
+        'combat-screen': 'COMBAT'
+    };
+    const nextState = stateByLegacyView[tabId];
+    if (nextState && typeof setGameState === 'function') setGameState(nextState);
+}
 
-    // 2. DOM ESCAPE HATCH: If social-view is trapped inside the Knight panel wrapper, break it out!
-    const socialView = document.getElementById('social-view');
-    if (socialView && socialView.parentElement !== document.body) {
-        document.body.appendChild(socialView); // Moves it safely to the top level!
-    }
-
-    // 3. Hide all individual game screens
-    document.querySelectorAll('.game-screen').forEach(screen => {
-        screen.style.display = 'none';
-    });
-
-    // 4. Hide the entire master Town/Knight layout when in Social or Combat
-    const mainContainer = document.getElementById('main-game-container');
-    if (mainContainer) {
-        if (tabId === 'social-view' || tabId === 'combat-screen') {
-            mainContainer.style.display = 'none';
-        } else {
-            mainContainer.style.display = 'flex'; // Restore the Knight & Town panels
-        }
-    }
-
-    // 5. Remove active highlight from all nav buttons
-    document.querySelectorAll('.nav-bar button').forEach(btn => {
-        btn.classList.remove('active-tab');
-    });
-
-    // 6. Show the requested screen
-    let targetScreen = document.getElementById(tabId);
-    if (targetScreen) {
-        if (tabId === 'social-view') {
-            targetScreen.style.display = 'grid';
-        } else {
-            targetScreen.style.display = 'flex';
-        }
-    }
-
-    // 7. Light up the clicked button
-    let btnId = '';
-    if (tabId === 'town-vault-view') btnId = 'tab-town';
-    else if (tabId === 'combat-screen') btnId = 'tab-combat';
-    else if (tabId === 'social-view') btnId = 'tab-social';
-    
-    if (btnId) {
-        let btn = document.getElementById(btnId);
-        if (btn) btn.classList.add('active-tab');
+function setGameScreenVisibility(screen, visible, displayMode = 'flex') {
+    if (!screen) return;
+    screen.style.display = visible ? displayMode : 'none';
+    screen.inert = !visible;
+    if (typeof screen.setAttribute === 'function') {
+        screen.setAttribute('aria-hidden', visible ? 'false' : 'true');
     }
 }
 
@@ -289,8 +252,10 @@ function refreshSystemUI() {
 
         // Tab Panels
         const knightScreen = document.getElementById("knight-screen");
+        const partyScreen = document.getElementById("party-screen");
         const townScreen = document.getElementById("town-screen");
         const adventuresScreen = document.getElementById("adventures-screen");
+        const socialView = document.getElementById("social-view");
 
         if (!townVaultView || !combatScreen || !vaultScreen || !wallet || !townScreen) return;
 
@@ -335,7 +300,8 @@ const hopsScreen = document.getElementById("minigame-hops-screen");
 if (gameState === 'COMBAT' || gameState === 'MINIGAME_LUMBER' || gameState === 'MINIGAME_FISHING' || gameState === 'MINIGAME_HOPS') {
     if (topNavBar) topNavBar.style.display = "none"; 
     townVaultView.style.display = "none"; 
-    vaultScreen.style.display = "none";
+    setGameScreenVisibility(vaultScreen, false);
+    setGameScreenVisibility(socialView, false);
     
     if (gameState === 'MINIGAME_LUMBER') {
         if (combatScreen) combatScreen.style.display = "none";
@@ -517,13 +483,12 @@ const combatInvList = document.getElementById("combat-inventory-list");
             if (topNavBar) topNavBar.style.display = "flex";
             combatScreen.style.display = "none";
 
-            // Only show the column container if we are NOT in the Vault
-            if (townVaultView) townVaultView.style.display = (gameState === 'VAULT') ? "none" : "flex"; 
+            // Location screens share one router. The Vault and Community are
+            // siblings of the Town/Knight/Party screen container.
+            if (townVaultView) townVaultView.style.display = (gameState === 'VAULT' || gameState === 'COMMUNITY') ? "none" : "flex";
 // Hide ALL tabs first to ensure a clean slate
-            if (knightScreen) knightScreen.style.display = "none";
-            townScreen.style.display = "none";
-            if (adventuresScreen) adventuresScreen.style.display = "none";
-            vaultScreen.style.display = "none";
+            [knightScreen, partyScreen, townScreen, adventuresScreen, vaultScreen, socialView]
+                .forEach(screen => setGameScreenVisibility(screen, false));
 			
 			
             // ADD THIS TO HIDE THE MINIGAME
@@ -535,24 +500,36 @@ if (fishingScreen) fishingScreen.style.display = "none";
 let hopsScreen = document.getElementById("minigame-hops-screen");
 if (hopsScreen) hopsScreen.style.display = "none";
 			
-            document.querySelectorAll('.nav-bar button').forEach(btn => btn.classList.remove('active-tab'));
+            document.querySelectorAll('.nav-bar button').forEach(btn => {
+                btn.classList.remove('active-tab');
+                btn.removeAttribute('aria-current');
+            });
 
             // === UPDATED STATE ROUTER ===
             if (gameState === 'KNIGHT') {
-                if (knightScreen) knightScreen.style.display = "block";
-                document.getElementById('nav-knight').classList.add('active-tab');
+                setGameScreenVisibility(knightScreen, true);
+                const navKnight = document.getElementById('nav-knight');
+                if (navKnight) {
+                    navKnight.classList.add('active-tab');
+                    navKnight.setAttribute('aria-current', 'page');
+                }
+                if (typeof renderKnightQuestLog === 'function') renderKnightQuestLog();
+            } else if (gameState === 'PARTY') {
+                setGameScreenVisibility(partyScreen, true);
+                const navParty = document.getElementById('nav-party');
+                if (navParty) {
+                    navParty.classList.add('active-tab');
+                    navParty.setAttribute('aria-current', 'page');
+                }
             } else if (gameState === 'TOWN') {
-                townScreen.style.display = "block";
-                document.getElementById('nav-town').classList.add('active-tab');
+                setGameScreenVisibility(townScreen, true);
                 if (typeof renderTownWorldState === 'function') renderTownWorldState();
                 if (typeof renderWalkableTown === 'function') renderWalkableTown();
             } else if (gameState === 'ADVENTURES') {
-                if (adventuresScreen) adventuresScreen.style.display = "block";
-                document.getElementById('nav-adventures').classList.add('active-tab');
+                setGameScreenVisibility(adventuresScreen, true);
                 if (typeof renderAdventureScreen === 'function') renderAdventureScreen();
             } else if (gameState === 'VAULT') {
-                vaultScreen.style.display = "block";
-                document.getElementById('nav-vault').classList.add('active-tab');
+                setGameScreenVisibility(vaultScreen, true);
 
                 const vaultCountEl = document.getElementById("vault-screen-count");
                 const vaultMaxEl = document.getElementById("vault-screen-max");
@@ -571,6 +548,8 @@ if (hopsScreen) hopsScreen.style.display = "none";
 
                 renderVaultStorageList();
                 renderBackpackList(document.getElementById("vault-inventory-list"), true);
+            } else if (gameState === 'COMMUNITY') {
+                setGameScreenVisibility(socialView, true, 'grid');
             }
 
             // --- NEW: DYNAMIC KNIGHT HEADER & STATS ---
@@ -691,6 +670,27 @@ if (hopsScreen) hopsScreen.style.display = "none";
             const activeIds = Array.isArray(roster.activeIds) ? roster.activeIds : [];
             if (typeof renderCompanionRosterUI === 'function') renderCompanionRosterUI(companions, activeIds);
 
+            const activeJourney = !!(player.adventure && player.adventure.activeJourney);
+            const awayNotice = document.getElementById('party-away-notice');
+            if (awayNotice) awayNotice.hidden = !activeJourney;
+            ['knight-return-hub-btn', 'party-return-hub-btn'].forEach(buttonId => {
+                const button = document.getElementById(buttonId);
+                if (button) button.textContent = activeJourney ? 'Resume Journey' : 'Return to Town';
+            });
+
+            const selectedCompanion = typeof getSelectedPartyCompanion === 'function'
+                ? getSelectedPartyCompanion()
+                : null;
+            const partyHelp = document.getElementById('party-backpack-help');
+            if (partyHelp) {
+                partyHelp.textContent = selectedCompanion
+                    ? `Assign gear or one combat item to ${selectedCompanion.name || 'the selected companion'}.`
+                    : 'Select a companion, then use Equip or Pocket on an item.';
+            }
+            const partyCount = document.getElementById('party-inv-count');
+            if (partyCount) partyCount.textContent = player.inventory.length;
+            renderBackpackList(document.getElementById('party-inventory-list'), 'party');
+
             let invC = document.getElementById("inv-count");
             if(invC) invC.innerText = player.inventory.length;
             renderBackpackList(document.getElementById("inventory-list"), false);
@@ -757,7 +757,7 @@ if (hopsScreen) hopsScreen.style.display = "none";
                 `;
             }
 
-            if (gameState === 'KNIGHT' || gameState === 'TOWN' || gameState === 'VAULT' || gameState === 'ADVENTURES') {
+            if (gameState === 'KNIGHT' || gameState === 'PARTY' || gameState === 'TOWN' || gameState === 'VAULT' || gameState === 'ADVENTURES') {
                 if (typeof renderMainScreenSprites === 'function') renderMainScreenSprites();
             }
 
@@ -769,9 +769,24 @@ if (hopsScreen) hopsScreen.style.display = "none";
 
 function renderBackpackList(domContainer, showVaultOption) {
     if (!domContainer) return; 
+    const isPartyContext = showVaultOption === 'party';
+    const isVaultContext = showVaultOption === true;
+    const isPartyActionPending = typeof partyInventoryActionPending !== 'undefined'
+        && partyInventoryActionPending;
+    const activePartyFocusKey = isPartyContext
+        && typeof document !== 'undefined'
+        && document.activeElement
+        && typeof domContainer.contains === 'function'
+        && domContainer.contains(document.activeElement)
+        && document.activeElement.dataset
+        ? document.activeElement.dataset.partyFocusKey
+        : '';
     
     domContainer.innerHTML = "";
-    domContainer.className = "inventory-grid"; // Apply the new grid CSS
+    domContainer.className = `inventory-grid${isPartyContext ? ' party-inventory-grid' : ''}`;
+    if (isPartyContext) {
+        domContainer.setAttribute('aria-busy', isPartyActionPending ? 'true' : 'false');
+    }
     
     // NEW: Fallback drop zone on the container background itself!
     domContainer.ondragover = handleItemDragOver;
@@ -796,7 +811,8 @@ function renderBackpackList(domContainer, showVaultOption) {
             slotDiv.className = `item-slot ${rc}`;
             
             // Drag and Drop Hooks
-            slotDiv.draggable = true;
+            slotDiv.draggable = !isPartyContext || !isPartyActionPending;
+            if (isPartyContext) slotDiv.dataset.partyDraggable = 'true';
             slotDiv.ondragstart = (e) => handleItemDragStart(e, idx, 'backpack');
             slotDiv.ondragover = handleItemDragOver;
             slotDiv.ondrop = (e) => handleItemDrop(e, idx, 'backpack');
@@ -804,7 +820,9 @@ function renderBackpackList(domContainer, showVaultOption) {
             // The New Tooltip Hook
             slotDiv.onmouseenter = (e) => showItemTooltip(e, item, idx, 'backpack');
             slotDiv.onmouseleave = hideTooltip;
-            bindInventoryDoubleClick(slotDiv, (e) => handleBackpackDoubleClick(e, idx, item, showVaultOption));
+            if (!isPartyContext) {
+                bindInventoryDoubleClick(slotDiv, (e) => handleBackpackDoubleClick(e, idx, item, isVaultContext));
+            }
 
             // Render the canonical 32x32 sprite matrix.
             let imgUrl = getItemSpriteURL(item);
@@ -814,6 +832,51 @@ function renderBackpackList(domContainer, showVaultOption) {
             } else {
                 slotDiv.innerHTML = `<span style="font-size:20px;pointer-events:none;">${item.type === 'crate' ? '\u{1F4E6}' : '\u{1F6E1}\uFE0F'}</span>`;
             }
+
+            if (isPartyContext) {
+                const itemName = document.createElement('span');
+                itemName.className = 'party-backpack-item-name';
+                itemName.textContent = item.name || 'Backpack item';
+                slotDiv.appendChild(itemName);
+
+                const selectedCompanion = typeof getSelectedPartyCompanion === 'function'
+                    ? getSelectedPartyCompanion()
+                    : null;
+                const presentations = typeof getPartyBackpackActionPresentations === 'function'
+                    ? getPartyBackpackActionPresentations(item)
+                    : (typeof getPartyBackpackActionPresentation === 'function'
+                        ? [getPartyBackpackActionPresentation(item)].filter(Boolean)
+                        : []);
+                if (presentations.length) {
+                    presentations.forEach(presentation => {
+                    const action = document.createElement('button');
+                    action.type = 'button';
+                    action.className = 'party-backpack-action';
+                    action.textContent = presentation.label;
+                    action.dataset.inventoryIndex = String(idx);
+                    action.dataset.partyFocusKey = `party-backpack:${idx}:${presentation.action}`;
+                    action.dataset.partyActionUnavailable = selectedCompanion ? 'false' : 'true';
+                    action.disabled = !selectedCompanion || isPartyActionPending;
+                    action.setAttribute('aria-label', selectedCompanion
+                        ? `${presentation.label}: ${item.name || 'item'} for ${selectedCompanion.name || 'selected companion'}`
+                        : `${presentation.label}: ${item.name || 'item'}. Select a companion first.`);
+                    action.onclick = event => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        if (typeof activatePartyBackpackItem === 'function') {
+                            activatePartyBackpackItem(idx, presentation.action);
+                        }
+                    };
+                    slotDiv.appendChild(action);
+                    });
+                } else {
+                    const unavailable = document.createElement('span');
+                    unavailable.className = 'party-backpack-unavailable';
+                    unavailable.textContent = 'Knight use';
+                    slotDiv.appendChild(unavailable);
+                }
+                slotDiv.setAttribute('aria-label', `${item.name || 'Backpack item'} in the shared backpack`);
+            }
         } else {
             // Render Empty Slots for structure
             slotDiv.className = 'item-slot';
@@ -822,6 +885,9 @@ function renderBackpackList(domContainer, showVaultOption) {
         }
         
         domContainer.appendChild(slotDiv);
+    }
+    if (activePartyFocusKey && typeof restorePartyFocus === 'function') {
+        restorePartyFocus(activePartyFocusKey);
     }
 }
 

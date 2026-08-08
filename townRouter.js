@@ -217,6 +217,7 @@ module.exports = function(socket, _io, activePlayers, activeCombats) {
         if (activeCombats && activeCombats[socket.id]) {
             return socket.emit('inventoryReceipt', {
                 success: false,
+                action: sanitizeToken(data.action, ''),
                 message: 'Inventory changes are locked during combat and must be made outside combat. Use the combat Backpack to swap gear for one action.',
                 updatedPlayer: p
             });
@@ -235,15 +236,21 @@ module.exports = function(socket, _io, activePlayers, activeCombats) {
         }
 
         if (['equipCompanion', 'unequipCompanion', 'storeCompanionPocket', 'removeCompanionPocket'].includes(data.action)) {
+            const failCompanionInventoryAction = message => socket.emit('inventoryReceipt', {
+                success: false,
+                action: data.action,
+                message,
+                updatedPlayer: p
+            });
             const companion = findCompanionByInstanceId(p, data.instanceId);
-            if (!companion) return socket.emit('inventoryReceipt', { success: false, message: 'That mercenary is not on your roster.' });
+            if (!companion) return failCompanionInventoryAction('That mercenary is not on your roster.');
 
             if (data.action === 'equipCompanion') {
                 const idx = getArrayIndex(data.index, p.inventory);
-                if (idx < 0) return socket.emit('inventoryReceipt', { success: false, message: 'Invalid backpack slot.' });
+                if (idx < 0) return failCompanionInventoryAction('Invalid backpack slot.');
                 const toEquip = p.inventory[idx];
                 if (!toEquip || !COMPANION_EQUIPMENT_SLOTS.includes(toEquip.slot)) {
-                    return socket.emit('inventoryReceipt', { success: false, message: 'That item cannot be equipped by a mercenary.' });
+                    return failCompanionInventoryAction('That item cannot be equipped by a mercenary.');
                 }
 
                 p.maxInventorySlots = p.maxInventorySlots || 5;
@@ -255,10 +262,7 @@ module.exports = function(socket, _io, activePlayers, activeCombats) {
                     validSlots: COMPANION_EQUIPMENT_SLOTS
                 });
                 if (!equipResult.success) {
-                    return socket.emit('inventoryReceipt', {
-                        success: false,
-                        message: equipResult.message
-                    });
+                    return failCompanionInventoryAction(equipResult.message);
                 }
                 const handMessage = equipResult.conflictSlot
                     ? ' Conflicting hand gear was stowed.'
@@ -274,13 +278,13 @@ module.exports = function(socket, _io, activePlayers, activeCombats) {
             if (data.action === 'unequipCompanion') {
                 const slotKey = sanitizeToken(data.slotKey, '');
                 if (!COMPANION_EQUIPMENT_SLOTS.includes(slotKey)) {
-                    return socket.emit('inventoryReceipt', { success: false, message: 'Invalid mercenary equipment slot.' });
+                    return failCompanionInventoryAction('Invalid mercenary equipment slot.');
                 }
                 const worn = companion.equipment[slotKey];
-                if (!worn) return socket.emit('inventoryReceipt', { success: false, message: `${companion.name} has nothing equipped there.` });
+                if (!worn) return failCompanionInventoryAction(`${companion.name} has nothing equipped there.`);
                 p.maxInventorySlots = p.maxInventorySlots || 5;
                 if (p.inventory.length >= p.maxInventorySlots) {
-                    return socket.emit('inventoryReceipt', { success: false, message: 'Backpack is full. Make space first.' });
+                    return failCompanionInventoryAction('Backpack is full. Make space first.');
                 }
                 p.inventory.push(worn);
                 companion.equipment[slotKey] = null;
@@ -289,15 +293,15 @@ module.exports = function(socket, _io, activePlayers, activeCombats) {
 
             const pocketIndex = getArrayIndex(data.pocketIndex, companion.pockets);
             if (pocketIndex < 0 || pocketIndex >= COMPANION_POCKET_COUNT) {
-                return socket.emit('inventoryReceipt', { success: false, message: 'Invalid mercenary pocket.' });
+                return failCompanionInventoryAction('Invalid mercenary pocket.');
             }
 
             if (data.action === 'storeCompanionPocket') {
                 const idx = getArrayIndex(data.index, p.inventory);
-                if (idx < 0) return socket.emit('inventoryReceipt', { success: false, message: 'Invalid backpack slot.' });
+                if (idx < 0) return failCompanionInventoryAction('Invalid backpack slot.');
                 const toStore = p.inventory[idx];
                 if (!isCompanionPocketItem(toStore)) {
-                    return socket.emit('inventoryReceipt', { success: false, message: 'Pockets can only hold equipment or combat consumables.' });
+                    return failCompanionInventoryAction('Pockets can only hold equipment or combat consumables.');
                 }
                 const stored = companion.pockets[pocketIndex];
                 companion.pockets[pocketIndex] = toStore;
@@ -307,10 +311,10 @@ module.exports = function(socket, _io, activePlayers, activeCombats) {
             }
 
             const stored = companion.pockets[pocketIndex];
-            if (!stored) return socket.emit('inventoryReceipt', { success: false, message: `${companion.name}'s pocket is empty.` });
+            if (!stored) return failCompanionInventoryAction(`${companion.name}'s pocket is empty.`);
             p.maxInventorySlots = p.maxInventorySlots || 5;
             if (p.inventory.length >= p.maxInventorySlots) {
-                return socket.emit('inventoryReceipt', { success: false, message: 'Backpack is full. Make space first.' });
+                return failCompanionInventoryAction('Backpack is full. Make space first.');
             }
             p.inventory.push(stored);
             companion.pockets[pocketIndex] = null;
